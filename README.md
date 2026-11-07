@@ -10,9 +10,7 @@ Hệ thống đặt sân bóng đá tự động, chuẩn hóa giao diện trự
 * **Hotline hỗ trợ 24/7:** **0352 313 548**
 * **Giờ mở cửa:** 05:30 – 23:00 (Tất cả các ngày trong tuần)
 * **Thông tin tài khoản nhận cọc:**
-  * **Ngân hàng:** Vietcombank (VCB) – Chi nhánh Mỹ Đình, Hà Nội
-  * **Số tài khoản:** `0123456789`
-  * **Chủ tài khoản:** **NGUYEN QUANG VINH**
+ 
   * **Chính sách cọc:** Chuyển khoản cọc 30%, 70% còn lại thanh toán tại quầy khi nhận sân.
 
 ---
@@ -97,7 +95,7 @@ flowchart LR
 
 ---
 
-## 💡 Hướng Dẫn Dành Cho Thành Viên Nhóm (Code Tiếp)
+## 💡(Code Tiếp)
 
 1. **Truy xuất và cập nhật dữ liệu:**
    Mọi trang đều nạp `js/data.js` và `js/app.js`. Bạn có thể tương tác với cơ sở dữ liệu mô phỏng qua đối tượng toàn cục `window.SanBongApp.SanBongDB`:
