@@ -27,11 +27,9 @@ cd Web_Quan_Ly_San_Bong
 ```
 
 ### 2. Khởi chạy ứng dụng
-Không cần cài đặt `npm`, không cần `composer` hay cài đặt PHP/Node.js. Bạn có thể chạy theo một trong các cách sau:
+Không cần cài đặt `npm`, không cần `composer` hay cài đặt PHP/Node.js.  chạy theo một trong các cách sau:
 
-* **Cách 1 (Khuyên dùng khi lập trình):** Mở thư mục dự án bằng **Visual Studio Code**, cài extension **Live Server** (Ritwick Dey), sau đó click chuột phải vào file `index.html` và chọn **Open with Live Server** (cổng mặc định `http://127.0.0.1:5500/index.html`).
-* **Cách 2 (Mở trực tiếp):** Nhấp đúp chuột trực tiếp vào file `index.html` để mở trên trình duyệt bất kỳ (Google Chrome, Microsoft Edge, Firefox).
-* **Cách 3 (Nếu dùng Laragon / XAMPP):** Đặt thư mục dự án vào thư mục `www` (Laragon) hoặc `htdocs` (XAMPP) và truy cập `http://localhost/Web_Quan_Ly_San_Bong/index.html`.
+
 
 ---
 
@@ -71,10 +69,7 @@ flowchart LR
 1. **Khách hàng duyệt sân:** Tìm kiếm theo loại sân (sân 5, sân 7, sân 11) và ngày thi đấu.
 2. **Chọn khung giờ & dịch vụ:** Ma trận giờ trực quan tự động đánh dấu slot "Trống", "Đang đá" hoặc "Đã đặt". Tùy chọn mua nước, áo bib, thuê trọng tài và áp mã ưu đãi (ví dụ: `WELCOME10`, `GIAM50K`).
 3. **Thanh toán cọc 30%:** Trang `checkout.html` hiển thị rõ ràng thông tin người nhận:
-   * **Ngân hàng:** Vietcombank
-   * **Chủ tài khoản:** NGUYEN QUANG VINH
-   * **Số tài khoản:** 0123456789
-   * Có nút sao chép `📋` nhanh cho Số tài khoản, Số tiền cọc và Nội dung chuyển khoản.
+  
 4. **Nhận vé check-in:** Chuyển sang `success.html` với mã đặt sân (SB-xxxx) và mã QR check-in tại quầy trước giờ thi đấu.
 5. **Quản trị viên (Admin):** Theo dõi lịch đặt trong `admin.html`, lọc theo ngày, đổi trạng thái sân hoặc xác nhận cọc.
 
