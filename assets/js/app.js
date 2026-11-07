@@ -129,7 +129,7 @@
     const safeAcc = encodeURIComponent(accountNo || '0123456789');
     const safeAmount = encodeURIComponent(amount || 0);
     const safeMemo = encodeURIComponent(memo || 'DAT SAN BONG');
-    return `https://img.vietqr.io/image/${safeBank}-${safeAcc}-compact2.png?amount=${safeAmount}&addInfo=${safeMemo}&accountName=NGUYEN%20VAN%20HUNG`;
+    return `https://img.vietqr.io/image/${safeBank}-${safeAcc}-compact2.png?amount=${safeAmount}&addInfo=${safeMemo}&accountName=NGUYEN%20QUANG%20VINH`;
   }
 
   function renderQRCodeSVG(size = 160) {
@@ -189,7 +189,8 @@
       if (!localStorage.getItem(STORAGE_KEYS.USER)) {
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.DEFAULT_USER || {}));
       }
-      if (!localStorage.getItem(STORAGE_KEYS.BANK)) {
+      const currentBank = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANK) || '{}');
+      if (!localStorage.getItem(STORAGE_KEYS.BANK) || currentBank.accountName === 'NGUYEN VAN HUNG') {
         localStorage.setItem(STORAGE_KEYS.BANK, JSON.stringify(data.DEFAULT_BANK_INFO || {}));
       }
       if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
