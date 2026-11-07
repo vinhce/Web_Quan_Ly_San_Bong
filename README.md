@@ -88,7 +88,7 @@ flowchart LR
 
 ---
 
-## 💡 Hướng Dẫn Cho Bạn Bè Khi Tiếp Tục Phát Triển (Code Tiếp)
+## 💡 (Code Tiếp)
 
 1. **Truy xuất và cập nhật dữ liệu:**
    Mọi trang đều nạp `assets/js/data.js` và `assets/js/app.js`. Bạn có thể tương tác với cơ sở dữ liệu mô phỏng qua đối tượng toàn cục `window.SanBongApp.SanBongDB`:
