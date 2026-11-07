@@ -5,22 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sân Bóng Pro – Hệ thống đặt sân bóng đá tự động chuẩn FIFA</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <style>
-    html, body { margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-    .font-heading { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .ui-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04); }
-    .btn-base { height: 44px; border-radius: 10px; padding: 0 18px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
-    .btn-primary { background: #16A34A; color: #FFFFFF; }
-    .btn-primary:hover { background: #15803D; }
-    .btn-secondary { background: #FFFFFF; color: #0F172A; border: 1px solid #E2E8F0; }
-    .btn-secondary:hover { background: #F8FAFC; }
-    .input-field { height: 44px; border-radius: 10px; border: 1px solid #E2E8F0; background: #FFFFFF; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: #0F172A; }
-    .input-field:focus-within { border-color: #16A34A; ring: 2px; ring-color: #DCFCE7; }
-  </style>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -113,7 +98,7 @@
           <h2 class="font-heading font-bold text-2xl sm:text-3xl text-[#0F172A]">Sân bóng nổi bật</h2>
           <p class="text-sm text-[#475569] mt-1">Được cộng đồng bóng đá phủi đánh giá cao nhất</p>
         </div>
-        <a href="fields.html" class="text-sm font-bold text-[#16A34A] hover:text-[#15803D] flex items-center gap-1 group">
+        <a href="html/fields.html" class="text-sm font-bold text-[#16A34A] hover:text-[#15803D] flex items-center gap-1 group">
           <span>Xem tất cả 6 sân</span>
           <span class="group-hover:translate-x-1 transition-transform">→</span>
         </a>
@@ -170,7 +155,7 @@
         </div>
         <div class="mt-4 pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-[#64748B]">
           <span>* Cuối tuần (T7, CN) áp dụng mức giá giờ vàng từ 15:00</span>
-          <a href="booking.html" class="text-[#16A34A] font-bold hover:underline">Chọn khung giờ cụ thể →</a>
+          <a href="html/booking.html" class="text-[#16A34A] font-bold hover:underline">Chọn khung giờ cụ thể →</a>
         </div>
       </div>
 
@@ -208,7 +193,7 @@
           </div>
         </div>
 
-        <a href="booking.html" class="btn-base btn-primary w-full mt-6">
+        <a href="html/booking.html" class="btn-base btn-primary w-full mt-6">
           Bắt đầu đặt sân ngay
         </a>
       </div>
@@ -262,108 +247,9 @@
   <!-- FOOTER -->
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <!-- NẠP THƯ VIỆN DATABASE & APP LOGIC -->
-  <script src="assets/js/data.js"></script>
-  <script src="assets/js/app.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // 1. Render Hero Pitch Vector Background
-      const heroBg = document.getElementById('hero-pitch-bg');
-      if (heroBg && window.SanBongApp) {
-        heroBg.innerHTML = window.SanBongApp.renderPitchSVG('hero', 'h-full');
-      }
-
-      // Set default search date là hôm nay
-      const searchDateInput = document.getElementById('search-date');
-      if (searchDateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        searchDateInput.value = today;
-      }
-
-      // 2. Render 3 Featured Pitches
-      const db = window.SanBongApp?.SanBongDB;
-      const pitches = db ? db.getPitches().slice(0, 3) : [];
-      const grid = document.getElementById('featured-pitches-grid');
-
-      if (grid && window.SanBongApp) {
-        grid.innerHTML = pitches.map(p => `
-          <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
-            <div class="relative">
-              ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-44')}
-              <div class="absolute top-3 left-3 flex gap-1.5">
-                <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${p.typeName}</span>
-              </div>
-              <div class="absolute bottom-3 left-3">
-                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A] shadow-sm">
-                  Còn khung giờ trống hôm nay
-                </span>
-              </div>
-            </div>
-            <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
-              <div>
-                <div class="flex items-center justify-between mb-1.5">
-                  <h3 class="font-heading font-bold text-lg text-[#0F172A]">${p.name}</h3>
-                  <div class="flex items-center gap-1 text-xs font-bold text-[#0F172A]">
-                    <span class="text-[#F59E0B]">★</span> 4.9 (120+)
-                  </div>
-                </div>
-                <div class="text-xs text-[#64748B] mb-2">${p.size} · ${p.grass}</div>
-                <div class="text-base font-extrabold text-[#16A34A]">
-                  Từ ${window.SanBongApp.formatVND(p.basePrice)}/giờ
-                </div>
-              </div>
-              <div class="pt-3 border-t border-[#F1F5F9] flex items-center gap-3">
-                <a href="fields.html?id=${p.id}" class="btn-base btn-secondary flex-1 text-xs">
-                  Xem chi tiết
-                </a>
-                <a href="booking.html?pitchId=${p.id}" class="btn-base btn-primary flex-1 text-xs">
-                  Đặt sân này
-                </a>
-              </div>
-            </div>
-          </div>
-        `).join('');
-      }
-
-      // 3. Render Vouchers List
-      const vouchers = db ? db.getVouchers() : [];
-      const vouchersContainer = document.getElementById('vouchers-list');
-      if (vouchersContainer) {
-        vouchersContainer.innerHTML = vouchers.map(v => `
-          <div class="ui-card p-4 border-l-4 ${v.code === 'WELCOME10' ? 'border-l-[#16A34A]' : 'border-l-[#F59E0B]'} flex items-center justify-between gap-3">
-            <div>
-              <div class="font-heading font-bold text-sm ${v.code === 'WELCOME10' ? 'text-[#16A34A]' : 'text-[#D97706]'}">
-                ${v.code} · ${v.description}
-              </div>
-              <div class="text-xs text-[#64748B] mt-0.5">Áp dụng cho đơn từ ${window.SanBongApp.formatVND(v.minOrder)}</div>
-            </div>
-            <button onclick="copyVoucher('${v.code}')" class="btn-sm btn-secondary text-xs shrink-0 font-bold hover:border-[#16A34A] hover:text-[#16A34A]">
-              Sao chép
-            </button>
-          </div>
-        `).join('');
-      }
-
-      // Xử lý Form tìm kiếm
-      const searchForm = document.getElementById('hero-search-form');
-      if (searchForm) {
-        searchForm.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const d = document.getElementById('search-date').value;
-          const t = document.getElementById('search-type').value;
-          window.location.href = `fields.html?date=${encodeURIComponent(d)}&type=${encodeURIComponent(t)}`;
-        });
-      }
-    });
-
-    function copyVoucher(code) {
-      navigator.clipboard.writeText(code).then(() => {
-        alert('Đã sao chép mã ưu đãi ' + code + ' vào bộ nhớ tạm! Áp dụng tại bước thanh toán.');
-      }).catch(() => {
-        alert('Mã ưu đãi của bạn: ' + code);
-      });
-    }
-  </script>
+  <!-- SCRIPTS -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/index.js"></script>
 </body>
 </html>

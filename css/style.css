@@ -1,0 +1,95 @@
+/**
+ * SÂN BÓNG PRO - CENTRAL STYLESHEET
+ * Toàn bộ CSS dùng chung, reset chuẩn, typography và UI components
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #F8FAFC;
+  color: #0F172A;
+}
+
+.font-heading {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* UI Card chuẩn Figma */
+.ui-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
+}
+
+/* Nút bấm chuẩn */
+.btn-base {
+  height: 44px;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #16A34A;
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background: #15803D;
+}
+
+.btn-secondary {
+  background: #FFFFFF;
+  color: #0F172A;
+  border: 1px solid #E2E8F0;
+}
+
+.btn-secondary:hover {
+  background: #F8FAFC;
+}
+
+/* Ô nhập liệu */
+.input-field {
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #0F172A;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input-field:focus,
+.input-field:focus-within {
+  border-color: #16A34A;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+/* In vé check-in */
+@media print {
+  #app-navbar, #app-footer, .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+}

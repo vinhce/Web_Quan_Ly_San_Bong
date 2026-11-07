@@ -1,0 +1,212 @@
+/**
+ * SÂN BÓNG PRO - DANH SÁCH SÂN LOGIC (fields.js)
+ */
+
+let currentPitches = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const db = window.SanBongApp?.SanBongDB;
+  currentPitches = db ? db.getPitches() : [];
+
+  // Parse URL parameters (từ search form ở trang chủ)
+  const urlParams = new URLSearchParams(window.location.search);
+  const typeParam = urlParams.get('type');
+  if (typeParam && typeParam !== 'all') {
+    const radio = document.querySelector(`input[name="filter-type"][value="${typeParam}"]`);
+    if (radio) radio.checked = true;
+  }
+
+  renderPitches();
+  setupEventListeners();
+});
+
+function renderPitches() {
+  const typeVal = document.querySelector('input[name="filter-type"]:checked')?.value || 'all';
+  const activeOnly = document.getElementById('filter-active-only')?.checked;
+  const maxPrice = Number(document.getElementById('price-range')?.value) || 1500000;
+  const sortVal = document.getElementById('sort-select')?.value || 'default';
+
+  let list = currentPitches.filter(p => {
+    if (typeVal !== 'all' && String(p.type) !== String(typeVal)) return false;
+    if (activeOnly && p.status !== 'Hoạt động') return false;
+    if (p.basePrice > maxPrice) return false;
+    return true;
+  });
+
+  if (sortVal === 'price-asc') {
+    list.sort((a, b) => a.basePrice - b.basePrice);
+  } else if (sortVal === 'price-desc') {
+    list.sort((a, b) => b.basePrice - a.basePrice);
+  }
+
+  const grid = document.getElementById('pitches-grid');
+  const empty = document.getElementById('no-pitches-state');
+
+  if (list.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  } else {
+    empty.classList.add('hidden');
+  }
+
+  grid.innerHTML = list.map(p => {
+    const isMaint = p.status === 'Bảo trì';
+    return `
+      <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
+        <div class="relative cursor-pointer" onclick="openPitchDetail('${p.id}')">
+          ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-48')}
+          <div class="absolute top-3 left-3 flex gap-1.5">
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${p.typeName}</span>
+            ${p.id === 'P11-ALL' ? '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DBEAFE] text-[#2563EB] shadow-sm">Ghép 7-A + 7-B</span>' : ''}
+          </div>
+          <div class="absolute top-3 right-3">
+            ${window.SanBongApp.statusPill(p.status)}
+          </div>
+          <div class="absolute bottom-3 left-3">
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isMaint ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#DCFCE7] text-[#16A34A]'} shadow-sm">
+              ${isMaint ? 'Đang bảo dưỡng mặt cỏ' : 'Sẵn sàng nhận lịch hôm nay'}
+            </span>
+          </div>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <h3 class="font-heading font-bold text-lg text-[#0F172A] cursor-pointer hover:text-[#16A34A]" onclick="openPitchDetail('${p.id}')">${p.name}</h3>
+              <div class="flex items-center gap-1 text-xs font-bold text-[#0F172A]">
+                <span class="text-[#F59E0B]">★</span> 4.9 (126)
+              </div>
+            </div>
+            <div class="text-xs text-[#64748B] mb-2">${p.size} · ${p.grass}</div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-base font-extrabold text-[#16A34A]">${window.SanBongApp.formatVND(p.basePrice)}/h</span>
+              <span class="text-xs text-[#94A3B8]">Giờ vàng: ${window.SanBongApp.formatVND(p.peakPrice)}/h</span>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-[#F1F5F9] flex items-center gap-3">
+            <button onclick="openPitchDetail('${p.id}')" class="btn-base btn-secondary flex-1 text-xs">
+              Xem chi tiết sân
+            </button>
+            ${isMaint ? `
+              <button class="btn-base btn-disabled flex-1 text-xs opacity-50 cursor-not-allowed" disabled>
+                Đang bảo trì
+              </button>
+            ` : `
+              <a href="booking.html?pitchId=${p.id}" class="btn-base btn-primary flex-1 text-xs">
+                Đặt sân này
+              </a>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function setupEventListeners() {
+  document.querySelectorAll('input[name="filter-type"]').forEach(r => {
+    r.addEventListener('change', renderPitches);
+  });
+  document.getElementById('filter-active-only')?.addEventListener('change', renderPitches);
+  document.getElementById('sort-select')?.addEventListener('change', renderPitches);
+
+  const priceRange = document.getElementById('price-range');
+  const priceLabel = document.getElementById('price-val-label');
+  if (priceRange && priceLabel) {
+    priceRange.addEventListener('input', (e) => {
+      priceLabel.textContent = window.SanBongApp.formatVND(e.target.value) + '/h';
+      renderPitches();
+    });
+  }
+
+  document.getElementById('reset-filter-btn')?.addEventListener('click', () => {
+    const defaultRadio = document.querySelector('input[name="filter-type"][value="all"]');
+    if (defaultRadio) defaultRadio.checked = true;
+    const activeCheck = document.getElementById('filter-active-only');
+    if (activeCheck) activeCheck.checked = true;
+    if (priceRange) priceRange.value = 1500000;
+    if (priceLabel) priceLabel.textContent = '1.500.000đ/h';
+    const sortSel = document.getElementById('sort-select');
+    if (sortSel) sortSel.value = 'default';
+    renderPitches();
+  });
+}
+
+// Modal chi tiết sân (Frame 3)
+function openPitchDetail(pitchId) {
+  const db = window.SanBongApp?.SanBongDB;
+  const pitch = db ? db.getPitchById(pitchId) : null;
+  if (!pitch) return;
+
+  const modal = document.getElementById('pitch-detail-modal');
+  const content = document.getElementById('modal-content');
+  const isMaint = pitch.status === 'Bảo trì';
+
+  content.innerHTML = `
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A]">${pitch.typeName}</span>
+          ${window.SanBongApp.statusPill(pitch.status)}
+        </div>
+        <h2 class="font-heading font-extrabold text-2xl text-[#0F172A]">${pitch.name}</h2>
+        <div class="text-xs text-[#64748B] mt-0.5">${pitch.size} · ${pitch.description}</div>
+      </div>
+      <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold">✕</button>
+    </div>
+
+    <div class="rounded-xl overflow-hidden border border-[#E2E8F0]">
+      ${window.SanBongApp.renderPitchSVG(pitch.variant || 'standard', 'h-48')}
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+        <div class="text-xs text-[#64748B]">Mặt cỏ thi đấu</div>
+        <div class="text-xs font-bold text-[#0F172A] mt-1">${pitch.grass}</div>
+      </div>
+      <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+        <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
+        <div class="text-xs font-bold text-[#16A34A] mt-1">
+          Thường: ${window.SanBongApp.formatVND(pitch.basePrice)}/h<br>
+          Giờ vàng (17:30-21:00): ${window.SanBongApp.formatVND(pitch.peakPrice)}/h
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h4 class="font-heading font-bold text-sm text-[#0F172A] mb-2.5">Tiện ích tại sân</h4>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        ${pitch.amenities.map(a => `
+          <div class="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-2">
+            <span class="w-4 h-4 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center font-bold text-[10px]">✓</span>
+            <span class="text-[#334155] font-medium">${a}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="pt-4 border-t border-[#E2E8F0] flex items-center justify-end gap-3">
+      <button onclick="closeModal()" class="btn-base btn-secondary text-xs">Đóng</button>
+      ${isMaint ? `
+        <button class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
+      ` : `
+        <a href="booking.html?pitchId=${pitch.id}" class="btn-base btn-primary text-xs">
+          Tiến hành chọn giờ & Đặt sân ngay
+        </a>
+      `}
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeModal() {
+  const modal = document.getElementById('pitch-detail-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}

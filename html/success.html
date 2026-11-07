@@ -5,24 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đặt Sân Thành Công – Vé Điện Tử Check-in Sân Bóng Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <style>
-    html, body { margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-    .font-heading { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .ui-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04); }
-    .btn-base { height: 44px; border-radius: 10px; padding: 0 18px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
-    .btn-primary { background: #16A34A; color: #FFFFFF; }
-    .btn-primary:hover { background: #15803D; }
-    .btn-secondary { background: #FFFFFF; color: #0F172A; border: 1px solid #E2E8F0; }
-    .btn-secondary:hover { background: #F8FAFC; }
-    @media print {
-      #app-navbar, #app-footer, .no-print { display: none !important; }
-      body { background: white !important; }
-    }
-  </style>
+  <link rel="stylesheet" href="../css/style.css">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -126,7 +109,7 @@
         Xem lịch sử & Quản lý vé
       </a>
 
-      <a href="index.html" class="btn-base btn-secondary w-full sm:w-auto text-[#64748B]">
+      <a href="../index.html" class="btn-base btn-secondary w-full sm:w-auto text-[#64748B]">
         Về trang chủ
       </a>
     </div>
@@ -137,65 +120,8 @@
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
   <!-- SCRIPTS -->
-  <script src="assets/js/data.js"></script>
-  <script src="assets/js/app.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const db = window.SanBongApp?.SanBongDB;
-      if (!db) return;
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const codeParam = urlParams.get('code');
-
-      let booking = null;
-      if (codeParam) {
-        booking = db.getAllBookings().find(b => b.code === codeParam);
-      }
-
-      if (!booking) {
-        const rawLatest = sessionStorage.getItem('sb_latest_booking');
-        if (rawLatest) {
-          try { booking = JSON.parse(rawLatest); } catch (e) {}
-        }
-      }
-
-      if (!booking) {
-        booking = db.getAllBookings()[0] || {
-          code: 'SB-20261106-0042',
-          customerName: 'Trần Minh Hoàng',
-          phone: '0352313548',
-          pitchName: 'Sân 7 - Sân A (Trung tâm)',
-          date: new Date().toISOString().split('T')[0],
-          slotTime: '18:30 - 20:00',
-          totalPrice: 1020000,
-          depositAmount: 306000,
-          remainingAmount: 714000,
-          services: [{ name: 'Nước suối', quantity: 4 }, { name: 'Thuê áo bib', quantity: 2 }]
-        };
-      }
-
-      // Fill data into Ticket
-      document.getElementById('ticket-booking-code').textContent = booking.code;
-      document.getElementById('ticket-pitch-name').textContent = booking.pitchName;
-      document.getElementById('ticket-datetime').textContent = `${window.SanBongApp.formatDateVN(booking.date)} · ${booking.slotTime}`;
-      document.getElementById('ticket-total-amt').textContent = window.SanBongApp.formatVND(booking.totalPrice);
-      document.getElementById('ticket-deposit-amt').textContent = window.SanBongApp.formatVND(booking.depositAmount);
-      document.getElementById('ticket-remaining-amt').textContent = window.SanBongApp.formatVND(booking.remainingAmount);
-      document.getElementById('ticket-cust-info').textContent = `${booking.customerName} (${booking.phone || '0352 313 548'})`;
-
-      if (booking.services && booking.services.length > 0) {
-        document.getElementById('ticket-services-desc').textContent = booking.services.map(s => `${s.name} × ${s.quantity}`).join(', ');
-      } else {
-        document.getElementById('ticket-services-desc').textContent = 'Không có dịch vụ thêm';
-      }
-
-      // Render Vector QR Check-in Code
-      const qrMount = document.getElementById('ticket-qr-mount');
-      if (qrMount) {
-        qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(140);
-      }
-    });
-  </script>
+  <script src="../js/data.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/success.js"></script>
 </body>
 </html>

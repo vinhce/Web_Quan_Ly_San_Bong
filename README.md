@@ -1,6 +1,6 @@
 # Sân Bóng Pro – Hệ Thống Đặt Sân Bóng Đá Trực Tuyến
 
-Hệ thống đặt sân bóng đá tự động, chuẩn hóa giao diện trực quan và trải nghiệm mượt mà. Dự án được xây dựng bằng kiến trúc Frontend thuần (Static Web), lưu trữ dữ liệu an toàn trên trình duyệt qua `LocalStorage`, giúp bất kỳ ai trong nhóm tải về đều có thể mở lên chạy và code tiếp được ngay mà không cần cài đặt môi trường phức tạp hay cơ sở dữ liệu nặng nề.
+Hệ thống đặt sân bóng đá tự động, chuẩn hóa giao diện trực quan và trải nghiệm mượt mà. Dự án được xây dựng bằng kiến trúc Frontend thuần (Static Web) tách bạch rõ ràng theo các thư mục `css/`, `js/`, `html/` và chỉ có tệp `index.html` ở thư mục gốc ngoài cùng. Dữ liệu được lưu trữ bền vững trên trình duyệt qua `LocalStorage`, giúp bất kỳ ai trong nhóm tải về đều có thể mở lên chạy và code tiếp được ngay mà không cần cài đặt môi trường phức tạp hay cơ sở dữ liệu nặng nề.
 
 ---
 
@@ -27,29 +27,41 @@ cd Web_Quan_Ly_San_Bong
 ```
 
 ### 2. Khởi chạy ứng dụng
-Không cần cài đặt `npm`, không cần `composer` hay cài đặt PHP/Node.js.  chạy theo một trong các cách sau:
-
-
+Không cần cài đặt `npm`, không cần `composer` hay cài đặt PHP/Node.js:
+- **Cách 1 (Nhanh nhất):** Nhấp đúp chuột trực tiếp vào tệp `index.html` ở thư mục ngoài cùng để mở trên trình duyệt (Chrome, Edge, Brave, Cốc Cốc, Firefox).
+- **Cách 2 (Laragon / XAMPP / Live Server):** Đặt thư mục vào `www/` hoặc `htdocs/`, truy cập `http://localhost/Quan_Ly_San_Bong`.
 
 ---
 
-## 📁 Cấu Trúc Dự Án & Chức Năng Từng Trang
+## 📁 Cấu Trúc Thư Mục Chuẩn Hóa (Không Phình File)
+
+Dự án đã được phân tách gọn gàng, loại bỏ hoàn toàn các đoạn mã inline cồng kềnh:
 
 ```text
 Web_Quan_Ly_San_Bong/
-├── index.html          # Trang chủ: Giới thiệu sân, banner tìm kiếm nhanh, sân nổi bật, voucher ưu đãi
-├── fields.html         # Danh sách sân: Bộ lọc theo loại sân (5, 7, 11 người), mức giá, tiện ích đi kèm
-├── booking.html        # Đặt sân: Chọn ngày, ma trận khung giờ trực quan, dịch vụ thêm (nước, áo, bóng, trọng tài), mã giảm giá
-├── checkout.html       # Thanh toán cọc: Bảng thông tin chuyển khoản ngân hàng (Chủ TK: NGUYEN QUANG VINH), bộ đếm ngược 10 phút
-├── success.html        # Đặt sân thành công: Vé điện tử check-in kèm mã QR check-in sân, in vé, lưu thông tin trận đấu
-├── history.html        # Lịch sử & Hội viên: Danh sách trận đã đặt, hạng thành viên, điểm thưởng tích lũy (SĐT: 0352 313 548)
-├── admin.html          # Quản trị Admin: Thống kê doanh thu, quản lý danh sách sân, duyệt & hủy lịch đặt sân
-├── login.html          # Trang đăng nhập / xác thực hội viên
-├── assets/
-│   └── js/
-│       ├── data.js     # Mock Database: Dữ liệu khởi tạo (sân bóng, khung giờ, dịch vụ, voucher, tài khoản ngân hàng)
-│       └── app.js      # Core Logic: State LocalStorage (SanBongDB), tính tiền cọc, render Navbar/Footer, vector sân bóng SVG
-├── .gitignore          # Cấu hình bỏ qua các tệp tạm, tệp nội bộ
+├── index.html          # Trang chủ ngoài cùng: Giới thiệu, banner tìm kiếm nhanh, sân nổi bật, voucher
+├── css/
+│   └── style.css       # Toàn bộ CSS dùng chung: Font, thẻ UI Card, Buttons, Input fields, Media print
+├── js/
+│   ├── data.js         # Mock Database: Dữ liệu khởi tạo (6 sân bóng, slot giờ, dịch vụ, voucher, tài khoản NH)
+│   ├── app.js          # Core Engine: State LocalStorage (SanBongDB), Navbar/Footer dùng chung, render SVG sân bóng
+│   ├── index.js        # Logic riêng trang chủ index.html
+│   ├── fields.js       # Logic danh sách & bộ lọc sân bóng
+│   ├── booking.js      # Logic đặt sân, chọn slot giờ, dịch vụ & áp voucher
+│   ├── checkout.js     # Logic thanh toán cọc ngân hàng & đếm ngược giữ chỗ
+│   ├── success.js      # Logic vé điện tử & QR check-in
+│   ├── history.js      # Logic lịch sử đặt sân, hủy sân & điểm thưởng hội viên
+│   ├── admin.js        # Logic 9 phân hệ quản trị viên (KPI, Gantt, bật/tắt bảo trì sân, duyệt cọc)
+│   └── login.js        # Logic đăng nhập, đăng ký tài khoản hội viên
+├── html/
+│   ├── fields.html     # Danh sách sân: Bộ lọc theo loại sân (5, 7, 11 người), khoảng giá, tiện ích
+│   ├── booking.html    # Đặt sân: Chọn ngày, ma trận khung giờ trực quan, dịch vụ thêm, mã giảm giá
+│   ├── checkout.html   # Thanh toán cọc 30%: Thông tin chuyển khoản Vietcombank (Chủ TK: NGUYEN QUANG VINH)
+│   ├── success.html    # Đặt sân thành công: Vé điện tử kèm mã QR check-in sân, chức năng in vé
+│   ├── history.html    # Lịch sử đặt sân & Hội viên: Danh sách trận đã đặt, hạng thành viên (SĐT: 0352 313 548)
+│   ├── admin.html      # Quản trị Admin: 9 module vận hành, timeline Gantt, tạo đơn tại quầy, duyệt cọc
+│   └── login.html      # Trang đăng nhập / đăng ký hội viên
+├── .gitignore          # Cấu hình bỏ qua các tệp tạm
 └── README.md           # Tài liệu hướng dẫn sử dụng và phát triển
 ```
 
@@ -59,17 +71,19 @@ Web_Quan_Ly_San_Bong/
 
 ```mermaid
 flowchart LR
-    A["index.html / fields.html<br/>(Xem & Tìm sân)"] --> B["booking.html<br/>(Chọn giờ & dịch vụ)"]
-    B --> C["checkout.html<br/>(Chuyển cọc 30% tới<br/>NGUYEN QUANG VINH)"]
-    C --> D["success.html<br/>(Vé điện tử QR check-in)"]
-    D --> E["history.html<br/>(Theo dõi lịch sử & tích điểm)"]
-    C -.-> F["admin.html<br/>(Quản lý & Duyệt đơn)"]
+    A["index.html / html/fields.html<br/>(Xem & Tìm sân)"] --> B["html/booking.html<br/>(Chọn giờ & dịch vụ)"]
+    B --> C["html/checkout.html<br/>(Chuyển cọc 30% tới<br/>NGUYEN QUANG VINH)"]
+    C --> D["html/success.html<br/>(Vé điện tử QR check-in)"]
+    D --> E["html/history.html<br/>(Theo dõi lịch sử & tích điểm)"]
+    C -.-> F["html/admin.html<br/>(Quản lý & Duyệt đơn)"]
 ```
 
 1. **Khách hàng duyệt sân:** Tìm kiếm theo loại sân (sân 5, sân 7, sân 11) và ngày thi đấu.
 2. **Chọn khung giờ & dịch vụ:** Ma trận giờ trực quan tự động đánh dấu slot "Trống", "Đang đá" hoặc "Đã đặt". Tùy chọn mua nước, áo bib, thuê trọng tài và áp mã ưu đãi (ví dụ: `WELCOME10`, `GIAM50K`).
 3. **Thanh toán cọc 30%:** Trang `checkout.html` hiển thị rõ ràng thông tin người nhận:
-  
+   - Ngân hàng: **Vietcombank (VCB)**
+   - Số tài khoản: **0123456789**
+   - Chủ tài khoản: **NGUYEN QUANG VINH**
 4. **Nhận vé check-in:** Chuyển sang `success.html` với mã đặt sân (SB-xxxx) và mã QR check-in tại quầy trước giờ thi đấu.
 5. **Quản trị viên (Admin):** Theo dõi lịch đặt trong `admin.html`, lọc theo ngày, đổi trạng thái sân hoặc xác nhận cọc.
 
@@ -83,16 +97,16 @@ flowchart LR
 
 ---
 
-## 💡 (Code Tiếp)
+## 💡 Hướng Dẫn Dành Cho Thành Viên Nhóm (Code Tiếp)
 
 1. **Truy xuất và cập nhật dữ liệu:**
-   Mọi trang đều nạp `assets/js/data.js` và `assets/js/app.js`. Bạn có thể tương tác với cơ sở dữ liệu mô phỏng qua đối tượng toàn cục `window.SanBongApp.SanBongDB`:
+   Mọi trang đều nạp `js/data.js` và `js/app.js`. Bạn có thể tương tác với cơ sở dữ liệu mô phỏng qua đối tượng toàn cục `window.SanBongApp.SanBongDB`:
    ```javascript
    // Lấy danh sách sân
    const pitches = window.SanBongApp.SanBongDB.getPitches();
 
    // Lấy danh sách khung giờ kèm trạng thái theo ngày
-   const slots = window.SanBongApp.SanBongDB.getSlots('P7-A', '2026-11-07');
+   const slots = window.SanBongApp.SanBongDB.getSlotsWithStatus('P7-A', '2026-11-07');
 
    // Tạo đơn đặt sân mới
    const newBooking = window.SanBongApp.SanBongDB.createBooking({
@@ -100,18 +114,13 @@ flowchart LR
      phone: '0352313548',
      pitchId: 'P7-A',
      date: '2026-11-07',
-     slotId: 'S10',
-     slotTime: '17:30 - 19:00',
+     slotId: 'S08',
+     slotTime: '18:30 - 20:00',
      services: [],
-     voucherCode: ''
+     paymentMethod: 'VietQR Chuyển khoản'
    });
    ```
 
-2. **Quy chuẩn giao diện:**
-   * Màu chủ đạo hệ thống: Xanh lá sân cỏ `#16A34A` (Hover: `#15803D`).
-   * Nền trang: `#F8FAFC`, Nền khối nội dung: `#FFFFFF`, Viền: `#E2E8F0`.
-   * Màu chữ tiêu đề: `#0F172A`, Màu chữ phụ: `#64748B`.
-
-3. **Lưu ý khi đẩy code lên Git:**
-   * Hãy kéo code mới nhất về trước khi sửa: `git pull origin main`.
-   * File `.gitignore` đã được cấu hình sẵn để loại trừ các file rác phát sinh.
+2. **Quy tắc điều hướng (Smart Link Routing):**
+   - Hàm `window.SanBongApp.getRelativePath(target)` trong `js/app.js` tự động tính đường dẫn tương đối tùy thuộc vào vị trí người dùng đang ở root (`index.html`) hay trong thư mục con (`html/*.html`).
+   - Các trang bên trong `html/` khi liên kết với nhau chỉ cần gọi trực tiếp tên tệp (ví dụ: `href="booking.html"`) và quay về trang chủ bằng `href="../index.html"`.

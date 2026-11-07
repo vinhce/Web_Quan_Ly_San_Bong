@@ -32,6 +32,19 @@
     return dateStr;
   }
 
+  // Helper giải quyết đường dẫn tương đối giữa root (index.html) và thư mục html/
+  function getRelativePath(target) {
+    const pathname = window.location.pathname.replace(/\\/g, '/');
+    const isInHtmlFolder = pathname.includes('/html/') || pathname.endsWith('/html');
+    if (isInHtmlFolder) {
+      if (target === 'index.html') return '../index.html';
+      return target;
+    } else {
+      if (target === 'index.html') return 'index.html';
+      return `html/${target}`;
+    }
+  }
+
   // 3. ICONS SVG DICTIONARY (24x24 & 20x20 tiêu chuẩn)
   const Icons = {
     ball: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>`,
@@ -277,10 +290,6 @@
       return bookings.find(b => b.code.toLowerCase() === code.trim().toLowerCase()) || null;
     },
 
-    /**
-     * Lấy trạng thái của từng khung giờ đối với một sân và ngày cụ thể
-     * Trả về danh sách slot kèm `status`: 'Trống' | 'Đã đặt' | 'Đang đá' | 'Bảo trì'
-     */
     getSlots(pitchId, dateStr) {
       const slots = this.getTimeSlots();
       const pitch = this.getPitchById(pitchId);
@@ -306,9 +315,6 @@
       });
     },
 
-    /**
-     * Tính toán giá chi tiết: Sân (thường/cao điểm) + Dịch vụ - Voucher = Tổng tiền, Cọc 30%
-     */
     calculatePrice(pitchId, dateStr, slotIdOrTime, servicesList = [], voucherCode = '') {
       const pitch = this.getPitchById(pitchId);
       if (!pitch) return null;
@@ -322,7 +328,6 @@
         pitchPrice = Math.round(pitchPrice * slot.duration);
       }
 
-      // Tính tiền dịch vụ
       let serviceTotal = 0;
       const allServices = this.getServices();
       const appliedServices = [];
@@ -347,7 +352,6 @@
 
       const subtotal = pitchPrice + serviceTotal;
 
-      // Tính voucher
       let discountAmount = 0;
       let appliedVoucher = null;
       if (voucherCode) {
@@ -382,9 +386,6 @@
       };
     },
 
-    /**
-     * Tạo mới một booking và lưu vào LocalStorage
-     */
     createBooking(bookingInput) {
       const now = new Date();
       const yyyymmdd = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -419,7 +420,7 @@
         remainingAmount: pricing ? pricing.remainingAmount : 0,
         status: 'Đã xác nhận',
         paymentStatus: 'Đã cọc 30%',
-        paymentMethod: bookingInput.paymentMethod || 'VietQR Chuyển khoản',
+        paymentMethod: bookingInput.paymentMethod || 'Chuyển khoản đặt cọc',
         createdAt: `${bookingInput.date} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
         note: bookingInput.note || ''
       };
@@ -431,9 +432,6 @@
       return newBooking;
     },
 
-    /**
-     * Cập nhật trạng thái booking (Dành cho Admin hoặc luồng thanh toán)
-     */
     updateBookingStatus(bookingCode, status, paymentStatus) {
       const bookings = this.getAllBookings();
       const booking = bookings.find(b => b.code === bookingCode);
@@ -459,11 +457,11 @@
   // 8. REUSABLE UI SHELLS: NAVBAR & FOOTER
   function renderNavbar(activePage = 'Trang chủ') {
     const navItems = [
-      { label: 'Trang chủ', href: 'index.html' },
-      { label: 'Danh sách sân', href: 'fields.html' },
-      { label: 'Đặt sân nhanh', href: 'booking.html' },
-      { label: 'Lịch sử & Hội viên', href: 'history.html' },
-      { label: 'Quản trị Admin', href: 'admin.html' }
+      { label: 'Trang chủ', href: getRelativePath('index.html') },
+      { label: 'Danh sách sân', href: getRelativePath('fields.html') },
+      { label: 'Đặt sân nhanh', href: getRelativePath('booking.html') },
+      { label: 'Lịch sử & Hội viên', href: getRelativePath('history.html') },
+      { label: 'Quản trị Admin', href: getRelativePath('admin.html') }
     ];
 
     const user = SanBongDB.getUser();
@@ -471,7 +469,7 @@
     return `
     <header class="w-full h-[72px] bg-white border-b border-[#E2E8F0] px-4 md:px-10 flex items-center justify-between sticky top-0 z-50 shadow-sm">
       <div class="flex items-center gap-6 lg:gap-10">
-        <a href="index.html" class="flex items-center gap-3 group">
+        <a href="${getRelativePath('index.html')}" class="flex items-center gap-3 group">
           <div class="w-10 h-10 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md group-hover:bg-[#15803D] transition-all">
             ${Icons.ball}
           </div>
@@ -496,12 +494,12 @@
       </div>
 
       <div class="flex items-center gap-3 sm:gap-4">
-        <a href="history.html" class="w-10 h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#F8FAFC] transition-colors" title="Thông báo đặt sân">
+        <a href="${getRelativePath('history.html')}" class="w-10 h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#F8FAFC] transition-colors" title="Thông báo đặt sân">
           ${Icons.bell}
           <span class="w-2.5 h-2.5 rounded-full bg-[#DC2626] border-2 border-white absolute top-2 right-2"></span>
         </a>
 
-        <a href="history.html" class="flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0]">
+        <a href="${getRelativePath('history.html')}" class="flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0]">
           <div class="w-9 h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center">
             ${escapeHTML(user.avatar || 'TH')}
           </div>
@@ -526,7 +524,7 @@
             <span class="font-heading font-bold text-[20px] text-white">Sân Bóng Pro</span>
           </div>
           <p class="text-[13px] text-[#94A3B8] leading-relaxed">
-            Hệ thống đặt sân bóng đá tự động, chuẩn hóa 23 màn hình với mặt cỏ chuẩn FIFA, thanh toán VietQR động và dịch vụ trận đấu trọn gói.
+            Hệ thống đặt sân bóng đá tự động, chuẩn hóa giao diện trực quan với mặt cỏ chuẩn FIFA và dịch vụ trận đấu trọn gói.
           </p>
           <div class="flex items-center gap-3 text-[#94A3B8] text-[13px]">
             ${Icons.phone}
@@ -537,10 +535,10 @@
         <div>
           <h4 class="font-heading font-semibold text-[15px] mb-4 text-[#F8FAFC]">Hệ Thống Sân</h4>
           <ul class="space-y-2.5 text-[13px] text-[#94A3B8]">
-            <li><a href="fields.html" class="hover:text-white transition-colors">Sân 5 người tiêu chuẩn</a></li>
-            <li><a href="fields.html" class="hover:text-white transition-colors">Sân 7 người trung tâm</a></li>
-            <li><a href="fields.html" class="hover:text-white transition-colors">Sân 11 người ghép chuẩn VFF</a></li>
-            <li><a href="booking.html" class="hover:text-white transition-colors">Bảng giá & Khung giờ vàng</a></li>
+            <li><a href="${getRelativePath('fields.html')}" class="hover:text-white transition-colors">Sân 5 người tiêu chuẩn</a></li>
+            <li><a href="${getRelativePath('fields.html')}" class="hover:text-white transition-colors">Sân 7 người trung tâm</a></li>
+            <li><a href="${getRelativePath('fields.html')}" class="hover:text-white transition-colors">Sân 11 người ghép chuẩn VFF</a></li>
+            <li><a href="${getRelativePath('booking.html')}" class="hover:text-white transition-colors">Bảng giá & Khung giờ vàng</a></li>
           </ul>
         </div>
 
@@ -570,7 +568,7 @@
         <div class="flex items-center gap-6">
           <a href="#" class="hover:text-white">Điều khoản sử dụng</a>
           <a href="#" class="hover:text-white">Chính sách bảo mật</a>
-          <a href="admin.html" class="text-[#16A34A] hover:underline font-semibold">Khu vực Quản trị viên</a>
+          <a href="${getRelativePath('admin.html')}" class="text-[#16A34A] hover:underline font-semibold">Khu vực Quản trị viên</a>
         </div>
       </div>
     </footer>`;
@@ -581,6 +579,7 @@
     escapeHTML,
     formatVND,
     formatDateVN,
+    getRelativePath,
     Icons,
     renderPitchSVG,
     statusPill,
