@@ -79,7 +79,7 @@
 
           <div class="text-xs text-[#64748B] flex items-center justify-center sm:justify-start gap-1.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span>Khu phức hợp Thể thao Pro, Số 123 Nam Sài Gòn, Q.7, TP.HCM</span>
+            <span>Khu liên hợp Thể thao Pro, Số 18 Lê Đức Thọ, Mỹ Đình, Q. Nam Từ Liêm, Hà Nội</span>
           </div>
         </div>
       </div>
@@ -109,7 +109,7 @@
       <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-[#475569] flex items-center justify-between">
         <div>
           <span class="font-bold text-[#0F172A]">Người đặt: </span>
-          <span id="ticket-cust-info">Trần Minh Hoàng (0912 345 678)</span>
+          <span id="ticket-cust-info">Trần Minh Hoàng (0352 313 548)</span>
         </div>
         <div class="text-[11px] text-[#64748B]">Tích luỹ: +100 điểm hội viên</div>
       </div>
@@ -164,7 +164,7 @@
         booking = db.getAllBookings()[0] || {
           code: 'SB-20261106-0042',
           customerName: 'Trần Minh Hoàng',
-          phone: '0912345678',
+          phone: '0352313548',
           pitchName: 'Sân 7 - Sân A (Trung tâm)',
           date: new Date().toISOString().split('T')[0],
           slotTime: '18:30 - 20:00',
@@ -182,7 +182,7 @@
       document.getElementById('ticket-total-amt').textContent = window.SanBongApp.formatVND(booking.totalPrice);
       document.getElementById('ticket-deposit-amt').textContent = window.SanBongApp.formatVND(booking.depositAmount);
       document.getElementById('ticket-remaining-amt').textContent = window.SanBongApp.formatVND(booking.remainingAmount);
-      document.getElementById('ticket-cust-info').textContent = `${booking.customerName} (${booking.phone || '0912 345 678'})`;
+      document.getElementById('ticket-cust-info').textContent = `${booking.customerName} (${booking.phone || '0352 313 548'})`;
 
       if (booking.services && booking.services.length > 0) {
         document.getElementById('ticket-services-desc').textContent = booking.services.map(s => `${s.name} × ${s.quantity}`).join(', ');

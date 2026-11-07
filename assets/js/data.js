@@ -174,7 +174,7 @@ const DEFAULT_VOUCHERS = [
 const DEFAULT_USER = {
   id: 'USR-8821',
   name: 'Trần Minh Hoàng',
-  phone: '0912 345 678',
+  phone: '0352 313 548',
   email: 'minhhoang.fc@gmail.com',
   team: 'Hoàng Long FC',
   tier: 'Hạng Bạc',
@@ -189,7 +189,7 @@ const DEFAULT_BANK_INFO = {
   bankCode: 'VCB',
   accountNumber: '0123456789',
   accountName: 'NGUYEN QUANG VINH',
-  branch: 'Chi nhánh Nam Sài Gòn, TP.HCM',
+  branch: 'Chi nhánh Mỹ Đình, Hà Nội',
   depositRate: 0.3 // Cọc 30%
 };
 
@@ -213,7 +213,7 @@ const DEFAULT_BOOKINGS = [
   {
     code: 'SB-20261106-9821',
     customerName: 'Trần Minh Hoàng',
-    phone: '0912 345 678',
+    phone: '0352 313 548',
     pitchId: 'P7-A',
     pitchName: 'Sân 7 - Sân A (Trung tâm)',
     date: todayStr,

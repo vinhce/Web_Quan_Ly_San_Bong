@@ -186,11 +186,12 @@
       if (!localStorage.getItem(STORAGE_KEYS.VOUCHERS)) {
         localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(data.DEFAULT_VOUCHERS || []));
       }
-      if (!localStorage.getItem(STORAGE_KEYS.USER)) {
+      const currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER) || '{}');
+      if (!localStorage.getItem(STORAGE_KEYS.USER) || currentUser.phone === '0912 345 678') {
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.DEFAULT_USER || {}));
       }
       const currentBank = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANK) || '{}');
-      if (!localStorage.getItem(STORAGE_KEYS.BANK) || currentBank.accountName === 'NGUYEN VAN HUNG') {
+      if (!localStorage.getItem(STORAGE_KEYS.BANK) || currentBank.accountName === 'NGUYEN VAN HUNG' || currentBank.branch?.includes('Nam Sài Gòn')) {
         localStorage.setItem(STORAGE_KEYS.BANK, JSON.stringify(data.DEFAULT_BANK_INFO || {}));
       }
       if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
@@ -529,7 +530,7 @@
           </p>
           <div class="flex items-center gap-3 text-[#94A3B8] text-[13px]">
             ${Icons.phone}
-            <span>Hotline: 0912 345 678 (24/7)</span>
+            <span>Hotline: 0352 313 548 (24/7)</span>
           </div>
         </div>
 
@@ -556,7 +557,7 @@
         <div>
           <h4 class="font-heading font-semibold text-[15px] mb-4 text-[#F8FAFC]">Địa Chỉ Liên Hệ</h4>
           <p class="text-[13px] text-[#94A3B8] leading-relaxed mb-3">
-            Khu phức hợp Thể thao Pro, Số 123 Đường Nam Sài Gòn, Quận 7, TP. Hồ Chí Minh.
+            Khu liên hợp Thể thao Pro, Số 18 Đường Lê Đức Thọ, Phường Mỹ Đình, Quận Nam Từ Liêm, TP. Hà Nội.
           </p>
           <div class="p-3 rounded-lg bg-[#1E293B] border border-[#334155] text-xs text-[#CBD5E1]">
             <span class="text-[#16A34A] font-semibold">● Đang mở cửa:</span> 05:30 - 23:00 mỗi ngày
