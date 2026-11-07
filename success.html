@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đặt Sân Thành Công – Vé Điện Tử Check-in Sân Bóng Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+    .font-heading { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .ui-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04); }
+    .btn-base { height: 44px; border-radius: 10px; padding: 0 18px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
+    .btn-primary { background: #16A34A; color: #FFFFFF; }
+    .btn-primary:hover { background: #15803D; }
+    .btn-secondary { background: #FFFFFF; color: #0F172A; border: 1px solid #E2E8F0; }
+    .btn-secondary:hover { background: #F8FAFC; }
+    @media print {
+      #app-navbar, #app-footer, .no-print { display: none !important; }
+      body { background: white !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- TOP NAVBAR -->
+  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Đặt sân nhanh"></div>
+
+  <!-- MAIN SUCCESS CONTENT (Frame 6 & 22) -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 md:px-8 py-10 space-y-8">
+
+    <!-- Celebration Header -->
+    <div class="text-center space-y-2">
+      <div class="w-16 h-16 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center mx-auto shadow-sm ring-8 ring-[#DCFCE7]/40 mb-3">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h1 class="font-heading font-extrabold text-3xl sm:text-4xl text-[#0F172A]">
+        Đặt sân bóng thành công!
+      </h1>
+      <p class="text-sm text-[#475569] max-w-md mx-auto">
+        Hệ thống đã tự động ghi nhận tiền cọc 30%. Vui lòng đưa mã vé dưới đây cho nhân viên khi đến sân.
+      </p>
+    </div>
+
+    <!-- DIGITAL MATCH TICKET (Frame 6 Ticket Card) -->
+    <div id="ticket-card" class="ui-card p-6 sm:p-8 space-y-6 border-slate-300 relative shadow-xl overflow-hidden">
+      <!-- Watermark Background Decor -->
+      <div class="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
+        <svg width="240" height="240" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>
+      </div>
+
+      <!-- Ticket Top Row: QR Code + Basic Info -->
+      <div class="flex flex-col sm:flex-row gap-6 items-center pb-6 border-b-2 border-dashed border-[#CBD5E1]">
+        <!-- Vector QR Code Check-in -->
+        <div class="text-center p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shrink-0">
+          <div id="ticket-qr-mount" class="w-36 h-36 flex items-center justify-center bg-white rounded-xl"></div>
+          <div class="text-[11px] font-bold text-[#475569] mt-2 uppercase tracking-wider">Mã QR Check-in</div>
+        </div>
+
+        <div class="flex-1 w-full space-y-2 text-center sm:text-left">
+          <div class="flex items-center justify-center sm:justify-between flex-wrap gap-2">
+            <span id="ticket-booking-code" class="font-mono font-extrabold text-lg text-[#0F172A]">SB-20261106-0042</span>
+            <span class="px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">
+              ✓ Đã xác nhận & Cọc 30%
+            </span>
+          </div>
+
+          <h2 id="ticket-pitch-name" class="font-heading font-extrabold text-2xl text-[#16A34A]">
+            Sân 7 - Sân A (Trung tâm)
+          </h2>
+
+          <div class="text-sm font-bold text-[#0F172A] flex items-center justify-center sm:justify-start gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="ticket-datetime">Thứ Sáu, 06/11/2026 · 18:30 - 20:00</span>
+          </div>
+
+          <div class="text-xs text-[#64748B] flex items-center justify-center sm:justify-start gap-1.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Khu phức hợp Thể thao Pro, Số 123 Nam Sài Gòn, Q.7, TP.HCM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ticket Bottom Breakdown: Money & Services -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+          <div class="text-[#64748B]">Tổng tiền sân & dịch vụ:</div>
+          <div id="ticket-total-amt" class="text-base font-extrabold text-[#0F172A] mt-1">1.020.000đ</div>
+          <div id="ticket-services-desc" class="text-[11px] text-[#64748B] mt-0.5">Nước suối × 4, Áo bib × 2</div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-[#DCFCE7] border border-[#BBF7D0]">
+          <div class="text-[#15803D] font-bold">Đã đặt cọc VietQR (30%):</div>
+          <div id="ticket-deposit-amt" class="text-base font-extrabold text-[#16A34A] mt-1">306.000đ</div>
+          <div class="text-[11px] text-[#15803D] mt-0.5">Giao dịch đã xác thực</div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+          <div class="text-[#64748B]">Còn lại trả tại quầy:</div>
+          <div id="ticket-remaining-amt" class="text-base font-extrabold text-[#0F172A] mt-1">714.000đ</div>
+          <div class="text-[11px] text-[#64748B] mt-0.5">Tiền mặt hoặc quét thêm</div>
+        </div>
+      </div>
+
+      <!-- Customer note -->
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-[#475569] flex items-center justify-between">
+        <div>
+          <span class="font-bold text-[#0F172A]">Người đặt: </span>
+          <span id="ticket-cust-info">Trần Minh Hoàng (0912 345 678)</span>
+        </div>
+        <div class="text-[11px] text-[#64748B]">Tích luỹ: +100 điểm hội viên</div>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS (no-print) -->
+    <div class="no-print flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+      <button onclick="window.print()" class="btn-base btn-secondary w-full sm:w-auto font-bold">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+        <span>In vé / Tải file</span>
+      </button>
+
+      <a href="history.html" class="btn-base btn-primary w-full sm:w-auto font-bold">
+        Xem lịch sử & Quản lý vé
+      </a>
+
+      <a href="index.html" class="btn-base btn-secondary w-full sm:w-auto text-[#64748B]">
+        Về trang chủ
+      </a>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
+
+  <!-- SCRIPTS -->
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const db = window.SanBongApp?.SanBongDB;
+      if (!db) return;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const codeParam = urlParams.get('code');
+
+      let booking = null;
+      if (codeParam) {
+        booking = db.getAllBookings().find(b => b.code === codeParam);
+      }
+
+      if (!booking) {
+        const rawLatest = sessionStorage.getItem('sb_latest_booking');
+        if (rawLatest) {
+          try { booking = JSON.parse(rawLatest); } catch (e) {}
+        }
+      }
+
+      if (!booking) {
+        booking = db.getAllBookings()[0] || {
+          code: 'SB-20261106-0042',
+          customerName: 'Trần Minh Hoàng',
+          phone: '0912345678',
+          pitchName: 'Sân 7 - Sân A (Trung tâm)',
+          date: new Date().toISOString().split('T')[0],
+          slotTime: '18:30 - 20:00',
+          totalPrice: 1020000,
+          depositAmount: 306000,
+          remainingAmount: 714000,
+          services: [{ name: 'Nước suối', quantity: 4 }, { name: 'Thuê áo bib', quantity: 2 }]
+        };
+      }
+
+      // Fill data into Ticket
+      document.getElementById('ticket-booking-code').textContent = booking.code;
+      document.getElementById('ticket-pitch-name').textContent = booking.pitchName;
+      document.getElementById('ticket-datetime').textContent = `${window.SanBongApp.formatDateVN(booking.date)} · ${booking.slotTime}`;
+      document.getElementById('ticket-total-amt').textContent = window.SanBongApp.formatVND(booking.totalPrice);
+      document.getElementById('ticket-deposit-amt').textContent = window.SanBongApp.formatVND(booking.depositAmount);
+      document.getElementById('ticket-remaining-amt').textContent = window.SanBongApp.formatVND(booking.remainingAmount);
+      document.getElementById('ticket-cust-info').textContent = `${booking.customerName} (${booking.phone || '0912 345 678'})`;
+
+      if (booking.services && booking.services.length > 0) {
+        document.getElementById('ticket-services-desc').textContent = booking.services.map(s => `${s.name} × ${s.quantity}`).join(', ');
+      } else {
+        document.getElementById('ticket-services-desc').textContent = 'Không có dịch vụ thêm';
+      }
+
+      // Render Vector QR Check-in Code
+      const qrMount = document.getElementById('ticket-qr-mount');
+      if (qrMount) {
+        qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(140);
+      }
+    });
+  </script>
+</body>
+</html>

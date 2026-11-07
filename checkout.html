@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thanh Toán Đặt Sân – Quét VietQR Cọc 30% Tự Động</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+    .font-heading { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .ui-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04); }
+    .btn-base { height: 44px; border-radius: 10px; padding: 0 18px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
+    .btn-primary { background: #16A34A; color: #FFFFFF; }
+    .btn-primary:hover { background: #15803D; }
+    .btn-secondary { background: #FFFFFF; color: #0F172A; border: 1px solid #E2E8F0; }
+    .btn-secondary:hover { background: #F8FAFC; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- TOP NAVBAR -->
+  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Đặt sân nhanh"></div>
+
+  <!-- STEPPER (Frame 5) -->
+  <div class="bg-white border-b border-[#E2E8F0] py-4">
+    <div class="max-w-4xl mx-auto px-4 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs">✓</div>
+        <span class="text-xs sm:text-sm font-semibold text-[#0F172A]">Chọn sân & giờ</span>
+      </div>
+      <div class="flex-1 h-[2px] mx-2 sm:mx-4 bg-[#16A34A]"></div>
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs">✓</div>
+        <span class="text-xs sm:text-sm font-semibold text-[#0F172A]">Dịch vụ & Khách</span>
+      </div>
+      <div class="flex-1 h-[2px] mx-2 sm:mx-4 bg-[#16A34A]"></div>
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[#DCFCE7]">3</div>
+        <span class="text-xs sm:text-sm font-bold text-[#0F172A]">Thanh toán VietQR</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CHECKOUT CONTENT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- LEFT: VIETQR BOX & BANK TRANSFER (7 COLS) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Countdown Banner 10:00 -->
+        <div class="px-5 py-3.5 rounded-xl bg-[#FEF3C7] border border-[#F59E0B] text-[#D97706] flex items-center justify-between font-bold text-sm shadow-sm">
+          <div class="flex items-center gap-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Thời gian giữ chỗ còn lại:</span>
+            <span id="countdown-timer" class="text-base font-extrabold font-mono text-[#B45309]">10:00</span>
+          </div>
+          <span class="text-xs hidden sm:inline font-normal">Hết giờ mã đặt sân tự động nhả</span>
+        </div>
+
+        <!-- VietQR Box Card (Frame 5) -->
+        <div class="ui-card p-6 space-y-6 border-slate-200">
+          <div class="flex items-center justify-between pb-4 border-b border-[#E2E8F0]">
+            <div>
+              <h2 class="font-heading font-extrabold text-xl text-[#0F172A]">Chuyển khoản VietQR</h2>
+              <p class="text-xs text-[#64748B] mt-0.5">Quét bằng bất kỳ ứng dụng ngân hàng hoặc ví điện tử (MoMo, ZaloPay)</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-[#DBEAFE] text-[#2563EB] text-xs font-bold uppercase tracking-wider">
+              VietQR Pro 24/7
+            </span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-6 items-center">
+            <!-- QR Mount -->
+            <div class="text-center p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm shrink-0">
+              <div id="qr-image-mount" class="w-44 h-44 flex items-center justify-center bg-white rounded-xl border border-slate-200">
+                <!-- Rendered dynamically -->
+              </div>
+              <div class="text-[11px] font-semibold text-[#64748B] mt-2">Mã QR đối soát tự động</div>
+            </div>
+
+            <!-- Transfer Account Information (Frame 5) -->
+            <div class="flex-1 w-full space-y-2 text-xs">
+              <div class="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
+                <span class="text-[#64748B]">Ngân hàng:</span>
+                <span id="bank-name" class="font-bold text-[#0F172A]">Vietcombank (VCB)</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
+                <span class="text-[#64748B]">Số tài khoản:</span>
+                <div class="flex items-center gap-2 font-mono font-bold text-sm text-[#0F172A]">
+                  <span id="bank-account">0123456789</span>
+                  <button onclick="copyText('bank-account')" class="text-[#16A34A] hover:text-[#15803D]" title="Sao chép">📋</button>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
+                <span class="text-[#64748B]">Chủ tài khoản:</span>
+                <span id="bank-owner" class="font-bold text-[#0F172A]">NGUYEN VAN HUNG</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[#DCFCE7] border border-[#BBF7D0] flex items-center justify-between">
+                <span class="text-[#15803D] font-bold">Số tiền cọc 30%:</span>
+                <div class="flex items-center gap-2 font-heading font-extrabold text-base text-[#16A34A]">
+                  <span id="bank-amount">306.000đ</span>
+                  <button onclick="copyText('bank-amount')" class="text-[#15803D]" title="Sao chép">📋</button>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
+                <span class="text-[#64748B]">Nội dung CK:</span>
+                <div class="flex items-center gap-2 font-mono font-bold text-[#0F172A]">
+                  <span id="bank-memo">SB-20261106-0042</span>
+                  <button onclick="copyText('bank-memo')" class="text-[#16A34A] hover:text-[#15803D]" title="Sao chép">📋</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload receipt mock (Frame 5) -->
+          <div class="p-4 rounded-xl border-2 border-dashed border-[#CBD5E1] bg-[#F8FAFC] flex items-center justify-center gap-3 text-xs text-[#64748B]">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Tải lên ảnh chụp biên lai giao dịch thành công (Hệ thống tự động duyệt qua AI trong 10 giây)</span>
+          </div>
+
+          <!-- Confirmation Action Buttons -->
+          <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
+            <button type="button" id="confirm-payment-btn" class="btn-base btn-primary w-full sm:flex-1 text-base font-bold shadow-lg">
+              ✓ Tôi đã chuyển khoản thành công
+            </button>
+            <a href="booking.html" class="btn-base btn-secondary w-full sm:w-auto text-xs text-[#64748B]">
+              ← Quay lại chỉnh sửa
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: ORDER SUMMARY (5 COLS) -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="ui-card p-6 space-y-5">
+          <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+            <h3 class="font-heading font-bold text-lg text-[#0F172A]">Tóm tắt đơn đặt sân</h3>
+            <span id="order-code-badge" class="font-mono text-xs font-bold px-2.5 py-1 rounded bg-[#F1F5F9] text-[#0F172A]">SB-20261106-0042</span>
+          </div>
+
+          <div id="checkout-pitch-svg" class="rounded-xl overflow-hidden border border-[#E2E8F0]"></div>
+
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-[#64748B]">Sân bóng:</span>
+              <span id="co-pitch-name" class="font-bold">Sân 7-A (Trung tâm)</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[#64748B]">Thời gian:</span>
+              <span id="co-pitch-time" class="font-bold text-right">06/11/2026 · 18:30 - 20:00</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[#64748B]">Người đặt:</span>
+              <span id="co-customer" class="font-bold">Trần Minh Hoàng</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[#64748B]">Số điện thoại:</span>
+              <span id="co-phone" class="font-bold">0912 345 678</span>
+            </div>
+            <div id="co-services-row" class="text-xs text-[#64748B] pt-1 border-t border-[#F1F5F9]">
+              <!-- Services list -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-[#E2E8F0] space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-[#64748B]">Tổng tiền trọn gói:</span>
+              <span id="co-total-amount" class="font-bold text-base text-[#0F172A]">1.020.000đ</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-[#DCFCE7] text-[#16A34A] flex justify-between items-center font-bold">
+              <span>Số tiền cọc cần chuyển (30%):</span>
+              <span id="co-deposit-amount" class="text-xl font-extrabold">306.000đ</span>
+            </div>
+            <div class="flex justify-between text-xs text-[#64748B]">
+              <span>Phần còn lại thanh toán tại sân:</span>
+              <span id="co-remaining-amount" class="font-bold text-[#0F172A]">714.000đ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
+
+  <!-- SCRIPTS -->
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+
+  <script>
+    let currentDraft = null;
+    let generatedBookingCode = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const db = window.SanBongApp?.SanBongDB;
+      if (!db) return;
+
+      // Đọc đơn nháp từ sessionStorage
+      const rawDraft = sessionStorage.getItem('sb_booking_draft');
+      if (rawDraft) {
+        try {
+          currentDraft = JSON.parse(rawDraft);
+        } catch (e) {
+          currentDraft = null;
+        }
+      }
+
+      // Nếu không có draft, tạo một đơn mẫu để test
+      if (!currentDraft) {
+        currentDraft = {
+          pitchId: 'P7-A',
+          date: new Date().toISOString().split('T')[0],
+          slotId: 'S8',
+          services: [{ id: 'SRV-WATER', quantity: 4 }, { id: 'SRV-BIB', quantity: 2 }],
+          voucherCode: 'WELCOME10',
+          customerName: 'Trần Minh Hoàng',
+          phone: '0912345678',
+          note: ''
+        };
+      }
+
+      // Tạo mã booking tạm
+      const now = new Date();
+      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const rand = String(Math.floor(Math.random() * 9000) + 1000);
+      generatedBookingCode = `SB-${datePart}-${rand}`;
+
+      renderCheckoutDetails();
+      startCountdown(10 * 60);
+
+      document.getElementById('confirm-payment-btn')?.addEventListener('click', confirmPayment);
+    });
+
+    function renderCheckoutDetails() {
+      const db = window.SanBongApp.SanBongDB;
+      const pitch = db.getPitchById(currentDraft.pitchId) || db.getPitches()[0];
+      const slots = db.getTimeSlots();
+      const slot = slots.find(s => s.id === currentDraft.slotId) || slots[3];
+
+      const calc = db.calculatePrice(
+        currentDraft.pitchId,
+        currentDraft.date,
+        currentDraft.slotId,
+        currentDraft.services,
+        currentDraft.voucherCode
+      );
+
+      const bank = db.getBankInfo();
+
+      // Mini pitch SVG
+      const svgContainer = document.getElementById('checkout-pitch-svg');
+      if (svgContainer) {
+        svgContainer.innerHTML = window.SanBongApp.renderPitchSVG(pitch.variant || 'standard', 'h-24');
+      }
+
+      // Header Order Badge
+      document.getElementById('order-code-badge').textContent = generatedBookingCode;
+      document.getElementById('bank-memo').textContent = generatedBookingCode;
+
+      // Bank info
+      document.getElementById('bank-name').textContent = bank.bankName;
+      document.getElementById('bank-account').textContent = bank.accountNumber;
+      document.getElementById('bank-owner').textContent = bank.accountName;
+      document.getElementById('bank-amount').textContent = window.SanBongApp.formatVND(calc.depositAmount);
+
+      // Order Summary
+      document.getElementById('co-pitch-name').textContent = `${pitch.name} (${pitch.typeName})`;
+      document.getElementById('co-pitch-time').textContent = `${window.SanBongApp.formatDateVN(currentDraft.date)} · ${slot.time}`;
+      document.getElementById('co-customer').textContent = currentDraft.customerName;
+      document.getElementById('co-phone').textContent = currentDraft.phone;
+
+      if (calc.appliedServices && calc.appliedServices.length > 0) {
+        document.getElementById('co-services-row').innerHTML = 'Dịch vụ: ' + calc.appliedServices.map(s => `${s.name} × ${s.quantity}`).join(', ');
+      } else {
+        document.getElementById('co-services-row').innerHTML = 'Không chọn dịch vụ thêm';
+      }
+
+      document.getElementById('co-total-amount').textContent = window.SanBongApp.formatVND(calc.totalPrice);
+      document.getElementById('co-deposit-amount').textContent = window.SanBongApp.formatVND(calc.depositAmount);
+      document.getElementById('co-remaining-amount').textContent = window.SanBongApp.formatVND(calc.remainingAmount);
+
+      // Generate VietQR Image
+      const qrMount = document.getElementById('qr-image-mount');
+      const vietQRUrl = window.SanBongApp.getVietQRUrl(
+        bank.bankCode || 'vietcombank',
+        bank.accountNumber,
+        calc.depositAmount,
+        generatedBookingCode
+      );
+
+      qrMount.innerHTML = `
+        <img src="${vietQRUrl}" alt="VietQR Đặt Sân" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.parentElement.innerHTML = window.SanBongApp.renderQRCodeSVG(150);">
+      `;
+    }
+
+    function startCountdown(seconds) {
+      let remaining = seconds;
+      const timerEl = document.getElementById('countdown-timer');
+
+      const interval = setInterval(() => {
+        if (remaining <= 0) {
+          clearInterval(interval);
+          timerEl.textContent = '00:00';
+          alert('Khung giờ giữ chỗ đã hết hạn! Vui lòng thao tác lại.');
+          window.location.href = 'booking.html';
+          return;
+        }
+        remaining--;
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    function copyText(elementId) {
+      const text = document.getElementById(elementId)?.innerText || '';
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Đã sao chép: ' + text);
+      }).catch(() => {
+        alert('Nội dung: ' + text);
+      });
+    }
+
+    function confirmPayment() {
+      const db = window.SanBongApp.SanBongDB;
+      const slots = db.getTimeSlots();
+      const slot = slots.find(s => s.id === currentDraft.slotId);
+
+      // Tạo booking thật và lưu bền vững vào localStorage
+      const newBooking = db.createBooking({
+        customerName: currentDraft.customerName,
+        phone: currentDraft.phone,
+        email: 'hoang.tran@email.vn',
+        pitchId: currentDraft.pitchId,
+        date: currentDraft.date,
+        slotId: currentDraft.slotId,
+        slotTime: slot ? slot.time : '18:30 - 20:00',
+        services: currentDraft.services,
+        voucherCode: currentDraft.voucherCode,
+        note: currentDraft.note,
+        paymentMethod: 'VietQR Chuyển khoản'
+      });
+
+      // Ghi đè mã booking để khớp giao diện nếu cần
+      sessionStorage.setItem('sb_latest_booking', JSON.stringify(newBooking));
+      sessionStorage.removeItem('sb_booking_draft');
+
+      // Chuyển sang màn hình thành công
+      window.location.href = `success.html?code=${newBooking.code}`;
+    }
+  </script>
+</body>
+</html>

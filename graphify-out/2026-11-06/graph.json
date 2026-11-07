@@ -1,0 +1,1 @@
+{"directed":false,"multigraph":false,"graph":{"schema_version":1,"graphify_version":"0.9.97"},"nodes":[{"id":"index","label":"index.php","_origin":"ast","community":0,"community_name":"index.php","file_type":"code","norm_label":"index.php","source_file":"index.php","source_location":"L1"}],"links":[],"hyperedges":[]}
