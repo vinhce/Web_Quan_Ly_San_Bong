@@ -14,13 +14,14 @@
 
   <!-- HERO BANNER SECTION (Frame 1 & 20) -->
   <section class="relative bg-[#0F172A] text-white overflow-hidden py-12 lg:py-20 border-b border-[#1E293B]">
-    <!-- Vector Pitch Backdrop -->
-    <div class="absolute inset-0 opacity-20 pointer-events-none">
-      <div id="hero-pitch-bg" class="w-full h-full"></div>
+    <!-- Vector Pitch Backdrop & Radial Glows (Strictly Clipped) -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute inset-0 opacity-20">
+        <div id="hero-pitch-bg" class="w-full h-full"></div>
+      </div>
+      <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#16A34A]/25 blur-3xl"></div>
+      <div class="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#2563EB]/20 blur-3xl"></div>
     </div>
-    <!-- Radial Glow -->
-    <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#16A34A]/25 blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#2563EB]/20 blur-3xl pointer-events-none"></div>
 
     <div class="relative max-w-7xl mx-auto px-4 md:px-8">
       <div class="max-w-3xl mb-8 lg:mb-10">
