@@ -99,20 +99,42 @@
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-10 space-y-12">
 
     <!-- 1. FEATURED PITCHES SECTION (Frame 1 & 20) -->
-    <section>
-      <div class="flex items-center justify-between mb-6">
+    <section class="relative">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h2 class="font-heading font-bold text-2xl sm:text-3xl text-[#0F172A]">Sân bóng nổi bật</h2>
           <p class="text-sm text-[#475569] mt-1">Được cộng đồng bóng đá phủi đánh giá cao nhất</p>
         </div>
-        <a href="html/fields.html" class="text-sm font-bold text-[#16A34A] hover:text-[#15803D] flex items-center gap-1 group">
-          <span>Xem tất cả 6 sân</span>
-          <span class="group-hover:translate-x-1 transition-transform">→</span>
-        </a>
+        <div class="flex items-center gap-3">
+          <a href="html/fields.html" class="text-sm font-bold text-[#16A34A] hover:text-[#15803D] flex items-center gap-1 group">
+            <span>Xem tất cả 6 sân</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </a>
+          <!-- Header Prev / Next Navigation -->
+          <div class="flex items-center gap-1.5 ml-2">
+            <button id="featured-prev-btn" class="w-9 h-9 rounded-lg border border-[#E2E8F0] bg-white flex items-center justify-center text-[#475569] hover:bg-[#F8FAFC] hover:border-[#16A34A] hover:text-[#16A34A] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm" title="Xem sân trước" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button id="featured-next-btn" class="w-9 h-9 rounded-lg border border-[#E2E8F0] bg-white flex items-center justify-center text-[#475569] hover:bg-[#F8FAFC] hover:border-[#16A34A] hover:text-[#16A34A] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm" title="Xem sân kế tiếp">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div id="featured-pitches-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Rendered by JS from SanBongDB -->
+      <!-- CAROUSEL TRACK WITH FLOATING CHEVRONS -->
+      <div class="relative group/carousel">
+        <button id="featured-float-prev" class="hidden sm:flex absolute -left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/95 backdrop-blur border border-slate-200 shadow-xl items-center justify-center text-slate-700 hover:text-[#16A34A] hover:border-[#16A34A] hover:scale-110 active:scale-95 transition-all opacity-0 pointer-events-none disabled:opacity-0 disabled:pointer-events-none group-hover/carousel:opacity-100" title="Cuộn sang trái">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+
+        <div id="featured-pitches-grid" class="flex gap-6 overflow-x-auto scroll-smooth no-scrollbar py-2 snap-x snap-mandatory">
+          <!-- Rendered by JS from SanBongDB -->
+        </div>
+
+        <button id="featured-float-next" class="hidden sm:flex absolute -right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/95 backdrop-blur border border-slate-200 shadow-xl items-center justify-center text-slate-700 hover:text-[#16A34A] hover:border-[#16A34A] hover:scale-110 active:scale-95 transition-all group-hover/carousel:opacity-100" title="Xem tiếp sân bên phải">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
       </div>
     </section>
 

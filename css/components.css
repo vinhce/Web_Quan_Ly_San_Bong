@@ -97,3 +97,12 @@
   border-color: #16A34A;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
 }
+
+/* Ẩn thanh cuộn Carousel nhưng vẫn cuộn mượt */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

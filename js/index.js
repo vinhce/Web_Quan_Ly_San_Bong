@@ -31,23 +31,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // 3. FETCH & RENDER 3 FEATURED PITCHES (FETCH API)
+  // 3. FETCH & RENDER FEATURED PITCHES CAROUSEL (FETCH API)
   const grid = document.getElementById('featured-pitches-grid');
   let pitches = [];
   if (window.SanBongApp?.SanBongAPI) {
     try {
-      const allPitches = await window.SanBongApp.SanBongAPI.getPitches();
-      pitches = allPitches.slice(0, 3);
+      pitches = await window.SanBongApp.SanBongAPI.getPitches();
     } catch (e) {
-      pitches = window.SanBongApp.SanBongDB?.getPitches().slice(0, 3) || [];
+      pitches = window.SanBongApp.SanBongDB?.getPitches() || [];
     }
   } else {
-    pitches = window.SanBongApp?.SanBongDB?.getPitches().slice(0, 3) || [];
+    pitches = window.SanBongApp?.SanBongDB?.getPitches() || [];
   }
 
   if (grid && window.SanBongApp) {
     grid.innerHTML = pitches.map(p => `
-      <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
+      <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0] w-[85vw] sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start">
         <div class="relative">
           ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-44')}
           <div class="absolute top-3 left-3 flex gap-1.5">
@@ -79,6 +78,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       </div>
     `).join('');
+
+    // Điều khiển Carousel cuộn ngang sang phải / sang trái
+    const updateCarouselControls = () => {
+      const maxScroll = grid.scrollWidth - grid.clientWidth;
+      const isAtStart = grid.scrollLeft <= 10;
+      const isAtEnd = grid.scrollLeft >= maxScroll - 10;
+
+      const prevBtn = document.getElementById('featured-prev-btn');
+      const nextBtn = document.getElementById('featured-next-btn');
+      const floatPrev = document.getElementById('featured-float-prev');
+      const floatNext = document.getElementById('featured-float-next');
+
+      if (prevBtn) prevBtn.disabled = isAtStart;
+      if (nextBtn) nextBtn.disabled = isAtEnd;
+
+      if (floatPrev) {
+        floatPrev.disabled = isAtStart;
+        if (isAtStart) {
+          floatPrev.classList.add('opacity-0', 'pointer-events-none');
+        } else {
+          floatPrev.classList.remove('opacity-0', 'pointer-events-none');
+        }
+      }
+
+      if (floatNext) {
+        floatNext.disabled = isAtEnd;
+        if (isAtEnd) {
+          floatNext.classList.add('opacity-0', 'pointer-events-none');
+        } else {
+          floatNext.classList.remove('opacity-0', 'pointer-events-none');
+        }
+      }
+    };
+
+    const scrollCarousel = (direction) => {
+      const card = grid.querySelector('.ui-card');
+      const cardWidth = card ? card.offsetWidth + 24 : 360;
+      const isDesktop = window.innerWidth >= 1024;
+      const scrollDelta = isDesktop ? cardWidth * 3 : cardWidth;
+      grid.scrollBy({ left: direction * scrollDelta, behavior: 'smooth' });
+    };
+
+    ['featured-prev-btn', 'featured-float-prev'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => scrollCarousel(-1));
+    });
+
+    ['featured-next-btn', 'featured-float-next'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => scrollCarousel(1));
+    });
+
+    grid.addEventListener('scroll', updateCarouselControls, { passive: true });
+    window.addEventListener('resize', updateCarouselControls, { passive: true });
+    setTimeout(updateCarouselControls, 100);
   }
 
   // 4. Render Vouchers List
