@@ -34,6 +34,15 @@ document.addEventListener('DOMContentLoaded', () => {
   renderServices();
   updateBillSummary();
 
+  // Tự động điền thông tin nếu hội viên đã đăng nhập
+  const curUser = window.SanBongApp?.SanBongDB?.getUser();
+  if (curUser && curUser.name) {
+    const nameInput = document.getElementById('cust-name');
+    const phoneInput = document.getElementById('cust-phone');
+    if (nameInput && !nameInput.value) nameInput.value = curUser.name;
+    if (phoneInput && !phoneInput.value && curUser.phone) phoneInput.value = curUser.phone;
+  }
+
   // Sự kiện đổi sân
   document.getElementById('booking-pitch-select')?.addEventListener('change', (e) => {
     selectedPitchId = e.target.value;

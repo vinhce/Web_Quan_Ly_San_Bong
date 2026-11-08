@@ -22,18 +22,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Nếu không có draft, tạo một đơn mẫu để test
+  // Nếu không có draft, chuyển hướng về trang Đặt sân
   if (!currentDraft) {
-    currentDraft = {
-      pitchId: 'P7-A',
-      date: new Date().toISOString().split('T')[0],
-      slotId: 'S08',
-      services: [{ id: 'SRV-WATER', quantity: 4 }, { id: 'SRV-BIB', quantity: 2 }],
-      voucherCode: 'WELCOME10',
-      customerName: 'Trần Minh Hoàng',
-      phone: '0352313548',
-      note: ''
-    };
+    alert('Bạn chưa chọn sân và khung giờ. Đang chuyển về trang Đặt sân...');
+    window.location.replace(window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking');
+    return;
   }
 
   // Tạo mã booking theo chuẩn SePay phân loại sân (ASFF = Sân 5, ASFS = Sân 7, ASFE = Sân 11)

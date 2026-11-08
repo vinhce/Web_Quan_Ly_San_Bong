@@ -210,10 +210,13 @@
       if (!localStorage.getItem(STORAGE_KEYS.VOUCHERS)) {
         localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(data.DEFAULT_VOUCHERS || []));
       }
-      const currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER) || '{}');
-      if (!localStorage.getItem(STORAGE_KEYS.USER) || currentUser.phone === '0912 345 678') {
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.DEFAULT_USER || {}));
-      }
+      // Tự động dọn dẹp tài khoản demo cũ nếu có trong LocalStorage
+      try {
+        const storedUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER) || 'null');
+        if (storedUser && (storedUser.phone === '0352 313 548' || storedUser.phone === '0912 345 678' || storedUser.name === 'Trần Minh Hoàng')) {
+          localStorage.removeItem(STORAGE_KEYS.USER);
+        }
+      } catch (e) {}
       const currentBank = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANK) || '{}');
       if (!localStorage.getItem(STORAGE_KEYS.BANK) || currentBank.accountName === 'NGUYEN VAN HUNG' || currentBank.branch?.includes('Nam Sài Gòn')) {
         localStorage.setItem(STORAGE_KEYS.BANK, JSON.stringify(data.DEFAULT_BANK_INFO || {}));
@@ -289,9 +292,25 @@
 
     getUser() {
       try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEYS.USER)) || {};
+        const sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+        if (sessionUser && sessionUser.full_name) {
+          return {
+            id: sessionUser.id,
+            name: sessionUser.full_name,
+            phone: sessionUser.phone || '',
+            email: sessionUser.email || '',
+            team: sessionUser.team || '',
+            tier: sessionUser.role === 'admin' ? 'Quản trị viên' : (sessionUser.tier || 'Hội viên'),
+            points: sessionUser.role === 'admin' ? 9999 : (sessionUser.points || 0),
+            avatar: sessionUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
+            totalBookings: 0,
+            favoritePitch: ''
+          };
+        }
+        const local = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER) || 'null');
+        return local || null;
       } catch (e) {
-        return window.SanBongData?.DEFAULT_USER || {};
+        return null;
       }
     },
 
@@ -568,6 +587,19 @@
   // Khởi tạo Database ngay khi nạp file
   SanBongDB.init();
 
+  function handleLogout() {
+    if (confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?')) {
+      sessionStorage.removeItem('sb_current_user');
+      try {
+        localStorage.removeItem('sb_user_v1');
+      } catch (e) {}
+      fetch(getRelativePath('api/auth.php?action=logout'), { method: 'POST' })
+        .finally(() => {
+          window.location.href = getRelativePath('');
+        });
+    }
+  }
+
   // 8. REUSABLE UI SHELLS: NAVBAR & FOOTER
   function renderNavbar(activePage = 'Trang chủ') {
     // 1. Phân quyền người dùng (RBAC) - Đọc thông tin phiên an toàn
@@ -583,18 +615,70 @@
       { label: 'Lịch sử & Hội viên', href: getRelativePath('history') }
     ];
 
-    // CHỈ hiển thị liên kết Quản trị Portal nếu người dùng đăng nhập là ADMIN
+    // Chỉ hiển thị liên kết Quản trị Portal nếu người dùng đăng nhập là ADMIN
     if (currentUser && currentUser.role === 'admin') {
-      navItems.push({ label: '⚡ Quản trị Portal', href: getRelativePath('portal-admin/') });
+      navItems.push({ label: '🛡️ Quản trị Portal', href: getRelativePath('portal-admin/') });
     }
 
-    const defaultUser = SanBongDB.getUser();
-    const user = (currentUser && currentUser.full_name) ? {
-      name: currentUser.full_name,
-      avatar: currentUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
-      tier: currentUser.role === 'admin' ? 'Quản trị viên' : (currentUser.tier || 'Hội viên VIP'),
-      points: currentUser.role === 'admin' ? 9999 : (currentUser.points || 820)
-    } : defaultUser;
+    // Auth Section bên phải
+    let authSectionHtml = '';
+    if (currentUser && currentUser.full_name) {
+      const user = {
+        name: currentUser.full_name,
+        avatar: currentUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
+        tier: currentUser.role === 'admin' ? 'Quản trị viên' : (currentUser.tier || 'Hội viên'),
+        points: currentUser.role === 'admin' ? 9999 : (currentUser.points || 0)
+      };
+
+      authSectionHtml = `
+      <div class="flex items-center gap-3 sm:gap-4">
+        <a href="${getRelativePath('history')}" class="w-10 h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#F8FAFC] transition-colors" title="Lịch sử đặt sân & Hội viên">
+          ${Icons.bell}
+        </a>
+
+        <div class="relative group">
+          <button class="flex items-center gap-2 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0] text-left">
+            <div class="w-9 h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center">
+              ${escapeHTML(user.avatar || 'VIP')}
+            </div>
+            <div class="hidden sm:block">
+              <div class="text-[14px] font-semibold text-[#0F172A] leading-tight">${escapeHTML(user.name)}</div>
+              <div class="text-[11px] text-[#16A34A] font-medium">${escapeHTML(user.tier)} • ${user.points}đ</div>
+            </div>
+            <svg class="w-4 h-4 text-[#94A3B8] ml-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+          </button>
+
+          <!-- Dropdown menu -->
+          <div class="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-[#E2E8F0] py-2 hidden group-hover:block z-50 transition-all">
+            <div class="px-4 py-2 border-b border-[#F1F5F9]">
+              <div class="text-xs font-bold text-[#0F172A] truncate">${escapeHTML(user.name)}</div>
+              <div class="text-[11px] text-[#64748B] truncate">${escapeHTML(currentUser.phone || currentUser.email || '')}</div>
+            </div>
+            <a href="${getRelativePath('history')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] hover:text-[#16A34A]">
+              <span>📋 Lịch sử đặt sân & Hội viên</span>
+            </a>
+            ${currentUser.role === 'admin' ? `
+            <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#16A34A] hover:bg-[#DCFCE7]/50">
+              <span>🛡️ Bảng điều khiển Quản trị</span>
+            </a>` : ''}
+            <button onclick="window.SanBongApp.handleLogout()" class="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#DC2626] hover:bg-rose-50 border-t border-[#F1F5F9]">
+              <span>🚪 Đăng xuất</span>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      // Khách vãng lai chưa đăng nhập
+      authSectionHtml = `
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="${getRelativePath('login')}" class="h-9 px-3.5 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold text-[#16A34A] border border-[#16A34A] hover:bg-[#DCFCE7]/60 transition-all">
+          Đăng nhập
+        </a>
+        <a href="${getRelativePath('login')}?tab=register" class="h-9 px-3.5 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold bg-[#16A34A] text-white hover:bg-[#15803D] shadow-sm transition-all">
+          Đăng ký
+        </a>
+      </div>`;
+    }
 
     return `
     <header class="w-full h-[72px] bg-white border-b border-[#E2E8F0] px-4 md:px-10 flex items-center justify-between sticky top-0 z-50 shadow-sm">
@@ -623,22 +707,7 @@
         </nav>
       </div>
 
-      <div class="flex items-center gap-3 sm:gap-4">
-        <a href="${getRelativePath('history')}" class="w-10 h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#F8FAFC] transition-colors" title="Thông báo đặt sân">
-          ${Icons.bell}
-          <span class="w-2.5 h-2.5 rounded-full bg-[#DC2626] border-2 border-white absolute top-2 right-2"></span>
-        </a>
-
-        <a href="${getRelativePath('history')}" class="flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0]">
-          <div class="w-9 h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center">
-            ${escapeHTML(user.avatar || 'TH')}
-          </div>
-          <div class="text-left hidden sm:block">
-            <div class="text-[14px] font-semibold text-[#0F172A] leading-tight">${escapeHTML(user.name || 'Trần Minh Hoàng')}</div>
-            <div class="text-[11px] text-[#16A34A] font-medium">${escapeHTML(user.tier || 'Hạng Bạc')} · ${user.points || 820}đ</div>
-          </div>
-        </a>
-      </div>
+      ${authSectionHtml}
     </header>`;
   }
 
@@ -716,7 +785,8 @@
     renderQRCodeSVG,
     SanBongDB,
     renderNavbar,
-    renderFooter
+    renderFooter,
+    handleLogout
   };
 
   // Tự động gán nếu DOM đã có sẵn placeholder #app-navbar và #app-footer

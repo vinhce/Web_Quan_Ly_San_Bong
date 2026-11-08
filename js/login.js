@@ -4,6 +4,11 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Tự động chuyển tab nếu URL có param ?tab=register
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'register') {
+    switchAuthTab('register');
+  }
   const bg = document.getElementById('login-pitch-bg');
   if (bg && window.SanBongApp) {
     bg.innerHTML = window.SanBongApp.renderPitchSVG('bright', 'h-full');

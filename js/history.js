@@ -10,15 +10,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const user = db.getUser();
   const mName = document.getElementById('member-name');
-  if (mName) mName.textContent = user.name;
   const mPhone = document.getElementById('member-phone');
-  if (mPhone) mPhone.textContent = user.phone;
   const mAvatar = document.getElementById('member-avatar');
-  if (mAvatar) mAvatar.textContent = user.avatar;
   const mTier = document.getElementById('member-tier-badge');
-  if (mTier) mTier.textContent = user.tier;
   const pLabel = document.getElementById('points-label');
-  if (pLabel) pLabel.textContent = `${user.points} / 2.000 điểm`;
+
+  if (!user || !user.name) {
+    // Khách vãng lai chưa đăng nhập
+    if (mName) mName.textContent = 'Khách vãng lai';
+    if (mPhone) {
+      const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=history') : '/login?redirect=history';
+      mPhone.innerHTML = '<a href="' + loginUrl + '" class="text-xs font-bold text-[#16A34A] hover:underline">👉 Đăng nhập để xem lịch sử & tích điểm</a>';
+    }
+    if (mAvatar) mAvatar.textContent = '👤';
+    if (mTier) {
+      mTier.textContent = 'Chưa đăng nhập';
+      mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold';
+    }
+    if (pLabel) pLabel.textContent = '0 / 2.000 điểm';
+  } else {
+    if (mName) mName.textContent = user.name;
+    if (mPhone) mPhone.textContent = user.phone || 'Chưa cập nhật SĐT';
+    if (mAvatar) mAvatar.textContent = user.avatar || 'VIP';
+    if (mTier) {
+      mTier.textContent = user.tier || 'Hội viên';
+      mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold';
+    }
+    if (pLabel) pLabel.textContent = `${user.points || 0} / 2.000 điểm`;
+  }
 
   renderHistory();
 });
