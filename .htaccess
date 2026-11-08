@@ -77,11 +77,16 @@ LimitRequestBody 10485760
     # Content Security Policy (CSP) cho phép CDN Tailwind, Lucide, Fonts, VietQR API, SePay API
     Header always set Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.open-meteo.com https://api.vietqr.io data: blob:; img-src 'self' data: https: blob:; connect-src 'self' https://api.open-meteo.com https://api.vietqr.io https://userapi-sandbox.sepay.vn;"
 
-    # Chống lưu cache cũ trên Reverse Proxy CDN & Trình duyệt cho HTML, JS, CSS, JSON
-    <FilesMatch "\.(html|htm|js|css|json|php)$">
+    # Chống lưu cache cũ trên HTML, PHP và API động
+    <FilesMatch "\.(html|htm|php|json)$">
         Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
         Header set Pragma "no-cache"
         Header set Expires "0"
+    </FilesMatch>
+
+    # Cho phép cache trình duyệt cho tài nguyên tĩnh có versioning ?v= (giảm số request đồng thời chống 503)
+    <FilesMatch "\.(js|css|svg|ico|png|jpg|jpeg|webp|woff2?)$">
+        Header set Cache-Control "public, max-age=86400, must-revalidate"
     </FilesMatch>
 </IfModule>
 

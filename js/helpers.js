@@ -34,7 +34,9 @@
 
   // Helper giải quyết đường dẫn Clean URLs và tương thích cả Root Hosting lẫn Localhost
   function getAppBase() {
-    const pathname = window.location.pathname.replace(/\\/g, '/');
+    const pathname = (window.location && typeof window.location.pathname === 'string')
+      ? window.location.pathname.replace(/\\/g, '/')
+      : '/';
     const match = pathname.match(/^(.*?\/Quan_Ly_San_Bong)/i);
     return match ? match[1] : '';
   }

@@ -18,10 +18,10 @@ window.SanBongApp.SanBongAPI = {
         if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
           return {
             pitches: jsonRes.data.pitches,
-            timeSlots: jsonRes.data.timeSlots || window.SanBongApp.SanBongDB.getTimeSlots(),
-            extraServices: jsonRes.data.extraServices || window.SanBongApp.SanBongDB.getExtraServices(),
-            vouchers: jsonRes.data.vouchers || window.SanBongApp.SanBongDB.getVouchers(),
-            bankInfo: window.SanBongApp.SanBongDB.getBankInfo()
+            timeSlots: jsonRes.data.timeSlots || window.SanBongApp.SanBongDB?.getTimeSlots() || [],
+            extraServices: jsonRes.data.extraServices || window.SanBongApp.SanBongDB?.getServices?.() || [],
+            vouchers: jsonRes.data.vouchers || window.SanBongApp.SanBongDB?.getVouchers() || [],
+            bankInfo: window.SanBongApp.SanBongDB?.getBankInfo() || {}
           };
         }
       }
@@ -39,11 +39,11 @@ window.SanBongApp.SanBongAPI = {
     } catch (error) {
       // Fallback an toàn nếu mở qua giao thức file:// không qua web server
       return {
-        pitches: window.SanBongApp.SanBongDB.getPitches(),
-        timeSlots: window.SanBongApp.SanBongDB.getTimeSlots(),
-        extraServices: window.SanBongApp.SanBongDB.getExtraServices(),
-        vouchers: window.SanBongApp.SanBongDB.getVouchers(),
-        bankInfo: window.SanBongApp.SanBongDB.getBankInfo()
+        pitches: window.SanBongApp.SanBongDB?.getPitches() || window.SanBongData?.DEFAULT_PITCHES || [],
+        timeSlots: window.SanBongApp.SanBongDB?.getTimeSlots() || window.SanBongData?.DEFAULT_TIME_SLOTS || [],
+        extraServices: window.SanBongApp.SanBongDB?.getServices?.() || window.SanBongData?.DEFAULT_EXTRA_SERVICES || [],
+        vouchers: window.SanBongApp.SanBongDB?.getVouchers() || window.SanBongData?.DEFAULT_VOUCHERS || [],
+        bankInfo: window.SanBongApp.SanBongDB?.getBankInfo() || window.SanBongData?.DEFAULT_BANK_INFO || {}
       };
     }
   },

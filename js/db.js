@@ -125,6 +125,10 @@
       }
     },
 
+    getExtraServices() {
+      return this.getServices();
+    },
+
     getVouchers() {
       try {
         return JSON.parse(localStorage.getItem(STORAGE_KEYS.VOUCHERS)) || [];

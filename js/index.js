@@ -1,55 +1,113 @@
 /**
  * SÂN BÓNG PRO - TRANG CHỦ LOGIC (index.js)
- * Tích hợp Fetch API tải thời tiết thời gian thực và nạp danh sách sân
+ * Tích hợp Optimistic UI (hiển thị 0ms), Fetch API thời tiết ngầm & nạp danh sách sân
  */
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Render Hero Pitch Vector Background
-  const heroBg = document.getElementById('hero-pitch-bg');
-  if (heroBg && window.SanBongApp) {
-    heroBg.innerHTML = window.SanBongApp.renderPitchSVG('hero', 'h-full');
-  }
+(function () {
+  'use strict';
 
-  // Set default search date là hôm nay
-  const searchDateInput = document.getElementById('search-date');
-  if (searchDateInput) {
-    const today = new Date().toISOString().split('T')[0];
-    searchDateInput.value = today;
-  }
+  function initHomePage() {
+    const app = window.SanBongApp;
+    const db = window.SanBongDB || app?.SanBongDB;
 
-  // 2. FETCH THỜI TIẾT THỜI GIAN THỰC (FETCH API)
-  const weatherBadge = document.getElementById('hero-weather-badge');
-  if (weatherBadge && window.SanBongApp?.SanBongAPI) {
-    try {
-      const weather = await window.SanBongApp.SanBongAPI.fetchWeather();
-      weatherBadge.innerHTML = `
-        <span>${weather.icon}</span>
-        <span>Mỹ Đình: <b>${weather.temperature}°C</b> · ${weather.condition}</span>
-      `;
-    } catch (e) {
-      weatherBadge.innerHTML = `<span>☀️</span><span>Mỹ Đình: 26°C · Sân khô ráo</span>`;
+    // 1. Render Hero Pitch Vector Background
+    const heroBg = document.getElementById('hero-pitch-bg');
+    if (heroBg && app?.renderPitchSVG) {
+      heroBg.innerHTML = app.renderPitchSVG('hero', 'h-full');
+    }
+
+    // Set default search date là hôm nay
+    const searchDateInput = document.getElementById('search-date');
+    if (searchDateInput && !searchDateInput.value) {
+      const today = new Date().toISOString().split('T')[0];
+      searchDateInput.value = today;
+    }
+
+    // 2. FETCH THỜI TIẾT THỜI GIAN THỰC (NGẦM KHÔNG BLOCK TRANG)
+    const weatherBadge = document.getElementById('hero-weather-badge');
+    if (weatherBadge) {
+      if (app?.SanBongAPI?.fetchWeather) {
+        app.SanBongAPI.fetchWeather()
+          .then(weather => {
+            weatherBadge.innerHTML = `
+              <span>${weather.icon}</span>
+              <span>Mỹ Đình: <b>${weather.temperature}°C</b> · ${weather.condition}</span>
+            `;
+          })
+          .catch(() => {
+            weatherBadge.innerHTML = '<span>☀️</span><span>Mỹ Đình: 26°C · Sân khô ráo</span>';
+          });
+      } else {
+        weatherBadge.innerHTML = '<span>☀️</span><span>Mỹ Đình: 26°C · Sân khô ráo</span>';
+      }
+    }
+
+    // 3. RENDER FEATURED PITCHES CAROUSEL (OPTIMISTIC UI - 0ms)
+    const grid = document.getElementById('featured-pitches-grid');
+    if (grid && app) {
+      // Nạp ngay lập tức từ bộ nhớ hoặc dữ liệu mặc định
+      const localPitches = (db?.getPitches && db.getPitches().length > 0)
+        ? db.getPitches()
+        : (window.SanBongData?.DEFAULT_PITCHES || []);
+
+      renderFeaturedGrid(grid, localPitches);
+
+      // Revalidate ngầm từ API máy chủ (nếu có cập nhật mới)
+      if (app.SanBongAPI?.getPitches) {
+        app.SanBongAPI.getPitches()
+          .then(pitches => {
+            if (Array.isArray(pitches) && pitches.length > 0) {
+              renderFeaturedGrid(grid, pitches);
+            }
+          })
+          .catch(err => {
+            console.warn('Revalidate pitches ngầm:', err.message);
+          });
+      }
+    }
+
+    // 4. Render Vouchers List
+    const vouchers = (db?.getVouchers && db.getVouchers().length > 0)
+      ? db.getVouchers()
+      : (window.SanBongData?.DEFAULT_VOUCHERS || []);
+    const vouchersContainer = document.getElementById('vouchers-list');
+    if (vouchersContainer && app) {
+      vouchersContainer.innerHTML = vouchers.map(v => `
+        <div class="ui-card p-4 border-l-4 ${v.code === 'WELCOME10' ? 'border-l-[#16A34A]' : 'border-l-[#F59E0B]'} flex items-center justify-between gap-3">
+          <div>
+            <div class="font-heading font-bold text-sm ${v.code === 'WELCOME10' ? 'text-[#16A34A]' : 'text-[#D97706]'}">
+              ${v.code} · ${v.description}
+            </div>
+            <div class="text-xs text-[#64748B] mt-0.5">Áp dụng cho đơn từ ${app.formatVND(v.minOrder)}</div>
+          </div>
+          <button onclick="copyVoucher('${v.code}')" class="btn-sm btn-secondary text-xs shrink-0 font-bold hover:border-[#16A34A] hover:text-[#16A34A]">
+            Sao chép
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // 5. Xử lý Form tìm kiếm
+    const searchForm = document.getElementById('hero-search-form');
+    if (searchForm) {
+      searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const d = document.getElementById('search-date')?.value || '';
+        const t = document.getElementById('search-type')?.value || 'all';
+        window.location.href = `/fields?date=${encodeURIComponent(d)}&type=${encodeURIComponent(t)}`;
+      });
     }
   }
 
-  // 3. FETCH & RENDER FEATURED PITCHES CAROUSEL (FETCH API)
-  const grid = document.getElementById('featured-pitches-grid');
-  let pitches = [];
-  if (window.SanBongApp?.SanBongAPI) {
-    try {
-      pitches = await window.SanBongApp.SanBongAPI.getPitches();
-    } catch (e) {
-      pitches = window.SanBongApp.SanBongDB?.getPitches() || [];
-    }
-  } else {
-    pitches = window.SanBongApp?.SanBongDB?.getPitches() || [];
-  }
+  function renderFeaturedGrid(grid, pitches) {
+    const app = window.SanBongApp;
+    if (!grid || !app) return;
 
-  if (grid && window.SanBongApp) {
     grid.innerHTML = pitches.map(p => `
       <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0] w-[85vw] sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start">
         <!-- Pitch Graphic -->
         <div class="relative cursor-pointer" onclick="openPitchDetail('${p.id}')" title="Bấm xem chi tiết sân ${p.name}">
-          ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-48')}
+          ${app.renderPitchSVG(p.variant || 'standard', 'h-48')}
           <div class="absolute top-3 left-3 flex gap-1.5">
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${p.typeName}</span>
           </div>
@@ -71,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="pt-3 border-t border-[#F1F5F9] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div>
               <div class="text-[11px] text-[#64748B]">Giá từ</div>
-              <div class="font-heading font-extrabold text-[#16A34A] text-base sm:text-lg">${window.SanBongApp.formatVND(p.basePrice)}<span class="text-xs font-normal text-[#64748B]">/trận</span></div>
+              <div class="font-heading font-extrabold text-[#16A34A] text-base sm:text-lg">${app.formatVND(p.basePrice)}<span class="text-xs font-normal text-[#64748B]">/trận</span></div>
             </div>
             <div class="flex items-center gap-1.5">
               <button onclick="openPitchDetail('${p.id}')" class="btn-sm btn-secondary text-xs font-bold px-3 hover:border-[#16A34A] hover:text-[#16A34A] transition-colors">
@@ -88,8 +146,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Popup Modal chi tiết sân khi click nút [Chi tiết sân]
     window.openPitchDetail = function(pitchId) {
-      const db = window.SanBongApp?.SanBongDB;
-      const pitch = db ? db.getPitchById(pitchId) : null;
+      const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+      const pitch = db?.getPitchById ? db.getPitchById(pitchId) : pitches.find(x => x.id === pitchId);
       if (!pitch) return;
 
       const modal = document.getElementById('pitch-detail-modal');
@@ -103,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div>
             <div class="flex items-center gap-2 mb-1">
               <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A]">${pitch.typeName}</span>
-              ${window.SanBongApp.statusPill(pitch.status)}
+              ${app.statusPill(pitch.status)}
             </div>
             <h2 class="font-heading font-extrabold text-2xl text-[#0F172A]">${pitch.name}</h2>
             <div class="text-xs text-[#64748B] mt-0.5">${pitch.size} · ${pitch.description || pitch.grass}</div>
@@ -112,7 +170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
 
         <div class="rounded-xl overflow-hidden border border-[#E2E8F0]">
-          ${window.SanBongApp.renderPitchSVG(pitch.variant || 'standard', 'h-48')}
+          ${app.renderPitchSVG(pitch.variant || 'standard', 'h-48')}
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -123,8 +181,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
             <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
             <div class="text-xs font-bold text-[#16A34A] mt-1">
-              Thường (05:30-17:30): ${window.SanBongApp.formatVND(pitch.basePrice)}/h<br>
-              Giờ vàng (17:30-21:00): ${window.SanBongApp.formatVND(pitch.peakPrice)}/h
+              Thường (05:30-17:30): ${app.formatVND(pitch.basePrice)}/h<br>
+              Giờ vàng (17:30-21:00): ${app.formatVND(pitch.peakPrice)}/h
             </div>
           </div>
         </div>
@@ -165,7 +223,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
-    // Điều khiển Carousel cuộn ngang sang phải / sang trái
+    setupCarousel(grid);
+  }
+
+  function setupCarousel(grid) {
+    if (!grid) return;
     const updateCarouselControls = () => {
       const maxScroll = grid.scrollWidth - grid.clientWidth;
       const isAtStart = grid.scrollLeft <= 10;
@@ -208,12 +270,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     ['featured-prev-btn', 'featured-float-prev'].forEach(id => {
       const btn = document.getElementById(id);
-      if (btn) btn.addEventListener('click', () => scrollCarousel(-1));
+      if (btn && !btn._bound) {
+        btn._bound = true;
+        btn.addEventListener('click', () => scrollCarousel(-1));
+      }
     });
 
     ['featured-next-btn', 'featured-float-next'].forEach(id => {
       const btn = document.getElementById(id);
-      if (btn) btn.addEventListener('click', () => scrollCarousel(1));
+      if (btn && !btn._bound) {
+        btn._bound = true;
+        btn.addEventListener('click', () => scrollCarousel(1));
+      }
     });
 
     grid.addEventListener('scroll', updateCarouselControls, { passive: true });
@@ -221,42 +289,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(updateCarouselControls, 100);
   }
 
-  // 4. Render Vouchers List
-  const db = window.SanBongApp?.SanBongDB;
-  const vouchers = db ? db.getVouchers() : [];
-  const vouchersContainer = document.getElementById('vouchers-list');
-  if (vouchersContainer) {
-    vouchersContainer.innerHTML = vouchers.map(v => `
-      <div class="ui-card p-4 border-l-4 ${v.code === 'WELCOME10' ? 'border-l-[#16A34A]' : 'border-l-[#F59E0B]'} flex items-center justify-between gap-3">
-        <div>
-          <div class="font-heading font-bold text-sm ${v.code === 'WELCOME10' ? 'text-[#16A34A]' : 'text-[#D97706]'}">
-            ${v.code} · ${v.description}
-          </div>
-          <div class="text-xs text-[#64748B] mt-0.5">Áp dụng cho đơn từ ${window.SanBongApp.formatVND(v.minOrder)}</div>
-        </div>
-        <button onclick="copyVoucher('${v.code}')" class="btn-sm btn-secondary text-xs shrink-0 font-bold hover:border-[#16A34A] hover:text-[#16A34A]">
-          Sao chép
-        </button>
-      </div>
-    `).join('');
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHomePage);
+  } else {
+    initHomePage();
   }
-
-  // 5. Xử lý Form tìm kiếm
-  const searchForm = document.getElementById('hero-search-form');
-  if (searchForm) {
-    searchForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const d = document.getElementById('search-date').value;
-      const t = document.getElementById('search-type').value;
-      window.location.href = `/fields?date=${encodeURIComponent(d)}&type=${encodeURIComponent(t)}`;
-    });
-  }
-});
+})();
 
 function copyVoucher(code) {
-  navigator.clipboard.writeText(code).then(() => {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã sao chép mã ưu đãi ' + code + ' vào bộ nhớ tạm!', 'success', 2500);
-  }).catch(() => {
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã sao chép mã ưu đãi ' + code + ' vào bộ nhớ tạm!', 'success', 2500);
+    }).catch(() => {
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mã ưu đãi của bạn: ' + code, 'info', 2500);
+    });
+  } else {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mã ưu đãi của bạn: ' + code, 'info', 2500);
-  });
+  }
 }

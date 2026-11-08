@@ -1,21 +1,18 @@
 /**
  * SÂN BÓNG PRO - DANH SÁCH SÂN LOGIC (fields.js)
+ * Tích hợp Optimistic UI (hiển thị 0ms) & Revalidation ngầm qua Fetch API
  */
 
 let currentPitches = [];
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Nạp dữ liệu sân bóng qua Fetch API
-  if (window.SanBongApp?.SanBongAPI) {
-    try {
-      currentPitches = await window.SanBongApp.SanBongAPI.getPitches();
-    } catch (e) {
-      currentPitches = window.SanBongApp.SanBongDB ? window.SanBongApp.SanBongDB.getPitches() : [];
-    }
-  } else {
-    const db = window.SanBongApp?.SanBongDB;
-    currentPitches = db ? db.getPitches() : [];
-  }
+function initFieldsPage() {
+  const app = window.SanBongApp;
+  const db = window.SanBongDB || app?.SanBongDB;
+
+  // 1. Nạp ngay từ bộ nhớ / DB mặc định (0ms)
+  currentPitches = (db?.getPitches && db.getPitches().length > 0)
+    ? db.getPitches()
+    : (window.SanBongData?.DEFAULT_PITCHES || []);
 
   // Parse URL parameters (từ search form ở trang chủ)
   const urlParams = new URLSearchParams(window.location.search);
@@ -27,7 +24,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderPitches();
   setupEventListeners();
-});
+
+  // 2. Revalidate ngầm từ API máy chủ
+  if (app?.SanBongAPI?.getPitches) {
+    app.SanBongAPI.getPitches()
+      .then(pitches => {
+        if (Array.isArray(pitches) && pitches.length > 0) {
+          currentPitches = pitches;
+          renderPitches();
+        }
+      })
+      .catch(err => {
+        console.warn('Revalidate fields ngầm:', err.message);
+      });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initFieldsPage);
+} else {
+  initFieldsPage();
+}
 
 function renderPitches() {
   const typeVal = document.querySelector('input[name="filter-type"]:checked')?.value || 'all';
@@ -50,27 +67,30 @@ function renderPitches() {
 
   const grid = document.getElementById('pitches-grid');
   const empty = document.getElementById('no-pitches-state');
+  if (!grid) return;
 
   if (list.length === 0) {
     grid.innerHTML = '';
-    empty.classList.remove('hidden');
+    if (empty) empty.classList.remove('hidden');
     return;
   } else {
-    empty.classList.add('hidden');
+    if (empty) empty.classList.add('hidden');
   }
+
+  const app = window.SanBongApp;
 
   grid.innerHTML = list.map(p => {
     const isMaint = p.status === 'Bảo trì';
     return `
       <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
         <div class="relative cursor-pointer overflow-hidden" onclick="openPitchDetail('${p.id}')">
-          ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-48')}
+          ${app?.renderPitchSVG ? app.renderPitchSVG(p.variant || 'standard', 'h-48') : ''}
           <div class="absolute top-3 left-3 flex gap-1.5">
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${p.typeName}</span>
             ${p.id === 'P11-ALL' ? '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DBEAFE] text-[#2563EB] shadow-sm">Ghép 7-A + 7-B</span>' : ''}
           </div>
           <div class="absolute top-3 right-3">
-            ${window.SanBongApp.statusPill(p.status)}
+            ${app?.statusPill ? app.statusPill(p.status) : `<span>${p.status}</span>`}
           </div>
           <div class="absolute bottom-3 left-3">
             <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isMaint ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#DCFCE7] text-[#16A34A]'} shadow-sm">
@@ -89,8 +109,8 @@ function renderPitches() {
             </div>
             <div class="text-xs text-[#64748B] mb-2">${p.size} · ${p.grass}</div>
             <div class="flex items-baseline gap-2">
-              <span class="text-base font-extrabold text-[#16A34A]">${window.SanBongApp.formatVND(p.basePrice)}/h</span>
-              <span class="text-xs text-[#94A3B8]">Giờ vàng: ${window.SanBongApp.formatVND(p.peakPrice)}/h</span>
+              <span class="text-base font-extrabold text-[#16A34A]">${app?.formatVND ? app.formatVND(p.basePrice) : p.basePrice + 'đ'}/h</span>
+              <span class="text-xs text-[#94A3B8]">Giờ vàng: ${app?.formatVND ? app.formatVND(p.peakPrice) : p.peakPrice + 'đ'}/h</span>
             </div>
           </div>
 
@@ -116,41 +136,58 @@ function renderPitches() {
 
 function setupEventListeners() {
   document.querySelectorAll('input[name="filter-type"]').forEach(r => {
-    r.addEventListener('change', renderPitches);
+    if (!r._bound) {
+      r._bound = true;
+      r.addEventListener('change', renderPitches);
+    }
   });
-  document.getElementById('filter-active-only')?.addEventListener('change', renderPitches);
-  document.getElementById('sort-select')?.addEventListener('change', renderPitches);
+  const activeCheck = document.getElementById('filter-active-only');
+  if (activeCheck && !activeCheck._bound) {
+    activeCheck._bound = true;
+    activeCheck.addEventListener('change', renderPitches);
+  }
+  const sortSel = document.getElementById('sort-select');
+  if (sortSel && !sortSel._bound) {
+    sortSel._bound = true;
+    sortSel.addEventListener('change', renderPitches);
+  }
 
   const priceRange = document.getElementById('price-range');
   const priceLabel = document.getElementById('price-val-label');
-  if (priceRange && priceLabel) {
+  if (priceRange && priceLabel && !priceRange._bound) {
+    priceRange._bound = true;
     priceRange.addEventListener('input', (e) => {
-      priceLabel.textContent = window.SanBongApp.formatVND(e.target.value) + '/h';
+      priceLabel.textContent = (window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(e.target.value) : e.target.value) + '/h';
       renderPitches();
     });
   }
 
-  document.getElementById('reset-filter-btn')?.addEventListener('click', () => {
-    const defaultRadio = document.querySelector('input[name="filter-type"][value="all"]');
-    if (defaultRadio) defaultRadio.checked = true;
-    const activeCheck = document.getElementById('filter-active-only');
-    if (activeCheck) activeCheck.checked = true;
-    if (priceRange) priceRange.value = 1500000;
-    if (priceLabel) priceLabel.textContent = '1.500.000đ/h';
-    const sortSel = document.getElementById('sort-select');
-    if (sortSel) sortSel.value = 'default';
-    renderPitches();
-  });
+  const resetBtn = document.getElementById('reset-filter-btn');
+  if (resetBtn && !resetBtn._bound) {
+    resetBtn._bound = true;
+    resetBtn.addEventListener('click', () => {
+      const defaultRadio = document.querySelector('input[name="filter-type"][value="all"]');
+      if (defaultRadio) defaultRadio.checked = true;
+      if (activeCheck) activeCheck.checked = true;
+      if (priceRange) priceRange.value = 1500000;
+      if (priceLabel) priceLabel.textContent = '1.500.000đ/h';
+      if (sortSel) sortSel.value = 'default';
+      renderPitches();
+    });
+  }
 }
 
 // Modal chi tiết sân (Frame 3)
 function openPitchDetail(pitchId) {
-  const db = window.SanBongApp?.SanBongDB;
-  const pitch = db ? db.getPitchById(pitchId) : null;
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  const pitch = db?.getPitchById ? db.getPitchById(pitchId) : currentPitches.find(x => x.id === pitchId);
   if (!pitch) return;
 
   const modal = document.getElementById('pitch-detail-modal');
   const content = document.getElementById('modal-content');
+  if (!modal || !content) return;
+
+  const app = window.SanBongApp;
   const isMaint = pitch.status === 'Bảo trì';
 
   content.innerHTML = `
@@ -158,16 +195,16 @@ function openPitchDetail(pitchId) {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A]">${pitch.typeName}</span>
-          ${window.SanBongApp.statusPill(pitch.status)}
+          ${app?.statusPill ? app.statusPill(pitch.status) : `<span>${pitch.status}</span>`}
         </div>
         <h2 class="font-heading font-extrabold text-2xl text-[#0F172A]">${pitch.name}</h2>
-        <div class="text-xs text-[#64748B] mt-0.5">${pitch.size} · ${pitch.description}</div>
+        <div class="text-xs text-[#64748B] mt-0.5">${pitch.size} · ${pitch.description || pitch.grass}</div>
       </div>
       <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold">✕</button>
     </div>
 
     <div class="rounded-xl overflow-hidden border border-[#E2E8F0]">
-      ${window.SanBongApp.renderPitchSVG(pitch.variant || 'standard', 'h-48')}
+      ${app?.renderPitchSVG ? app.renderPitchSVG(pitch.variant || 'standard', 'h-48') : ''}
     </div>
 
     <div class="grid grid-cols-2 gap-4">
@@ -178,8 +215,8 @@ function openPitchDetail(pitchId) {
       <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
         <div class="text-xs font-bold text-[#16A34A] mt-1">
-          Thường: ${window.SanBongApp.formatVND(pitch.basePrice)}/h<br>
-          Giờ vàng (17:30-21:00): ${window.SanBongApp.formatVND(pitch.peakPrice)}/h
+          Thường: ${app?.formatVND ? app.formatVND(pitch.basePrice) : pitch.basePrice}/h<br>
+          Giờ vàng (17:30-21:00): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : pitch.peakPrice}/h
         </div>
       </div>
     </div>
@@ -187,7 +224,7 @@ function openPitchDetail(pitchId) {
     <div>
       <h4 class="font-heading font-bold text-sm text-[#0F172A] mb-2.5">Tiện ích tại sân</h4>
       <div class="grid grid-cols-2 gap-2 text-xs">
-        ${pitch.amenities.map(a => `
+        ${(pitch.amenities || []).map(a => `
           <div class="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-2">
             <span class="w-4 h-4 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center font-bold text-[10px]">✓</span>
             <span class="text-[#334155] font-medium">${a}</span>
