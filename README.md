@@ -39,7 +39,12 @@ Dự án đã được phân tách gọn gàng, loại bỏ hoàn toàn các đo
 Web_Quan_Ly_San_Bong/
 ├── index.html          # Trang chủ ngoài cùng: Giới thiệu, banner tìm kiếm nhanh, sân nổi bật, voucher
 ├── css/
-│   └── style.css       # Toàn bộ CSS dùng chung: Font, thẻ UI Card, Buttons, Input fields, Media print
+│   ├── base.css        # Reset, typography, font chữ Inter & Plus Jakarta Sans
+│   ├── components.css  # Thẻ UI Card, nút bấm (primary/secondary/danger/sm), ô input
+│   ├── booking.css     # Style cho slot chips khung giờ thi đấu
+│   ├── admin.css       # Style cho phân hệ quản trị, timeline Gantt, sọc chéo bảo trì
+│   ├── print.css       # Định dạng khi bấm in vé check-in điện tử
+│   └── style.css       # Master stylesheet nạp và điều phối các module CSS trên
 ├── js/
 │   ├── data.js         # Mock Database: Dữ liệu khởi tạo (6 sân bóng, slot giờ, dịch vụ, voucher, tài khoản NH)
 │   ├── app.js          # Core Engine: State LocalStorage (SanBongDB), Navbar/Footer dùng chung, render SVG sân bóng

@@ -1,0 +1,9 @@
+/**
+ * SÂN BÓNG PRO - QUẢN TRỊ & TIMELINE GANTT (admin.css)
+ */
+
+.hatch-slate {
+  background-color: #F1F5F9;
+  background-image: repeating-linear-gradient(-45deg, #E2E8F0, #E2E8F0 6px, #F1F5F9 6px, #F1F5F9 12px);
+  color: #475569;
+}

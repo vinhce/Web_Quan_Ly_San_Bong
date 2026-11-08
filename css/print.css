@@ -1,0 +1,14 @@
+/**
+ * SÂN BÓNG PRO - IN VÉ CHECK-IN (print.css)
+ */
+
+@media print {
+  #app-navbar,
+  #app-footer,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+}

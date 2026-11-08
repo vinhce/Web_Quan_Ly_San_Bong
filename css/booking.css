@@ -1,0 +1,9 @@
+/**
+ * SÂN BÓNG PRO - ĐẶT SÂN & KHUNG GIỜ (booking.css)
+ */
+
+.slot-chip {
+  transition: all 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+}
