@@ -17,6 +17,12 @@ ServerSignature Off
     # Cho phép truyền Authorization Header vào PHP (cần cho Webhook & API)
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # 3.0. Bắt buộc HTTPS 301 trên môi trường Production (Mục 5.1)
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Chặn truy cập trực tiếp các file .json, .log trong api/ và logs/
     RewriteRule ^(api|logs)/.*\.(json|log)$ - [F,L]
 
@@ -45,11 +51,17 @@ ServerSignature Off
     Deny from all
 </FilesMatch>
 
-# Chặn truy cập trực tiếp vào thư mục config, database, logs, scripts
-RedirectMatch 403 ^/(config|database|logs|scripts)/.*$
+# Chặn truy cập trực tiếp vào thư mục config, database, logs, scripts, backups
+RedirectMatch 403 ^/(config|database|logs|scripts|backups)/.*$
+
+# Giới hạn kích thước body request tối đa 10MB chống DoS payload (Mục 3.2)
+LimitRequestBody 10485760
 
 # 5. Thiết lập các Security Headers bảo vệ trình duyệt (Mục 5.2)
 <IfModule mod_headers.c>
+    # Bắt buộc HTTPS HSTS (1 năm, gồm subdomains)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
     # Chống MIME-sniffing
     Header always set X-Content-Type-Options "nosniff"
 
