@@ -280,7 +280,15 @@ function proceedToCheckout() {
   const agree = document.getElementById('policy-agree')?.checked;
 
   if (!selectedSlotId) {
-    alert('Vui lòng chọn một khung giờ thi đấu còn trống trước khi tiếp tục.');
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Vui lòng chọn một khung giờ thi đấu còn trống trước khi tiếp tục.', 'warning');
+    }
+    const slotsEl = document.getElementById('slots-grid');
+    if (slotsEl) {
+      slotsEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      slotsEl.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2');
+      setTimeout(() => slotsEl.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2'), 2500);
+    }
     return;
   }
 
@@ -299,9 +307,13 @@ function proceedToCheckout() {
 
   // Yêu cầu bắt buộc đăng nhập/đăng ký tài khoản để định danh người chuyển khoản & tích lũy điểm thưởng
   if (!user || !user.name) {
-    alert('Để xác nhận thông tin chuyển khoản chính xác và tích lũy điểm thưởng hội viên (+100 điểm/trận), quý khách vui lòng đăng nhập hoặc tạo tài khoản mới!');
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Đang chuyển hướng sang Đăng nhập / Đăng ký để định danh người chuyển cọc và tích điểm thưởng...', 'info', 3000);
+    }
     const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
-    window.location.href = loginUrl;
+    setTimeout(() => {
+      window.location.href = loginUrl;
+    }, 500);
     return;
   }
 
@@ -309,12 +321,31 @@ function proceedToCheckout() {
   if (!phone && user?.phone) phone = user.phone;
 
   if (!name || !phone) {
-    alert('Vui lòng nhập họ tên và số điện thoại người đặt sân.');
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Vui lòng nhập họ tên và số điện thoại người đặt sân.', 'error');
+    }
+    const nameInput = document.getElementById('cust-name');
+    const phoneInput = document.getElementById('cust-phone');
+    if (!name && nameInput) {
+      nameInput.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      nameInput.focus();
+    } else if (!phone && phoneInput) {
+      phoneInput.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      phoneInput.focus();
+    }
     return;
   }
 
   if (!agree) {
-    alert('Vui lòng đồng ý với chính sách cọc và giữ sân.');
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Vui lòng tích chọn đồng ý với chính sách cọc và giữ sân.', 'warning');
+    }
+    const agreeEl = document.getElementById('policy-agree');
+    if (agreeEl) {
+      agreeEl.focus();
+      agreeEl.parentElement?.classList.add('text-rose-600', 'font-bold');
+      setTimeout(() => agreeEl.parentElement?.classList.remove('text-rose-600', 'font-bold'), 2500);
+    }
     return;
   }
 

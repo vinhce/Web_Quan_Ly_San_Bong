@@ -255,8 +255,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function copyVoucher(code) {
   navigator.clipboard.writeText(code).then(() => {
-    alert('Đã sao chép mã ưu đãi ' + code + ' vào bộ nhớ tạm! Áp dụng tại bước thanh toán.');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã sao chép mã ưu đãi ' + code + ' vào bộ nhớ tạm!', 'success', 2500);
   }).catch(() => {
-    alert('Mã ưu đãi của bạn: ' + code);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mã ưu đãi của bạn: ' + code, 'info', 2500);
   });
 }

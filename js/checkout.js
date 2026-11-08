@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 1. Kiểm tra trạng thái đăng nhập: Bắt buộc đăng nhập để xác định danh tính & tích lũy điểm
   const currentUser = db.getUser();
   if (!currentUser || !currentUser.name) {
-    alert('Vui lòng đăng nhập hoặc đăng ký tài khoản để tiếp tục thanh toán chuyển khoản và nhận điểm thưởng hội viên!');
+    if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Vui lòng đăng nhập hoặc đăng ký tài khoản để tiếp tục thanh toán chuyển khoản!', 'info', 3000); }
     const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
     window.location.replace(loginUrl);
     return;
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Nếu không có draft, chuyển hướng về trang Đặt sân
   if (!currentDraft) {
-    alert('Bạn chưa chọn sân và khung giờ. Đang chuyển về trang Đặt sân...');
+    if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Bạn chưa chọn sân và khung giờ. Đang chuyển về trang Đặt sân...', 'warning', 2500); }
     window.location.replace(window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking');
     return;
   }
@@ -290,7 +290,7 @@ function startCountdown(seconds) {
     localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
   } catch (e) {}
       localStorage.removeItem(holdKey);
-      alert('Khung giờ giữ chỗ đã hết hạn! Vui lòng thao tác lại.');
+      if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Khung giờ giữ chỗ 10 phút đã hết hạn! Vui lòng thao tác lại.', 'error', 3500); }
       window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking';
       return;
     }
@@ -361,12 +361,22 @@ function setupLoyaltyWaterRedemption() {
 }
 
 function copyText(elementId) {
-  const text = document.getElementById(elementId)?.innerText || '';
-  navigator.clipboard.writeText(text).then(() => {
-    alert('Đã sao chép: ' + text);
-  }).catch(() => {
-    alert('Nội dung: ' + text);
-  });
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  const text = el.innerText ? el.innerText.trim() : '';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast('✓ Đã sao chép: ' + text, 'success', 2500);
+      }
+    }).catch(() => {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast('Nội dung: ' + text, 'info', 2500);
+      }
+    });
+  } else if (window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast('Nội dung: ' + text, 'info', 2500);
+  }
 }
 
 async function confirmPayment(isAuto = false) {
@@ -413,7 +423,16 @@ async function confirmPayment(isAuto = false) {
     // Khôi phục lại polling để tự động bắt nếu tiền vào sau vài giây
     startSePayAutoListener(generatedBookingCode);
 
-    alert(`⚠️ CỔNG THANH TOÁN SEPAY CHƯA NHẬN ĐƯỢC TIỀN CỌC!\n\nHệ thống chưa ghi nhận giao dịch chuyển khoản cho mã đơn: ${generatedBookingCode}\n\n• Vui lòng mở App ngân hàng quét mã VietQR hoặc chuyển đúng nội dung "${generatedBookingCode}".\n• Sau khi chuyển tiền thành công, hệ thống sẽ tự động duyệt và cấp vé ngay lập tức!`);
+    if (window.SanBongApp?.showModal) {
+      window.SanBongApp.showModal({
+        title: 'Cổng SePay chưa nhận được tiền cọc',
+        message: `Hệ thống chưa ghi nhận giao dịch chuyển khoản cho mã đơn: ${generatedBookingCode}\n\n• Vui lòng mở App ngân hàng quét mã VietQR hoặc chuyển đúng nội dung "${generatedBookingCode}".\n• Sau khi chuyển tiền thành công, hệ thống sẽ tự động duyệt và cấp vé ngay lập tức!`,
+        type: 'warning',
+        confirmText: 'Tôi đã hiểu'
+      });
+    } else if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('⚠️ Chưa nhận được tiền cọc cho mã ' + generatedBookingCode + '. Vui lòng hoàn tất chuyển khoản!', 'warning', 5000);
+    }
     return;
   }
 

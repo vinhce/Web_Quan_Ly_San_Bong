@@ -53,7 +53,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (e) {}
 
   if (!serverVerifiedPaid) {
-    alert(`⚠️ ĐƠN ĐẶT SÂN ${checkCode} CHƯA ĐƯỢC THANH TOÁN CỌC!\n\nHệ thống SePay chưa ghi nhận giao dịch chuyển khoản cho mã đơn này. Vui lòng hoàn tất thanh toán VietQR trước khi nhận vé.`);
+    if (window.SanBongApp?.showModal) {
+      window.SanBongApp.showModal({
+        title: 'Đơn đặt sân chưa thanh toán cọc',
+        message: 'Hệ thống SePay chưa ghi nhận giao dịch chuyển khoản cho mã đơn ' + checkCode + '. Vui lòng hoàn tất thanh toán VietQR trước khi nhận vé.',
+        type: 'warning',
+        confirmText: 'Tôi đã hiểu'
+      });
+    } else if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('⚠️ Đơn ' + checkCode + ' chưa thanh toán cọc SePay!', 'warning', 4000);
+    }
     window.location.replace(checkoutUrl);
     return;
   }

@@ -183,7 +183,7 @@ function cancelBooking(bookingCode) {
   if (confirm(`Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\nTiền cọc sẽ được hoàn lại tự động theo chính sách sân.`)) {
     const db = window.SanBongApp.SanBongDB;
     db.updateBookingStatus(bookingCode, 'Đã hủy', 'Đã hoàn cọc');
-    alert('Đã hủy lịch đặt sân thành công! Số tiền hoàn cọc đã được chuyển về tài khoản.');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã hủy lịch đặt sân thành công! Số tiền hoàn cọc đã được chuyển về tài khoản.', 'success', 3500);
     renderHistory();
   }
 }

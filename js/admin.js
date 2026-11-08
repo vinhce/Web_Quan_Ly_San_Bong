@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!data || !data.success || !data.logged_in || data.user.role !== 'admin') {
         sessionStorage.removeItem('sb_current_user');
         document.documentElement.style.display = 'none';
-        alert('Phiên làm việc đã hết hạn hoặc không có quyền Quản trị. Vui lòng đăng nhập lại.');
+        if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Phiên làm việc đã hết hạn hoặc không có quyền Quản trị.', 'error');
         window.location.replace('/login?redirect=portal-admin');
         return;
       }
@@ -175,7 +175,7 @@ async function handleCheckin(bookingCode) {
   }
   const db = window.SanBongApp.SanBongDB;
   db.checkinBooking(bookingCode);
-  alert("✓ CHECK-IN THÀNH CÔNG!\n\nĐơn " + bookingCode + " đã chuyển sang trạng thái \"Đang đá\".");
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ CHECK-IN THÀNH CÔNG: Đơn ' + bookingCode + ' đã chuyển sang trạng thái Đang đá!', 'success', 3500);
   renderOverviewTodayBookings();
   renderTimelineGantt();
 }
@@ -208,7 +208,7 @@ async function handleNoShowRelease(bookingCode) {
   }
 
   db.releaseNoShowBooking(bookingCode);
-  alert("⚡ ĐÃ NHẢ SÂN THÀNH CÔNG!\n\nSân " + pitchName + " (" + slotTime + ") hiện đã CÒN TRỐNG và sẵn sàng đón khách mới vào đá ngay.");
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('⚡ ĐÃ NHẢ SÂN THÀNH CÔNG: Sân ' + pitchName + ' hiện đã Còn trống!', 'success', 4000);
   renderOverviewTodayBookings();
   renderTimelineGantt();
   initQuickBookingForm();
@@ -289,7 +289,7 @@ function initQuickBookingForm() {
       paymentMethod: payMethod
     });
 
-    alert(`Tạo đơn thành công tại quầy! Mã đơn: ${newB.code}`);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Tạo đơn thành công tại quầy! Mã đơn: ' + newB.code, 'success', 3500);
     e.target.reset();
     renderOverviewTodayBookings();
     renderTimelineGantt();
@@ -350,7 +350,7 @@ function toggleMaintenance(pitchId) {
   renderAdminPitches();
   renderTimelineGantt();
   initQuickBookingForm();
-  alert(`Đã chuyển trạng thái sân ${pitch.name} thành "${newStatus}"!`);
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Đã chuyển trạng thái sân ' + pitch.name + ' thành "' + newStatus + '"!', 'info', 3000);
 }
 
 // 7. Duyệt cọc VietQR 1 chạm (Lưu trữ bền vững, cập nhật tức thì, không bị hồi lại khi F5)
@@ -425,7 +425,7 @@ async function approveDeposit(code) {
   renderAdminPayments();
   renderOverviewTodayBookings();
   renderTimelineGantt();
-  alert('✓ ĐÃ DUYỆT CỌC THÀNH CÔNG!\n\nĐơn ' + code + ' đã được xác nhận cọc 30% và kích hoạt mã vé check-in.');
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ ĐÃ DUYỆT CỌC THÀNH CÔNG: Đơn ' + code + ' đã kích hoạt mã vé check-in!', 'success', 3500);
 }
 window.approveDeposit = approveDeposit;
 
@@ -455,6 +455,6 @@ async function rejectDeposit(code) {
   renderOverviewTodayBookings();
   renderTimelineGantt();
   initQuickBookingForm();
-  alert('⚡ ĐÃ TỪ CHỐI DUYỆT CỌC!\n\nĐơn ' + code + ' đã bị từ chối và slot sân đã được giải phóng về trạng thái Còn trống.');
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('⚡ ĐÃ TỪ CHỐI DUYỆT CỌC: Đơn ' + code + ' đã bị từ chối và giải phóng sân.', 'warning', 3500);
 }
 window.rejectDeposit = rejectDeposit;

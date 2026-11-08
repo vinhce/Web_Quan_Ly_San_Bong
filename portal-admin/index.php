@@ -402,7 +402,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
             </table>
           </div>
           <div class="pt-3 border-t border-[#E2E8F0] flex justify-end">
-            <button onclick="alert('Đã lưu cấu hình bảng giá mới thành công!')" class="btn-base btn-primary">Lưu bảng giá</button>
+            <button onclick="window.SanBongApp?.showToast('✓ Đã lưu cấu hình bảng giá mới thành công!', 'success')" class="btn-base btn-primary">Lưu bảng giá</button>
           </div>
         </div>
       </div>
@@ -532,7 +532,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
             </div>
           </div>
           <div class="pt-4 border-t border-[#E2E8F0] flex justify-end">
-            <button onclick="alert('Đã cập nhật cài đặt hệ thống thành công!')" class="btn-base btn-primary">Lưu cài đặt</button>
+            <button onclick="window.SanBongApp?.showToast('✓ Đã cập nhật cài đặt hệ thống thành công!', 'success')" class="btn-base btn-primary">Lưu cài đặt</button>
           </div>
         </div>
       </div>
