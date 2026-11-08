@@ -81,13 +81,21 @@ try {
         $code = sanitize_string($data['code'] ?? '', 40);
         $status = sanitize_string($data['status'] ?? '', 50);
 
-        $allowedStatuses = ['Chờ duyệt cọc', 'Đã cọc 30%', 'Đã thanh toán đủ', 'Đã hủy'];
+        $allowedStatuses = ['Chờ duyệt cọc', 'Đã cọc 30%', 'Đã thanh toán đủ', 'Đã hủy', 'Tịch thu cọc 30%'];
         if (!in_array($status, $allowedStatuses)) {
             json_response(['success' => false, 'message' => 'Trạng thái thanh toán không hợp lệ.'], 400);
         }
 
-        $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ? WHERE code = ?");
-        $stmt->execute([$status, $code]);
+        if ($status === 'Đã hủy') {
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã hủy', status = 'Đã hủy' WHERE code = ?");
+            $stmt->execute([$code]);
+        } elseif ($status === 'Đã cọc 30%') {
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã cọc 30%', status = 'Đã xác nhận' WHERE code = ?");
+            $stmt->execute([$code]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ? WHERE code = ?");
+            $stmt->execute([$status, $code]);
+        }
 
         json_response([
             'success' => true,

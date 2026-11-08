@@ -353,45 +353,109 @@ function toggleMaintenance(pitchId) {
   alert(`Đã chuyển trạng thái sân ${pitch.name} thành "${newStatus}"!`);
 }
 
-// 7. Duyệt cọc VietQR 1 chạm
+// 7. Duyệt cọc VietQR 1 chạm (Lưu trữ bền vững, cập nhật tức thì, không bị hồi lại khi F5)
 function renderAdminPayments() {
   const tbody = document.getElementById('admin-payments-tbody');
   if (!tbody) return;
 
-  const pendingList = [
-    { time: '10:12', code: 'SB-20261106-0042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
-    { time: '11:05', code: 'SB-20261106-0044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
-    { time: '13:40', code: 'SB-20261106-0045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
-  ];
+  const db = window.SanBongApp.SanBongDB;
+  const pendingList = db.getPendingPayments();
+
+  // Cập nhật số lượng trên các badge
+  const count = pendingList.length;
+  const badgeEl = document.getElementById('admin-payments-badge');
+  const headerBadgeEl = document.getElementById('admin-payments-header-badge');
+  if (badgeEl) {
+    badgeEl.textContent = count;
+    badgeEl.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+  if (headerBadgeEl) {
+    if (count === 0) {
+      headerBadgeEl.className = 'px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold';
+      headerBadgeEl.textContent = '✓ Đã duyệt hết';
+    } else {
+      headerBadgeEl.className = 'px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold';
+      headerBadgeEl.textContent = count + ' Đang chờ';
+    }
+  }
+
+  if (pendingList.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="py-12 text-center text-[#64748B]">
+          <div class="flex flex-col items-center justify-center gap-2">
+            <span class="text-3xl">🎉</span>
+            <span class="font-bold text-[#0F172A] text-sm">Không có biên lai nào chờ duyệt</span>
+            <span class="text-xs text-[#94A3B8]">Tất cả giao dịch chuyển khoản VietQR đã được xử lý xong.</span>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
 
   tbody.innerHTML = pendingList.map((item, idx) => `
-    <tr id="pay-row-${idx}">
+    <tr id="pay-row-${idx}" class="hover:bg-slate-50 transition-colors">
       <td class="py-3 px-4 text-[#64748B]">${item.time}</td>
       <td class="py-3 px-4 font-mono font-bold text-[#0F172A]">${item.code}</td>
       <td class="py-3 px-4 font-semibold">${item.name}</td>
       <td class="py-3 px-4 font-extrabold text-[#16A34A]">${window.SanBongApp.formatVND(item.amt)}</td>
       <td class="py-3 px-4">${item.bank} (VietQR)</td>
       <td class="py-3 px-4 text-right space-x-2">
-        <button onclick="approveDeposit('${idx}', '${item.code}')" class="btn-sm btn-primary">Duyệt cọc</button>
-        <button onclick="rejectDeposit('${idx}')" class="btn-sm btn-danger-outline">Từ chối</button>
+        <button onclick="approveDeposit('${item.code}')" class="btn-sm btn-primary">Duyệt cọc</button>
+        <button onclick="rejectDeposit('${item.code}')" class="btn-sm btn-danger-outline">Từ chối</button>
       </td>
     </tr>
   `).join('');
 }
 
-function approveDeposit(idx, code) {
-  const row = document.getElementById(`pay-row-${idx}`);
-  if (row) {
-    row.innerHTML = `
-      <td colspan="5" class="py-3 px-4 text-[#16A34A] font-bold bg-[#DCFCE7]/40">
-        ✓ Đã duyệt cọc đơn ${code}! Mã vé check-in đã được kích hoạt.
-      </td>
-      <td class="py-3 px-4 text-right text-xs font-bold text-[#16A34A]">Hoàn tất</td>
-    `;
+async function approveDeposit(code) {
+  if (!confirm('Xác nhận duyệt cọc thành công cho đơn ' + code + '?')) return;
+  try {
+    await fetch('../api/admin.php?action=update_payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, status: 'Đã cọc 30%' })
+    });
+  } catch (e) {
+    console.warn('API approveDeposit fallback:', e);
   }
-}
 
-function rejectDeposit(idx) {
-  const row = document.getElementById(`pay-row-${idx}`);
-  if (row) row.remove();
+  const db = window.SanBongApp.SanBongDB;
+  db.approveDeposit(code);
+  renderAdminPayments();
+  renderOverviewTodayBookings();
+  renderTimelineGantt();
+  alert('✓ ĐÃ DUYỆT CỌC THÀNH CÔNG!\n\nĐơn ' + code + ' đã được xác nhận cọc 30% và kích hoạt mã vé check-in.');
 }
+window.approveDeposit = approveDeposit;
+
+async function rejectDeposit(code) {
+  const confirmMsg =
+    '⚠️ XÁC NHẬN TỪ CHỐI DUYỆT CỌC:\n\n' +
+    '• Mã đơn: ' + code + '\n' +
+    '• Thao tác này sẽ TỪ CHỐI biên lai và HỦY ĐƠN HÀNG.\n' +
+    '• Slot sân sẽ được GIẢI PHÓNG TRỐNG NGAY LẬP TỨC để nhận khách mới.\n\n' +
+    'Bạn có chắc chắn muốn từ chối?';
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    await fetch('../api/admin.php?action=update_payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, status: 'Đã hủy' })
+    });
+  } catch (e) {
+    console.warn('API rejectDeposit fallback:', e);
+  }
+
+  const db = window.SanBongApp.SanBongDB;
+  db.rejectDeposit(code);
+  renderAdminPayments();
+  renderOverviewTodayBookings();
+  renderTimelineGantt();
+  initQuickBookingForm();
+  alert('⚡ ĐÃ TỪ CHỐI DUYỆT CỌC!\n\nĐơn ' + code + ' đã bị từ chối và slot sân đã được giải phóng về trạng thái Còn trống.');
+}
+window.rejectDeposit = rejectDeposit;

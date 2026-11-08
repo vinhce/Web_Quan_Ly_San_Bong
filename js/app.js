@@ -190,7 +190,8 @@
     VOUCHERS: 'sb_vouchers_v1',
     USER: 'sb_user_v1',
     BANK: 'sb_bank_v1',
-    BOOKINGS: 'sb_bookings_v1'
+    BOOKINGS: 'sb_bookings_v1',
+    PENDING_PAYMENTS: 'sb_pending_payments_v2'
   };
 
   const SanBongDB = {
@@ -219,6 +220,14 @@
       }
       if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(data.DEFAULT_BOOKINGS || []));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS)) {
+        const defaultPending = [
+          { time: '10:12', code: 'SB-20261106-0042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
+          { time: '11:05', code: 'SB-20261106-0044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
+          { time: '13:40', code: 'SB-20261106-0045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
+        ];
+        localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(defaultPending));
       }
     },
 
@@ -490,6 +499,65 @@
         return booking;
       }
       return null;
+    },
+
+    getPendingPayments() {
+      let list = [];
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS);
+        list = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(list)) list = [];
+      } catch (e) {
+        list = [];
+      }
+
+      // Tự động đồng bộ bất kỳ đơn đặt sân mới nào có paymentStatus = 'Chờ duyệt cọc'
+      const pendingBookings = this.getAllBookings().filter(b => b.paymentStatus === 'Chờ duyệt cọc' && b.status !== 'Đã hủy');
+      pendingBookings.forEach(pb => {
+        if (!list.some(item => item.code === pb.code)) {
+          list.push({
+            time: pb.createdAt ? pb.createdAt.split(' ')[1] || 'Vừa xong' : 'Vừa xong',
+            code: pb.code,
+            name: pb.customerName,
+            amt: pb.depositAmount || Math.round(pb.totalPrice * 0.3),
+            bank: pb.paymentMethod?.includes('MB') ? 'MB Bank' : 'Vietcombank'
+          });
+        }
+      });
+      return list;
+    },
+
+    approveDeposit(bookingCode) {
+      this.updateBookingStatus(bookingCode, 'Đã xác nhận', 'Đã cọc 30%');
+      let list = [];
+      try {
+        list = JSON.parse(localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS)) || [];
+      } catch (e) {
+        list = [];
+      }
+      list = list.filter(item => item.code !== bookingCode);
+      localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(list));
+      return true;
+    },
+
+    rejectDeposit(bookingCode) {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      if (booking) {
+        booking.status = 'Đã hủy';
+        booking.paymentStatus = 'Đã hủy';
+        booking.note = (booking.note ? booking.note + ' ' : '') + '[Admin từ chối duyệt cọc - Đã giải phóng sân]';
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+      }
+      let list = [];
+      try {
+        list = JSON.parse(localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS)) || [];
+      } catch (e) {
+        list = [];
+      }
+      list = list.filter(item => item.code !== bookingCode);
+      localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(list));
+      return true;
     },
 
     getSlotsWithStatus(pitchId, dateStr) {
