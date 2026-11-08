@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đặt Sân Bóng – Chọn Giờ, Dịch Vụ & Thanh Toán</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261108v7">
+  <link rel="stylesheet" href="../css/style.css?v=20261109v1">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -99,10 +99,23 @@
 
         <!-- 3. DỊCH VỤ THÊM (Frame 4) -->
         <div class="ui-card p-5 sm:p-6 space-y-4">
-          <h3 class="font-heading font-bold text-lg text-[#0F172A] flex items-center gap-2">
-            <span class="w-2 h-5 rounded-sm bg-[#16A34A]"></span>
-            3. Dịch vụ trận đấu đi kèm
-          </h3>
+          <div class="flex items-center justify-between">
+            <h3 class="font-heading font-bold text-lg text-[#0F172A] flex items-center gap-2">
+              <span class="w-2 h-5 rounded-sm bg-[#16A34A]"></span>
+              3. Dịch vụ trận đấu đi kèm
+            </h3>
+            <span class="px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#B45309] text-[11px] font-bold">
+              🎁 Đổi nước bằng điểm ở bước sau
+            </span>
+          </div>
+
+          <div class="p-3 rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] text-xs text-[#15803D] flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-base">💧</span>
+              <span><strong>Mẹo Hội viên:</strong> Bạn có thể dùng <strong>100 điểm tích lũy = 1 chai nước suối</strong> khi chuyển khoản cọc.</span>
+            </div>
+            <span class="text-[11px] text-[#64748B] hidden sm:inline">(Điểm thưởng trận này dùng ở trận sau)</span>
+          </div>
 
           <div id="services-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <!-- Rendered by JS -->
@@ -225,9 +238,9 @@
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
   <!-- SCRIPTS -->
-  <script src="../js/data.js?v=20261108v7"></script>
-  <script src="../js/app.js?v=20261108v7"></script>
-  <script src="../js/api.js?v=20261108v7"></script>
-  <script src="../js/booking.js?v=20261108v7"></script>
+  <script src="../js/data.js?v=20261109v1"></script>
+  <script src="../js/app.js?v=20261109v1"></script>
+  <script src="../js/api.js?v=20261109v1"></script>
+  <script src="../js/booking.js?v=20261109v1"></script>
 </body>
 </html>

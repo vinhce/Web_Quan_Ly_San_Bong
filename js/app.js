@@ -193,7 +193,8 @@
   const SanBongDB = {
     init() {
       const data = window.SanBongData || {};
-      if (!localStorage.getItem(STORAGE_KEYS.PITCHES)) {
+      const savedPitches = JSON.parse(localStorage.getItem(STORAGE_KEYS.PITCHES) || '[]');
+      if (!localStorage.getItem(STORAGE_KEYS.PITCHES) || savedPitches.length < (data.DEFAULT_PITCHES || []).length) {
         localStorage.setItem(STORAGE_KEYS.PITCHES, JSON.stringify(data.DEFAULT_PITCHES || []));
       }
       if (!localStorage.getItem(STORAGE_KEYS.TIME_SLOTS)) {
@@ -279,6 +280,17 @@
         return JSON.parse(localStorage.getItem(STORAGE_KEYS.USER)) || {};
       } catch (e) {
         return window.SanBongData?.DEFAULT_USER || {};
+      }
+    },
+
+    updateUser(updates) {
+      try {
+        const user = this.getUser();
+        const updated = Object.assign({}, user, updates);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+        return updated;
+      } catch (e) {
+        return null;
       }
     },
 

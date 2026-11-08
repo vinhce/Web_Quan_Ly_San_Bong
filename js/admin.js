@@ -91,7 +91,7 @@ function switchAdminTab(moduleKey) {
     'overview': '1. Tổng quan KPI & Chỉ số tài chính',
     'timeline': '2. Lịch đặt sân Timeline Gantt trực quan',
     'quick-booking': '3. Đặt sân tại quầy (Tạo nhanh đơn)',
-    'pitches': '4. Quản lý 6 sân bóng & Bật/Tắt bảo trì',
+    'pitches': '4. Quản lý 17 sân bóng & Bật/Tắt bảo trì',
     'pricing': '5. Cấu hình bảng giá niêm yết',
     'customers': '6. Danh sách khách hàng & Hội viên',
     'payments': '7. Duyệt biên lai cọc VietQR 1 chạm',

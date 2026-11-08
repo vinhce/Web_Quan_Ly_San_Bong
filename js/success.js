@@ -112,11 +112,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const srvEl = document.getElementById('ticket-services-desc');
   if (srvEl) {
+    let srvList = [];
     if (booking.services && booking.services.length > 0) {
-      srvEl.textContent = booking.services.map(s => `${s.name} × ${s.quantity}`).join(', ');
-    } else {
-      srvEl.textContent = 'Không có dịch vụ thêm';
+      srvList = booking.services.map(s => `${s.name} × ${s.quantity}`);
     }
+    if (booking.redeemedBottles && booking.redeemedBottles > 0) {
+      srvList.push(`💧 Nước suối miễn phí (${booking.redeemedBottles} chai - Đổi từ ${booking.pointsUsed || (booking.redeemedBottles * 100)}đ)`);
+    }
+    srvEl.textContent = srvList.length > 0 ? srvList.join(', ') : 'Không có dịch vụ thêm';
+  }
+
+  // Tích luỹ & Điểm thưởng trận sau
+  const pointsNoteEl = document.getElementById('ticket-points-used-note');
+  if (pointsNoteEl) {
+    if (booking.redeemedBottles && booking.redeemedBottles > 0) {
+      pointsNoteEl.innerHTML = `Đã đổi nước: <strong class="text-[#DC2626]">-${booking.pointsUsed || (booking.redeemedBottles * 100)} điểm</strong> (${booking.redeemedBottles} chai Aquafina)`;
+    } else {
+      pointsNoteEl.textContent = 'Đã đổi nước: 0 điểm (0 chai)';
+    }
+  }
+
+  const user = db.getUser ? db.getUser() : {};
+  const currentBalance = booking.newPointsBalance !== undefined ? booking.newPointsBalance : (user.points || 820);
+  const balanceEl = document.getElementById('ticket-points-balance');
+  if (balanceEl) {
+    balanceEl.textContent = `${currentBalance} điểm`;
   }
 
   // Render Vector QR Check-in Code

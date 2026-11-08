@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Thanh Toán Đặt Sân – Chuyển Khoản Đặt Cọc 30%</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261108v7">
+  <link rel="stylesheet" href="../css/style.css?v=20261109v1">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -122,6 +122,55 @@
             </div>
           </div>
 
+          <!-- LOYALTY POINTS WATER EXCHANGE SECTION -->
+          <div class="p-4 rounded-2xl bg-gradient-to-br from-[#F8FAFC] to-[#F0FDF4] border border-[#DCFCE7] space-y-3.5">
+            <div class="flex items-center justify-between pb-2.5 border-b border-[#DCFCE7]">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center font-bold text-sm">🎁</span>
+                <div>
+                  <h3 class="font-heading font-bold text-sm text-[#0F172A]">Đổi điểm tích lũy lấy Nước Suối</h3>
+                  <p class="text-[11px] text-[#64748B]">Ưu đãi hội viên: <strong class="text-[#16A34A]">100 điểm = 1 chai Aquafina 500ml</strong></p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-[#64748B] block uppercase tracking-wider font-bold">Điểm hiện có</span>
+                <span id="current-user-points" class="font-mono font-extrabold text-sm text-[#16A34A]">820đ</span>
+              </div>
+            </div>
+
+            <!-- Selector Row -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">💧</span>
+                <div>
+                  <div class="text-xs font-bold text-[#0F172A]">Nước suối Aquafina 500ml (Ướp lạnh)</div>
+                  <div class="text-[11px] text-[#64748B]">Có thể đổi tối đa: <span id="max-redeemable-bottles" class="font-bold text-[#16A34A]">8 chai</span></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 self-end sm:self-auto">
+                <button type="button" id="btn-sub-water" class="w-8 h-8 rounded-lg bg-[#F1F5F9] hover:bg-[#E2E8F0] active:scale-95 font-bold text-base text-[#0F172A] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                <span id="redeemed-bottles-count" class="w-8 text-center font-bold font-mono text-base text-[#0F172A]">0</span>
+                <button type="button" id="btn-add-water" class="w-8 h-8 rounded-lg bg-[#DCFCE7] hover:bg-[#BBF7D0] active:scale-95 font-bold text-base text-[#16A34A] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed">+</button>
+                <span class="text-xs text-[#64748B] pl-1">chai</span>
+              </div>
+            </div>
+
+            <!-- Notice & Rule Badge -->
+            <div class="space-y-1.5 text-xs">
+              <div id="points-exchange-summary" class="hidden p-2.5 rounded-lg bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] font-semibold flex items-center justify-between">
+                <span>Khấu trừ: <strong id="points-to-deduct">0 điểm</strong></span>
+                <span class="text-[#059669]">Nhận thêm: <strong id="water-bottles-received">0 chai miễn phí</strong></span>
+              </div>
+
+              <div class="p-2.5 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] flex items-start gap-2">
+                <span class="text-sm mt-0.5">⚡</span>
+                <div class="text-[11px] leading-relaxed">
+                  <span class="font-bold text-[#78350F]">Quy định điểm thưởng:</span> Đơn này tích luỹ <strong>+100 điểm thưởng</strong>. Điểm thưởng chỉ được cộng vào tài khoản sau khi thanh toán thành công và <strong>được dùng từ trận sau</strong> (không cấn trừ ngay vào đơn hiện tại).
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Confirmation Action Buttons -->
           <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
             <button type="button" id="confirm-payment-btn" class="btn-base btn-primary w-full sm:flex-1 text-base font-bold shadow-lg">
@@ -165,6 +214,10 @@
             <div id="co-services-row" class="text-xs text-[#64748B] pt-1 border-t border-[#F1F5F9]">
               <!-- Services list -->
             </div>
+            <div id="co-redeemed-water-row" class="hidden text-xs text-[#16A34A] font-semibold pt-1 border-t border-[#F1F5F9] flex justify-between">
+              <span>💧 Đổi điểm lấy nước:</span>
+              <span id="co-redeemed-water-text">0 chai (0đ)</span>
+            </div>
           </div>
 
           <div class="pt-4 border-t border-[#E2E8F0] space-y-2">
@@ -191,9 +244,9 @@
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
   <!-- SCRIPTS -->
-  <script src="../js/data.js?v=20261108v8"></script>
-  <script src="../js/app.js?v=20261108v8"></script>
-  <script src="../js/api.js?v=20261108v8"></script>
-  <script src="../js/checkout.js?v=20261108v8"></script>
+  <script src="../js/data.js?v=20261109v1"></script>
+  <script src="../js/app.js?v=20261109v1"></script>
+  <script src="../js/api.js?v=20261109v1"></script>
+  <script src="../js/checkout.js?v=20261109v1"></script>
 </body>
 </html>

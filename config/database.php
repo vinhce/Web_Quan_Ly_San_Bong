@@ -95,7 +95,7 @@ function getDBConnection($fatalOnFail = true) {
  * Tự động khởi tạo bảng và dữ liệu mẫu nếu database mới tạo chưa có bảng
  */
 function ensureSchemaInitialized(PDO $pdo) {
-    $markerFile = dirname(__DIR__) . '/logs/.schema_v3_ready';
+    $markerFile = dirname(__DIR__) . '/logs/.schema_v4_ready';
     if (is_file($markerFile)) {
         return;
     }

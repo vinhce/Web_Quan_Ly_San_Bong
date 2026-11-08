@@ -92,11 +92,20 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
             'P5-A'   => ['name' => 'Sân 5 - Sân A', 'base_price' => 250000, 'peak_price' => 350000, 'status' => 'Hoạt động'],
             'P5-B'   => ['name' => 'Sân 5 - Sân B', 'base_price' => 250000, 'peak_price' => 350000, 'status' => 'Hoạt động'],
             'P5-C'   => ['name' => 'Sân 5 - Sân C (Mới)', 'base_price' => 280000, 'peak_price' => 380000, 'status' => 'Hoạt động'],
+            'P5-D'   => ['name' => 'Sân 5 - Sân D (Khán Đài Đông)', 'base_price' => 250000, 'peak_price' => 350000, 'status' => 'Hoạt động'],
+            'P5-E'   => ['name' => 'Sân 5 - Sân E (Mini VIP)', 'base_price' => 280000, 'peak_price' => 380000, 'status' => 'Hoạt động'],
+            'P5-F'   => ['name' => 'Sân 5 - Sân F (Trẻ Trung)', 'base_price' => 250000, 'peak_price' => 350000, 'status' => 'Hoạt động'],
             'P7-A'   => ['name' => 'Sân 7 - Sân A (Trung tâm)', 'base_price' => 450000, 'peak_price' => 650000, 'status' => 'Hoạt động'],
             'P7-B'   => ['name' => 'Sân 7 - Sân B', 'base_price' => 400000, 'peak_price' => 600000, 'status' => 'Hoạt động'],
             'P7-C'   => ['name' => 'Sân 7 - Sân C (Bảo trì cỏ)', 'base_price' => 400000, 'peak_price' => 600000, 'status' => 'Bảo trì'],
             'P7-D'   => ['name' => 'Sân 7 - Sân D (VIP)', 'base_price' => 500000, 'peak_price' => 750000, 'status' => 'Hoạt động'],
-            'P11-GH' => ['name' => 'Sân 11 - Sân Ghép (A+B)', 'base_price' => 800000, 'peak_price' => 1200000, 'status' => 'Hoạt động']
+            'P7-E'   => ['name' => 'Sân 7 - Sân E (Mặt Cỏ SIS)', 'base_price' => 450000, 'peak_price' => 650000, 'status' => 'Hoạt động'],
+            'P7-F'   => ['name' => 'Sân 7 - Sân F (Khán Đài B)', 'base_price' => 420000, 'peak_price' => 620000, 'status' => 'Hoạt động'],
+            'P7-G'   => ['name' => 'Sân 7 - Sân G (Đèn LED Pro)', 'base_price' => 420000, 'peak_price' => 620000, 'status' => 'Hoạt động'],
+            'P11-GH' => ['name' => 'Sân 11 - Sân Ghép (A+B)', 'base_price' => 800000, 'peak_price' => 1200000, 'status' => 'Hoạt động'],
+            'P11-A'  => ['name' => 'Sân 11 - Sân Tiêu Chuẩn Quốc Gia', 'base_price' => 900000, 'peak_price' => 1400000, 'status' => 'Hoạt động'],
+            'P11-B'  => ['name' => 'Sân 11 - Sân Ghép (C+D)', 'base_price' => 800000, 'peak_price' => 1200000, 'status' => 'Hoạt động'],
+            'P11-C'  => ['name' => 'Sân 11 - Sân Trung Tâm VFF', 'base_price' => 950000, 'peak_price' => 1500000, 'status' => 'Hoạt động']
         ];
         $fallbackSlots = [
             'S01' => ['slot_time' => '05:30 - 06:30', 'is_peak' => 0, 'duration' => 1.0],

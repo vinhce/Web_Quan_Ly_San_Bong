@@ -6,6 +6,7 @@ let currentDraft = null;
 let generatedBookingCode = '';
 let sepayPollTimer = null;
 let isPaymentAlreadyConfirmed = false;
+let redeemedBottles = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
@@ -63,6 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   renderCheckoutDetails();
+  setupLoyaltyWaterRedemption();
   const initialRemaining = Math.max(0, Math.ceil((Number(currentDraft.expiresAt) - Date.now()) / 1000));
   startCountdown(initialRemaining);
 
@@ -275,6 +277,67 @@ function startCountdown(seconds) {
   }, 1000);
 }
 
+function setupLoyaltyWaterRedemption() {
+  const db = window.SanBongApp.SanBongDB;
+  const user = db.getUser();
+  const userPoints = typeof user?.points === 'number' ? user.points : 820;
+  const maxBottles = Math.floor(userPoints / 100);
+
+  const pointsEl = document.getElementById('current-user-points');
+  if (pointsEl) pointsEl.textContent = `${userPoints}đ`;
+
+  const maxEl = document.getElementById('max-redeemable-bottles');
+  if (maxEl) maxEl.textContent = `${maxBottles} chai`;
+
+  const btnSub = document.getElementById('btn-sub-water');
+  const btnAdd = document.getElementById('btn-add-water');
+  const countEl = document.getElementById('redeemed-bottles-count');
+  const summaryBox = document.getElementById('points-exchange-summary');
+  const deductEl = document.getElementById('points-to-deduct');
+  const receivedEl = document.getElementById('water-bottles-received');
+  const coRow = document.getElementById('co-redeemed-water-row');
+  const coText = document.getElementById('co-redeemed-water-text');
+
+  function renderRedemptionState() {
+    if (countEl) countEl.textContent = String(redeemedBottles);
+    if (btnSub) btnSub.disabled = (redeemedBottles <= 0);
+    if (btnAdd) btnAdd.disabled = (redeemedBottles >= maxBottles);
+
+    if (redeemedBottles > 0) {
+      if (summaryBox) summaryBox.classList.remove('hidden');
+      if (deductEl) deductEl.textContent = `${redeemedBottles * 100} điểm`;
+      if (receivedEl) receivedEl.textContent = `${redeemedBottles} chai Aquafina miễn phí`;
+      if (coRow) coRow.classList.remove('hidden');
+      if (coText) coText.textContent = `+${redeemedBottles} chai Aquafina (-${redeemedBottles * 100}đ)`;
+    } else {
+      if (summaryBox) summaryBox.classList.add('hidden');
+      if (coRow) coRow.classList.add('hidden');
+    }
+
+    if (currentDraft) {
+      currentDraft.redeemedBottles = redeemedBottles;
+      currentDraft.pointsUsed = redeemedBottles * 100;
+      sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
+    }
+  }
+
+  btnSub?.addEventListener('click', () => {
+    if (redeemedBottles > 0) {
+      redeemedBottles--;
+      renderRedemptionState();
+    }
+  });
+
+  btnAdd?.addEventListener('click', () => {
+    if (redeemedBottles < maxBottles) {
+      redeemedBottles++;
+      renderRedemptionState();
+    }
+  });
+
+  renderRedemptionState();
+}
+
 function copyText(elementId) {
   const text = document.getElementById(elementId)?.innerText || '';
   navigator.clipboard.writeText(text).then(() => {
@@ -341,6 +404,18 @@ async function confirmPayment(isAuto = false) {
   const db = window.SanBongApp.SanBongDB;
   db.updateBookingStatus(generatedBookingCode, 'Đã xác nhận', 'Đã cọc 30%');
 
+  // Khấu trừ điểm đã đổi nước & tích luỹ điểm thưởng dùng cho trận sau
+  const user = db.getUser();
+  const currentPoints = typeof user?.points === 'number' ? user.points : 820;
+  const pointsUsed = redeemedBottles * 100;
+  const afterDeduction = Math.max(0, currentPoints - pointsUsed);
+  const POINTS_AWARDED = 100; // Điểm thưởng trận sau
+  const newPoints = afterDeduction + POINTS_AWARDED;
+
+  if (db.updateUser) {
+    db.updateUser({ points: newPoints });
+  }
+
   const rawBooking = sessionStorage.getItem('sb_latest_booking');
   let currentBooking = null;
   if (rawBooking) {
@@ -354,7 +429,27 @@ async function confirmPayment(isAuto = false) {
   if (currentBooking) {
     currentBooking.status = 'Đã xác nhận';
     currentBooking.paymentStatus = 'Đã cọc 30%';
+    currentBooking.pointsUsed = pointsUsed;
+    currentBooking.redeemedBottles = redeemedBottles;
+    currentBooking.pointsAwarded = POINTS_AWARDED;
+    currentBooking.newPointsBalance = newPoints;
     sessionStorage.setItem('sb_latest_booking', JSON.stringify(currentBooking));
+
+    if (db.getAllBookings) {
+      const all = db.getAllBookings();
+      const idx = all.findIndex(b => b.code === generatedBookingCode);
+      if (idx !== -1) {
+        all[idx] = Object.assign(all[idx], {
+          status: 'Đã xác nhận',
+          paymentStatus: 'Đã cọc 30%',
+          pointsUsed: pointsUsed,
+          redeemedBottles: redeemedBottles,
+          pointsAwarded: POINTS_AWARDED,
+          newPointsBalance: newPoints
+        });
+        localStorage.setItem('sb_bookings_v1', JSON.stringify(all));
+      }
+    }
   }
 
   sessionStorage.removeItem('sb_booking_draft');
