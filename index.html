@@ -273,6 +273,15 @@
 
   </main>
 
+  <!-- PITCH DETAIL MODAL (Cửa sổ Popup chi tiết khi bấm nút) -->
+  <div id="pitch-detail-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeModal()">
+    <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div id="modal-content" class="p-6 space-y-6">
+        <!-- Rendered dynamically by openPitchDetail() -->
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
