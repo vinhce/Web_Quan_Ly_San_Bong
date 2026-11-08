@@ -4,9 +4,18 @@
 
 let currentPitches = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-  const db = window.SanBongApp?.SanBongDB;
-  currentPitches = db ? db.getPitches() : [];
+document.addEventListener('DOMContentLoaded', async () => {
+  // Nạp dữ liệu sân bóng qua Fetch API
+  if (window.SanBongApp?.SanBongAPI) {
+    try {
+      currentPitches = await window.SanBongApp.SanBongAPI.getPitches();
+    } catch (e) {
+      currentPitches = window.SanBongApp.SanBongDB ? window.SanBongApp.SanBongDB.getPitches() : [];
+    }
+  } else {
+    const db = window.SanBongApp?.SanBongDB;
+    currentPitches = db ? db.getPitches() : [];
+  }
 
   // Parse URL parameters (từ search form ở trang chủ)
   const urlParams = new URLSearchParams(window.location.search);

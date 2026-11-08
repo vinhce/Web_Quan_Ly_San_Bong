@@ -24,9 +24,15 @@
 
     <div class="relative max-w-7xl mx-auto px-4 md:px-8">
       <div class="max-w-3xl mb-8 lg:mb-10">
-        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#16A34A]/20 border border-[#16A34A]/40 text-[#4ADE80] text-xs font-semibold uppercase tracking-wider mb-4">
-          <span class="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse"></span>
-          Cập nhật khung giờ trống theo thời gian thực
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#16A34A]/20 border border-[#16A34A]/40 text-[#4ADE80] text-xs font-semibold uppercase tracking-wider">
+            <span class="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse"></span>
+            Cập nhật khung giờ trống theo thời gian thực
+          </div>
+          <div id="hero-weather-badge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-semibold">
+            <span>🌤️</span>
+            <span>Đang nạp thời tiết sân Mỹ Đình (Fetch API)...</span>
+          </div>
         </div>
         <h1 class="font-heading font-extrabold text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-tight mb-4">
           Đặt sân bóng đá nhanh, giữ chỗ tự động trong 30 giây
@@ -250,6 +256,7 @@
   <!-- SCRIPTS -->
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/index.js"></script>
 </body>
 </html>

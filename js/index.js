@@ -1,8 +1,9 @@
 /**
  * SÂN BÓNG PRO - TRANG CHỦ LOGIC (index.js)
+ * Tích hợp Fetch API tải thời tiết thời gian thực và nạp danh sách sân
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // 1. Render Hero Pitch Vector Background
   const heroBg = document.getElementById('hero-pitch-bg');
   if (heroBg && window.SanBongApp) {
@@ -16,10 +17,33 @@ document.addEventListener('DOMContentLoaded', () => {
     searchDateInput.value = today;
   }
 
-  // 2. Render 3 Featured Pitches
-  const db = window.SanBongApp?.SanBongDB;
-  const pitches = db ? db.getPitches().slice(0, 3) : [];
+  // 2. FETCH THỜI TIẾT THỜI GIAN THỰC (FETCH API)
+  const weatherBadge = document.getElementById('hero-weather-badge');
+  if (weatherBadge && window.SanBongApp?.SanBongAPI) {
+    try {
+      const weather = await window.SanBongApp.SanBongAPI.fetchWeather();
+      weatherBadge.innerHTML = `
+        <span>${weather.icon}</span>
+        <span>Mỹ Đình: <b>${weather.temperature}°C</b> · ${weather.condition}</span>
+      `;
+    } catch (e) {
+      weatherBadge.innerHTML = `<span>☀️</span><span>Mỹ Đình: 26°C · Sân khô ráo</span>`;
+    }
+  }
+
+  // 3. FETCH & RENDER 3 FEATURED PITCHES (FETCH API)
   const grid = document.getElementById('featured-pitches-grid');
+  let pitches = [];
+  if (window.SanBongApp?.SanBongAPI) {
+    try {
+      const allPitches = await window.SanBongApp.SanBongAPI.getPitches();
+      pitches = allPitches.slice(0, 3);
+    } catch (e) {
+      pitches = window.SanBongApp.SanBongDB?.getPitches().slice(0, 3) || [];
+    }
+  } else {
+    pitches = window.SanBongApp?.SanBongDB?.getPitches().slice(0, 3) || [];
+  }
 
   if (grid && window.SanBongApp) {
     grid.innerHTML = pitches.map(p => `
@@ -48,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="text-[11px] text-[#64748B]">Giá từ</div>
               <div class="font-heading font-extrabold text-[#16A34A] text-lg">${window.SanBongApp.formatVND(p.basePrice)}<span class="text-xs font-normal text-[#64748B]">/trận</span></div>
             </div>
-            <a href="html/booking.html?pitch=${p.id}" class="btn-base btn-primary text-xs font-bold px-4">
+            <a href="html/booking.html?pitchId=${p.id}" class="btn-base btn-primary text-xs font-bold px-4">
               Đặt sân ngay
             </a>
           </div>
@@ -57,7 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
-  // 3. Render Vouchers List
+  // 4. Render Vouchers List
+  const db = window.SanBongApp?.SanBongDB;
   const vouchers = db ? db.getVouchers() : [];
   const vouchersContainer = document.getElementById('vouchers-list');
   if (vouchersContainer) {
@@ -76,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
-  // 4. Xử lý Form tìm kiếm
+  // 5. Xử lý Form tìm kiếm
   const searchForm = document.getElementById('hero-search-form');
   if (searchForm) {
     searchForm.addEventListener('submit', (e) => {

@@ -139,7 +139,13 @@ function copyText(elementId) {
   });
 }
 
-function confirmPayment() {
+async function confirmPayment() {
+  const btn = document.getElementById('confirm-payment-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang xác thực đơn qua hệ thống...';
+  }
+
   const db = window.SanBongApp.SanBongDB;
   const slots = db.getTimeSlots();
   const slot = slots.find(s => s.id === currentDraft.slotId);
@@ -159,7 +165,16 @@ function confirmPayment() {
     paymentMethod: 'VietQR Chuyển khoản'
   });
 
-  // Ghi đè mã booking để khớp giao diện nếu cần
+  // Gọi Fetch API gửi dữ liệu đơn đặt sân lên server (Fetch POST)
+  if (window.SanBongApp?.SanBongAPI) {
+    await window.SanBongApp.SanBongAPI.postBooking({
+      code: newBooking.code,
+      booking: newBooking,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Ghi đè mã booking để khớp giao diện
   sessionStorage.setItem('sb_latest_booking', JSON.stringify(newBooking));
   sessionStorage.removeItem('sb_booking_draft');
 
