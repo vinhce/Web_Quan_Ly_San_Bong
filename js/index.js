@@ -46,21 +46,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (grid && window.SanBongApp) {
     grid.innerHTML = pitches.map(p => `
-      <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0] w-[85vw] sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start">
-        <div class="relative">
-          ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-44')}
-          <div class="absolute top-3 left-3 flex gap-1.5">
+      <div class="group ui-card overflow-hidden flex flex-col hover:shadow-xl transition-all border-[#E2E8F0] w-[85vw] sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start">
+        <!-- Pitch Graphic with Smooth Hover Details Overlay -->
+        <div class="relative overflow-hidden cursor-pointer" onclick="window.location.href='html/booking.html?pitchId=${p.id}'" title="Nhấn để đặt sân ${p.name}">
+          ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-48')}
+          
+          <!-- Normal badges (fade out on hover) -->
+          <div class="absolute top-3 left-3 flex gap-1.5 transition-opacity duration-300 group-hover:opacity-0">
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${p.typeName}</span>
           </div>
-          <div class="absolute bottom-3 left-3">
+          <div class="absolute bottom-3 left-3 transition-opacity duration-300 group-hover:opacity-0">
             <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A] shadow-sm">
               Còn khung giờ trống hôm nay
             </span>
           </div>
+
+          <!-- DETAIL HOVER OVERLAY (Dạng sân hover hiển thị chi tiết) -->
+          <div class="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm text-white p-4 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between z-10 pointer-events-none">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-[#4ADE80] uppercase tracking-wider">${p.typeName} · Chuẩn FIFA</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#16A34A] text-white">Chi tiết sân</span>
+              </div>
+              <div class="text-xs space-y-1.5 text-slate-200">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-slate-400">📐 Kích thước:</span>
+                  <span class="font-semibold text-white">${p.size}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-slate-400">💡 Chiếu sáng:</span>
+                  <span class="font-semibold text-white">Đèn LED 400W chống chói</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-slate-400">🌿 Mặt cỏ:</span>
+                  <span class="font-semibold text-white truncate">${p.grass.split(',')[0]}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-slate-400">⚡ Giờ vàng:</span>
+                  <span class="font-bold text-[#4ADE80]">${window.SanBongApp.formatVND(p.peakPrice)}/h</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-300">
+              <span>✓ Tắm nóng lạnh & Bãi xe</span>
+              <span class="text-[#4ADE80] font-semibold flex items-center gap-0.5">Đặt lịch ngay →</span>
+            </div>
+          </div>
         </div>
+
         <div class="p-5 flex-1 flex flex-col justify-between">
           <div>
-            <h3 class="font-heading font-bold text-lg text-[#0F172A] mb-1.5">${p.name}</h3>
+            <h3 class="font-heading font-bold text-lg text-[#0F172A] mb-1.5 group-hover:text-[#16A34A] transition-colors cursor-pointer" onclick="window.location.href='html/booking.html?pitchId=${p.id}'">${p.name}</h3>
             <p class="text-xs text-[#64748B] mb-3 line-clamp-2">${p.grass}</p>
             <div class="flex flex-wrap gap-1.5 mb-4">
               ${(p.amenities || []).slice(0, 3).map(a => `<span class="px-2 py-0.5 rounded bg-[#F1F5F9] text-[11px] text-[#475569] font-medium">${a}</span>`).join('')}

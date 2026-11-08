@@ -62,20 +62,40 @@ function renderPitches() {
   grid.innerHTML = list.map(p => {
     const isMaint = p.status === 'Bảo trì';
     return `
-      <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
-        <div class="relative cursor-pointer" onclick="openPitchDetail('${p.id}')">
+      <div class="group ui-card overflow-hidden flex flex-col hover:shadow-xl transition-all border-[#E2E8F0]">
+        <div class="relative cursor-pointer overflow-hidden" onclick="openPitchDetail('${p.id}')">
           ${window.SanBongApp.renderPitchSVG(p.variant || 'standard', 'h-48')}
-          <div class="absolute top-3 left-3 flex gap-1.5">
+          <div class="absolute top-3 left-3 flex gap-1.5 transition-opacity duration-300 group-hover:opacity-0">
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${p.typeName}</span>
             ${p.id === 'P11-ALL' ? '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DBEAFE] text-[#2563EB] shadow-sm">Ghép 7-A + 7-B</span>' : ''}
           </div>
-          <div class="absolute top-3 right-3">
+          <div class="absolute top-3 right-3 transition-opacity duration-300 group-hover:opacity-0">
             ${window.SanBongApp.statusPill(p.status)}
           </div>
-          <div class="absolute bottom-3 left-3">
+          <div class="absolute bottom-3 left-3 transition-opacity duration-300 group-hover:opacity-0">
             <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isMaint ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#DCFCE7] text-[#16A34A]'} shadow-sm">
               ${isMaint ? 'Đang bảo dưỡng mặt cỏ' : 'Sẵn sàng nhận lịch hôm nay'}
             </span>
+          </div>
+
+          <!-- DETAIL HOVER OVERLAY -->
+          <div class="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm text-white p-4 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between z-10 pointer-events-none">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-[#4ADE80] uppercase tracking-wider">${p.typeName} · Chuẩn FIFA</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#16A34A] text-white">Chi tiết</span>
+              </div>
+              <div class="text-xs space-y-1 text-slate-200">
+                <div>📐 Kích thước: <b class="text-white">${p.size}</b></div>
+                <div>💡 Chiếu sáng: <b class="text-white">LED 400W chống chói</b></div>
+                <div class="truncate">🌿 Mặt cỏ: <b class="text-white">${p.grass.split(',')[0]}</b></div>
+                <div>⚡ Giờ vàng: <b class="text-[#4ADE80]">${window.SanBongApp.formatVND(p.peakPrice)}/h</b></div>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-300">
+              <span>Bấm xem popup đầy đủ</span>
+              <span class="text-[#4ADE80] font-semibold">Xem thêm →</span>
+            </div>
           </div>
         </div>
 
@@ -103,7 +123,7 @@ function renderPitches() {
                 Đang bảo trì
               </button>
             ` : `
-              <a href="booking.html?pitchId=${p.id}" class="btn-base btn-primary flex-1 text-xs">
+              <a href="booking.html?pitchId=${p.id}" class="btn-base btn-primary flex-1 text-xs text-center">
                 Đặt sân này
               </a>
             `}
