@@ -15,3 +15,18 @@ AGENTS.md
 # Logs & Temporary files
 *.log
 *.tmp
+logs/
+
+# Environment & Credentials
+.env
+.env.local
+.env.*.local
+*.sql.bak
+backups/
+
+# Backend API Runtime & Temp files
+api/*.json
+api/*.log
+temp_app.txt
+
+

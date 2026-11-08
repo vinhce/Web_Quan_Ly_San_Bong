@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               <button onclick="openPitchDetail('${p.id}')" class="btn-sm btn-secondary text-xs font-bold px-3 hover:border-[#16A34A] hover:text-[#16A34A] transition-colors">
                 Chi tiết sân
               </button>
-              <a href="html/booking.html?pitchId=${p.id}" class="btn-sm btn-primary text-xs font-bold px-3 shadow-sm hover:bg-[#15803D] transition-colors">
+              <a href="/booking?pitchId=${p.id}" class="btn-sm btn-primary text-xs font-bold px-3 shadow-sm hover:bg-[#15803D] transition-colors">
                 Đặt sân ngay
               </a>
             </div>
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           ${isMaint ? `
             <button class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
           ` : `
-            <a href="html/booking.html?pitchId=${pitch.id}" class="btn-base btn-primary text-xs font-bold px-5">
+            <a href="/booking?pitchId=${pitch.id}" class="btn-base btn-primary text-xs font-bold px-5">
               Tiến hành chọn giờ & Đặt sân ngay →
             </a>
           `}
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       const d = document.getElementById('search-date').value;
       const t = document.getElementById('search-type').value;
-      window.location.href = `html/fields.html?date=${encodeURIComponent(d)}&type=${encodeURIComponent(t)}`;
+      window.location.href = `/fields?date=${encodeURIComponent(d)}&type=${encodeURIComponent(t)}`;
     });
   }
 });

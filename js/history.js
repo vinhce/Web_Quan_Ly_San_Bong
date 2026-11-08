@@ -101,7 +101,7 @@ function renderHistory() {
               </button>
             ` : ''}
             ${isCompleted ? `
-              <a href="booking.html?pitchId=${b.pitchId}" class="btn-base btn-primary text-xs">
+              <a href="/booking?pitchId=${b.pitchId}" class="btn-base btn-primary text-xs">
                 Đặt lại ca này
               </a>
             ` : ''}

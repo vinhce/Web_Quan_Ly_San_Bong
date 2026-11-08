@@ -4,7 +4,63 @@
 
 let activeModule = 'overview';
 
+// Đăng xuất Quản trị viên an toàn
+function handleAdminLogout() {
+  if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi Bảng Điều Khiển Quản Trị?')) {
+    sessionStorage.removeItem('sb_current_user');
+    fetch('../api/auth.php?action=logout', { method: 'POST' })
+      .finally(() => {
+        window.location.replace('/login');
+      });
+  }
+}
+window.handleAdminLogout = handleAdminLogout;
+
 document.addEventListener('DOMContentLoaded', () => {
+  // 1. Kiểm tra xác thực phía client (Session Storage)
+  let localUser = null;
+  try {
+    localUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+  } catch (e) {}
+
+  if (!localUser || localUser.role !== 'admin') {
+    document.documentElement.style.display = 'none';
+    window.location.replace('/login?redirect=portal-admin');
+    return;
+  }
+
+  // Cập nhật tên Admin tạm thời từ sessionStorage
+  const nameEl = document.getElementById('admin-name');
+  const avEl = document.getElementById('admin-avatar');
+  if (nameEl && localUser.full_name) nameEl.textContent = localUser.full_name;
+  if (avEl && localUser.full_name) {
+    const initials = localUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase();
+    avEl.textContent = initials || 'AD';
+  }
+
+  // 2. Xác thực phiên PHP Server-Side (Chống bypass/leo thang quyền)
+  fetch('../api/auth.php?action=me')
+    .then(res => res.json())
+    .then(data => {
+      if (!data || !data.success || !data.logged_in || data.user.role !== 'admin') {
+        sessionStorage.removeItem('sb_current_user');
+        document.documentElement.style.display = 'none';
+        alert('Phiên làm việc đã hết hạn hoặc không có quyền Quản trị. Vui lòng đăng nhập lại.');
+        window.location.replace('/login?redirect=portal-admin');
+        return;
+      }
+      if (nameEl && data.user.full_name) nameEl.textContent = data.user.full_name;
+      if (avEl && data.user.full_name) {
+        const initials = data.user.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase();
+        avEl.textContent = initials || 'AD';
+      }
+    })
+    .catch(() => {
+      sessionStorage.removeItem('sb_current_user');
+      document.documentElement.style.display = 'none';
+      window.location.replace('/login?redirect=portal-admin');
+    });
+
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 

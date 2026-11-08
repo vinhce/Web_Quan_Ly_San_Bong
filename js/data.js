@@ -185,11 +185,11 @@ const DEFAULT_USER = {
 };
 
 const DEFAULT_BANK_INFO = {
-  bankName: 'Vietcombank',
-  bankCode: 'VCB',
-  accountNumber: '0123456789',
+  bankName: 'Ngân hàng Quân Đội (MBBank)',
+  bankCode: 'MB',
+  accountNumber: '0352313548',
   accountName: 'NGUYEN QUANG VINH',
-  branch: 'Chi nhánh Mỹ Đình, Hà Nội',
+  branch: 'Chi nhánh Hà Nội',
   depositRate: 0.3 // Cọc 30%
 };
 

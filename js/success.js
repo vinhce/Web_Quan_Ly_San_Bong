@@ -2,7 +2,10 @@
  * SÂN BÓNG PRO - THÀNH CÔNG & VÉ ĐẶT SÂN (success.js)
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const mainEl = document.querySelector('main');
+  if (mainEl) mainEl.style.visibility = 'hidden';
+
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
@@ -17,28 +20,83 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!booking) {
     const rawLatest = sessionStorage.getItem('sb_latest_booking');
     if (rawLatest) {
-      try { booking = JSON.parse(rawLatest); } catch (e) {}
+      try {
+        const parsed = JSON.parse(rawLatest);
+        if (!codeParam || parsed.code === codeParam) {
+          booking = parsed;
+        }
+      } catch (e) {}
     }
   }
 
+  const checkCode = codeParam || (booking ? booking.code : '');
+  const checkoutUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('checkout') : '/checkout';
+
+  if (!checkCode) {
+    window.location.replace(checkoutUrl);
+    return;
+  }
+
+  // Xác thực bắt buộc với cổng SePay phía Server trước khi hiển thị vé
+  const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
+  let serverVerifiedPaid = false;
+  try {
+    const res = await fetch(`${apiBase}api/check_payment.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`, {
+      cache: 'no-store'
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.paid === true) {
+        serverVerifiedPaid = true;
+      }
+    }
+  } catch (e) {}
+
+  if (!serverVerifiedPaid) {
+    alert(`⚠️ ĐƠN ĐẶT SÂN ${checkCode} CHƯA ĐƯỢC THANH TOÁN CỌC!\n\nHệ thống SePay chưa ghi nhận giao dịch chuyển khoản cho mã đơn này. Vui lòng hoàn tất thanh toán VietQR trước khi nhận vé.`);
+    window.location.replace(checkoutUrl);
+    return;
+  }
+
+  if (mainEl) mainEl.style.visibility = 'visible';
+
   if (!booking) {
-    booking = db.getAllBookings()[0] || {
-      code: 'SB-20261106-0042',
+    booking = {
+      code: checkCode,
       customerName: 'Trần Minh Hoàng',
       phone: '0352313548',
       pitchName: 'Sân 7 - Sân A (Trung tâm)',
       date: new Date().toISOString().split('T')[0],
       slotTime: '18:30 - 20:00',
-      totalPrice: 1020000,
-      depositAmount: 306000,
-      remainingAmount: 714000,
+      totalPrice: 891000,
+      depositAmount: 267300,
+      remainingAmount: 623700,
+      paymentStatus: 'Đã cọc 30%',
       services: [{ name: 'Nước suối', quantity: 4 }, { name: 'Thuê áo bib', quantity: 2 }]
     };
+  } else {
+    booking.status = 'Đã xác nhận';
+    booking.paymentStatus = 'Đã cọc 30%';
+    db.updateBookingStatus(booking.code, 'Đã xác nhận', 'Đã cọc 30%');
   }
 
   // Điền dữ liệu vào vé
   const codeEl = document.getElementById('ticket-booking-code');
   if (codeEl) codeEl.textContent = booking.code;
+
+  // Cập nhật trạng thái thanh toán thực tế của vé
+  const badgeEl = document.getElementById('ticket-status-badge');
+  const isPaid = booking.paymentStatus === 'Đã cọc 30%' || booking.paymentStatus === 'Đã thanh toán đủ';
+  if (badgeEl) {
+    if (isPaid) {
+      badgeEl.className = 'px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold';
+      badgeEl.textContent = '✓ Đã xác nhận & Cọc 30%';
+    } else {
+      badgeEl.className = 'px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold';
+      badgeEl.textContent = '⏳ Chờ duyệt cọc (Chưa thanh toán)';
+    }
+  }
+
   const pNameEl = document.getElementById('ticket-pitch-name');
   if (pNameEl) pNameEl.textContent = booking.pitchName;
   const dtEl = document.getElementById('ticket-datetime');

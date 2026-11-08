@@ -292,5 +292,5 @@ function proceedToCheckout() {
   };
 
   sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
-  window.location.href = 'checkout.html';
+  window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('checkout') : '/checkout';
 }

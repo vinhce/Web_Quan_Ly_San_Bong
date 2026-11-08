@@ -32,17 +32,23 @@
     return dateStr;
   }
 
-  // Helper giải quyết đường dẫn tương đối giữa root (index.html) và thư mục html/
-  function getRelativePath(target) {
+  // Helper giải quyết đường dẫn Clean URLs và tương thích cả Root Hosting lẫn Localhost
+  function getAppBase() {
     const pathname = window.location.pathname.replace(/\\/g, '/');
-    const isInHtmlFolder = pathname.includes('/html/') || pathname.endsWith('/html');
-    if (isInHtmlFolder) {
-      if (target === 'index.html') return '../index.html';
-      return target;
-    } else {
-      if (target === 'index.html') return 'index.html';
-      return `html/${target}`;
+    const match = pathname.match(/^(.*?\/Quan_Ly_San_Bong)/i);
+    return match ? match[1] : '';
+  }
+
+  function getRelativePath(target) {
+    const base = getAppBase();
+    if (!target || target === 'index.html' || target === '/' || target === '') {
+      return base ? `${base}/` : '/';
     }
+    const cleanTarget = String(target).replace(/^\.\.\//, '').replace(/^html\//, '').replace(/^\//, '').replace(/\.html$/, '');
+    if (cleanTarget === 'portal-admin' || cleanTarget === 'portal-admin/') {
+      return base ? `${base}/portal-admin/` : '/portal-admin/';
+    }
+    return base ? `${base}/${cleanTarget}` : `/${cleanTarget}`;
   }
 
   // 3. ICONS SVG DICTIONARY (24x24 & 20x20 tiêu chuẩn)
@@ -388,11 +394,19 @@
 
     createBooking(bookingInput) {
       const now = new Date();
-      const yyyymmdd = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const randomDigits = Math.floor(1000 + Math.random() * 9000);
-      const bookingCode = `SB-${yyyymmdd}-${randomDigits}`;
-
+      const rand6 = Math.floor(100000 + Math.random() * 900000);
       const pitch = this.getPitchById(bookingInput.pitchId);
+      const pitchIdStr = String(bookingInput.pitchId || '').toUpperCase();
+      let prefix = 'ASFS';
+      if (pitch?.type === 5 || pitchIdStr.startsWith('P5')) {
+        prefix = 'ASFF';
+      } else if (pitch?.type === 7 || pitchIdStr.startsWith('P7')) {
+        prefix = 'ASFS';
+      } else if (pitch?.type === 11 || pitchIdStr.startsWith('P11')) {
+        prefix = 'ASFE';
+      }
+      const bookingCode = bookingInput.code || `${prefix}${rand6}`;
+
       const pricing = this.calculatePrice(
         bookingInput.pitchId,
         bookingInput.date,
@@ -418,8 +432,8 @@
         totalPrice: pricing ? pricing.totalPrice : 0,
         depositAmount: pricing ? pricing.depositAmount : 0,
         remainingAmount: pricing ? pricing.remainingAmount : 0,
-        status: 'Đã xác nhận',
-        paymentStatus: 'Đã cọc 30%',
+        status: bookingInput.status || 'Chờ duyệt cọc',
+        paymentStatus: bookingInput.paymentStatus || 'Chờ cọc 30%',
         paymentMethod: bookingInput.paymentMethod || 'Chuyển khoản đặt cọc',
         createdAt: `${bookingInput.date} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
         note: bookingInput.note || ''
@@ -456,20 +470,36 @@
 
   // 8. REUSABLE UI SHELLS: NAVBAR & FOOTER
   function renderNavbar(activePage = 'Trang chủ') {
+    // 1. Phân quyền người dùng (RBAC) - Đọc thông tin phiên an toàn
+    let currentUser = null;
+    try {
+      currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+    } catch(e) {}
+
     const navItems = [
-      { label: 'Trang chủ', href: getRelativePath('index.html') },
-      { label: 'Danh sách sân', href: getRelativePath('fields.html') },
-      { label: 'Đặt sân nhanh', href: getRelativePath('booking.html') },
-      { label: 'Lịch sử & Hội viên', href: getRelativePath('history.html') },
-      { label: 'Quản trị Admin', href: getRelativePath('admin.html') }
+      { label: 'Trang chủ', href: getRelativePath('') },
+      { label: 'Danh sách sân', href: getRelativePath('fields') },
+      { label: 'Đặt sân nhanh', href: getRelativePath('booking') },
+      { label: 'Lịch sử & Hội viên', href: getRelativePath('history') }
     ];
 
-    const user = SanBongDB.getUser();
+    // CHỈ hiển thị liên kết Quản trị Portal nếu người dùng đăng nhập là ADMIN
+    if (currentUser && currentUser.role === 'admin') {
+      navItems.push({ label: '⚡ Quản trị Portal', href: getRelativePath('portal-admin/') });
+    }
+
+    const defaultUser = SanBongDB.getUser();
+    const user = (currentUser && currentUser.full_name) ? {
+      name: currentUser.full_name,
+      avatar: currentUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
+      tier: currentUser.role === 'admin' ? 'Quản trị viên' : (currentUser.tier || 'Hội viên VIP'),
+      points: currentUser.role === 'admin' ? 9999 : (currentUser.points || 820)
+    } : defaultUser;
 
     return `
     <header class="w-full h-[72px] bg-white border-b border-[#E2E8F0] px-4 md:px-10 flex items-center justify-between sticky top-0 z-50 shadow-sm">
       <div class="flex items-center gap-6 lg:gap-10">
-        <a href="${getRelativePath('index.html')}" class="flex items-center gap-3 group">
+        <a href="${getRelativePath('')}" class="flex items-center gap-3 group">
           <div class="w-10 h-10 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md group-hover:bg-[#15803D] transition-all">
             ${Icons.ball}
           </div>
@@ -494,12 +524,12 @@
       </div>
 
       <div class="flex items-center gap-3 sm:gap-4">
-        <a href="${getRelativePath('history.html')}" class="w-10 h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#F8FAFC] transition-colors" title="Thông báo đặt sân">
+        <a href="${getRelativePath('history')}" class="w-10 h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#F8FAFC] transition-colors" title="Thông báo đặt sân">
           ${Icons.bell}
           <span class="w-2.5 h-2.5 rounded-full bg-[#DC2626] border-2 border-white absolute top-2 right-2"></span>
         </a>
 
-        <a href="${getRelativePath('history.html')}" class="flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0]">
+        <a href="${getRelativePath('history')}" class="flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0]">
           <div class="w-9 h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center">
             ${escapeHTML(user.avatar || 'TH')}
           </div>
@@ -535,10 +565,10 @@
         <div>
           <h4 class="font-heading font-semibold text-[15px] mb-4 text-[#F8FAFC]">Hệ Thống Sân</h4>
           <ul class="space-y-2.5 text-[13px] text-[#94A3B8]">
-            <li><a href="${getRelativePath('fields.html')}" class="hover:text-white transition-colors">Sân 5 người tiêu chuẩn</a></li>
-            <li><a href="${getRelativePath('fields.html')}" class="hover:text-white transition-colors">Sân 7 người trung tâm</a></li>
-            <li><a href="${getRelativePath('fields.html')}" class="hover:text-white transition-colors">Sân 11 người ghép chuẩn VFF</a></li>
-            <li><a href="${getRelativePath('booking.html')}" class="hover:text-white transition-colors">Bảng giá & Khung giờ vàng</a></li>
+            <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 5 người tiêu chuẩn</a></li>
+            <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 7 người trung tâm</a></li>
+            <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 11 người ghép chuẩn VFF</a></li>
+            <li><a href="${getRelativePath('booking')}" class="hover:text-white transition-colors">Bảng giá & Khung giờ vàng</a></li>
           </ul>
         </div>
 
@@ -568,7 +598,6 @@
         <div class="flex items-center gap-6">
           <a href="#" class="hover:text-white">Điều khoản sử dụng</a>
           <a href="#" class="hover:text-white">Chính sách bảo mật</a>
-          <a href="${getRelativePath('admin.html')}" class="text-[#16A34A] hover:underline font-semibold">Khu vực Quản trị viên</a>
         </div>
       </div>
     </footer>`;

@@ -1,11 +1,13 @@
 /**
- * SÂN BÓNG PRO - THANH TOÁN (checkout.js)
+ * SÂN BÓNG PRO - THANH TOÁN TỰ ĐỘNG QUA SEPAY VIETQR (checkout.js)
  */
 
 let currentDraft = null;
 let generatedBookingCode = '';
+let sepayPollTimer = null;
+let isPaymentAlreadyConfirmed = false;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
@@ -33,17 +35,83 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Tạo mã booking tạm
-  const now = new Date();
-  const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const rand = String(Math.floor(Math.random() * 9000) + 1000);
-  generatedBookingCode = `SB-${datePart}-${rand}`;
+  // Tạo mã booking theo chuẩn SePay phân loại sân (ASFF = Sân 5, ASFS = Sân 7, ASFE = Sân 11)
+  const pitch = db.getPitchById(currentDraft.pitchId);
+  const pitchIdStr = String(currentDraft.pitchId || '').toUpperCase();
+  let prefix = 'ASFS';
+  if (pitch?.type === 5 || pitchIdStr.startsWith('P5')) {
+    prefix = 'ASFF';
+  } else if (pitch?.type === 7 || pitchIdStr.startsWith('P7')) {
+    prefix = 'ASFS';
+  } else if (pitch?.type === 11 || pitchIdStr.startsWith('P11')) {
+    prefix = 'ASFE';
+  }
+
+  const HOLD_DURATION_MS = 10 * 60 * 1000;
+  if (currentDraft.code && new RegExp('^' + prefix + '[0-9]{6,8}$', 'i').test(currentDraft.code)) {
+    generatedBookingCode = currentDraft.code.toUpperCase();
+    if (!currentDraft.expiresAt) {
+      currentDraft.expiresAt = Date.now() + HOLD_DURATION_MS;
+      sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
+    }
+  } else {
+    const rand6 = String(Math.floor(100000 + Math.random() * 900000));
+    generatedBookingCode = `${prefix}${rand6}`;
+    currentDraft.code = generatedBookingCode;
+    currentDraft.expiresAt = Date.now() + HOLD_DURATION_MS;
+    sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
+  }
 
   renderCheckoutDetails();
-  startCountdown(10 * 60);
+  const initialRemaining = Math.max(0, Math.ceil((Number(currentDraft.expiresAt) - Date.now()) / 1000));
+  startCountdown(initialRemaining);
 
-  document.getElementById('confirm-payment-btn')?.addEventListener('click', confirmPayment);
+  // Khởi tạo đơn lên CSDL trước để SePay Webhook / Polling có thể ghi nhận
+  await createInitialBookingRecord();
+
+  // Bắt đầu lắng nghe tự động từ SePay (Polling 2.5s)
+  startSePayAutoListener(generatedBookingCode);
+
+  document.getElementById('confirm-payment-btn')?.addEventListener('click', () => confirmPayment(false));
 });
+
+async function createInitialBookingRecord() {
+  const db = window.SanBongApp.SanBongDB;
+  const slots = db.getTimeSlots();
+  const slot = slots.find(s => s.id === currentDraft.slotId);
+
+  // Kiểm tra nếu đơn đã tạo trong localStorage thì không tạo trùng khi F5
+  let existing = db.getAllBookings().find(b => b.code === generatedBookingCode);
+  const newBooking = existing || db.createBooking({
+    code: generatedBookingCode,
+    customerName: currentDraft.customerName,
+    phone: currentDraft.phone,
+    email: 'khachhang@sanbongpro.vn',
+    pitchId: currentDraft.pitchId,
+    date: currentDraft.date,
+    slotId: currentDraft.slotId,
+    slotTime: slot ? slot.time : '18:30 - 20:00',
+    services: currentDraft.services,
+    voucherCode: currentDraft.voucherCode,
+    note: currentDraft.note,
+    status: 'Chờ duyệt cọc',
+    paymentStatus: 'Chờ cọc 30%',
+    paymentMethod: 'VietQR SePay (Tự động)'
+  });
+
+  sessionStorage.setItem('sb_latest_booking', JSON.stringify(newBooking));
+
+  // Gửi lên CSDL server qua API
+  if (window.SanBongApp?.SanBongAPI) {
+    try {
+      await window.SanBongApp.SanBongAPI.postBooking({
+        code: generatedBookingCode,
+        booking: newBooking,
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {}
+  }
+}
 
 function renderCheckoutDetails() {
   const db = window.SanBongApp.SanBongDB;
@@ -75,13 +143,29 @@ function renderCheckoutDetails() {
 
   // Bank info
   const bName = document.getElementById('bank-name');
-  if (bName) bName.textContent = bank.bankName;
+  if (bName) bName.textContent = bank.bankName || 'Ngân hàng Quân Đội (MBBank)';
   const bAcc = document.getElementById('bank-account');
-  if (bAcc) bAcc.textContent = bank.accountNumber;
+  if (bAcc) bAcc.textContent = bank.accountNumber || '0352313548';
   const bOwner = document.getElementById('bank-owner');
-  if (bOwner) bOwner.textContent = bank.accountName;
+  if (bOwner) bOwner.textContent = bank.accountName || 'NGUYEN QUANG VINH';
   const bAmt = document.getElementById('bank-amount');
   if (bAmt) bAmt.textContent = window.SanBongApp.formatVND(calc.depositAmount);
+
+  // Sinh mã SePay VietQR động
+  const qrImg = document.getElementById('sepay-qr-img');
+  const qrLoading = document.getElementById('sepay-qr-loading');
+  if (qrImg) {
+    const sepayBank = bank.bankCode || 'MB';
+    const sepayAcc = bank.accountNumber || '0352313548';
+    const sepayAmt = calc.depositAmount || 0;
+    const sepayDes = generatedBookingCode;
+    const qrUrl = `https://qr.sepay.vn/img?bank=${encodeURIComponent(sepayBank)}&acc=${encodeURIComponent(sepayAcc)}&template=compact&amount=${sepayAmt}&des=${encodeURIComponent(sepayDes)}`;
+    
+    qrImg.src = qrUrl;
+    qrImg.onload = () => {
+      if (qrLoading) qrLoading.classList.add('hidden');
+    };
+  }
 
   // Order Summary
   const pName = document.getElementById('co-pitch-name');
@@ -110,23 +194,84 @@ function renderCheckoutDetails() {
   if (rAmt) rAmt.textContent = window.SanBongApp.formatVND(calc.remainingAmount);
 }
 
+// Lắng nghe trạng thái thanh toán từ SePay theo thời gian thực (Polling mỗi 2.5s)
+function startSePayAutoListener(bookingCode) {
+  if (sepayPollTimer) clearInterval(sepayPollTimer);
+  const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
+
+  sepayPollTimer = setInterval(async () => {
+    if (isPaymentAlreadyConfirmed) {
+      clearInterval(sepayPollTimer);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiBase}api/check_payment.php?code=${encodeURIComponent(bookingCode)}&_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result && result.paid === true) {
+          isPaymentAlreadyConfirmed = true;
+          clearInterval(sepayPollTimer);
+          handleSePayPaymentSuccess(result);
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi mạng ngắt quãng
+    }
+  }, 2500);
+}
+
+// Xử lý khi SePay thông báo tiền đã vào tài khoản
+function handleSePayPaymentSuccess(result) {
+  const badge = document.getElementById('payment-status-badge');
+  const text = document.getElementById('payment-status-text');
+
+  if (badge) {
+    badge.className = 'p-3 rounded-xl bg-[#DCFCE7] border border-[#86EFAC] text-[#15803D] text-xs font-bold flex items-center justify-center md:justify-start gap-2 shadow-sm animate-pulse';
+  }
+  if (text) {
+    text.innerHTML = '🎉 <strong>ĐÃ NHẬN TIỀN CỌC!</strong> Cổng SePay xác nhận giao dịch thành công. Đang chuyển hướng...';
+  }
+
+  // Tự động chuyển trang sau 1.5 giây
+  setTimeout(() => {
+    confirmPayment(true);
+  }, 1500);
+}
+
 function startCountdown(seconds) {
   let remaining = seconds;
   const timerEl = document.getElementById('countdown-timer');
   if (!timerEl) return;
 
+  const updateDisplay = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  updateDisplay(remaining);
+
   const interval = setInterval(() => {
+    if (currentDraft?.expiresAt) {
+      remaining = Math.max(0, Math.ceil((Number(currentDraft.expiresAt) - Date.now()) / 1000));
+    } else {
+      remaining--;
+    }
+
     if (remaining <= 0) {
       clearInterval(interval);
+      if (sepayPollTimer) clearInterval(sepayPollTimer);
       timerEl.textContent = '00:00';
+      sessionStorage.removeItem('sb_booking_draft');
       alert('Khung giờ giữ chỗ đã hết hạn! Vui lòng thao tác lại.');
-      window.location.href = 'booking.html';
+      window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking';
       return;
     }
-    remaining--;
-    const m = Math.floor(remaining / 60);
-    const s = remaining % 60;
-    timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+    updateDisplay(remaining);
   }, 1000);
 }
 
@@ -139,45 +284,82 @@ function copyText(elementId) {
   });
 }
 
-async function confirmPayment() {
+async function confirmPayment(isAuto = false) {
+  if (sepayPollTimer) clearInterval(sepayPollTimer);
+
   const btn = document.getElementById('confirm-payment-btn');
+  const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
+
+  // NẾU BẤM THỦ CÔNG MÀ CHƯA CÓ XÁC NHẬN TỪ SEPAY -> GỌI API KIỂM TRA NGAY LẬP TỨC
+  if (!isAuto && !isPaymentAlreadyConfirmed) {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Đang kiểm tra cổng thanh toán SePay...';
+    }
+
+    try {
+      const response = await fetch(`${apiBase}api/check_payment.php?code=${encodeURIComponent(generatedBookingCode)}&_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result && result.paid === true) {
+          isPaymentAlreadyConfirmed = true;
+          handleSePayPaymentSuccess(result);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi kiểm tra SePay:', e);
+    }
+
+    // CHƯA NHẬN ĐƯỢC TIỀN: BẬT LẠI NÚT, CẬP NHẬT BADGE CẢNH BÁO VÀ CHẶN CHUYỂN TRANG
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '✓ Tôi đã chuyển khoản thành công';
+    }
+    const badge = document.getElementById('payment-status-badge');
+    const text = document.getElementById('payment-status-text');
+    if (badge && text) {
+      badge.className = 'p-2.5 rounded-lg bg-[#FEE2E2] border border-[#FCA5A5] text-[#DC2626] text-xs font-bold flex items-center justify-center md:justify-start gap-2';
+      text.textContent = `Chưa nhận được giao dịch với nội dung "${generatedBookingCode}". Vui lòng quét mã chuyển khoản trước!`;
+    }
+
+    // Khôi phục lại polling để tự động bắt nếu tiền vào sau vài giây
+    startSePayAutoListener(generatedBookingCode);
+
+    alert(`⚠️ CỔNG THANH TOÁN SEPAY CHƯA NHẬN ĐƯỢC TIỀN CỌC!\n\nHệ thống chưa ghi nhận giao dịch chuyển khoản cho mã đơn: ${generatedBookingCode}\n\n• Vui lòng mở App ngân hàng quét mã VietQR hoặc chuyển đúng nội dung "${generatedBookingCode}".\n• Sau khi chuyển tiền thành công, hệ thống sẽ tự động duyệt và cấp vé ngay lập tức!`);
+    return;
+  }
+
   if (btn) {
     btn.disabled = true;
-    btn.textContent = '⏳ Đang xác thực đơn qua hệ thống...';
+    btn.textContent = '✓ SePay xác nhận thành công! Đang chuyển hướng...';
   }
 
+  // Cập nhật trạng thái đơn trong LocalStorage
   const db = window.SanBongApp.SanBongDB;
-  const slots = db.getTimeSlots();
-  const slot = slots.find(s => s.id === currentDraft.slotId);
+  db.updateBookingStatus(generatedBookingCode, 'Đã xác nhận', 'Đã cọc 30%');
 
-  // Tạo booking thật và lưu bền vững vào localStorage
-  const newBooking = db.createBooking({
-    customerName: currentDraft.customerName,
-    phone: currentDraft.phone,
-    email: 'khachhang@sanbongpro.vn',
-    pitchId: currentDraft.pitchId,
-    date: currentDraft.date,
-    slotId: currentDraft.slotId,
-    slotTime: slot ? slot.time : '18:30 - 20:00',
-    services: currentDraft.services,
-    voucherCode: currentDraft.voucherCode,
-    note: currentDraft.note,
-    paymentMethod: 'VietQR Chuyển khoản'
-  });
-
-  // Gọi Fetch API gửi dữ liệu đơn đặt sân lên server (Fetch POST)
-  if (window.SanBongApp?.SanBongAPI) {
-    await window.SanBongApp.SanBongAPI.postBooking({
-      code: newBooking.code,
-      booking: newBooking,
-      timestamp: new Date().toISOString()
-    });
+  const rawBooking = sessionStorage.getItem('sb_latest_booking');
+  let currentBooking = null;
+  if (rawBooking) {
+    try { currentBooking = JSON.parse(rawBooking); } catch (e) {}
   }
 
-  // Ghi đè mã booking để khớp giao diện
-  sessionStorage.setItem('sb_latest_booking', JSON.stringify(newBooking));
+  if (!currentBooking) {
+    currentBooking = db.getBookingByCode ? db.getBookingByCode(generatedBookingCode) : { code: generatedBookingCode };
+  }
+
+  if (currentBooking) {
+    currentBooking.status = 'Đã xác nhận';
+    currentBooking.paymentStatus = 'Đã cọc 30%';
+    sessionStorage.setItem('sb_latest_booking', JSON.stringify(currentBooking));
+  }
+
   sessionStorage.removeItem('sb_booking_draft');
 
-  // Chuyển sang màn hình thành công
-  window.location.href = `success.html?code=${newBooking.code}`;
+  // Chuyển sang màn hình thành công với Clean URL
+  const successUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('success') : '/success';
+  window.location.href = `${successUrl}?code=${generatedBookingCode}`;
 }

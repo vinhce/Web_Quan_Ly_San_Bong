@@ -103,7 +103,7 @@ function renderPitches() {
                 Đang bảo trì
               </button>
             ` : `
-              <a href="booking.html?pitchId=${p.id}" class="btn-base btn-primary flex-1 text-xs text-center">
+              <a href="/booking?pitchId=${p.id}" class="btn-base btn-primary flex-1 text-xs text-center">
                 Đặt sân này
               </a>
             `}
@@ -201,7 +201,7 @@ function openPitchDetail(pitchId) {
       ${isMaint ? `
         <button class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
       ` : `
-        <a href="booking.html?pitchId=${pitch.id}" class="btn-base btn-primary text-xs">
+        <a href="/booking?pitchId=${pitch.id}" class="btn-base btn-primary text-xs">
           Tiến hành chọn giờ & Đặt sân ngay
         </a>
       `}

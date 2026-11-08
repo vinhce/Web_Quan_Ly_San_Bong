@@ -7,20 +7,36 @@ window.SanBongApp = window.SanBongApp || {};
 
 window.SanBongApp.SanBongAPI = {
   /**
-   * 1. Fetch dữ liệu sân bóng từ file data/data.json
+   * 1. Fetch dữ liệu sân bóng từ CSDL MySQL (api/pitches.php) hoặc fallback data/data.json
    */
   async fetchInitialData() {
+    try {
+      const apiUrl = window.SanBongApp.getRelativePath('api/pitches.php?all=1');
+      const response = await fetch(apiUrl);
+      if (response.ok) {
+        const jsonRes = await response.json();
+        if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
+          return {
+            pitches: jsonRes.data.pitches,
+            timeSlots: jsonRes.data.timeSlots || window.SanBongApp.SanBongDB.getTimeSlots(),
+            extraServices: jsonRes.data.extraServices || window.SanBongApp.SanBongDB.getExtraServices(),
+            vouchers: jsonRes.data.vouchers || window.SanBongApp.SanBongDB.getVouchers(),
+            bankInfo: window.SanBongApp.SanBongDB.getBankInfo()
+          };
+        }
+      }
+    } catch (e) {
+      // Bỏ qua nếu môi trường tĩnh chưa bật PHP, chuyển sang fallback
+    }
+
     try {
       const dataUrl = window.SanBongApp.getRelativePath('data/data.json');
       const response = await fetch(dataUrl);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const jsonData = await response.json();
-      console.log('✓ Fetch data/data.json thành công:', jsonData);
-      return jsonData;
+      return await response.json();
     } catch (error) {
-      console.warn('⚠️ Fetch local JSON gặp lỗi (có thể do mở file://), dùng dữ liệu dự phòng:', error.message);
       // Fallback an toàn nếu mở qua giao thức file:// không qua web server
       return {
         pitches: window.SanBongApp.SanBongDB.getPitches(),
@@ -106,23 +122,26 @@ window.SanBongApp.SanBongAPI = {
   },
 
   /**
-   * 5. Gửi dữ liệu đặt sân (POST request qua Fetch)
+   * 5. Gửi dữ liệu đặt sân (POST request qua CSDL PHP hoặc fallback an toàn)
    */
   async postBooking(bookingPayload) {
     try {
-      const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+      const apiUrl = window.SanBongApp.getRelativePath('api/bookings.php');
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(bookingPayload)
       });
-      const result = await response.json();
-      console.log('✓ Fetch POST đặt sân thành công:', result);
-      return { success: true, data: result };
-    } catch (error) {
-      console.warn('⚠️ Fetch POST đặt sân lỗi mạng:', error.message);
-      return { success: true, localOnly: true };
+      if (response.ok) {
+        const result = await response.json();
+        return { success: true, data: result.data || result };
+      }
+    } catch (e) {
+      // Fallback nếu chạy môi trường không có PHP
     }
+
+    return { success: false, localOnly: true };
   }
 };
