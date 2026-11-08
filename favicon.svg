@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="pitchGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16A34A"/>
+      <stop offset="100%" stop-color="#15803D"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Rect -->
+  <rect width="64" height="64" rx="14" fill="url(#pitchGrad)"/>
+  
+  <!-- Ball Outer Circle -->
+  <circle cx="32" cy="32" r="23" fill="#FFFFFF" stroke="#0F172A" stroke-width="2.5"/>
+  
+  <!-- Center Pentagon -->
+  <polygon points="32,22 40,28 37,38 27,38 24,28" fill="#0F172A"/>
+  
+  <!-- Seam Lines from Center Pentagon -->
+  <line x1="32" y1="22" x2="32" y2="9" stroke="#0F172A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="40" y1="28" x2="52" y2="23" stroke="#0F172A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="37" y1="38" x2="47" y2="49" stroke="#0F172A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="27" y1="38" x2="17" y2="49" stroke="#0F172A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="24" y1="28" x2="12" y2="23" stroke="#0F172A" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Peripheral Corner Patches -->
+  <path d="M 27 9.5 L 37 9.5 A 23 23 0 0 0 27 9.5 Z" fill="#0F172A"/>
+  <path d="M 52 23 L 50 31 A 23 23 0 0 0 54 26 Z" fill="#0F172A"/>
+  <path d="M 47 49 L 39 52 A 23 23 0 0 0 46 52.5 Z" fill="#0F172A"/>
+  <path d="M 17 49 L 25 52 A 23 23 0 0 1 18 52.5 Z" fill="#0F172A"/>
+  <path d="M 12 23 L 14 31 A 23 23 0 0 1 10 26 Z" fill="#0F172A"/>
+</svg>
