@@ -271,35 +271,56 @@ function updateBillSummary() {
 }
 
 function proceedToCheckout() {
-  const name = document.getElementById('cust-name')?.value.trim();
-  const phone = document.getElementById('cust-phone')?.value.trim();
+  const db = window.SanBongApp?.SanBongDB;
+  const user = db ? db.getUser() : null;
+
+  let name = document.getElementById('cust-name')?.value.trim() || '';
+  let phone = document.getElementById('cust-phone')?.value.trim() || '';
   const note = document.getElementById('cust-note')?.value.trim() || '';
   const agree = document.getElementById('policy-agree')?.checked;
 
-  if (!name || !phone) {
-    alert('Vui lòng nhập họ tên và số điện thoại người đặt sân.');
-    return;
-  }
   if (!selectedSlotId) {
-    alert('Vui lòng chọn một khung giờ thi đấu còn trống.');
-    return;
-  }
-  if (!agree) {
-    alert('Vui lòng đồng ý với chính sách cọc và giữ sân.');
+    alert('Vui lòng chọn một khung giờ thi đấu còn trống trước khi tiếp tục.');
     return;
   }
 
+  // Lưu bản nháp đặt sân vào sessionStorage trước
   const bookingDraft = {
     pitchId: selectedPitchId,
     date: selectedDate,
     slotId: selectedSlotId,
     services: appliedServices,
     voucherCode: appliedVoucherCode,
-    customerName: name,
-    phone: phone,
+    customerName: name || user?.name || '',
+    phone: phone || user?.phone || '',
     note: note
   };
-
   sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
+
+  // Yêu cầu bắt buộc đăng nhập/đăng ký tài khoản để định danh người chuyển khoản & tích lũy điểm thưởng
+  if (!user || !user.name) {
+    alert('Để xác nhận thông tin chuyển khoản chính xác và tích lũy điểm thưởng hội viên (+100 điểm/trận), quý khách vui lòng đăng nhập hoặc tạo tài khoản mới!');
+    const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
+    window.location.href = loginUrl;
+    return;
+  }
+
+  if (!name && user?.name) name = user.name;
+  if (!phone && user?.phone) phone = user.phone;
+
+  if (!name || !phone) {
+    alert('Vui lòng nhập họ tên và số điện thoại người đặt sân.');
+    return;
+  }
+
+  if (!agree) {
+    alert('Vui lòng đồng ý với chính sách cọc và giữ sân.');
+    return;
+  }
+
+  bookingDraft.customerName = name;
+  bookingDraft.phone = phone;
+  sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
+
   window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('checkout') : '/checkout';
 }

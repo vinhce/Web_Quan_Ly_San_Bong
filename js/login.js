@@ -120,6 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response.ok && res.success) {
         alert('Tạo tài khoản hội viên thành công! Đang chuyển hướng...');
         sessionStorage.setItem('sb_current_user', JSON.stringify(res.user));
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectParam = urlParams.get('redirect');
+        if (redirectParam) {
+          window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(redirectParam) : redirectParam;
+          return;
+        }
+
         const target = res.redirect || 'history';
         window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(target) : `/${target}`;
         return;

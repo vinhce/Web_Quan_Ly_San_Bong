@@ -23,7 +23,7 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 | :--- | :--- | :--- |
 | **Tên đăng nhập (SĐT / Username)** | `vxyen0801` | Có thể nhập `vxyen0801` vào ô *Số điện thoại / Email* |
 | **Email quản trị** | `vxyen0801@sanbongpro.vn` | Cũng có thể dùng để đăng nhập |
-| **Mật khẩu** | `<Mật khẩu quản trị đã thiết lập>` (`clgt****`) | Đã băm một chiều bằng thuật toán **Argon2id** (`PASSWORD_ARGON2ID`), không lưu plaintext |
+| **Mật khẩu** | `clgt12345` | Đã băm một chiều bằng thuật toán **Argon2id** (`PASSWORD_ARGON2ID`), không lưu plaintext trong CSDL |
 | **Vai trò (Role)** | `admin` | Toàn quyền quản trị hệ thống |
 | **Hạng hiển thị** | `Quản trị viên` | Tự động mở nút **⚡ Quản trị Portal** trên thanh điều hướng |
 

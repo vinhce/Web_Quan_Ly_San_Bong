@@ -285,6 +285,30 @@ if ($action === 'register') {
         ], 409);
     }
 
+    // Fallback nếu máy chủ chưa kích hoạt MySQL ($pdo === null)
+    if (!$pdo) {
+        $newUserId = time();
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $newUserId;
+        $_SESSION['user'] = [
+            'id'        => $newUserId,
+            'username'  => $username,
+            'email'     => $email,
+            'phone'     => $phone,
+            'full_name' => $fullName,
+            'role'      => 'user',
+            'points'    => 0,
+            'tier'      => 'Hội viên'
+        ];
+
+        json_response([
+            'success'  => true,
+            'message'  => 'Đăng ký tài khoản thành công!',
+            'user'     => $_SESSION['user'],
+            'redirect' => 'history'
+        ], 201);
+    }
+
     // Hash mật khẩu bằng Argon2id
     $passwordHash = password_hash($password, PASSWORD_ARGON2ID, [
         'memory_cost' => 65536,

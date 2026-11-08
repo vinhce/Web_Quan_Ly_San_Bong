@@ -12,7 +12,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
-  // Đọc đơn nháp từ sessionStorage
+  // 1. Kiểm tra trạng thái đăng nhập: Bắt buộc đăng nhập để xác định danh tính & tích lũy điểm
+  const currentUser = db.getUser();
+  if (!currentUser || !currentUser.name) {
+    alert('Vui lòng đăng nhập hoặc đăng ký tài khoản để tiếp tục thanh toán chuyển khoản và nhận điểm thưởng hội viên!');
+    const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
+    window.location.replace(loginUrl);
+    return;
+  }
+
+  // 2. Đọc đơn nháp từ sessionStorage
   const rawDraft = sessionStorage.getItem('sb_booking_draft');
   if (rawDraft) {
     try {
@@ -28,6 +37,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.replace(window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking');
     return;
   }
+
+  // Tự động đồng bộ thông tin hội viên đã đăng nhập vào draft
+  if (!currentDraft.customerName || currentDraft.customerName === '---' || currentDraft.customerName === 'Khách vãng lai') {
+    currentDraft.customerName = currentUser.name;
+  }
+  if (!currentDraft.phone || currentDraft.phone === '---') {
+    currentDraft.phone = currentUser.phone || currentUser.username || '';
+  }
+  sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
 
   // Tạo mã booking theo chuẩn SePay phân loại sân (ASFF = Sân 5, ASFS = Sân 7, ASFE = Sân 11)
   const pitch = db.getPitchById(currentDraft.pitchId);

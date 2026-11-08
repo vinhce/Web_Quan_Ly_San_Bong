@@ -227,11 +227,18 @@
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(data.DEFAULT_BOOKINGS || []));
       }
       if (!localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS)) {
+        let processed = [];
+        try {
+          processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
+          if (!Array.isArray(processed)) processed = [];
+        } catch (e) {
+          processed = [];
+        }
         const defaultPending = [
           { time: '10:12', code: 'SB-20261106-0042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
           { time: '11:05', code: 'SB-20261106-0044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
           { time: '13:40', code: 'SB-20261106-0045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
-        ];
+        ].filter(item => !processed.includes(item.code));
         localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(defaultPending));
       }
     },
