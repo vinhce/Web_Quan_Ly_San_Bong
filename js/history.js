@@ -59,11 +59,27 @@ function filterHistory(filter) {
 
 function renderHistory() {
   const db = window.SanBongApp.SanBongDB;
+  const user = db.getUser();
   const all = db.getAllBookings();
-  const totBadge = document.getElementById('total-badge');
-  if (totBadge) totBadge.textContent = all.length;
 
-  let list = all.filter(b => {
+  // Chỉ hiển thị đơn của người dùng đăng nhập; khách vãng lai chỉ thấy đơn vừa đặt
+  let userBookings = [];
+  if (user && user.phone) {
+    userBookings = all.filter(b => b.phone === user.phone || b.customerName === user.name);
+  } else {
+    const rawLatest = sessionStorage.getItem('sb_latest_booking');
+    if (rawLatest) {
+      try {
+        const lb = JSON.parse(rawLatest);
+        if (lb && lb.code) userBookings = [lb];
+      } catch (e) {}
+    }
+  }
+
+  const totBadge = document.getElementById('total-badge');
+  if (totBadge) totBadge.textContent = userBookings.length;
+
+  let list = userBookings.filter(b => {
     if (currentFilter === 'all') return true;
     if (currentFilter === 'upcoming') return b.status === 'Đã xác nhận' || b.status === 'Chờ thanh toán' || b.status === 'Đang đá';
     if (currentFilter === 'completed') return b.status === 'Hoàn thành';

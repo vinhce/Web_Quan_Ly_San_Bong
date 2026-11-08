@@ -190,18 +190,7 @@ const DEFAULT_VOUCHERS = [
   }
 ];
 
-const DEFAULT_USER = {
-  id: 'USR-8821',
-  name: 'Trần Minh Hoàng',
-  phone: '0352 313 548',
-  email: 'minhhoang.fc@gmail.com',
-  team: 'Hoàng Long FC',
-  tier: 'Hạng Bạc',
-  points: 820,
-  avatar: 'TH',
-  totalBookings: 14,
-  favoritePitch: 'Sân 7 - Sân A (Trung tâm)'
-};
+const DEFAULT_USER = null;
 
 const DEFAULT_BANK_INFO = {
   bankName: 'Ngân hàng Quân Đội (MBBank)',

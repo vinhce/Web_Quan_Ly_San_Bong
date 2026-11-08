@@ -410,7 +410,7 @@ async function confirmPayment(isAuto = false) {
 
   // Khấu trừ điểm đã đổi nước & tích luỹ điểm thưởng dùng cho trận sau
   const user = db.getUser();
-  const currentPoints = typeof user?.points === 'number' ? user.points : 820;
+  const currentPoints = typeof user?.points === 'number' ? user.points : 0;
   const pointsUsed = redeemedBottles * 100;
   const afterDeduction = Math.max(0, currentPoints - pointsUsed);
   const POINTS_AWARDED = 100; // Điểm thưởng trận sau

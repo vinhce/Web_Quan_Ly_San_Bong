@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lịch Sử Đặt Sân & Hội Viên – Sân Bóng Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v6">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v7">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -22,13 +22,13 @@
         <div class="ui-card p-6 space-y-5">
           <div class="flex items-center gap-4">
             <div id="member-avatar" class="w-14 h-14 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-extrabold text-xl flex items-center justify-center shadow-sm">
-              TH
+              👤
             </div>
             <div>
-              <div id="member-name" class="font-heading font-extrabold text-lg text-[#0F172A]">Trần Minh Hoàng</div>
-              <div id="member-phone" class="text-xs text-[#64748B]">0352 313 548</div>
-              <span id="member-tier-badge" class="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#F1F5F9] text-[#16A34A] text-xs font-bold">
-                Hạng Bạc
+              <div id="member-name" class="font-heading font-extrabold text-lg text-[#0F172A]">Khách vãng lai</div>
+              <div id="member-phone" class="text-xs text-[#64748B]">Chưa đăng nhập</div>
+              <span id="member-tier-badge" class="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                Chưa đăng nhập
               </span>
             </div>
           </div>
@@ -37,14 +37,14 @@
           <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
             <div class="flex justify-between text-xs font-semibold">
               <span class="text-[#64748B]">Điểm tích lũy</span>
-              <span id="points-label" class="text-[#16A34A]">820 / 2.000 điểm</span>
+              <span id="points-label" class="text-[#16A34A]">0 / 2.000 điểm</span>
             </div>
             <div class="w-full h-2 rounded-full bg-[#E2E8F0] overflow-hidden">
-              <div class="w-[41%] h-full bg-[#16A34A]"></div>
+              <div id="points-bar" class="w-0 h-full bg-[#16A34A]"></div>
             </div>
             <div class="text-[11px] text-[#64748B] flex justify-between">
-              <span>Còn 1.180 điểm để lên Hạng Vàng</span>
-              <span class="font-bold text-[#16A34A]">Ưu đãi -5%</span>
+              <span id="points-upgrade-hint">Đăng nhập tài khoản để tích điểm hội viên</span>
+              <span class="font-bold text-[#16A34A]">Ưu đãi lên đến -15%</span>
             </div>
           </div>
 
@@ -52,7 +52,7 @@
           <div class="space-y-1 text-sm font-medium">
             <div class="px-3.5 py-2.5 rounded-lg bg-[#DCFCE7] text-[#16A34A] font-bold flex items-center justify-between">
               <span>Lịch sử đặt sân</span>
-              <span class="text-xs bg-[#16A34A] text-white px-2 py-0.5 rounded-full" id="total-badge">14</span>
+              <span class="text-xs bg-[#16A34A] text-white px-2 py-0.5 rounded-full" id="total-badge">0</span>
             </div>
             <a href="/fields" class="px-3.5 py-2.5 rounded-lg text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] block">
               Đặt sân mới
@@ -141,9 +141,9 @@
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
   <!-- SCRIPTS -->
-  <script src="../js/data.js?v=20261109_v6"></script>
-  <script src="../js/app.js?v=20261109_v6"></script>
-  <script src="../js/api.js?v=20261109_v6"></script>
-  <script src="../js/history.js?v=20261109_v6"></script>
+  <script src="../js/data.js?v=20261109_v7"></script>
+  <script src="../js/app.js?v=20261109_v7"></script>
+  <script src="../js/api.js?v=20261109_v7"></script>
+  <script src="../js/history.js?v=20261109_v7"></script>
 </body>
 </html>

@@ -210,11 +210,13 @@
       if (!localStorage.getItem(STORAGE_KEYS.VOUCHERS)) {
         localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(data.DEFAULT_VOUCHERS || []));
       }
-      // Tự động dọn dẹp tài khoản demo cũ nếu có trong LocalStorage
+      // Luôn dọn dẹp tài khoản demo trong LocalStorage để người dùng truy cập là Khách vãng lai
       try {
-        const storedUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER) || 'null');
-        if (storedUser && (storedUser.phone === '0352 313 548' || storedUser.phone === '0912 345 678' || storedUser.name === 'Trần Minh Hoàng')) {
-          localStorage.removeItem(STORAGE_KEYS.USER);
+        localStorage.removeItem(STORAGE_KEYS.USER);
+        localStorage.removeItem('sb_user');
+        const sUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+        if (sUser && (sUser.username === 'user' || sUser.full_name === 'Trần Minh Hoàng')) {
+          sessionStorage.removeItem('sb_current_user');
         }
       } catch (e) {}
       const currentBank = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANK) || '{}');
@@ -307,8 +309,7 @@
             favoritePitch: ''
           };
         }
-        const local = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER) || 'null');
-        return local || null;
+        return null;
       } catch (e) {
         return null;
       }
@@ -316,10 +317,13 @@
 
     updateUser(updates) {
       try {
-        const user = this.getUser();
-        const updated = Object.assign({}, user, updates);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
-        return updated;
+        const sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+        if (sessionUser) {
+          const updated = Object.assign({}, sessionUser, updates);
+          sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
+          return updated;
+        }
+        return null;
       } catch (e) {
         return null;
       }
