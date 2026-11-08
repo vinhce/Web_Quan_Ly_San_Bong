@@ -61,7 +61,7 @@ Web_Quan_Ly_San_Bong/
 ├── html/
 │   ├── fields.html     # Danh sách sân: Bộ lọc theo loại sân (5, 7, 11 người), khoảng giá, tiện ích
 │   ├── booking.html    # Đặt sân: Chọn ngày, ma trận khung giờ trực quan, dịch vụ thêm, mã giảm giá
-│   ├── checkout.html   # Thanh toán cọc 30%: Thông tin chuyển khoản Vietcombank
+│   ├── checkout.html   # Thanh toán cọc 30%: Thông tin chuyển khoản MB Bank
 │   ├── success.html    # Đặt sân thành công: Vé điện tử kèm mã QR check-in sân, chức năng in vé
 │   ├── history.html    # Lịch sử đặt sân & Hội viên: Danh sách trận đã đặt, hạng thành viên (SĐT: 0352 313 548)
 │   ├── admin.html      # Quản trị Admin: 9 module vận hành, timeline Gantt, tạo đơn tại quầy, duyệt cọc
