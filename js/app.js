@@ -501,7 +501,7 @@
       return null;
     },
 
-    getPendingPayments() {
+        getPendingPayments() {
       let list = [];
       try {
         const raw = localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS);
@@ -520,7 +520,7 @@
             code: pb.code,
             name: pb.customerName,
             amt: pb.depositAmount || Math.round(pb.totalPrice * 0.3),
-            bank: pb.paymentMethod?.includes('MB') ? 'MB Bank' : 'Vietcombank'
+            bank: pb.paymentMethod && pb.paymentMethod.includes('MB') ? 'MB Bank' : 'Vietcombank'
           });
         }
       });

@@ -410,7 +410,6 @@ function renderAdminPayments() {
 }
 
 async function approveDeposit(code) {
-  if (!confirm('Xác nhận duyệt cọc thành công cho đơn ' + code + '?')) return;
   try {
     await fetch('../api/admin.php?action=update_payment', {
       method: 'POST',
