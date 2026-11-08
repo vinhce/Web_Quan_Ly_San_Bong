@@ -135,6 +135,9 @@
       'Hoàn thành': 'bg-[#F1F5F9] text-[#475569]',
       'Đã hủy': 'bg-[#FEE2E2] text-[#DC2626]',
       'Vắng mặt': 'bg-[#DC2626] text-white',
+      'Vắng mặt (No-Show)': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
+      'Tịch thu cọc 30%': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] font-semibold',
+      'Đã nhả sân trống': 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC] font-bold',
       'Đã khóa': 'bg-[#FEE2E2] text-[#DC2626]',
       'Bảo trì': 'hatch-slate border border-[#CBD5E1] text-[#475569]'
     };
@@ -181,7 +184,7 @@
 
   // 7. CENTRAL STATE & LOCALSTORAGE DATABASE
   const STORAGE_KEYS = {
-    PITCHES: 'sb_pitches_v1',
+    PITCHES: 'sb_pitches_v2',
     TIME_SLOTS: 'sb_slots_v1',
     SERVICES: 'sb_services_v1',
     VOUCHERS: 'sb_vouchers_v1',
@@ -313,7 +316,7 @@
       const pitch = this.getPitchById(pitchId);
       const isPitchMaintenance = pitch && pitch.status === 'Bảo trì';
 
-      const bookings = this.getAllBookings().filter(b => b.pitchId === pitchId && b.date === dateStr && b.status !== 'Đã hủy');
+      const bookings = this.getAllBookings().filter(b => b.pitchId === pitchId && b.date === dateStr && b.status !== 'Đã hủy' && b.status !== 'Vắng mặt (No-Show)' && b.paymentStatus !== 'Tịch thu cọc 30%');
 
       return slots.map(slot => {
         if (isPitchMaintenance) {
@@ -466,6 +469,23 @@
         if (paymentStatus) {
           booking.paymentStatus = paymentStatus;
         }
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+        return booking;
+      }
+      return null;
+    },
+
+    checkinBooking(bookingCode) {
+      return this.updateBookingStatus(bookingCode, 'Đang đá', 'Đã thanh toán đủ');
+    },
+
+    releaseNoShowBooking(bookingCode) {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      if (booking) {
+        booking.status = 'Vắng mặt (No-Show)';
+        booking.paymentStatus = 'Tịch thu cọc 30%';
+        booking.note = (booking.note ? booking.note + ' ' : '') + '[Hủy No-Show do quá 15p - Đã nhả sân trống]';
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
         return booking;
       }

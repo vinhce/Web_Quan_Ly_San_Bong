@@ -102,29 +102,118 @@ function switchAdminTab(moduleKey) {
   if (titleEl) titleEl.textContent = titleMap[moduleKey] || 'Quản trị';
 }
 
-// 1. Render Ca đá hôm nay (Overview)
+// 1. Render Ca đá hôm nay (Overview) kèm xử lý ân hạn 15 phút & No-Show
 function renderOverviewTodayBookings() {
   const db = window.SanBongApp.SanBongDB;
-  const bookings = db.getAllBookings().slice(0, 5);
-  const container = document.getElementById('overview-today-bookings');
+  const allBookings = db.getAllBookings();
+  const container = document.getElementById("overview-today-bookings");
   if (!container) return;
 
-  container.innerHTML = bookings.map(b => `
-    <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="font-mono font-bold">${b.code}</span>
-        <span class="font-bold text-[#0F172A]">${b.pitchName}</span>
-        <span class="text-[#16A34A] font-semibold">${b.slotTime}</span>
-        <span class="text-[#64748B]">(${b.customerName})</span>
-      </div>
-      <div class="flex items-center gap-2">
-        ${window.SanBongApp.statusPill(b.status)}
-        <span class="font-bold text-[#0F172A]">${window.SanBongApp.formatVND(b.totalPrice)}</span>
-      </div>
-    </div>
-  `).join('');
+  const todayStr = window.SanBongApp.SanBongData ? window.SanBongApp.SanBongData.getTodayDateString() : new Date().toISOString().split("T")[0];
+  let bookings = allBookings.filter(b => b.date === todayStr);
+  if (bookings.length < 5) {
+    bookings = allBookings.slice(0, 7);
+  }
+
+  const now = new Date();
+  const curMinutes = now.getHours() * 60 + now.getMinutes();
+
+  container.innerHTML = bookings.map(b => {
+    let isLateOver15 = false;
+    let lateMinutes = 0;
+
+    if (b.slotTime) {
+      const parts = b.slotTime.split("-")[0].trim().split(":");
+      if (parts.length === 2) {
+        const startMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        if (curMinutes > startMin + 15 && b.status !== "Đang đá" && b.status !== "Hoàn thành" && b.status !== "Vắng mặt (No-Show)" && b.status !== "Đã hủy") {
+          isLateOver15 = true;
+          lateMinutes = curMinutes - startMin;
+        }
+      }
+    }
+
+    let actionButtons = "";
+    if (b.status === "Đang đá") {
+      actionButtons = '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-100 text-blue-700">⚽ Đang thi đấu</span>';
+    } else if (b.status === "Vắng mặt (No-Show)") {
+      actionButtons = '<div class="flex items-center gap-1.5"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700">No-Show (Mất cọc)</span><span class="text-[11px] text-[#16A34A] font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">✓ Đã nhả sân</span></div>';
+    } else if (b.status === "Đã hủy") {
+      actionButtons = '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-500">Đã hủy</span>';
+    } else {
+      const lateBadge = isLateOver15 ? ('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 animate-pulse border border-red-300">⚠️ Quá ' + lateMinutes + 'p chưa đến</span>') : '';
+      const btnClass = isLateOver15 ? "bg-red-600 hover:bg-red-700 animate-bounce" : "bg-amber-600 hover:bg-amber-700";
+      actionButtons = '<div class="flex items-center gap-2">' +
+        lateBadge +
+        '<button onclick="handleCheckin(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
+        '<button onclick="handleNoShowRelease(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-sm flex items-center gap-1" title="Quá 15 phút không đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Quá hạn: Nhả sân</button>' +
+      '</div>';
+    }
+
+    return '<div class="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-slate-300 transition-all">' +
+      '<div class="flex flex-wrap items-center gap-2.5">' +
+        '<span class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-800">' + b.code + '</span>' +
+        '<span class="font-bold text-[#0F172A] text-sm">' + b.pitchName + '</span>' +
+        '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">⏰ ' + (b.slotTime || "") + '</span>' +
+        '<span class="text-[#475569] text-xs font-medium">(' + (b.customerName || "") + ' - ' + (b.phone || "") + ')</span>' +
+      '</div>' +
+      '<div class="flex items-center gap-3 shrink-0">' +
+        window.SanBongApp.statusPill(b.status) +
+        '<span class="font-extrabold text-[#0F172A] text-sm">' + window.SanBongApp.formatVND(b.totalPrice) + '</span>' +
+        actionButtons +
+      '</div>' +
+    '</div>';
+  }).join("");
 }
 
+async function handleCheckin(bookingCode) {
+  if (!confirm("Xác nhận đội khách mã đơn " + bookingCode + " đã có mặt tại sân và nhận sân thi đấu?")) return;
+  try {
+    await fetch("../api/bookings.php?action=checkin&code=" + encodeURIComponent(bookingCode), { method: "POST" });
+  } catch (e) {
+    console.warn("API Checkin offline fallback:", e);
+  }
+  const db = window.SanBongApp.SanBongDB;
+  db.checkinBooking(bookingCode);
+  alert("✓ CHECK-IN THÀNH CÔNG!\n\nĐơn " + bookingCode + " đã chuyển sang trạng thái \"Đang đá\".");
+  renderOverviewTodayBookings();
+  renderTimelineGantt();
+}
+window.handleCheckin = handleCheckin;
+
+async function handleNoShowRelease(bookingCode) {
+  const db = window.SanBongApp.SanBongDB;
+  const booking = db.getBookingByCode(bookingCode);
+  const custName = booking ? booking.customerName : bookingCode;
+  const pitchName = booking ? booking.pitchName : "";
+  const slotTime = booking ? booking.slotTime : "";
+
+  const confirmMsg =
+    "⚠️ XÁC NHẬN XỬ LÝ KHÁCH QUÁ HẠN (NO-SHOW):\n\n" +
+    "• Đội bóng: " + custName + "\n" +
+    "• Sân: " + pitchName + " | Khung giờ: " + slotTime + "\n" +
+    "• Đã quá 15 phút kể từ giờ bắt đầu ca đá mà khách không đến nhận sân.\n\n" +
+    "HỆ THỐNG SẼ THỰC HIỆN:\n" +
+    "1. Tịch thu cọc 30% bồi thường chi phí giữ sân.\n" +
+    "2. Chuyển trạng thái đơn thành \"Vắng mặt (No-Show)\".\n" +
+    "3. GIẢI PHÓNG & NHẢ SÂN TRỐNG NGAY LẬP TỨC để đón khách vãng lai hoặc nhận đơn mới tại quầy/online.\n\n" +
+    "Bạn có chắc chắn muốn giải phóng sân này?";
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    await fetch("../api/bookings.php?action=noshow_release&code=" + encodeURIComponent(bookingCode), { method: "POST" });
+  } catch (e) {
+    console.warn("API No-Show offline fallback:", e);
+  }
+
+  db.releaseNoShowBooking(bookingCode);
+  alert("⚡ ĐÃ NHẢ SÂN THÀNH CÔNG!\n\nSân " + pitchName + " (" + slotTime + ") hiện đã CÒN TRỐNG và sẵn sàng đón khách mới vào đá ngay.");
+  renderOverviewTodayBookings();
+  renderTimelineGantt();
+  initQuickBookingForm();
+}
+window.handleNoShowRelease = handleNoShowRelease;
 // 2. Render Timeline Gantt
 function renderTimelineGantt() {
   const db = window.SanBongApp.SanBongDB;

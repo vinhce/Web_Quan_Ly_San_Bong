@@ -29,6 +29,52 @@ if (!empty($rawInput)) {
 $data = array_merge($_POST, $data);
 $action = $_GET['action'] ?? $data['action'] ?? '';
 
+// 1.1 CHECK-IN NHẬN SÂN (POST /api/bookings.php?action=checkin)
+if ($method === 'POST' && $action === 'checkin') {
+    $admin = require_admin();
+    $code = sanitize_string($data['code'] ?? '', 40);
+    if (empty($code)) {
+        json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
+    }
+    if ($pdo === null) {
+        json_response([
+            'success' => true,
+            'message' => 'Check-in nhận sân thành công! Ca đá đã bắt đầu.',
+            'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã thanh toán đủ']
+        ]);
+    }
+    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = 'Đã thanh toán đủ' WHERE code = ?");
+    $stmt->execute([$code]);
+    json_response([
+        'success' => true,
+        'message' => 'Check-in nhận sân thành công! Đơn đã hoàn tất thu tiền 100%.',
+        'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã thanh toán đủ']
+    ]);
+}
+
+// 1.2 QUÁ HẠN 15 PHÚT / VẮNG MẶT (NO-SHOW) -> TỊCH THU CỌC & LẬP TỨC NHẢ SÂN TRỐNG
+if ($method === 'POST' && $action === 'noshow_release') {
+    $admin = require_admin();
+    $code = sanitize_string($data['code'] ?? '', 40);
+    if (empty($code)) {
+        json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
+    }
+    if ($pdo === null) {
+        json_response([
+            'success' => true,
+            'message' => 'Đã hủy đơn do khách vắng mặt (No-Show quá 15 phút), tịch thu cọc 30% và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!',
+            'data'    => ['code' => $code, 'status' => 'Vắng mặt (No-Show)', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
+        ]);
+    }
+    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Vắng mặt (No-Show)', payment_status = 'Tịch thu cọc 30%', note = CONCAT(IFNULL(note,''), ' [Hủy No-Show do quá 15p - Đã nhả sân trống]') WHERE code = ?");
+    $stmt->execute([$code]);
+    json_response([
+        'success' => true,
+        'message' => 'Đã hủy đơn do khách vắng mặt (No-Show quá 15 phút), tịch thu cọc 30% và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!',
+        'data'    => ['code' => $code, 'status' => 'Vắng mặt (No-Show)', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
+    ]);
+}
+
 // 1. TẠO ĐƠN ĐẶT SÂN MỚI (POST /api/bookings.php)
 if ($method === 'POST' && ($action === 'create' || empty($action))) {
     // Rate limit: tối đa 10 đơn / 5 phút trên 1 IP để chống spam
@@ -316,7 +362,7 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
         @file_put_contents($expectedFile, json_encode($expectedOrders, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         // 4. KIỂM TRA TRÙNG LỊCH (Double Booking & Race Condition) & CẬP NHẬT ĐƠN ĐANG CHỜ CỌC
-        $checkDuplicateStmt = $pdo->prepare("SELECT id, code, deposit_amount, payment_status FROM bookings WHERE pitch_id = ? AND booking_date = ? AND slot_id = ? AND payment_status != 'Đã hủy' FOR UPDATE");
+        $checkDuplicateStmt = $pdo->prepare("SELECT id, code, deposit_amount, payment_status FROM bookings WHERE pitch_id = ? AND booking_date = ? AND slot_id = ? AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%') FOR UPDATE");
         $checkDuplicateStmt->execute([$pitchId, $date, $slotId]);
         $existingBooking = $checkDuplicateStmt->fetch();
 
@@ -456,6 +502,27 @@ if ($method === 'GET') {
             'success' => true,
             'data'    => $booking
         ]);
+    }
+
+    // 2.1 Quản trị viên lấy danh sách ca đá (Admin Today Bookings)
+    if ($action === 'admin_list' || $action === 'today_bookings') {
+        $admin = require_admin();
+        if ($pdo === null) {
+            json_response(['success' => true, 'data' => []]);
+        }
+        $filterDate = sanitize_string($_GET['date'] ?? date('Y-m-d'), 15);
+        $stmt = $pdo->prepare("SELECT b.*, p.name as pitch_name, p.type_name, p.variant 
+                               FROM bookings b 
+                               JOIN pitches p ON b.pitch_id = p.id 
+                               WHERE b.booking_date = ? 
+                               ORDER BY b.id DESC");
+        $stmt->execute([$filterDate]);
+        $list = $stmt->fetchAll();
+        foreach ($list as &$item) {
+            $item['services'] = !empty($item['services_json']) ? json_decode($item['services_json'], true) : [];
+            unset($item['services_json']);
+        }
+        json_response(['success' => true, 'data' => $list]);
     }
 
     // Lấy danh sách lịch sử của người dùng hiện tại (My Bookings)

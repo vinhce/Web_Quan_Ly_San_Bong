@@ -29,7 +29,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109v1">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v3">
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
@@ -234,6 +234,18 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Lịch thi đấu hôm nay cần theo dõi</h3>
             <span class="text-xs text-[#16A34A] font-bold">Giờ vàng tối 17:30 - 21:00</span>
           </div>
+                  <!-- Banner Quy che An han 15 phut & No-Show Release -->
+        <div class="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 flex items-start gap-3 text-xs mb-3">
+          <div class="p-2 rounded-lg bg-amber-500 text-white font-bold shrink-0 text-sm">⏱️ 15P</div>
+          <div class="space-y-1">
+            <div class="font-bold text-[#0F172A] text-sm">Quy chế tiếp đón & Xử lý khách quá hạn (No-Show):</div>
+            <div class="text-[#475569] leading-relaxed">
+              • <b>Thời gian ân hạn:</b> Hệ thống tự động đếm giờ và giữ sân tối đa <b>15 phút</b> kể từ khi bắt đầu ca đá.<br>
+              • <b>Khách đến sân:</b> Bấm <span class="text-emerald-700 font-bold">✓ Check-in</span> để xác nhận nhận sân, chuyển trạng thái "Đang đá" và thu phần tiền còn lại.<br>
+              • <b>Quá 15 phút chưa đến:</b> Bấm <span class="text-red-700 font-bold">⚠️ Quá hạn: Nhả sân</span> để <b>tịch thu cọc 30%</b> và <b>giải phóng slot sân trống ngay lập tức</b> đón khách vãng lai hoặc khách đặt mới tại quầy, tuyệt đối không để trống sân.
+            </div>
+          </div>
+        </div>
           <div id="overview-today-bookings" class="space-y-2 text-xs">
             <!-- Rendered by JS -->
           </div>
@@ -338,7 +350,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
       </div>
 
       <!-- ========================================== -->
-      <!-- TAB 4: QUẢN LÝ 6 SÂN & BẬT TẮT BẢO TRÌ (Frame 14) -->
+      <!-- TAB 4: QUẢN LÝ 17 SÂN & BẬT TẮT BẢO TRÌ (Frame 14) -->
       <!-- ========================================== -->
       <div id="tab-content-pitches" class="space-y-4 hidden">
         <div class="flex items-center justify-between">
@@ -529,9 +541,9 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   </div>
 
   <!-- SCRIPTS -->
-  <script src="../js/data.js?v=20261109v1"></script>
-  <script src="../js/app.js?v=20261109v1"></script>
-  <script src="../js/api.js?v=20261109v1"></script>
-  <script src="../js/admin.js?v=20261109v1"></script>
+  <script src="../js/data.js?v=20261109_v3"></script>
+  <script src="../js/app.js?v=20261109_v3"></script>
+  <script src="../js/api.js?v=20261109_v3"></script>
+  <script src="../js/admin.js?v=20261109_v3"></script>
 </body>
 </html>
