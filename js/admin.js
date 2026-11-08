@@ -91,7 +91,7 @@ function switchAdminTab(moduleKey) {
     'overview': '1. Tổng quan KPI & Chỉ số tài chính',
     'timeline': '2. Lịch đặt sân Timeline Gantt trực quan',
     'quick-booking': '3. Đặt sân tại quầy (Tạo nhanh đơn)',
-    'pitches': '4. Quản lý 9 sân bóng & Bật/Tắt bảo trì',
+    'pitches': '4. Quản lý hệ thống sân bóng & Bật/Tắt bảo trì',
     'pricing': '5. Cấu hình bảng giá niêm yết',
     'customers': '6. Danh sách khách hàng & Hội viên',
     'payments': '7. Duyệt biên lai cọc VietQR 1 chạm',
@@ -167,17 +167,33 @@ function renderOverviewTodayBookings() {
 }
 
 async function handleCheckin(bookingCode) {
-  if (!confirm("Xác nhận đội khách mã đơn " + bookingCode + " đã có mặt tại sân và nhận sân thi đấu?")) return;
-  try {
-    await fetch("../api/bookings.php?action=checkin&code=" + encodeURIComponent(bookingCode), { method: "POST" });
-  } catch (e) {
-    console.warn("API Checkin offline fallback:", e);
+  const doCheckin = async () => {
+    try {
+      await fetch("../api/bookings.php?action=checkin&code=" + encodeURIComponent(bookingCode), { method: "POST" });
+    } catch (e) {
+      console.warn("API Checkin offline fallback:", e);
+    }
+    const db = window.SanBongApp.SanBongDB;
+    db.checkinBooking(bookingCode);
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('✓ CHECK-IN THÀNH CÔNG: Đơn ' + bookingCode + ' đã chuyển sang trạng thái Đang đá!', 'success', 3500);
+    }
+    renderOverviewTodayBookings();
+    renderTimelineGantt();
+  };
+
+  if (window.SanBongApp?.showModal) {
+    window.SanBongApp.showModal({
+      title: '⚽ Xác nhận Check-in ca đá',
+      message: 'Xác nhận đội khách mã đơn ' + bookingCode + ' đã có mặt tại sân và nhận sân thi đấu?',
+      type: 'success',
+      confirmText: 'Vào sân thi đấu',
+      cancelText: 'Chưa vào',
+      onConfirm: doCheckin
+    });
+  } else {
+    if (confirm("Xác nhận đội khách mã đơn " + bookingCode + " đã có mặt tại sân và nhận sân thi đấu?")) doCheckin();
   }
-  const db = window.SanBongApp.SanBongDB;
-  db.checkinBooking(bookingCode);
-  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ CHECK-IN THÀNH CÔNG: Đơn ' + bookingCode + ' đã chuyển sang trạng thái Đang đá!', 'success', 3500);
-  renderOverviewTodayBookings();
-  renderTimelineGantt();
 }
 window.handleCheckin = handleCheckin;
 
@@ -189,29 +205,43 @@ async function handleNoShowRelease(bookingCode) {
   const slotTime = booking ? booking.slotTime : "";
 
   const confirmMsg =
-    "⚠️ XÁC NHẬN XỬ LÝ KHÁCH QUÁ HẠN (NO-SHOW):\n\n" +
     "• Đội bóng: " + custName + "\n" +
     "• Sân: " + pitchName + " | Khung giờ: " + slotTime + "\n" +
     "• Đã quá 15 phút kể từ giờ bắt đầu ca đá mà khách không đến nhận sân.\n\n" +
     "HỆ THỐNG SẼ THỰC HIỆN:\n" +
     "1. Tịch thu cọc 30% bồi thường chi phí giữ sân.\n" +
     "2. Chuyển trạng thái đơn thành \"Vắng mặt (No-Show)\".\n" +
-    "3. GIẢI PHÓNG & NHẢ SÂN TRỐNG NGAY LẬP TỨC để đón khách vãng lai hoặc nhận đơn mới tại quầy/online.\n\n" +
+    "3. GIẢI PHÓNG & NHẢ SÂN TRỐNG NGAY LẬP TỨC để đón khách mới tại quầy hoặc online.\n\n" +
     "Bạn có chắc chắn muốn giải phóng sân này?";
 
-  if (!confirm(confirmMsg)) return;
+  const doRelease = async () => {
+    try {
+      await fetch("../api/bookings.php?action=noshow_release&code=" + encodeURIComponent(bookingCode), { method: "POST" });
+    } catch (e) {
+      console.warn("API No-Show offline fallback:", e);
+    }
 
-  try {
-    await fetch("../api/bookings.php?action=noshow_release&code=" + encodeURIComponent(bookingCode), { method: "POST" });
-  } catch (e) {
-    console.warn("API No-Show offline fallback:", e);
+    db.releaseNoShowBooking(bookingCode);
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('⚡ ĐÃ NHẢ SÂN THÀNH CÔNG: Sân ' + pitchName + ' hiện đã Còn trống để đón khách mới!', 'success', 4000);
+    }
+    renderOverviewTodayBookings();
+    renderTimelineGantt();
+    initQuickBookingForm();
+  };
+
+  if (window.SanBongApp?.showModal) {
+    window.SanBongApp.showModal({
+      title: '⚠️ Xử lý khách quá hạn (No-Show)',
+      message: confirmMsg,
+      type: 'warning',
+      confirmText: 'Tịch thu cọc & Nhả sân',
+      cancelText: 'Giữ sân thêm',
+      onConfirm: doRelease
+    });
+  } else {
+    if (confirm(confirmMsg)) doRelease();
   }
-
-  db.releaseNoShowBooking(bookingCode);
-  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('⚡ ĐÃ NHẢ SÂN THÀNH CÔNG: Sân ' + pitchName + ' hiện đã Còn trống!', 'success', 4000);
-  renderOverviewTodayBookings();
-  renderTimelineGantt();
-  initQuickBookingForm();
 }
 window.handleNoShowRelease = handleNoShowRelease;
 // 2. Render Timeline Gantt
@@ -304,6 +334,11 @@ function renderAdminPitches() {
   const pitches = db.getPitches();
   const container = document.getElementById('admin-pitches-list');
   if (!container) return;
+
+  const subHeader = document.querySelector('#tab-content-pitches h3');
+  if (subHeader) {
+    subHeader.textContent = `Danh sách ${pitches.length} sân bóng trực thuộc hệ thống`;
+  }
 
   container.innerHTML = pitches.map(p => {
     const isMaint = p.status === 'Bảo trì';
@@ -431,30 +466,45 @@ window.approveDeposit = approveDeposit;
 
 async function rejectDeposit(code) {
   const confirmMsg =
-    '⚠️ XÁC NHẬN TỪ CHỐI DUYỆT CỌC:\n\n' +
     '• Mã đơn: ' + code + '\n' +
-    '• Thao tác này sẽ TỪ CHỐI biên lai và HỦY ĐƠN HÀNG.\n' +
-    '• Slot sân sẽ được GIẢI PHÓNG TRỐNG NGAY LẬP TỨC để nhận khách mới.\n\n' +
-    'Bạn có chắc chắn muốn từ chối?';
+    '• Thao tác này sẽ TỪ CHỐI biên lai chuyển khoản và HỦY ĐƠN HÀNG.\n' +
+    '• Slot sân sẽ được GIẢI PHÓNG TRỐNG NGAY LẬP TỨC để đón khách khác.\n\n' +
+    'Biên lai bị từ chối sẽ được lưu trữ vĩnh viễn và không xuất hiện lại sau khi F5.\n' +
+    'Bạn có chắc chắn muốn từ chối biên lai này?';
 
-  if (!confirm(confirmMsg)) return;
+  const doReject = async () => {
+    try {
+      await fetch('../api/admin.php?action=update_payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code, status: 'Đã hủy' })
+      });
+    } catch (e) {
+      console.warn('API rejectDeposit fallback:', e);
+    }
 
-  try {
-    await fetch('../api/admin.php?action=update_payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code, status: 'Đã hủy' })
+    const db = window.SanBongApp.SanBongDB;
+    db.rejectDeposit(code);
+    renderAdminPayments();
+    renderOverviewTodayBookings();
+    renderTimelineGantt();
+    initQuickBookingForm();
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('⚡ ĐÃ TỪ CHỐI DUYỆT CỌC: Đơn ' + code + ' đã bị từ chối và giải phóng sân.', 'warning', 3500);
+    }
+  };
+
+  if (window.SanBongApp?.showModal) {
+    window.SanBongApp.showModal({
+      title: '⚠️ Xác nhận từ chối duyệt cọc',
+      message: confirmMsg,
+      type: 'danger',
+      confirmText: 'Từ chối & Giải phóng sân',
+      cancelText: 'Đóng lại',
+      onConfirm: doReject
     });
-  } catch (e) {
-    console.warn('API rejectDeposit fallback:', e);
+  } else {
+    if (confirm(confirmMsg)) doReject();
   }
-
-  const db = window.SanBongApp.SanBongDB;
-  db.rejectDeposit(code);
-  renderAdminPayments();
-  renderOverviewTodayBookings();
-  renderTimelineGantt();
-  initQuickBookingForm();
-  if (window.SanBongApp?.showToast) window.SanBongApp.showToast('⚡ ĐÃ TỪ CHỐI DUYỆT CỌC: Đơn ' + code + ' đã bị từ chối và giải phóng sân.', 'warning', 3500);
 }
 window.rejectDeposit = rejectDeposit;

@@ -29,7 +29,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v7">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v9">
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
@@ -66,7 +66,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
 
         <button onclick="switchAdminTab('pitches')" id="nav-pitches" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="12" x2="12" y1="5" y2="19"/><circle cx="12" cy="12" r="3"/></svg>
-          <span>4. Quản lý 9 sân</span>
+          <span>4. Quản lý sân bóng</span>
         </button>
 
         <button onclick="switchAdminTab('pricing')" id="nav-pricing" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
@@ -354,7 +354,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
       <!-- ========================================== -->
       <div id="tab-content-pitches" class="space-y-4 hidden">
         <div class="flex items-center justify-between">
-          <h3 class="font-heading font-bold text-base text-[#0F172A]">Danh sách 9 sân bóng trực thuộc hệ thống</h3>
+          <h3 class="font-heading font-bold text-base text-[#0F172A]">Danh sách sân bóng trực thuộc hệ thống</h3>
           <span class="text-xs text-[#64748B]">Bật công tắc bảo trì sẽ ngay lập tức khóa sân trên trang đặt của khách</span>
         </div>
 
@@ -541,9 +541,9 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   </div>
 
   <!-- SCRIPTS -->
-  <script src="../js/data.js?v=20261109_v7"></script>
-  <script src="../js/app.js?v=20261109_v7"></script>
-  <script src="../js/api.js?v=20261109_v7"></script>
-  <script src="../js/admin.js?v=20261109_v7"></script>
+  <script src="../js/data.js?v=20261109_v9"></script>
+  <script src="../js/app.js?v=20261109_v9"></script>
+  <script src="../js/api.js?v=20261109_v9"></script>
+  <script src="../js/admin.js?v=20261109_v9"></script>
 </body>
 </html>

@@ -180,10 +180,23 @@ function closeTicketModal() {
 }
 
 function cancelBooking(bookingCode) {
-  if (confirm(`Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\nTiền cọc sẽ được hoàn lại tự động theo chính sách sân.`)) {
+  const doCancel = () => {
     const db = window.SanBongApp.SanBongDB;
     db.updateBookingStatus(bookingCode, 'Đã hủy', 'Đã hoàn cọc');
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã hủy lịch đặt sân thành công! Số tiền hoàn cọc đã được chuyển về tài khoản.', 'success', 3500);
     renderHistory();
+  };
+
+  if (window.SanBongApp?.showModal) {
+    window.SanBongApp.showModal({
+      title: 'Xác nhận hủy đặt sân',
+      message: `Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\nTiền cọc sẽ được hoàn lại tự động theo chính sách sân.`,
+      type: 'warning',
+      confirmText: 'Xác nhận hủy',
+      cancelText: 'Giữ đơn',
+      onConfirm: doCancel
+    });
+  } else {
+    if (confirm(`Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\nTiền cọc sẽ được hoàn lại tự động theo chính sách sân.`)) doCancel();
   }
 }

@@ -627,7 +627,7 @@
   SanBongDB.init();
 
   function handleLogout() {
-    if (confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?')) {
+    const doLogout = () => {
       sessionStorage.removeItem('sb_current_user');
       try {
         localStorage.removeItem('sb_user_v1');
@@ -636,6 +636,19 @@
         .finally(() => {
           window.location.href = getRelativePath('');
         });
+    };
+
+    if (showModal) {
+      showModal({
+        title: 'Đăng xuất tài khoản',
+        message: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
+        type: 'info',
+        confirmText: 'Đăng xuất',
+        cancelText: 'Ở lại',
+        onConfirm: doLogout
+      });
+    } else {
+      if (confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?')) doLogout();
     }
   }
 
