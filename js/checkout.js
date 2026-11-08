@@ -44,17 +44,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const HOLD_DURATION_MS = 10 * 60 * 1000;
   if (currentDraft.code && new RegExp('^' + prefix + '[0-9]{6,8}$', 'i').test(currentDraft.code)) {
     generatedBookingCode = currentDraft.code.toUpperCase();
-    if (!currentDraft.expiresAt) {
-      currentDraft.expiresAt = Date.now() + HOLD_DURATION_MS;
-      sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
-    }
   } else {
     const rand6 = String(Math.floor(100000 + Math.random() * 900000));
     generatedBookingCode = `${prefix}${rand6}`;
     currentDraft.code = generatedBookingCode;
-    currentDraft.expiresAt = Date.now() + HOLD_DURATION_MS;
-    sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
   }
+
+  // Khóa mốc thời gian hết hạn bền vững (localStorage + sessionStorage) để chống reset khi F5
+  const holdKey = 'sb_hold_expire_' + generatedBookingCode;
+  let savedExpire = Number(currentDraft.expiresAt || localStorage.getItem(holdKey) || 0);
+  const now = Date.now();
+  if (!savedExpire || savedExpire <= now || savedExpire > now + HOLD_DURATION_MS) {
+    savedExpire = now + HOLD_DURATION_MS;
+    localStorage.setItem(holdKey, String(savedExpire));
+  }
+  currentDraft.expiresAt = savedExpire;
+  sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
 
   renderCheckoutDetails();
   setupLoyaltyWaterRedemption();
@@ -250,8 +255,10 @@ function startCountdown(seconds) {
   updateDisplay(remaining);
 
   const interval = setInterval(() => {
-    if (currentDraft?.expiresAt) {
-      remaining = Math.max(0, Math.ceil((Number(currentDraft.expiresAt) - Date.now()) / 1000));
+    const holdKey = 'sb_hold_expire_' + generatedBookingCode;
+    const expireTime = Number(currentDraft?.expiresAt || localStorage.getItem(holdKey) || 0);
+    if (expireTime > 0) {
+      remaining = Math.max(0, Math.ceil((expireTime - Date.now()) / 1000));
     } else {
       remaining--;
     }
@@ -261,6 +268,10 @@ function startCountdown(seconds) {
       if (sepayPollTimer) clearInterval(sepayPollTimer);
       timerEl.textContent = '00:00';
       sessionStorage.removeItem('sb_booking_draft');
+  try {
+    localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
+  } catch (e) {}
+      localStorage.removeItem(holdKey);
       alert('Khung giờ giữ chỗ đã hết hạn! Vui lòng thao tác lại.');
       window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking';
       return;
@@ -273,7 +284,7 @@ function startCountdown(seconds) {
 function setupLoyaltyWaterRedemption() {
   const db = window.SanBongApp.SanBongDB;
   const user = db.getUser();
-  const userPoints = typeof user?.points === 'number' ? user.points : 820;
+  const userPoints = (user && typeof user.points === 'number') ? user.points : 0;
   const maxBottles = Math.floor(userPoints / 100);
 
   const pointsEl = document.getElementById('current-user-points');
@@ -446,6 +457,9 @@ async function confirmPayment(isAuto = false) {
   }
 
   sessionStorage.removeItem('sb_booking_draft');
+  try {
+    localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
+  } catch (e) {}
 
   // Chuyển sang màn hình thành công với Clean URL
   const successUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('success') : '/success';

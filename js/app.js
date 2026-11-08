@@ -191,14 +191,14 @@
     USER: 'sb_user_v1',
     BANK: 'sb_bank_v1',
     BOOKINGS: 'sb_bookings_v1',
-    PENDING_PAYMENTS: 'sb_pending_payments_v2'
+    PENDING_PAYMENTS: 'sb_pending_payments_v3'
   };
 
   const SanBongDB = {
     init() {
       const data = window.SanBongData || {};
       const savedPitches = JSON.parse(localStorage.getItem(STORAGE_KEYS.PITCHES) || '[]');
-      if (!localStorage.getItem(STORAGE_KEYS.PITCHES) || savedPitches.length < (data.DEFAULT_PITCHES || []).length) {
+      if (!localStorage.getItem(STORAGE_KEYS.PITCHES) || savedPitches.length !== (data.DEFAULT_PITCHES || []).length) {
         localStorage.setItem(STORAGE_KEYS.PITCHES, JSON.stringify(data.DEFAULT_PITCHES || []));
       }
       if (!localStorage.getItem(STORAGE_KEYS.TIME_SLOTS)) {
@@ -530,8 +530,20 @@
         list = [];
       }
 
+      // Đọc danh sách các biên lai đã xử lý (duyệt hoặc từ chối) để chống hồi lại sau F5
+      let processed = [];
+      try {
+        processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
+        if (!Array.isArray(processed)) processed = [];
+      } catch (e) {
+        processed = [];
+      }
+
+      // Lọc bỏ bất kỳ mã nào đã xử lý
+      list = list.filter(item => !processed.includes(item.code));
+
       // Tự động đồng bộ bất kỳ đơn đặt sân mới nào có paymentStatus = 'Chờ duyệt cọc'
-      const pendingBookings = this.getAllBookings().filter(b => b.paymentStatus === 'Chờ duyệt cọc' && b.status !== 'Đã hủy');
+      const pendingBookings = this.getAllBookings().filter(b => b.paymentStatus === 'Chờ duyệt cọc' && b.status !== 'Đã hủy' && !processed.includes(b.code));
       pendingBookings.forEach(pb => {
         if (!list.some(item => item.code === pb.code)) {
           list.push({
@@ -556,6 +568,14 @@
       }
       list = list.filter(item => item.code !== bookingCode);
       localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(list));
+
+      // Lưu vĩnh viễn vào danh sách đã xử lý
+      try {
+        let processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
+        if (!Array.isArray(processed)) processed = [];
+        if (!processed.includes(bookingCode)) processed.push(bookingCode);
+        localStorage.setItem('sb_processed_receipts_v1', JSON.stringify(processed));
+      } catch (e) {}
       return true;
     },
 
@@ -576,6 +596,14 @@
       }
       list = list.filter(item => item.code !== bookingCode);
       localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(list));
+
+      // Lưu vĩnh viễn vào danh sách đã xử lý
+      try {
+        let processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
+        if (!Array.isArray(processed)) processed = [];
+        if (!processed.includes(bookingCode)) processed.push(bookingCode);
+        localStorage.setItem('sb_processed_receipts_v1', JSON.stringify(processed));
+      } catch (e) {}
       return true;
     },
 

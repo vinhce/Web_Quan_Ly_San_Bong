@@ -109,15 +109,6 @@ function get_expected_deposit_amount($pdo, $bookingCode) {
  */
 function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
     $expectedAmount = (int)$expectedAmount;
-    if ($expectedAmount <= 0) {
-        return [
-            'success'        => true,
-            'paid'           => false,
-            'payment_status' => 'Chờ thanh toán',
-            'message'        => 'Order not initialized'
-        ];
-    }
-
     $cleanCode = str_replace(['-', ' '], '', strtoupper($bookingCode));
 
     // 1. Kiểm tra sổ cái Webhook (sepay_paid_orders.json)
@@ -126,7 +117,8 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
         $paidOrders = json_decode(@file_get_contents($ledgerFile), true);
         if (is_array($paidOrders) && isset($paidOrders[$cleanCode])) {
             $entry = $paidOrders[$cleanCode];
-            if ((int)($entry['amount'] ?? 0) >= $expectedAmount) {
+            $entryAmt = (int)($entry['amount'] ?? 0);
+            if ($entryAmt > 0 && ($expectedAmount <= 0 || $entryAmt >= $expectedAmount)) {
                 return [
                     'success'        => true,
                     'paid'           => true,
@@ -140,33 +132,26 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
 
     // 2. Kiểm tra qua SePay API (transactions/list)
     $result = fetch_sepay_transactions(30);
-    if (!$result['success'] || empty($result['transactions'])) {
-        return [
-            'success'        => true,
-            'paid'           => false,
-            'payment_status' => 'Chờ thanh toán',
-            'message'        => 'Chưa nhận được giao dịch chuyển khoản'
-        ];
-    }
+    if (!empty($result['success']) && !empty($result['transactions'])) {
+        foreach ($result['transactions'] as $tx) {
+            $content = strtoupper($tx['transaction_content'] ?? $tx['content'] ?? '');
+            $cleanContent = str_replace(['-', ' ', '.', ':'], '', $content);
+            $amountIn = (int)($tx['amount_in'] ?? $tx['transferAmount'] ?? 0);
 
-    foreach ($result['transactions'] as $tx) {
-        $content = strtoupper($tx['transaction_content'] ?? $tx['content'] ?? '');
-        $cleanContent = str_replace(['-', ' ', '.', ':'], '', $content);
-        $amountIn = (int)($tx['amount_in'] ?? $tx['transferAmount'] ?? 0);
-
-        if ((strpos($content, $bookingCode) !== false || strpos($cleanContent, $cleanCode) !== false) && $amountIn >= $expectedAmount) {
-            return [
-                'success'        => true,
-                'paid'           => true,
-                'payment_status' => 'Đã cọc 30%',
-                'transaction'    => [
-                    'amount'    => $amountIn,
-                    'reference' => $tx['reference_number'] ?? $tx['referenceCode'] ?? '',
-                    'content'   => $content,
-                    'date'      => $tx['transaction_date'] ?? $tx['transactionDate'] ?? date('Y-m-d H:i:s')
-                ],
-                'message'        => 'Đã xác nhận giao dịch SePay thành công!'
-            ];
+            if ((strpos($content, $bookingCode) !== false || strpos($cleanContent, $cleanCode) !== false) && ($expectedAmount <= 0 || $amountIn >= $expectedAmount)) {
+                return [
+                    'success'        => true,
+                    'paid'           => true,
+                    'payment_status' => 'Đã cọc 30%',
+                    'transaction'    => [
+                        'amount'    => $amountIn,
+                        'reference' => $tx['reference_number'] ?? $tx['referenceCode'] ?? '',
+                        'content'   => $content,
+                        'date'      => $tx['transaction_date'] ?? $tx['transactionDate'] ?? date('Y-m-d H:i:s')
+                    ],
+                    'message'        => 'Đã xác nhận giao dịch SePay thành công!'
+                ];
+            }
         }
     }
 

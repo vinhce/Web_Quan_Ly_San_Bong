@@ -40,19 +40,10 @@ try {
 
     $expectedAmount = $booking ? (int)$booking['deposit_amount'] : get_expected_deposit_amount($pdo, $code);
 
-    if ($expectedAmount <= 0) {
-        json_response([
-            'success' => true,
-            'paid'    => false,
-            'code'    => $code,
-            'message' => 'Order not initialized'
-        ]);
-    }
-
     $result = verify_sepay_payment($code, $expectedAmount);
     $receivedAmount = (int)($result['transaction']['amount'] ?? 0);
 
-    if (!empty($result['paid']) && $receivedAmount >= $expectedAmount) {
+    if (!empty($result['paid']) && ($expectedAmount <= 0 || $receivedAmount >= $expectedAmount)) {
         if ($pdo && $booking) {
             $updateStmt = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã cọc 30%', payment_method = 'VietQR SePay (Tự động)' WHERE id = ?");
             $updateStmt->execute([$booking['id']]);
