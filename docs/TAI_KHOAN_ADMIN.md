@@ -61,7 +61,7 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 2. **Lịch đặt sân Timeline:** Biểu đồ Gantt theo dõi trạng thái trực quan của toàn bộ các sân từ `05:30` đến `23:00`.
 3. **Đặt sân tại quầy:** Tạo nhanh đơn khóa sân cho khách vãng lai hoặc khách gọi điện đặt trực tiếp.
 4. **Quản lý sân & Bảo trì:** Bật/tắt chế độ **Bảo trì** theo thời gian thực cho từng sân (khóa ngay lập tức trên trang đặt sân của khách).
-5. **Bảng giá cấu hình:** Điều chỉnh giá giờ thường, giờ vàng (`17:30 - 21:00`) và cuối tuần cho Sân 5, Sân 7, Sân 11.
+5. **Bảng giá cấu hình:** Điều chỉnh giá giờ thường, giờ cao điểm (`17:30 - 21:00`) và cuối tuần cho Sân 5, Sân 7, Sân 11.
 6. **Khách & Hội viên:** Tra cứu danh sách hội viên, hạng thành viên (Đồng / Bạc / Vàng), điểm tích lũy và tổng chi tiêu.
 7. **Duyệt cọc VietQR:** Theo dõi các biên lai chuyển khoản SePay VietQR (`ASFF` = Sân 5, `ASFS` = Sân 7, `ASFE` = Sân 11) và duyệt cọc / hủy đơn.
 8. **Báo cáo doanh thu:** Thống kê doanh thu tháng, tỷ lệ hủy sân và doanh thu dịch vụ đi kèm (nước uống, áo bib, bóng, trọng tài).

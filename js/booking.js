@@ -229,7 +229,7 @@ function renderSlots() {
     const isPlaying = s.status === 'Đang đá';
 
     let chipCls = 'bg-white border border-[#16A34A] text-[#0F172A] hover:bg-[#DCFCE7]/30';
-    let statusBadge = `<span class="text-[11px] text-[#16A34A] font-semibold">${s.isPeak ? 'Giờ vàng' : 'Thường'}</span>`;
+    let statusBadge = `<span class="text-[11px] text-[#16A34A] font-semibold">${s.isPeak ? 'Cao điểm' : 'Thường'}</span>`;
 
     if (isSelected) {
       chipCls = 'bg-[#16A34A] text-white border-[#16A34A] shadow-md';
@@ -254,7 +254,7 @@ function renderSlots() {
   const badge = document.getElementById('selected-slot-badge');
   if (badge) {
     if (activeSlotObj) {
-      badge.textContent = `${activeSlotObj.time} (${activeSlotObj.isPeak ? 'Giờ vàng' : 'Giờ thường'})`;
+      badge.textContent = `${activeSlotObj.time} (${activeSlotObj.isPeak ? 'Giờ cao điểm' : 'Giờ thường'})`;
       badge.className = 'px-3 py-1 rounded-full bg-[#DCFCE7] text-xs font-bold text-[#16A34A]';
     } else {
       badge.textContent = 'Chưa chọn giờ';

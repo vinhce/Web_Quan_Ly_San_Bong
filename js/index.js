@@ -182,7 +182,7 @@
             <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
             <div class="text-xs font-bold text-[#16A34A] mt-1">
               Thường (05:30-17:30): ${app.formatVND(pitch.basePrice)}/h<br>
-              Giờ vàng (17:30-21:00): ${app.formatVND(pitch.peakPrice)}/h
+              Giờ cao điểm (17:30-21:00): ${app.formatVND(pitch.peakPrice)}/h
             </div>
           </div>
         </div>

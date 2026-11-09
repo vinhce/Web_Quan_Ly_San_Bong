@@ -84,7 +84,7 @@
         <div class="ui-card p-5 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Lịch thi đấu hôm nay cần theo dõi</h3>
-            <span class="text-xs text-[#16A34A] font-bold">Giờ vàng tối 17:30 - 21:00</span>
+            <span class="text-xs text-[#16A34A] font-bold">Giờ cao điểm 17:30 - 21:00</span>
           </div>
                   <!-- Banner Quy che An han 15 phut & No-Show Release -->
         <div class="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 flex items-start gap-3 text-xs mb-3">

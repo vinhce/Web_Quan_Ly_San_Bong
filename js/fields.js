@@ -110,7 +110,7 @@ function renderPitches() {
             <div class="text-xs text-[#64748B] mb-2">${p.size} · ${p.grass}</div>
             <div class="flex items-baseline gap-2">
               <span class="text-base font-extrabold text-[#16A34A]">${app?.formatVND ? app.formatVND(p.basePrice) : p.basePrice + 'đ'}/h</span>
-              <span class="text-xs text-[#94A3B8]">Giờ vàng: ${app?.formatVND ? app.formatVND(p.peakPrice) : p.peakPrice + 'đ'}/h</span>
+              <span class="text-xs text-[#94A3B8]">Giờ cao điểm: ${app?.formatVND ? app.formatVND(p.peakPrice) : p.peakPrice + 'đ'}/h</span>
             </div>
           </div>
 
@@ -216,7 +216,7 @@ function openPitchDetail(pitchId) {
         <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
         <div class="text-xs font-bold text-[#16A34A] mt-1">
           Thường: ${app?.formatVND ? app.formatVND(pitch.basePrice) : pitch.basePrice}/h<br>
-          Giờ vàng (17:30-21:00): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : pitch.peakPrice}/h
+          Giờ cao điểm (17:30-21:00): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : pitch.peakPrice}/h
         </div>
       </div>
     </div>

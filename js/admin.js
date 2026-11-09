@@ -294,7 +294,7 @@ function initQuickBookingForm() {
   `).join('');
 
   slotSelect.innerHTML = db.getTimeSlots().map(s => `
-    <option value="${s.id}">${s.time} ${s.isPeak ? '★ Giờ vàng' : ''}</option>
+    <option value="${s.id}">${s.time} ${s.isPeak ? '★ Giờ cao điểm' : ''}</option>
   `).join('');
 
   document.getElementById('admin-walkin-form')?.addEventListener('submit', (e) => {

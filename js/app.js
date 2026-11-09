@@ -869,7 +869,7 @@ function handleLogout() {
             <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 5 người tiêu chuẩn</a></li>
             <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 7 người trung tâm</a></li>
             <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 11 người ghép chuẩn VFF</a></li>
-            <li><a href="${getRelativePath('booking')}" class="hover:text-white transition-colors">Bảng giá & Khung giờ vàng</a></li>
+            <li><a href="${getRelativePath('booking')}" class="hover:text-white transition-colors">Bảng giá & Giờ cao điểm</a></li>
           </ul>
         </div>
 

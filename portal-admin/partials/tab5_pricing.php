@@ -9,7 +9,7 @@
                 <tr class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
                   <th class="py-3 px-4">Loại sân</th>
                   <th class="py-3 px-4">Giờ thường (05:30 - 17:30)</th>
-                  <th class="py-3 px-4">Giờ vàng tối (17:30 - 21:00)</th>
+                  <th class="py-3 px-4">Giờ cao điểm (17:30 - 21:00)</th>
                   <th class="py-3 px-4">Cuối tuần (T7, CN)</th>
                 </tr>
               </thead>
