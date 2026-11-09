@@ -83,10 +83,8 @@ if (!$isAuthorizedWebhook && !empty($foundCode) && $transferAmount > 0) {
     }
 }
 
-// Trong môi trường Sandbox hoặc khi mô phỏng giao dịch từ SePay dashboard
-if (!$isAuthorizedWebhook && $sepayEnv === 'sandbox' && !empty($payload) && ($transferAmount > 0 || !empty($payload['id']))) {
-    $isAuthorizedWebhook = true;
-}
+// Xác thực bắt buộc: Phải có SePay Webhook Key hợp lệ hoặc đối chiếu khớp giao dịch thật từ SePay API v2
+
 
 if (!$isAuthorizedWebhook) {
     $unauthLog = [

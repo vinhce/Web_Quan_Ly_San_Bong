@@ -485,6 +485,15 @@ if ($method === 'GET') {
                     'ref_code' => 'ERR_IDOR_BLOCKED'
                 ], 403);
             }
+        } elseif (!$currentUser) {
+            // Khách vãng lai tra cứu đơn: Che bớt SĐT và Email để chống thu thập dữ liệu (Scraping)
+            if (!empty($booking['phone']) && strlen($booking['phone']) >= 7) {
+                $booking['phone'] = substr($booking['phone'], 0, 4) . '***' . substr($booking['phone'], -3);
+            }
+            if (!empty($booking['email']) && strpos($booking['email'], '@') !== false) {
+                $parts = explode('@', $booking['email']);
+                $booking['email'] = substr($parts[0], 0, 1) . '***@' . $parts[1];
+            }
         }
 
         $booking['services'] = !empty($booking['services_json']) ? json_decode($booking['services_json'], true) : [];
