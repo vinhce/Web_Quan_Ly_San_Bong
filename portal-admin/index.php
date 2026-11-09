@@ -34,7 +34,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v28">
+  <link rel="stylesheet" href="../css/style.css?v=20261110_v29">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -184,6 +184,18 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
           <!-- Cột trái: 4 Nghiệp vụ điều hành ca đá (7 cols) -->
           <div class="lg:col-span-7 space-y-4">
+            <!-- Thông báo đặc quyền gói tháng nếu có -->
+            <div id="inplay-package-promo-banner" class="hidden p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-xs flex items-center justify-between gap-2 shadow-2xs">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🎁</span>
+                <div>
+                  <div class="font-extrabold text-[#15803D]">Đơn thuộc Gói Hợp Đồng Theo Tháng:</div>
+                  <div id="inplay-package-promo-desc" class="text-[11px] text-slate-700 font-semibold">Tài trợ miễn phí mỗi trận: 2 thùng nước suối (48 chai) + 1 trọng tài chuyên nghiệp.</div>
+                </div>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-extrabold shrink-0">ĐÃ TÀI TRỢ 0Đ</span>
+            </div>
+
             <!-- 1. Đá thêm giờ (Gia hạn ca đá) -->
             <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div class="flex items-center justify-between">
@@ -379,11 +391,11 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v28"></script>
-  <script src="/js/app.js?v=20261109_v28"></script>
-  <script src="/js/api.js?v=20261109_v28"></script>
-  <script src="/js/vendor/jsqr.min.js?v=20261109_v28"></script>
-  <script src="/js/admin.js?v=20261109_v28"></script>
+  <script src="/js/data.js?v=20261110_v29"></script>
+  <script src="/js/app.js?v=20261110_v29"></script>
+  <script src="/js/api.js?v=20261110_v29"></script>
+  <script src="/js/vendor/jsqr.min.js?v=20261110_v29"></script>
+  <script src="/js/admin.js?v=20261110_v29"></script>
 </body>
 </html>
 

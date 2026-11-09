@@ -397,7 +397,7 @@ const DEFAULT_VOUCHERS = [
   },
   {
     code: 'DATTHANG15',
-    description: 'Giảm 15% ưu đãi hợp đồng đặt sân theo tháng',
+    description: 'Giảm 15% hợp đồng 3 tháng (Tặng 2 thùng nước + 1 trọng tài mỗi trận)',
     type: 'percent',
     value: 15,
     minOrder: 800000
@@ -567,11 +567,60 @@ const DEFAULT_BOOKINGS = [
   }
 ];
 
+const PACKAGE_PROMOTIONS = {
+  12: {
+    weeks: 12,
+    months: 3,
+    title: 'Gói Vàng 3 Tháng (12 tuần liên tiếp)',
+    discountRate: 0.15,
+    perMatchGifts: [
+      { id: 'SRV-WATER', name: 'Nước suối Aquafina đóng chai (Thùng 24 chai)', quantity: 2, unit: 'thùng', singleValue: 120000, lineValue: 240000, icon: '💧' },
+      { id: 'SRV-REF', name: 'Trọng tài chuyên nghiệp bắt chính trận đấu', quantity: 1, unit: 'trận', singleValue: 150000, lineValue: 150000, icon: '🏁' }
+    ],
+    perMatchGiftValue: 390000,
+    totalGiftValue: 4680000,
+    giftSummary: '2 thùng nước suối (48 chai) + 1 trọng tài chuyên nghiệp MỖI TRẬN',
+    badge: 'SIÊU VIP 3 THÁNG',
+    description: 'Giảm 15% tiền sân + TẶNG 2 thùng nước (48 chai) & 1 trọng tài bắt chính MỖI TRẬN (Tài trợ 4.680.000đ quà tặng cả gói)'
+  },
+  8: {
+    weeks: 8,
+    months: 2,
+    title: 'Gói Bạc 2 Tháng (8 tuần liên tiếp)',
+    discountRate: 0.10,
+    perMatchGifts: [
+      { id: 'SRV-WATER', name: 'Nước suối Aquafina đóng chai (Thùng 24 chai)', quantity: 1, unit: 'thùng', singleValue: 120000, lineValue: 120000, icon: '💧' },
+      { id: 'SRV-BIB', name: 'Bộ 10 áo bib chia đội dạ quang', quantity: 1, unit: 'bộ', singleValue: 30000, lineValue: 30000, icon: '🎽' }
+    ],
+    perMatchGiftValue: 150000,
+    totalGiftValue: 1200000,
+    giftSummary: '1 thùng nước suối (24 chai) + 1 bộ áo bib thi đấu MỖI TRẬN',
+    badge: 'ƯU ĐÃI 2 THÁNG',
+    description: 'Giảm 10% tiền sân + TẶNG 1 thùng nước & 1 bộ áo bib thi đấu MỖI TRẬN (Tài trợ 1.200.000đ quà tặng)'
+  },
+  4: {
+    weeks: 4,
+    months: 1,
+    title: 'Gói Đồng 1 Tháng (4 tuần liên tiếp)',
+    discountRate: 0.05,
+    perMatchGifts: [
+      { id: 'SRV-WATER-LOK', name: 'Lốc nước suối Aquafina (12 chai 500ml)', quantity: 1, unit: 'lốc', singleValue: 60000, lineValue: 60000, icon: '💧' },
+      { id: 'SRV-BALL', name: 'Bóng thi đấu Động Lực FIFA Quality', quantity: 1, unit: 'quả', singleValue: 20000, lineValue: 20000, icon: '⚽' }
+    ],
+    perMatchGiftValue: 80000,
+    totalGiftValue: 320000,
+    giftSummary: '1 lốc nước (12 chai) + Miễn phí bóng thi đấu MỖI TRẬN',
+    badge: 'ƯU ĐÃI 1 THÁNG',
+    description: 'Giảm 5% tiền sân + TẶNG 1 lốc nước (12 chai) & bóng thi đấu MỖI TRẬN (Tài trợ 320.000đ quà tặng)'
+  }
+};
+
 window.SanBongData = {
   DEFAULT_PITCHES,
   DEFAULT_TIME_SLOTS,
   DEFAULT_EXTRA_SERVICES,
   DEFAULT_VOUCHERS,
+  PACKAGE_PROMOTIONS,
   DEFAULT_USER,
   DEFAULT_BANK_INFO,
   DEFAULT_BOOKINGS,

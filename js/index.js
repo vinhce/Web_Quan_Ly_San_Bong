@@ -61,7 +61,22 @@
       : (window.SanBongData?.DEFAULT_VOUCHERS || []);
     const vouchersContainer = document.getElementById('vouchers-list');
     if (vouchersContainer && app) {
-      vouchersContainer.innerHTML = vouchers.map(v => `
+      const packagePromoCard = `
+        <div class="ui-card p-4 border-l-4 border-l-[#16A34A] bg-gradient-to-r from-emerald-50/80 via-white to-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-extrabold uppercase tracking-wide">SIÊU VIP · GÓI 3 THÁNG</span>
+              <span class="font-heading font-bold text-sm text-[#15803D]">Giảm 15% + TẶNG 2 THÙNG NƯỚC & 1 TRỌNG TÀI MỖI TRẬN</span>
+            </div>
+            <div class="text-xs text-[#475569] mt-1 font-medium">Đặt lịch cố định hàng tuần · Tài trợ quà tặng <b>390.000đ/trận</b> (Tổng quà 4.680.000đ cả gói)!</div>
+          </div>
+          <a href="/booking?mode=monthly" class="btn-sm btn-primary text-xs shrink-0 font-bold flex items-center gap-1 shadow-2xs">
+            <span>⚽</span> Đặt gói ngay
+          </a>
+        </div>
+      `;
+
+      vouchersContainer.innerHTML = packagePromoCard + vouchers.map(v => `
         <div class="ui-card p-4 border-l-4 ${v.code === 'WELCOME10' ? 'border-l-[#16A34A]' : 'border-l-[#F59E0B]'} flex items-center justify-between gap-3">
           <div>
             <div class="font-heading font-bold text-sm ${v.code === 'WELCOME10' ? 'text-[#16A34A]' : 'text-[#D97706]'}">

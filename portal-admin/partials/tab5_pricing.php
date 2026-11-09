@@ -40,6 +40,103 @@
           </div>
         </div>
 
+        <!-- CHÍNH SÁCH KHUYẾN MÃI GÓI HỢP ĐỒNG ĐẶT SÂN THEO THÁNG (1 - 3 THÁNG) -->
+        <div class="ui-card p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🏆</span>
+                <h3 class="font-heading font-bold text-lg text-[#0F172A]">Chính Sách Khuyến Mãi Gói Hợp Đồng Theo Tháng (1 - 3 Tháng)</h3>
+              </div>
+              <p class="text-xs text-[#64748B]">Tự động áp dụng khi khách đặt lịch cố định theo tuần trên toàn hệ thống Online & Quầy</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold">Đang áp dụng tự động</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Gói 3 Tháng VIP -->
+            <div class="p-4 rounded-xl bg-emerald-50/70 border-2 border-emerald-500 space-y-3 relative shadow-xs">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-extrabold uppercase">HOT NHẤT · SIÊU VIP</span>
+                <span class="font-heading font-extrabold text-sm text-[#15803D]">Giảm 15%</span>
+              </div>
+              <div>
+                <h4 class="font-heading font-bold text-base text-[#0F172A]">Gói Vàng 3 Tháng (12 trận)</h4>
+                <p class="text-xs text-slate-600 mt-0.5">Đặt lịch cố định cùng khung giờ 12 tuần liên tiếp</p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-white border border-emerald-200 space-y-1.5 text-xs">
+                <div class="font-bold text-[#15803D] flex items-center gap-1">
+                  <span>🎁</span> <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
+                  <span>💧</span> <span><b>2 Thùng Nước Suối</b> Aquafina (48 chai)</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
+                  <span>🏁</span> <span><b>1 Trọng Tài</b> chuyên nghiệp bắt trận</span>
+                </div>
+              </div>
+              <div class="text-[11px] text-emerald-800 font-bold pt-1 border-t border-emerald-200 flex justify-between">
+                <span>Trị giá quà tặng/trận:</span>
+                <span class="text-emerald-700">390.000đ / trận</span>
+              </div>
+            </div>
+
+            <!-- Gói 2 Tháng -->
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-extrabold uppercase">TIẾT KIỆM 10%</span>
+                <span class="font-heading font-extrabold text-sm text-sky-700">Giảm 10%</span>
+              </div>
+              <div>
+                <h4 class="font-heading font-bold text-base text-[#0F172A]">Gói Bạc 2 Tháng (8 trận)</h4>
+                <p class="text-xs text-slate-600 mt-0.5">Đặt lịch cố định cùng khung giờ 8 tuần liên tiếp</p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1.5 text-xs">
+                <div class="font-bold text-sky-700 flex items-center gap-1">
+                  <span>🎁</span> <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
+                  <span>💧</span> <span><b>1 Thùng Nước Suối</b> Aquafina (24 chai)</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
+                  <span>🎽</span> <span><b>1 Bộ Áo Bib</b> chia đội dạ quang (10 áo)</span>
+                </div>
+              </div>
+              <div class="text-[11px] text-slate-600 font-bold pt-1 border-t border-slate-200 flex justify-between">
+                <span>Trị giá quà tặng/trận:</span>
+                <span class="text-sky-700">150.000đ / trận</span>
+              </div>
+            </div>
+
+            <!-- Gói 1 Tháng -->
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-extrabold uppercase">TIẾT KIỆM 5%</span>
+                <span class="font-heading font-extrabold text-sm text-amber-700">Giảm 5%</span>
+              </div>
+              <div>
+                <h4 class="font-heading font-bold text-base text-[#0F172A]">Gói Đồng 1 Tháng (4 trận)</h4>
+                <p class="text-xs text-slate-600 mt-0.5">Đặt lịch cố định cùng khung giờ 4 tuần liên tiếp</p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1.5 text-xs">
+                <div class="font-bold text-amber-700 flex items-center gap-1">
+                  <span>🎁</span> <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
+                  <span>💧</span> <span><b>1 Lốc Nước Suối</b> Aquafina (12 chai)</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
+                  <span>⚽</span> <span><b>Miễn phí Bóng Đá</b> Động Lực FIFA</span>
+                </div>
+              </div>
+              <div class="text-[11px] text-slate-600 font-bold pt-1 border-t border-slate-200 flex justify-between">
+                <span>Trị giá quà tặng/trận:</span>
+                <span class="text-amber-700">80.000đ / trận</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Quản lý Mã Giảm Giá (Voucher Khuyến Mãi) -->
         <div class="ui-card p-6 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">

@@ -134,6 +134,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  const pkgCard = document.getElementById('ticket-package-promo-card');
+  const pkgText = document.getElementById('ticket-package-promo-text');
+  const promo = booking.packagePromotion || (window.SanBongApp?.SanBongDB?.getPackagePromotion ? window.SanBongApp.SanBongDB.getPackagePromotion(booking.weeksCount || 1) : null);
+
+  if (pkgCard && pkgText) {
+    if (booking.weeksCount > 1 || String(booking.note || '').includes('Gói') || promo) {
+      pkgCard.classList.remove('hidden');
+      pkgCard.classList.add('flex');
+      if (promo) {
+        pkgText.textContent = `${promo.title}: Tài trợ ${promo.giftSummary} (Miễn phí 100%)`;
+      } else if (String(booking.note || '').includes('trọng tài')) {
+        pkgText.textContent = 'Tài trợ mỗi trận: 2 thùng nước suối + 1 trọng tài chuyên nghiệp';
+      }
+    } else {
+      pkgCard.classList.add('hidden');
+      pkgCard.classList.remove('flex');
+    }
+  }
+
   const user = db.getUser ? db.getUser() : {};
   const currentBalance = booking.newPointsBalance !== undefined ? booking.newPointsBalance : (user.points || 820);
   const balanceEl = document.getElementById('ticket-points-balance');

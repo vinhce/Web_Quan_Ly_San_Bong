@@ -26,11 +26,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const nameEl = document.getElementById('admin-name');
   const avEl = document.getElementById('admin-avatar');
-  if (nameEl && localUser.full_name) nameEl.textContent = localUser.full_name;
-  if (avEl && localUser.full_name) {
-    const initials = localUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase();
-    avEl.textContent = initials || 'AD';
+  function updateAdminProfile(user) {
+    if (!user) return;
+    const rawName = user.full_name || user.username || 'Quản Trị Viên';
+    const cleanName = rawName.replace(/\(.*?\)/g, '').trim() || rawName;
+    if (nameEl) {
+      nameEl.textContent = cleanName;
+      nameEl.title = rawName;
+    }
+    if (avEl) {
+      if (cleanName.toLowerCase().includes('quản trị') || user.role === 'admin') {
+        avEl.textContent = 'QT';
+      } else {
+        const words = cleanName.split(/\s+/).filter(Boolean);
+        let initials = 'AD';
+        if (words.length >= 2) {
+          initials = (words[words.length - 2][0] + words[words.length - 1][0]).toUpperCase();
+        } else if (words.length === 1) {
+          initials = words[0].slice(0, 2).toUpperCase();
+        }
+        avEl.textContent = initials;
+      }
+    }
   }
+  if (localUser) updateAdminProfile(localUser);
 
   fetch('../api/auth.php?action=me')
     .then(res => res.json())
@@ -42,11 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.replace('/login?redirect=portal-admin');
         return;
       }
-      if (nameEl && data.user.full_name) nameEl.textContent = data.user.full_name;
-      if (avEl && data.user.full_name) {
-        const initials = data.user.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase();
-        avEl.textContent = initials || 'AD';
-      }
+      if (data.user) updateAdminProfile(data.user);
     })
     .catch(() => {
       sessionStorage.removeItem('sb_current_user');
@@ -1653,6 +1668,26 @@ function populateInPlayWorkspace(code) {
     srvSel.innerHTML = services.map(s => `
       <option value="${s.id}">${s.name} — ${window.SanBongApp.formatVND(s.price)}/${s.unit}</option>
     `).join('');
+  }
+
+  const pkgBanner = document.getElementById('inplay-package-promo-banner');
+  const pkgDesc = document.getElementById('inplay-package-promo-desc');
+  const promo = booking.packagePromotion || (window.SanBongApp?.SanBongDB?.getPackagePromotion ? window.SanBongApp.SanBongDB.getPackagePromotion(booking.weeksCount || 1) : null);
+  if (pkgBanner) {
+    if (booking.weeksCount > 1 || String(booking.note || '').includes('Gói') || promo) {
+      pkgBanner.classList.remove('hidden');
+      pkgBanner.classList.add('flex');
+      if (pkgDesc) {
+        if (promo) {
+          pkgDesc.textContent = `${promo.title}: Tài trợ ${promo.giftSummary} (Miễn phí 100%) - Vui lòng xuất nước và giao trọng tài cho trận này.`;
+        } else if (String(booking.note || '').includes('trọng tài')) {
+          pkgDesc.textContent = 'Gói 3 Tháng: Tài trợ 2 thùng nước suối (48 chai) + 1 trọng tài chuyên nghiệp - Vui lòng xuất nước và giao trọng tài cho trận này.';
+        }
+      }
+    } else {
+      pkgBanner.classList.add('hidden');
+      pkgBanner.classList.remove('flex');
+    }
   }
 
   renderInlineInPlaySelector();

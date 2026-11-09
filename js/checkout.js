@@ -201,6 +201,39 @@ function renderCheckoutDetails() {
   if (dAmt) dAmt.textContent = window.SanBongApp.formatVND(calc.depositAmount);
   const rAmt = document.getElementById('co-remaining-amount');
   if (rAmt) rAmt.textContent = window.SanBongApp.formatVND(calc.remainingAmount);
+
+  const promoCard = document.getElementById('co-promo-gifts-card');
+  const promo = window.SanBongApp?.SanBongDB?.getPackagePromotion(weeks) || currentDraft.packagePromotion;
+  if (promoCard) {
+    if (weeks > 1 && promo) {
+      const giftsList = promo.perMatchGifts.map(g => `
+        <div class="flex items-center gap-1.5 text-slate-800 font-semibold">
+          <span>${g.icon || '🎁'}</span>
+          <span>${g.name}</span>
+          <span class="text-emerald-700 font-extrabold">(0đ)</span>
+        </div>
+      `).join('');
+
+      promoCard.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-[#15803D]">
+            <span>🎁</span>
+            <span class="uppercase tracking-wide">Đặc quyền tài trợ mỗi trận (${promo.title})</span>
+          </div>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">MIỄN PHÍ</span>
+        </div>
+        <div class="space-y-1 pt-1">
+          ${giftsList}
+        </div>
+        <div class="text-[11px] text-slate-500 pt-1 border-t border-emerald-200">
+          ✓ Sân đã chuẩn bị sẵn tài trợ tại cabin mỗi buổi đá.
+        </div>
+      `;
+      promoCard.classList.remove('hidden');
+    } else {
+      promoCard.classList.add('hidden');
+    }
+  }
 }
 
 function startSePayAutoListener(bookingCode) {

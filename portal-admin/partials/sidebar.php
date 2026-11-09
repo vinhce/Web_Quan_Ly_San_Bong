@@ -1,6 +1,6 @@
   <aside class="w-64 bg-white border-r border-[#E2E8F0] flex flex-col justify-between shrink-0 select-none z-30">
     <div class="p-4">
-      <!-- Admin Brand -->
+      
       <a href="/" class="flex items-center gap-3 px-2 py-2 mb-6 group">
         <div class="w-9 h-9 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>
@@ -11,7 +11,7 @@
         </div>
       </a>
 
-      <!-- 9 Modules Navigation Tabs -->
+      
       <nav class="space-y-1">
         <button onclick="switchAdminTab('overview')" id="nav-overview" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-bold transition-all bg-[#DCFCE7] text-[#16A34A]">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
@@ -62,24 +62,26 @@
       </nav>
     </div>
 
-    <!-- Admin User Bottom Pill -->
-    <div class="p-4 border-t border-[#E2E8F0]">
-      <div class="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div id="admin-avatar" class="w-8 h-8 rounded-full bg-[#0F172A] text-white font-heading font-bold text-xs flex items-center justify-center">
+    
+    <div class="p-3 border-t border-[#E2E8F0]">
+      <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+        <div class="flex items-center gap-2.5 mb-2.5">
+          <div id="admin-avatar" class="w-8 h-8 rounded-full bg-[#0F172A] text-white font-heading font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
             AD
           </div>
-          <div>
-            <div id="admin-name" class="text-xs font-bold text-[#0F172A]">Ban Quản Trị</div>
-            <div class="text-[10px] text-[#64748B]">Chủ sân · Toàn quyền</div>
+          <div class="min-w-0 flex-1">
+            <div id="admin-name" class="text-xs font-bold text-[#0F172A] truncate" title="Quản Trị Viên">Quản Trị Viên</div>
+            <div class="text-[10px] text-[#64748B] truncate">Chủ sân · <span class="text-[#16A34A] font-semibold">Toàn quyền</span></div>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <a href="/" class="text-xs font-semibold text-[#16A34A] hover:underline" title="Xem giao diện khách">
-            Web ↗
+        <div class="flex items-center gap-1.5 pt-2 border-t border-[#E2E8F0]">
+          <a href="/" target="_blank" class="flex-1 h-7 px-2 rounded-lg bg-white border border-[#E2E8F0] hover:bg-[#F1F5F9] text-[11px] font-semibold text-[#16A34A] flex items-center justify-center gap-1 transition-colors" title="Xem trang chủ đặt sân">
+            <span>Web</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
-          <button type="button" onclick="handleAdminLogout()" class="text-xs font-semibold text-[#DC2626] hover:underline cursor-pointer" title="Đăng xuất quản trị">
-            Thoát
+          <button type="button" onclick="handleAdminLogout()" class="flex-1 h-7 px-2 rounded-lg bg-white border border-[#FECACA] hover:bg-[#FEF2F2] text-[11px] font-semibold text-[#DC2626] flex items-center justify-center gap-1 transition-colors cursor-pointer" title="Đăng xuất quản trị">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Thoát</span>
           </button>
         </div>
       </div>

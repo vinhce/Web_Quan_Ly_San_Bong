@@ -208,6 +208,19 @@
       }
     },
 
+    getPackagePromotions() {
+      return window.SanBongData?.PACKAGE_PROMOTIONS || {};
+    },
+
+    getPackagePromotion(weeks) {
+      const all = this.getPackagePromotions();
+      const w = parseInt(weeks, 10) || 1;
+      if (w >= 12) return all[12] || null;
+      if (w >= 8) return all[8] || null;
+      if (w >= 4) return all[4] || null;
+      return null;
+    },
+
     saveVoucher(v) {
       if (!v || !v.code) return null;
       const code = String(v.code).trim().toUpperCase();
@@ -376,10 +389,13 @@
       const serviceTotal = singleServiceTotal * weeks;
       const subtotal = pitchPrice + serviceTotal;
 
-      let monthlyDiscountRate = 0;
-      if (weeks >= 12) monthlyDiscountRate = 0.15;
-      else if (weeks >= 8) monthlyDiscountRate = 0.10;
-      else if (weeks >= 4) monthlyDiscountRate = 0.05;
+      const packagePromotion = this.getPackagePromotion(weeks);
+      let monthlyDiscountRate = packagePromotion ? packagePromotion.discountRate : 0;
+      if (!monthlyDiscountRate) {
+        if (weeks >= 12) monthlyDiscountRate = 0.15;
+        else if (weeks >= 8) monthlyDiscountRate = 0.10;
+        else if (weeks >= 4) monthlyDiscountRate = 0.05;
+      }
       const monthlyDiscountAmount = Math.round(subtotal * monthlyDiscountRate);
 
       const afterMonthlySubtotal = Math.max(0, subtotal - monthlyDiscountAmount);
@@ -414,6 +430,7 @@
         appliedServices,
         subtotal,
         weeksCount: weeks,
+        packagePromotion,
         monthlyDiscountRate,
         monthlyDiscountAmount,
         voucherCode: appliedVoucher ? appliedVoucher.code : '',
@@ -462,6 +479,7 @@
         slotTime: bookingInput.slotTime || '',
         bookingMode: bookingInput.bookingMode || (weeksCount > 1 ? 'monthly' : 'single'),
         weeksCount: weeksCount,
+        packagePromotion: pricing?.packagePromotion || this.getPackagePromotion(weeksCount) || null,
         monthlyDates: Array.isArray(bookingInput.monthlyDates) ? bookingInput.monthlyDates : [],
         monthlyDiscountAmount: pricing ? pricing.monthlyDiscountAmount : 0,
         pitchPrice: pricing ? pricing.pitchPrice : 0,

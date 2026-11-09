@@ -4,7 +4,7 @@ let selectedPitchType = 7;
 let selectedDate = '';
 let selectedSlotId = 'S08';
 let bookingMode = 'single';
-let monthlyWeeks = 4;
+let monthlyWeeks = 12;
 let monthlyDates = [];
 let appliedServices = [
   { id: 'SRV-WATER', quantity: 4 },
@@ -36,13 +36,56 @@ window.setBookingMode = setBookingMode;
 function updateMonthlyPackage() {
   const select = document.getElementById('monthly-weeks-select');
   const preview = document.getElementById('monthly-dates-preview');
-  monthlyWeeks = Math.max(4, parseInt(select?.value || '4', 10) || 4);
+  const giftCard = document.getElementById('monthly-gift-card');
+  const countBadge = document.getElementById('monthly-dates-count');
+  monthlyWeeks = Math.max(4, parseInt(select?.value || '12', 10) || 12);
+
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  const promo = db?.getPackagePromotion ? db.getPackagePromotion(monthlyWeeks) : (window.SanBongData?.PACKAGE_PROMOTIONS?.[monthlyWeeks] || null);
+
+  if (giftCard && promo) {
+    const giftsHtml = promo.perMatchGifts.map(g => `
+      <div class="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200 flex items-center gap-2.5">
+        <span class="text-xl shrink-0">${g.icon || '🎁'}</span>
+        <div class="flex-1">
+          <div class="font-bold text-[#0F172A] text-xs">${g.name}</div>
+          <div class="text-[11px] text-slate-500 font-medium">Tài trợ miễn phí: <b>${window.SanBongApp.formatVND(g.lineValue)}/trận</b> → <b class="text-[#15803D]">0đ</b></div>
+        </div>
+      </div>
+    `).join('');
+
+    giftCard.innerHTML = `
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🎁</span>
+          <div>
+            <div class="text-xs font-extrabold text-[#0F172A] uppercase tracking-wide">Đặc quyền tài trợ mỗi trận thi đấu</div>
+            <div class="text-[11px] text-[#15803D] font-bold">${promo.title} · Giảm ${Math.round(promo.discountRate * 100)}% tiền sân</div>
+          </div>
+        </div>
+        <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] uppercase shadow-2xs">${promo.badge}</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+        ${giftsHtml}
+      </div>
+
+      <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2 mt-1 font-semibold">
+        <span>💰 Tổng tài trợ quà tặng suốt ${promo.weeks} tuần: <b>${window.SanBongApp.formatVND(promo.totalGiftValue)}</b></span>
+        <span class="px-2 py-0.5 rounded bg-[#16A34A] text-white font-extrabold text-[11px]">TÀI TRỢ 100% (0đ)</span>
+      </div>
+    `;
+    giftCard.classList.remove('hidden');
+  }
+
+  if (countBadge) {
+    countBadge.textContent = `${monthlyWeeks} buổi thi đấu (${promo ? promo.months + ' tháng' : ''})`;
+  }
 
   if (!selectedDate) {
     selectedDate = new Date().toISOString().split('T')[0];
   }
 
-  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   const baseDate = new Date(selectedDate + 'T00:00:00');
   const dates = [];
   for (let i = 0; i < monthlyWeeks; i++) {
@@ -113,6 +156,13 @@ function initBookingPage() {
   const urlParams = new URLSearchParams(window.location.search);
   const paramPitch = urlParams.get('pitchId') || urlParams.get('pitch');
   const paramType = urlParams.get('type');
+  const paramMode = urlParams.get('mode');
+
+  if (paramMode === 'monthly') {
+    setTimeout(() => {
+      setBookingMode('monthly');
+    }, 50);
+  }
 
   if (paramPitch && db.getPitchById(paramPitch)) {
     selectedPitchId = paramPitch;
@@ -490,6 +540,19 @@ function updateBillSummary() {
     if (elTot) elTot.textContent = window.SanBongApp.formatVND(calc.totalPrice);
     if (elDep) elDep.textContent = window.SanBongApp.formatVND(calc.depositAmount);
     if (elRem) elRem.textContent = window.SanBongApp.formatVND(calc.remainingAmount);
+
+    const promoRow = document.getElementById('summary-promo-gifts-row');
+    const promoText = document.getElementById('summary-promo-gifts-text');
+    if (promoRow && promoText) {
+      if (bookingMode === 'monthly' && calc.packagePromotion) {
+        promoRow.classList.remove('hidden');
+        promoRow.classList.add('flex');
+        promoText.textContent = `${calc.packagePromotion.giftSummary} (0đ)`;
+      } else {
+        promoRow.classList.add('hidden');
+        promoRow.classList.remove('flex');
+      }
+    }
   }
 }
 
@@ -516,9 +579,11 @@ function proceedToCheckout() {
   }
 
   const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
+  const promo = db ? db.getPackagePromotion(weeks) : null;
   if (weeks > 1) {
     const dateLabels = monthlyDates.map(d => d.label).join(', ');
-    note = (note ? note + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]`;
+    const giftNote = promo ? ` [Tài trợ mỗi trận: ${promo.giftSummary}]` : '';
+    note = (note ? note + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]${giftNote}`;
   }
 
   const bookingDraft = {
@@ -528,6 +593,7 @@ function proceedToCheckout() {
     bookingMode: bookingMode,
     weeksCount: weeks,
     monthlyDates: monthlyDates,
+    packagePromotion: promo,
     services: appliedServices,
     voucherCode: appliedVoucherCode,
     customerName: name || user?.name || '',

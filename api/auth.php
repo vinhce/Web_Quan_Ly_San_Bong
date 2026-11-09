@@ -107,7 +107,7 @@ if ($action === 'login') {
                 'username'  => 'vxyen0801',
                 'email'     => 'vxyen0801@sanbongpro.vn',
                 'phone'     => '0352313548',
-                'full_name' => 'Quản Trị Viên (vxyen0801)',
+                'full_name' => 'Quản Trị Viên',
                 'role'      => 'admin',
                 'hash'      => '$argon2id$v=19$m=65536,t=4,p=1$UThRTGkvdndJYXdBVHBDUg$bvWQoJidWljt12fhtDaAYPay1LhfDvc1B2+5jPEkPE4'
             ]
