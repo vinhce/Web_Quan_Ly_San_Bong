@@ -334,6 +334,21 @@
                   .replace(/No-Show/g, 'Quá 15p khách chưa đến');
                 changed = true;
               }
+              const tot = Number(b.totalPrice || 0);
+              const dep = Number(b.depositAmount || Math.round(tot * 0.3));
+              if (b.status === 'Hoàn thành') {
+                if (!b.paidRemainingAmount || b.paidRemainingAmount <= 0) {
+                  b.paidRemainingAmount = Math.max(0, tot - dep);
+                  changed = true;
+                }
+                if (b.note && String(b.note).includes('phần còn lại 0đ')) {
+                  b.note = String(b.note).replace('phần còn lại 0đ', `phần còn lại ${b.paidRemainingAmount.toLocaleString('vi-VN')}đ`);
+                  changed = true;
+                }
+              } else if (b.status !== 'Đã hủy' && b.status !== 'Khách chưa đến' && typeof b.remainingAmount !== 'number') {
+                b.remainingAmount = Math.max(0, tot - dep);
+                changed = true;
+              }
               return b;
             });
             if (changed) {
@@ -805,14 +820,21 @@
       const bookings = this.getAllBookings();
       const booking = bookings.find(b => b.code === bookingCode);
       if (!booking) return null;
-      const paidRem = Number(booking.remainingAmount || 0);
+      const total = Number(booking.totalPrice || 0);
+      const deposit = Number(booking.depositAmount || Math.round(total * 0.3));
+      const calcRem = (typeof booking.remainingAmount === 'number' && booking.remainingAmount > 0)
+        ? booking.remainingAmount
+        : Math.max(0, total - deposit);
+      const paidRem = Number(booking.paidRemainingAmount || calcRem);
       booking.paidRemainingAmount = paidRem;
       booking.remainingPaymentMethod = payMethod;
       booking.remainingAmount = 0;
       booking.status = 'Hoàn thành';
       booking.paymentStatus = 'Đã thanh toán 100%';
       booking.completedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đã tất toán phần còn lại ${paidRem.toLocaleString('vi-VN')}đ qua ${payMethod}]`;
+      if (!String(booking.note || '').includes('Đã tất toán phần còn lại')) {
+        booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đã tất toán phần còn lại ${paidRem.toLocaleString('vi-VN')}đ qua ${payMethod}]`;
+      }
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
       return booking;
     },

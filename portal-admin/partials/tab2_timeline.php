@@ -203,13 +203,17 @@
                     <span>Đã thanh toán cọc trước (30%):</span>
                     <span id="inplay-bill-deposit" class="font-bold">-0đ</span>
                   </div>
+                  <div id="inplay-bill-paid-remaining-row" class="hidden justify-between items-center text-blue-700">
+                    <span>Đã thu phần còn lại (70% + Phụ thu):</span>
+                    <span id="inplay-bill-paid-remaining" class="font-bold">-0đ</span>
+                  </div>
                   <div class="pt-2.5 border-t border-slate-200 flex justify-between items-baseline">
                     <span class="font-bold text-sm text-[#0F172A]">Số tiền còn lại phải thu:</span>
                     <span id="inplay-bill-remaining" class="font-heading font-extrabold text-2xl text-[#DC2626]">0đ</span>
                   </div>
                 </div>
 
-                <div>
+                <div id="inplay-pay-method-wrap">
                   <label class="block text-xs font-bold text-[#0F172A] mb-1.5">Hình thức thu tiền còn lại:</label>
                   <select id="inplay-pay-method" onchange="toggleInPlayVietQR && toggleInPlayVietQR()" class="input-field font-bold text-xs bg-white">
                     <option value="Tiền mặt tại quầy">💵 Tiền mặt tại quầy</option>
@@ -226,8 +230,8 @@
               </div>
 
               <div class="space-y-2.5 pt-3 border-t border-emerald-200">
-                <button type="button" onclick="submitInPlayPayRemaining()" class="btn-base btn-primary w-full font-extrabold text-xs py-2.5 shadow-md">✅ Thu Đủ Tiền Còn Lại & Hoàn Thành Ca</button>
-                <button type="button" onclick="openInvoiceFromInPlay()" class="btn-base bg-[#0F172A] hover:bg-slate-800 text-white w-full font-bold text-xs py-2.5">🖨️ Xem & In Hóa Đơn</button>
+                <button type="button" id="inplay-pay-submit-btn" onclick="submitInPlayPayRemaining()" class="btn-base btn-primary w-full font-extrabold text-xs py-2.5 shadow-md cursor-pointer">✅ Thu Đủ Tiền Còn Lại & Hoàn Thành Ca</button>
+                <button type="button" onclick="openInvoiceFromInPlay()" class="btn-base bg-[#0F172A] hover:bg-slate-800 text-white w-full font-bold text-xs py-2.5 cursor-pointer">🖨️ Xem & In Hóa Đơn</button>
               </div>
             </div>
           </div>
