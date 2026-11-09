@@ -19,7 +19,7 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 > Dùng để vận hành sân, duyệt cọc VietQR, khóa sân bảo trì, xem doanh thu và đặt sân tại quầy.
 
 - **Tên đăng nhập (Username):** `vxyen0801`
-- **Mật khẩu (Password):** `clgt12345`
+- **Mật khẩu (Password):** `********` *(Mật khẩu quản trị viên)*
 - **Email quản trị:** `vxyen0801@sanbongpro.vn`
 - **Số điện thoại:** `0352313548`
 - **Vai trò (Role):** `admin` (Chủ sân · Toàn quyền)
@@ -31,7 +31,7 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 > Tài khoản quản trị viên mặc định dùng trong các tình huống khẩn cấp hoặc bảo trì kỹ thuật.
 
 - **Tên đăng nhập (Username):** `admin`
-- **Mật khẩu (Password):** `Admin@123456`
+- **Mật khẩu (Password):** `********` *(Mật khẩu quản trị viên)*
 - **Email:** `admin@sanbongpro.vn`
 - **Vai trò (Role):** `admin`
 
@@ -41,7 +41,7 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 > Dùng để kiểm thử luồng đặt sân, chuyển khoản cọc VietQR SePay, đổi điểm tích lũy lấy nước suối.
 
 - **Tên đăng nhập (Username):** `user` (hoặc nhập SĐT: `0352313548`)
-- **Mật khẩu (Password):** `User@123456`
+- **Mật khẩu (Password):** `********` *(Mật khẩu mẫu)*
 - **Họ và tên:** Trần Minh Hoàng
 - **Số điện thoại:** `0352313548`
 - **Vai trò (Role):** `user` (Hội viên)

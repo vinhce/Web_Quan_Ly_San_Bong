@@ -46,13 +46,13 @@ ServerSignature Off
 </IfModule>
 
 # 4. Chặn tuyệt đối truy cập các tệp tin & thư mục nhạy cảm
-<FilesMatch "^(\.env|\.git|\.agents|.*\.sql|.*\.bak|.*\.log|.*\.tmp|composer\.(json|lock)|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json)$">
+<FilesMatch "^(\.env|\.git|\.agents|.*\.sql|.*\.bak|.*\.log|.*\.tmp|.*\.md|composer\.(json|lock)|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Chặn truy cập trực tiếp vào thư mục config, database, logs, scripts, backups
-RedirectMatch 403 ^/(config|database|logs|scripts|backups)/.*$
+# Chặn truy cập trực tiếp vào thư mục config, database, logs, scripts, backups, portal-admin/partials, docs
+RedirectMatch 403 ^/(config|database|logs|scripts|backups|portal-admin/partials|docs)/.*$
 
 # Giới hạn kích thước body request tối đa 10MB chống DoS payload (Mục 3.2)
 LimitRequestBody 10485760
