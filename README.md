@@ -5,6 +5,7 @@
 * **Domain chính thức (Production Live):** [https://fxzioyr.id.vn](https://fxzioyr.id.vn)
 * **Kho lưu trữ GitHub:** [github.com/vinhce/Web_Quan_Ly_San_Bong](https://github.com/vinhce/Web_Quan_Ly_San_Bong)
 * **Trạng thái Go-Live:** ✅ **SẴN SÀNG VẬN HÀNH THẬT 100% (PRODUCTION READY - QA PASS)**
+* **Cập nhật:** 09/11/2026 (Phiên bản Go-Live chính thức)
 
 ---
 
