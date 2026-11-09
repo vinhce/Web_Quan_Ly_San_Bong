@@ -6,7 +6,7 @@
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Danh sách biên lai chuyển khoản VietQR chờ duyệt</h3>
             <p class="text-xs text-[#64748B]">Bấm "Duyệt cọc" để xác nhận giữ sân và phát hành mã QR check-in cho khách</p>
           </div>
-          <span id="admin-payments-header-badge" class="px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold">3 Đang chờ</span>
+          <span id="admin-payments-header-badge" class="px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold">2 Đang chờ</span>
         </div>
 
         <div class="ui-card overflow-hidden">

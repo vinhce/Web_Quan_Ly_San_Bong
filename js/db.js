@@ -77,12 +77,48 @@
           processed = [];
         }
         const defaultPending = [
-          { time: '10:12', code: 'SB-20261106-0042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
-          { time: '11:05', code: 'SB-20261106-0044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
-          { time: '13:40', code: 'SB-20261106-0045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
+          { time: '10:12', code: 'ASFS260042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
+          { time: '11:05', code: 'ASFS260044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
+          { time: '13:40', code: 'ASFF260045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
         ].filter(item => !processed.includes(item.code));
         localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(defaultPending));
       }
+
+      // Tự động nâng cấp các mã đơn cũ tiền tố SB-... sang chuẩn SePay ASFF/ASFS/ASFE
+      try {
+        const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS);
+        if (rawPending && rawPending.includes('SB-')) {
+          const list = JSON.parse(rawPending);
+          if (Array.isArray(list)) {
+            const upgraded = list.map(item => {
+              if (item.code && item.code.startsWith('SB-')) {
+                const pfx = (item.code.includes('0045') || (item.amt && item.amt <= 100000)) ? 'ASFF' : 'ASFS';
+                item.code = item.code.replace(/^SB-\d+-?/, pfx + '26');
+              }
+              return item;
+            });
+            localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(upgraded));
+          }
+        }
+        const rawBookings = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
+        if (rawBookings && rawBookings.includes('SB-')) {
+          const bList = JSON.parse(rawBookings);
+          if (Array.isArray(bList)) {
+            const pitches = this.getPitches();
+            const upgradedB = bList.map(b => {
+              if (b.code && b.code.startsWith('SB-')) {
+                const p = pitches.find(pitch => pitch.id === b.pitchId);
+                let pfx = 'ASFS';
+                if (p?.type === 5 || (b.pitchId && b.pitchId.startsWith('P5'))) pfx = 'ASFF';
+                else if (p?.type === 11 || (b.pitchId && b.pitchId.startsWith('P11'))) pfx = 'ASFE';
+                b.code = b.code.replace(/^SB-\d+-?/, pfx + '26');
+              }
+              return b;
+            });
+            localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(upgradedB));
+          }
+        }
+      } catch (e) {}
     },
 
     getPitches() {

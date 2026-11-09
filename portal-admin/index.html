@@ -25,7 +25,7 @@
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v13">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v14">
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
@@ -78,7 +78,7 @@
         <button onclick="switchAdminTab('payments')" id="nav-payments" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
           <span class="flex-1 text-left">7. Duyệt cọc VietQR</span>
-          <span class="px-1.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#D97706] text-[10px] font-bold">3</span>
+          <span id="admin-payments-badge" class="px-1.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#D97706] text-[10px] font-bold"></span>
         </button>
 
         <button onclick="switchAdminTab('reports')" id="nav-reports" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
@@ -128,9 +128,16 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="w-64 h-9 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 flex items-center gap-2 text-xs text-[#94A3B8]">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <span>Tìm mã đơn, SĐT khách...</span>
+        <div class="relative">
+          <div class="w-64 md:w-80 h-9 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 flex items-center gap-2 text-xs focus-within:border-[#16A34A] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#16A34A]/20 transition-all">
+            <button type="button" onclick="performAdminSearch()" class="text-[#94A3B8] hover:text-[#16A34A] shrink-0" title="Tìm kiếm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+            <input type="text" id="admin-global-search" oninput="performAdminSearch()" onkeydown="if(event.key==='Enter')performAdminSearch()" placeholder="Tìm mã đơn, SĐT khách..." class="w-full bg-transparent border-none outline-none text-xs text-[#0F172A] placeholder-[#94A3B8] font-medium" autocomplete="off">
+            <button type="button" id="admin-search-clear" onclick="clearAdminSearch()" class="hidden text-slate-400 hover:text-slate-600 font-bold text-xs p-1" title="Xóa">✕</button>
+          </div>
+          <!-- Dropdown kết quả tìm kiếm tức thì -->
+          <div id="admin-search-results" class="hidden absolute right-0 top-11 w-96 max-h-96 overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 z-50 divide-y divide-slate-100 p-2"></div>
         </div>
         <button onclick="switchAdminTab('quick-booking')" class="btn-sm btn-primary">
           + Đặt sân tại quầy
@@ -458,7 +465,7 @@
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Danh sách biên lai chuyển khoản VietQR chờ duyệt</h3>
             <p class="text-xs text-[#64748B]">Bấm "Duyệt cọc" để xác nhận giữ sân và phát hành mã QR check-in cho khách</p>
           </div>
-          <span id="admin-payments-header-badge" class="px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold">3 Đang chờ</span>
+          <span id="admin-payments-header-badge" class="px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold">2 Đang chờ</span>
         </div>
 
         <div class="ui-card overflow-hidden">
@@ -537,9 +544,9 @@
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v13"></script>
-  <script src="/js/app.js?v=20261109_v13"></script>
-  <script src="/js/api.js?v=20261109_v13"></script>
-  <script src="/js/admin.js?v=20261109_v13"></script>
+  <script src="/js/data.js?v=20261109_v14"></script>
+  <script src="/js/app.js?v=20261109_v14"></script>
+  <script src="/js/api.js?v=20261109_v14"></script>
+  <script src="/js/admin.js?v=20261109_v14"></script>
 </body>
 </html>

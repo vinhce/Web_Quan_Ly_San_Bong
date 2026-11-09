@@ -76,6 +76,19 @@ function renderHistory() {
     }
   }
 
+  // Tra cứu theo mã đơn hoặc SĐT nếu người dùng nhập vào ô tìm kiếm
+  const searchInput = document.getElementById('history-search-input');
+  const searchVal = (searchInput ? searchInput.value : '').trim().toLowerCase();
+  const cleanSearchPhone = searchVal.replace(/[\s\.\-]+/g, '');
+  if (searchVal) {
+    userBookings = all.filter(b => {
+      const code = (b.code || '').toLowerCase();
+      const phone = (b.phone || '').replace(/[\s\.\-]+/g, '');
+      const name = (b.customerName || '').toLowerCase();
+      return code.includes(searchVal) || (cleanSearchPhone.length >= 3 && phone.includes(cleanSearchPhone)) || name.includes(searchVal);
+    });
+  }
+
   const totBadge = document.getElementById('total-badge');
   if (totBadge) totBadge.textContent = userBookings.length;
 

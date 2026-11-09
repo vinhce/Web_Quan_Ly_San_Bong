@@ -508,3 +508,186 @@ async function rejectDeposit(code) {
   }
 }
 window.rejectDeposit = rejectDeposit;
+
+// 8. TÌM KIẾM ĐƠN ĐẶT SÂN & SỐ ĐIỆN THOẠI TOÀN CỤC (GLOBAL SEARCH)
+function performAdminSearch() {
+  const input = document.getElementById('admin-global-search');
+  const resultsBox = document.getElementById('admin-search-results');
+  const clearBtn = document.getElementById('admin-search-clear');
+  if (!input || !resultsBox) return;
+
+  const rawQuery = input.value.trim();
+  const query = rawQuery.toLowerCase();
+  if (!query) {
+    resultsBox.classList.add('hidden');
+    resultsBox.innerHTML = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+    return;
+  }
+  if (clearBtn) clearBtn.classList.remove('hidden');
+
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+
+  const allBookings = db.getAllBookings ? db.getAllBookings() : [];
+  const pendingPayments = db.getPendingPayments ? db.getPendingPayments() : [];
+  const cleanPhoneQ = query.replace(/[\s\.\-]+/g, '');
+
+  // 1. Tìm trong danh sách tất cả các đơn đặt sân
+  const matchedBookings = allBookings.filter(b => {
+    const code = (b.code || '').toLowerCase();
+    const phone = (b.phone || '').replace(/[\s\.\-]+/g, '');
+    const name = (b.customerName || '').toLowerCase();
+    const pitch = (b.pitchName || '').toLowerCase();
+    const isCodeMatch = code.includes(query);
+    const isPhoneMatch = cleanPhoneQ.length >= 3 && phone.includes(cleanPhoneQ);
+    const isNameMatch = name.includes(query);
+    const isPitchMatch = pitch.includes(query);
+    return isCodeMatch || isPhoneMatch || isNameMatch || isPitchMatch;
+  });
+
+  // 2. Tìm trong danh sách biên lai chờ duyệt cọc VietQR
+  const matchedPending = pendingPayments.filter(p => {
+    const code = (p.code || '').toLowerCase();
+    const name = (p.name || '').toLowerCase();
+    const bank = (p.bank || '').toLowerCase();
+    return code.includes(query) || name.includes(query) || bank.includes(query);
+  });
+
+  const total = matchedBookings.length + matchedPending.length;
+
+  if (total === 0) {
+    resultsBox.innerHTML = `
+      <div class="p-4 text-center">
+        <div class="text-2xl mb-1">🔍</div>
+        <div class="font-bold text-xs text-[#0F172A]">Không tìm thấy đơn đặt sân nào</div>
+        <div class="text-[11px] text-[#64748B] mt-0.5">Không có kết quả khớp với "<strong>${escapeSearchHTML(rawQuery)}</strong>"</div>
+      </div>
+    `;
+    resultsBox.classList.remove('hidden');
+    return;
+  }
+
+  let html = `
+    <div class="px-3 py-1.5 text-[11px] font-bold text-[#64748B] bg-slate-50 rounded-lg flex items-center justify-between mb-1.5">
+      <span>TÌM THẤY ${total} KẾT QUẢ</span>
+      <button onclick="clearAdminSearch()" class="text-slate-400 hover:text-slate-600 text-xs">Đóng</button>
+    </div>
+  `;
+
+  // Ưu tiên hiển thị biên lai chờ duyệt cọc
+  if (matchedPending.length > 0) {
+    matchedPending.forEach(p => {
+      html += `
+        <div onclick="switchAdminTab('payments'); clearAdminSearch();" class="p-2.5 rounded-lg hover:bg-amber-50 cursor-pointer transition-all border border-transparent hover:border-amber-200 mb-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded">${escapeSearchHTML(p.code)}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Chờ duyệt cọc</span>
+          </div>
+          <div class="mt-1 text-xs font-semibold text-[#0F172A] flex items-center justify-between">
+            <span>${escapeSearchHTML(p.name)}</span>
+            <span class="font-bold text-[#16A34A]">${Number(p.amt || 0).toLocaleString('vi-VN')}đ</span>
+          </div>
+          <div class="text-[11px] text-[#64748B] flex items-center justify-between mt-0.5">
+            <span>${escapeSearchHTML(p.bank || 'VietQR')} · ${p.time || ''}</span>
+            <span class="text-[#D97706] font-semibold">Xem duyệt cọc →</span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  // Danh sách các đơn đặt sân
+  if (matchedBookings.length > 0) {
+    matchedBookings.forEach(b => {
+      const isPending = b.paymentStatus === 'Chờ duyệt cọc';
+      const statusBg = isPending ? 'bg-amber-100 text-amber-700' : (b.status === 'Đang đá' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700');
+      html += `
+        <div onclick="viewBookingDetail('${escapeSearchHTML(b.code)}')" class="p-2.5 rounded-lg hover:bg-emerald-50 cursor-pointer transition-all border border-transparent hover:border-emerald-200 mb-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded">${escapeSearchHTML(b.code)}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBg}">${escapeSearchHTML(b.paymentStatus || b.status)}</span>
+          </div>
+          <div class="mt-1 text-xs font-semibold text-[#0F172A] flex items-center justify-between">
+            <span>${escapeSearchHTML(b.customerName || 'Khách')} ${b.phone ? '· ' + escapeSearchHTML(b.phone) : ''}</span>
+            <span class="font-bold text-[#16A34A]">${Number(b.totalPrice || 0).toLocaleString('vi-VN')}đ</span>
+          </div>
+          <div class="text-[11px] text-[#64748B] flex items-center justify-between mt-0.5">
+            <span>${escapeSearchHTML(b.pitchName || '')} (${escapeSearchHTML(b.slotTime || '')})</span>
+            <span class="text-[#16A34A] font-semibold">Chi tiết đơn →</span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  resultsBox.innerHTML = html;
+  resultsBox.classList.remove('hidden');
+}
+
+function clearAdminSearch() {
+  const input = document.getElementById('admin-global-search');
+  const resultsBox = document.getElementById('admin-search-results');
+  const clearBtn = document.getElementById('admin-search-clear');
+  if (input) input.value = '';
+  if (resultsBox) {
+    resultsBox.classList.add('hidden');
+    resultsBox.innerHTML = '';
+  }
+  if (clearBtn) clearBtn.classList.add('hidden');
+}
+
+function viewBookingDetail(code) {
+  clearAdminSearch();
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+  const booking = db.getAllBookings().find(b => b.code === code);
+  if (!booking) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không tìm thấy thông tin đơn ' + code, 'warning');
+    return;
+  }
+
+  const detailLines = [
+    '• Mã đặt sân: ' + booking.code,
+    '• Khách hàng: ' + (booking.customerName || 'Khách') + (booking.phone ? ' (' + booking.phone + ')' : ''),
+    '• Sân bóng: ' + (booking.pitchName || ''),
+    '• Ngày & Giờ: ' + (booking.slotTime || '') + ' ngày ' + (booking.date || ''),
+    '• Tiền sân & Dịch vụ: ' + Number(booking.totalPrice || 0).toLocaleString('vi-VN') + 'đ',
+    '• Đã cọc: ' + Number(booking.depositAmount || 0).toLocaleString('vi-VN') + 'đ',
+    '• Còn lại phải thu: ' + Number(booking.remainingAmount || 0).toLocaleString('vi-VN') + 'đ',
+    '• Trạng thái: ' + (booking.status || '') + ' (' + (booking.paymentStatus || '') + ')',
+    booking.note ? '• Ghi chú: ' + booking.note : ''
+  ].filter(Boolean).join('\n');
+
+  if (window.SanBongApp?.showModal) {
+    window.SanBongApp.showModal({
+      title: '📋 Chi tiết đơn: ' + booking.code,
+      message: detailLines,
+      type: 'info',
+      confirmText: 'Đóng',
+      cancelText: 'Về lịch Timeline',
+      onCancel: () => switchAdminTab('timeline')
+    });
+  } else {
+    alert(detailLines);
+  }
+}
+
+function escapeSearchHTML(str) {
+  return String(str || '').replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  })[m]);
+}
+
+// Tự động đóng dropdown tìm kiếm khi click ra ngoài
+document.addEventListener('click', (e) => {
+  const searchContainer = document.getElementById('admin-global-search')?.closest('.relative');
+  if (searchContainer && !searchContainer.contains(e.target)) {
+    const resultsBox = document.getElementById('admin-search-results');
+    if (resultsBox) resultsBox.classList.add('hidden');
+  }
+});
+
+window.performAdminSearch = performAdminSearch;
+window.clearAdminSearch = clearAdminSearch;
+window.viewBookingDetail = viewBookingDetail;

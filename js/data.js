@@ -430,7 +430,7 @@ const tomorrowStr = getTodayDateString(1);
 
 const DEFAULT_BOOKINGS = [
   {
-    code: 'SB-20261106-9821',
+    code: 'ASFS982145',
     customerName: 'Trần Minh Hoàng',
     phone: '0352 313 548',
     pitchId: 'P7-A',
@@ -455,7 +455,7 @@ const DEFAULT_BOOKINGS = [
     note: 'Yêu cầu chuẩn bị sẵn áo bib màu cam và xanh'
   },
   {
-    code: 'SB-20261106-4412',
+    code: 'ASFF441209',
     customerName: 'Lê Hoàng Nam',
     phone: '0988 777 666',
     pitchId: 'P5-A',
@@ -477,7 +477,7 @@ const DEFAULT_BOOKINGS = [
     note: 'Đã nhận sân đúng giờ'
   },
   {
-    code: 'SB-20261106-1102',
+    code: 'ASFF110283',
     customerName: 'Nguyễn Tuấn Kiệt',
     phone: '0903 112 233',
     pitchId: 'P5-B',
@@ -501,7 +501,7 @@ const DEFAULT_BOOKINGS = [
     note: 'Đá giao hữu giữa công ty'
   },
   {
-    code: 'SB-20261105-8832',
+    code: 'ASFS883210',
     customerName: 'Phạm Đức Duy',
     phone: '0934 555 888',
     pitchId: 'P7-B',
@@ -525,7 +525,7 @@ const DEFAULT_BOOKINGS = [
     note: 'Trận bán kết cúp IT'
   },
   {
-    code: 'SB-20261107-5590',
+    code: 'ASFE559072',
     customerName: 'Vũ Quốc Bảo',
     phone: '0977 444 111',
     pitchId: 'P11-GH',

@@ -87,7 +87,7 @@ flowchart LR
 2. **Chọn khung giờ & dịch vụ:** Ma trận giờ trực quan tự động đánh dấu slot "Trống", "Đang đá" hoặc "Đã đặt". Tùy chọn mua nước, áo bib, thuê trọng tài và áp mã ưu đãi (ví dụ: `WELCOME10`, `GIAM50K`).
 3. **Thanh toán cọc 30%:** Trang `checkout.html` hiển thị mã QR và thông tin chuyển khoản Vietcombank.
 4. **Xác nhận qua Fetch POST:** Khi bấm xác nhận, hệ thống gọi `fetch()` gửi payload đơn đặt sân lên API endpoint.
-5. **Nhận vé check-in:** Chuyển sang `success.html` với mã đặt sân (SB-xxxx) và mã QR check-in tại quầy trước giờ thi đấu.
+5. **Nhận vé check-in:** Chuyển sang `success.html` với mã đặt sân chuẩn SePay (`ASFF` Sân 5, `ASFS` Sân 7, `ASFE` Sân 11) và mã QR check-in tại quầy trước giờ thi đấu.
 6. **Quản trị viên (Admin):** Theo dõi lịch đặt trong `admin.html`, lọc theo ngày, đổi trạng thái sân hoặc xác nhận cọc.
 
 ---
