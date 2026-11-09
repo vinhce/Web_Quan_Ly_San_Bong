@@ -295,7 +295,18 @@ function renderOverviewTodayBookings() {
 
     const cleanNote = b.note ? String(b.note).replace(/Hủy No-Show do quá 15p/g, 'Quá 15p khách chưa đến').replace(/No-Show/g, 'Khách chưa đến') : '';
 
-    return '<div onclick="openInPlayModal(\'' + b.code + '\')" class="py-2.5 px-3.5 rounded-lg border border-slate-200 hover:border-emerald-300 bg-white hover:bg-slate-50/80 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 transition-all cursor-pointer">' +
+    let cardColorCls = 'border-amber-300 bg-amber-50/25 hover:border-amber-400 hover:bg-amber-50/40';
+    if (normStatus === 'Đang đá') {
+      cardColorCls = 'border-blue-300 bg-blue-50/25 hover:border-blue-400 hover:bg-blue-50/40';
+    } else if (normStatus === 'Đã xác nhận') {
+      cardColorCls = 'border-emerald-300 bg-emerald-50/25 hover:border-emerald-400 hover:bg-emerald-50/40';
+    } else if (normStatus === 'Khách chưa đến' || normStatus === 'Đã hủy') {
+      cardColorCls = 'border-red-300 bg-red-50/25 hover:border-red-400 hover:bg-red-50/40';
+    } else if (normStatus === 'Hoàn thành') {
+      cardColorCls = 'border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50/70';
+    }
+
+    return '<div onclick="openInPlayModal(\'' + b.code + '\')" class="py-2.5 px-3.5 rounded-lg border ' + cardColorCls + ' shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 transition-all cursor-pointer">' +
       '<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 flex-1 min-w-0">' +
         '<!-- Cột 1: Mã đơn & Sân & Khung giờ -->' +
         '<div class="flex items-center gap-2 shrink-0">' +
