@@ -34,7 +34,17 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v27">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v28">
+<style>
+    @keyframes qrLaserAnim {
+      0% { top: 12%; opacity: 0.7; }
+      50% { top: 82%; opacity: 1; }
+      100% { top: 12%; opacity: 0.7; }
+    }
+    .animate-laser {
+      animation: qrLaserAnim 1.8s infinite ease-in-out;
+    }
+  </style>
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
@@ -90,6 +100,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
         <!-- Khung Camera Quét QR -->
         <div id="qr-video-container" class="relative rounded-xl bg-slate-950 border-2 border-dashed border-emerald-500/60 p-4 text-center overflow-hidden">
           <video id="qr-video-preview" class="w-full h-48 object-cover rounded-xl bg-slate-950 hidden" playsinline></video>
+          <div id="qr-scan-laser" class="hidden absolute left-4 right-4 h-0.5 bg-emerald-400 shadow-[0_0_14px_#10b981] pointer-events-none"></div>
           <div id="qr-camera-placeholder" class="py-4 space-y-2">
             <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-2xl">🎯</div>
             <div class="text-xs font-bold text-white">Khung Ngắm Quét Mã QR Vé Đặt Sân</div>
@@ -368,10 +379,11 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v27"></script>
-  <script src="/js/app.js?v=20261109_v27"></script>
-  <script src="/js/api.js?v=20261109_v27"></script>
-  <script src="/js/admin.js?v=20261109_v27"></script>
+  <script src="/js/data.js?v=20261109_v28"></script>
+  <script src="/js/app.js?v=20261109_v28"></script>
+  <script src="/js/api.js?v=20261109_v28"></script>
+  <script src="/js/vendor/jsqr.min.js?v=20261109_v28"></script>
+  <script src="/js/admin.js?v=20261109_v28"></script>
 </body>
 </html>
 

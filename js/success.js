@@ -143,6 +143,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const qrMount = document.getElementById('ticket-qr-mount');
   if (qrMount) {
-    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(140);
+    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(booking.code, 140);
   }
 });

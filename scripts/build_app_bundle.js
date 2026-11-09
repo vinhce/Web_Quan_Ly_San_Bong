@@ -1,5 +1,6 @@
 const fs = require('fs');
 
+const qrcodeLib = fs.existsSync('js/vendor/qrcode.min.js') ? fs.readFileSync('js/vendor/qrcode.min.js', 'utf8') : '';
 const helpersCode = fs.readFileSync('js/helpers.js', 'utf8');
 const dbCode = fs.readFileSync('js/db.js', 'utf8');
 const uiCode = fs.readFileSync('js/ui.js', 'utf8');
@@ -21,6 +22,8 @@ const orchestrator = `(function () {
     statusPill: helpers.statusPill || (s => '<span>' + s + '</span>'),
     getVietQRUrl: helpers.getVietQRUrl || (() => ''),
     renderQRCodeSVG: helpers.renderQRCodeSVG || (() => ''),
+    downloadTicketQR: helpers.downloadTicketQR || (() => {}),
+    playScanBeep: helpers.playScanBeep || (() => {}),
     SanBongDB: db,
     renderNavbar: ui.renderNavbar || (() => ''),
     renderFooter: ui.renderFooter || (() => ''),
@@ -57,6 +60,6 @@ const orchestrator = `(function () {
 })();
 `;
 
-const bundle = helpersCode + '\n\n' + dbCode + '\n\n' + uiCode + '\n\n' + orchestrator;
+const bundle = (qrcodeLib ? qrcodeLib + '\n\n' : '') + helpersCode + '\n\n' + dbCode + '\n\n' + uiCode + '\n\n' + orchestrator;
 fs.writeFileSync('js/app.js', bundle, 'utf8');
 console.log('Successfully bundled js/app.js! Size:', bundle.length, 'bytes');

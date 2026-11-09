@@ -152,32 +152,164 @@
     return `https://img.vietqr.io/image/${safeBank}-${safeAcc}-compact2.png?amount=${safeAmount}&addInfo=${safeMemo}&accountName=NGUYEN%20QUANG%20VINH`;
   }
 
-  function renderQRCodeSVG(size = 160) {
-    return `
-    <svg width="${size}" height="${size}" viewBox="0 0 120 120" class="bg-white p-2 rounded-xl border border-[#E2E8F0]">
-      <rect x="8" y="8" width="32" height="32" fill="none" stroke="#0F172A" stroke-width="6"/>
-      <rect x="18" y="18" width="12" height="12" fill="#0F172A"/>
-      <rect x="80" y="8" width="32" height="32" fill="none" stroke="#0F172A" stroke-width="6"/>
-      <rect x="90" y="18" width="12" height="12" fill="#0F172A"/>
-      <rect x="8" y="80" width="32" height="32" fill="none" stroke="#0F172A" stroke-width="6"/>
-      <rect x="18" y="90" width="12" height="12" fill="#0F172A"/>
-      <rect x="48" y="12" width="8" height="8" fill="#0F172A"/>
-      <rect x="60" y="12" width="12" height="8" fill="#0F172A"/>
-      <rect x="48" y="26" width="16" height="8" fill="#0F172A"/>
-      <rect x="12" y="48" width="16" height="8" fill="#0F172A"/>
-      <rect x="34" y="48" width="12" height="12" fill="#16A34A"/>
-      <rect x="52" y="44" width="16" height="16" fill="#0F172A"/>
-      <rect x="74" y="48" width="10" height="16" fill="#0F172A"/>
-      <rect x="92" y="48" width="18" height="8" fill="#0F172A"/>
-      <rect x="12" y="64" width="8" height="8" fill="#0F172A"/>
-      <rect x="26" y="64" width="16" height="8" fill="#0F172A"/>
-      <rect x="48" y="68" width="12" height="16" fill="#0F172A"/>
-      <rect x="66" y="70" width="18" height="8" fill="#16A34A"/>
-      <rect x="90" y="66" width="12" height="18" fill="#0F172A"/>
-      <rect x="48" y="92" width="16" height="18" fill="#0F172A"/>
-      <rect x="70" y="86" width="12" height="12" fill="#0F172A"/>
-      <rect x="88" y="92" width="22" height="18" fill="#0F172A"/>
-    </svg>`;
+  function renderQRCodeSVG(data, size = 160) {
+    let content = String(data || 'SANBONG-PRO');
+    // If only size passed as number (legacy call)
+    if (typeof data === 'number' && !size) {
+      size = data;
+      content = 'SANBONG-PRO';
+    }
+    if (typeof window !== 'undefined' && typeof window.qrcode === 'function') {
+      try {
+        const qr = window.qrcode(0, 'M');
+        qr.addData(content);
+        qr.make();
+        const count = qr.getModuleCount();
+        const cellSize = Math.max(2, Math.floor(size / count));
+        return qr.createSvgTag(cellSize, 2);
+      } catch (e) {
+        console.warn('qrcode generator error:', e);
+      }
+    }
+    const enc = encodeURIComponent(content);
+    return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}" alt="QR ${enc}" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://quickchart.io/qr?size=${size}&text=${enc}'">`;
+  }
+
+  function playScanBeep(success = true) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (success) {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1760, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.22);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.22);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }
+    } catch (e) {}
+  }
+
+  function downloadTicketQR(bookingCode) {
+    if (!bookingCode) return;
+    const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+    const b = db ? db.getBookingByCode(bookingCode) : null;
+    const customer = b ? b.customerName : 'Khách hàng';
+    const pitch = b ? b.pitchName : 'Sân bóng';
+    const time = b ? `${formatDateVN(b.date)} · ${b.slotTime}` : '';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 480;
+    canvas.height = 620;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 480, 620);
+
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(0, 0, 480, 105);
+
+    ctx.fillStyle = '#16A34A';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.fillText('⚽ HỆ THỐNG SÂN BÓNG PRO', 24, 38);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('VÉ ĐIỆN TỬ CHECK-IN NHẬN SÂN', 24, 72);
+
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillRect(24, 120, 432, 125);
+    ctx.strokeStyle = '#E2E8F0';
+    ctx.strokeRect(24, 120, 432, 125);
+
+    ctx.fillStyle = '#64748B';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('MÃ VÉ ĐIỆN TỬ', 40, 145);
+    ctx.fillStyle = '#16A34A';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillText(bookingCode, 40, 172);
+
+    ctx.fillStyle = '#64748B';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('SÂN THI ĐẤU', 250, 145);
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(pitch.length > 20 ? pitch.slice(0, 18) + '...' : pitch, 250, 170);
+
+    ctx.fillStyle = '#64748B';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('KHÁCH HÀNG', 40, 205);
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(customer, 40, 226);
+
+    ctx.fillStyle = '#64748B';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('THỜI GIAN', 250, 205);
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(time, 250, 226);
+
+    const qrSize = 220;
+    const qrX = (480 - qrSize) / 2;
+    const qrY = 265;
+
+    if (typeof window.qrcode === 'function') {
+      try {
+        const qr = window.qrcode(0, 'M');
+        qr.addData(bookingCode);
+        qr.make();
+        const count = qr.getModuleCount();
+        const cellSize = qrSize / count;
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+        ctx.strokeStyle = '#16A34A';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+
+        for (let r = 0; r < count; r++) {
+          for (let c = 0; c < count; c++) {
+            ctx.fillStyle = qr.isDark(r, c) ? '#0F172A' : '#FFFFFF';
+            ctx.fillRect(qrX + c * cellSize, qrY + r * cellSize, cellSize + 0.5, cellSize + 0.5);
+          }
+        }
+      } catch (e) {}
+    }
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Xuất trình mã QR này tại quầy để nhân viên quét nhận sân & bật đèn.', 240, 525);
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Hotline hỗ trợ: 0352 313 548 · Chúc bạn có trận đấu bùng nổ!', 240, 550);
+    ctx.textAlign = 'left';
+
+    try {
+      const link = document.createElement('a');
+      link.download = `Ve-SanBong-${bookingCode}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast('✓ Đã tải vé QR điện tử về máy thành công!', 'success');
+      }
+    } catch (e) {
+      console.warn('download error:', e);
+    }
   }
 
   window.SanBongHelpers = {
@@ -190,7 +322,9 @@
     renderPitchSVG,
     statusPill,
     getVietQRUrl,
-    renderQRCodeSVG
+    renderQRCodeSVG,
+    playScanBeep,
+    downloadTicketQR
   };
 
   window.escapeHTML = escapeHTML;

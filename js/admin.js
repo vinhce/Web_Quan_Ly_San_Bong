@@ -1132,6 +1132,18 @@ window.saveAdminSettings = saveAdminSettings;
 // =========================================================
 // 1. QUÉT QR CODE CHECK-IN NHẬN SÂN (QR SCANNER MODAL)
 // =========================================================
+let qrHiddenCanvas = null;
+
+function getQRHiddenCanvas() {
+  if (!qrHiddenCanvas) {
+    qrHiddenCanvas = document.createElement('canvas');
+    qrHiddenCanvas.id = 'qr-hidden-canvas';
+    qrHiddenCanvas.style.display = 'none';
+    document.body.appendChild(qrHiddenCanvas);
+  }
+  return qrHiddenCanvas;
+}
+
 function openQRScannerModal(preCode = '') {
   const modal = document.getElementById('qr-scanner-modal');
   if (!modal) return;
@@ -1145,13 +1157,23 @@ function openQRScannerModal(preCode = '') {
   const db = window.SanBongApp?.SanBongDB;
   if (db && quickList) {
     const all = db.getAllBookings();
-    const candidates = all.filter(b => b.status === 'Đã xác nhận' || b.status === 'Đang đá' || b.status === 'Chờ duyệt cọc').slice(0, 6);
-    quickList.innerHTML = candidates.map(b => `
-      <button type="button" onclick="lookupQRTicket('${b.code}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-semibold text-[#0F172A] flex items-center gap-1.5 transition-all">
-        <span class="font-mono font-bold text-[#16A34A]">${b.code}</span>
-        <span>· ${escapeSearchHTML(b.customerName)} (${b.slotTime || ''})</span>
-      </button>
-    `).join('');
+    // Ưu tiên hiển thị các đơn hôm nay cần nhận sân hoặc đang đá
+    const candidates = all.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc' || b.status === 'Đang đá' || b.status === 'Khách chưa đến').slice(0, 8);
+    quickList.innerHTML = candidates.map(b => {
+      let dotColor = 'bg-emerald-500';
+      if (b.status === 'Đang đá') dotColor = 'bg-blue-500';
+      else if (b.status === 'Chờ duyệt cọc') dotColor = 'bg-amber-500';
+      else if (b.status === 'Khách chưa đến') dotColor = 'bg-red-500';
+
+      return `
+        <button type="button" onclick="lookupQRTicket('${b.code}')" class="px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-semibold text-[#0F172A] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
+          <span class="w-2 h-2 rounded-full ${dotColor} shrink-0"></span>
+          <span class="font-mono font-bold text-[#16A34A]">${b.code}</span>
+          <span class="truncate max-w-[130px] text-slate-600">${escapeSearchHTML(b.pitchName || '')}</span>
+          <span class="text-[11px] text-slate-400">(${b.slotTime || ''})</span>
+        </button>
+      `;
+    }).join('');
   }
 
   if (preCode) {
@@ -1161,11 +1183,16 @@ function openQRScannerModal(preCode = '') {
     activeQRBookingCode = '';
     if (input) {
       input.value = '';
-      setTimeout(() => input.focus(), 100);
+      setTimeout(() => input.focus(), 150);
     }
     if (resultBox) {
       resultBox.classList.add('hidden');
       resultBox.innerHTML = '';
+    }
+    const checkinBtn = document.getElementById('qr-confirm-checkin-btn');
+    if (checkinBtn) {
+      checkinBtn.innerHTML = '✅ Xác nhận Check-in Nhận Sân';
+      checkinBtn.className = 'btn-sm btn-primary font-bold';
     }
   }
 }
@@ -1182,6 +1209,7 @@ function closeQRScannerModal() {
 async function toggleCameraQRScan() {
   const video = document.getElementById('qr-video-preview');
   const placeholder = document.getElementById('qr-camera-placeholder');
+  const laser = document.getElementById('qr-scan-laser');
   const btn = document.getElementById('qr-camera-toggle-btn');
 
   if (qrCameraStream) {
@@ -1191,42 +1219,82 @@ async function toggleCameraQRScan() {
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Trình duyệt không hỗ trợ mở Camera trực tiếp. Vui lòng chọn ảnh QR hoặc bấm vé gợi ý bên dưới!', 'warning', 3500);
+      window.SanBongApp.showToast('Trình duyệt không hỗ trợ mở Camera trực tiếp. Vui lòng chọn ảnh vé QR hoặc bấm vé gợi ý bên dưới!', 'warning', 3500);
     }
     return;
   }
 
   try {
-    qrCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    qrCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
     if (video) {
       video.srcObject = qrCameraStream;
       video.classList.remove('hidden');
       await video.play();
     }
     if (placeholder) placeholder.classList.add('hidden');
+    if (laser) {
+      laser.classList.remove('hidden');
+      laser.classList.add('animate-laser');
+    }
     if (btn) btn.innerHTML = '<span>⏹️</span> Tắt Camera';
 
+    const canvas = getQRHiddenCanvas();
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    let barcodeDetector = null;
     if ('BarcodeDetector' in window) {
-      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-      qrScanTimer = setInterval(async () => {
-        if (!video || video.readyState < 2) return;
-        try {
-          const barcodes = await detector.detect(video);
-          if (barcodes && barcodes.length > 0) {
-            const rawVal = barcodes[0].rawValue || '';
-            const match = rawVal.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8})/i);
-            const codeFound = match ? match[1].toUpperCase() : rawVal.trim().toUpperCase();
-            if (codeFound) {
-              stopCameraQRScan();
-              lookupQRTicket(codeFound);
+      try {
+        barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      } catch (e) {}
+    }
+
+    qrScanTimer = setInterval(async () => {
+      if (!video || video.readyState < 2) return;
+      try {
+        let codeFound = null;
+
+        // 1. Thử quét bằng jsQR engine (độ tương thích 100% mọi trình duyệt)
+        if (typeof window.jsQR === 'function') {
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 480;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const qr = window.jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: 'dontInvert'
+          });
+          if (qr && qr.data) {
+            codeFound = qr.data;
+          }
+        }
+
+        // 2. Thử native BarcodeDetector nếu chưa bắt được
+        if (!codeFound && barcodeDetector) {
+          const barcodes = await barcodeDetector.detect(video);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            codeFound = barcodes[0].rawValue;
+          }
+        }
+
+        if (codeFound) {
+          const match = codeFound.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8})/i);
+          const cleanCode = match ? match[1].toUpperCase() : codeFound.trim().toUpperCase();
+          if (cleanCode) {
+            if (window.SanBongApp?.playScanBeep) window.SanBongApp.playScanBeep(true);
+            stopCameraQRScan();
+            lookupQRTicket(cleanCode);
+            if (window.SanBongApp?.showToast) {
+              window.SanBongApp.showToast('✓ Đã quét thành công mã vé: ' + cleanCode, 'success', 2500);
             }
           }
-        } catch (e) {}
-      }, 500);
-    }
+        }
+      } catch (err) {}
+    }, 150);
+
   } catch (err) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Không thể truy cập Camera (thiếu quyền hoặc thiết bị không có camera). Hãy dùng tải ảnh QR hoặc chọn nhanh mã vé!', 'info', 3500);
+      window.SanBongApp.showToast('Không thể mở Camera (thiếu quyền hoặc thiết bị không có webcam). Hãy chọn ảnh vé QR hoặc bấm danh sách chọn nhanh!', 'info', 4000);
     }
   }
 }
@@ -1242,6 +1310,7 @@ function stopCameraQRScan() {
   }
   const video = document.getElementById('qr-video-preview');
   const placeholder = document.getElementById('qr-camera-placeholder');
+  const laser = document.getElementById('qr-scan-laser');
   const btn = document.getElementById('qr-camera-toggle-btn');
   if (video) {
     video.pause();
@@ -1249,6 +1318,10 @@ function stopCameraQRScan() {
     video.classList.add('hidden');
   }
   if (placeholder) placeholder.classList.remove('hidden');
+  if (laser) {
+    laser.classList.add('hidden');
+    laser.classList.remove('animate-laser');
+  }
   if (btn) btn.innerHTML = '<span>📷</span> Bật Camera Quét QR';
 }
 
@@ -1256,44 +1329,72 @@ async function handleQRImageUpload(event) {
   const file = event?.target?.files?.[0];
   if (!file) return;
 
-  if ('BarcodeDetector' in window) {
-    try {
-      const bitmap = await createImageBitmap(file);
-      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-      const codes = await detector.detect(bitmap);
-      if (codes && codes.length > 0) {
-        const raw = codes[0].rawValue || '';
-        const match = raw.match(/(ASF[FSE]?[0-9]{6,8})/i);
-        const found = match ? match[1].toUpperCase() : raw.trim().toUpperCase();
-        lookupQRTicket(found);
-        return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = getQRHiddenCanvas();
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+
+      let found = null;
+      if (typeof window.jsQR === 'function') {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const qr = window.jsQR(imgData.data, imgData.width, imgData.height);
+        if (qr && qr.data) found = qr.data;
       }
-    } catch (e) {}
-  }
 
-  const nameMatch = file.name.match(/(ASF[FSE]?[0-9]{6,8})/i);
-  if (nameMatch) {
-    lookupQRTicket(nameMatch[1].toUpperCase());
-    return;
-  }
+      if (!found && 'BarcodeDetector' in window) {
+        try {
+          const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+          const barcodes = await detector.detect(canvas);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            found = barcodes[0].rawValue;
+          }
+        } catch (err) {}
+      }
 
-  const db = window.SanBongApp?.SanBongDB;
-  const firstConfirmed = db ? db.getAllBookings().find(b => b.status === 'Đã xác nhận') : null;
-  if (firstConfirmed) {
-    lookupQRTicket(firstConfirmed.code);
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('✓ Đã nhận diện mã QR từ ảnh vé: ' + firstConfirmed.code, 'success', 2500);
-    }
-  }
+      if (found) {
+        if (window.SanBongApp?.playScanBeep) window.SanBongApp.playScanBeep(true);
+        const match = found.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8})/i);
+        const cleanCode = match ? match[1].toUpperCase() : found.trim().toUpperCase();
+        lookupQRTicket(cleanCode);
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('✓ Đã quét thành công mã vé từ ảnh: ' + cleanCode, 'success', 2500);
+        }
+      } else {
+        // Tên file có chứa mã đơn
+        const nameMatch = file.name.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8})/i);
+        if (nameMatch) {
+          if (window.SanBongApp?.playScanBeep) window.SanBongApp.playScanBeep(true);
+          lookupQRTicket(nameMatch[1].toUpperCase());
+          return;
+        }
+
+        if (window.SanBongApp?.playScanBeep) window.SanBongApp.playScanBeep(false);
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Không tìm thấy mã QR trong ảnh vừa chọn. Vui lòng thử ảnh rõ nét hơn hoặc nhập mã vé!', 'warning', 3500);
+        }
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function lookupQRTicket(codeOpt) {
   const input = document.getElementById('qr-code-input');
   const resultBox = document.getElementById('qr-ticket-result');
+  const checkinBtn = document.getElementById('qr-confirm-checkin-btn');
   if (!resultBox) return;
 
-  const rawCode = (codeOpt || input?.value || '').trim().toUpperCase();
-  if (input && codeOpt) input.value = rawCode;
+  let raw = (codeOpt || input?.value || '').trim();
+  const match = raw.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8})/i);
+  const rawCode = match ? match[1].toUpperCase() : raw.toUpperCase();
+
+  if (input && rawCode) input.value = rawCode;
 
   if (!rawCode) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập hoặc chọn một mã vé QR để tra cứu.', 'warning');
@@ -1308,6 +1409,10 @@ function lookupQRTicket(codeOpt) {
     resultBox.className = 'p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold';
     resultBox.innerHTML = `✕ Không tìm thấy vé đặt sân nào khớp với mã <b>${escapeSearchHTML(rawCode)}</b>. Vui lòng kiểm tra lại!`;
     resultBox.classList.remove('hidden');
+    if (checkinBtn) {
+      checkinBtn.disabled = true;
+      checkinBtn.className = 'btn-sm bg-slate-200 text-slate-400 cursor-not-allowed';
+    }
     return;
   }
 
@@ -1316,32 +1421,93 @@ function lookupQRTicket(codeOpt) {
   const deposit = Number(booking.depositAmount || Math.round(total * 0.3));
   const remaining = Math.max(0, total - deposit);
 
-  resultBox.className = 'p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2 text-xs';
+  let statusBadgeHtml = '';
+  let canCheckin = false;
+
+  if (booking.status === 'Đã xác nhận') {
+    statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs">🟢 HỢP LỆ — SẴN SÀNG NHẬN SÂN</span>';
+    canCheckin = true;
+  } else if (booking.status === 'Đang đá') {
+    statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300 font-extrabold text-xs">🔵 ĐANG ĐÁ — ĐÃ NHẬN SÂN</span>';
+    canCheckin = false;
+  } else if (booking.status === 'Chờ duyệt cọc') {
+    statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-xs">🟡 CHỜ DUYỆT CỌC (Chưa xác nhận cọc)</span>';
+    canCheckin = true;
+  } else if (booking.status === 'Hoàn thành') {
+    statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-300 font-extrabold text-xs">⚪ ĐÃ HOÀN THÀNH (Đã thu 100%)</span>';
+    canCheckin = false;
+  } else {
+    statusBadgeHtml = `<span class="px-3 py-1 rounded-full bg-red-100 text-red-800 border border-red-300 font-extrabold text-xs">🔴 ${escapeSearchHTML(booking.status)}</span>`;
+    canCheckin = false;
+  }
+
+  let srvListText = 'Không có dịch vụ thêm';
+  if (booking.services && booking.services.length > 0) {
+    srvListText = booking.services.map(s => `${escapeSearchHTML(s.name)} × ${s.quantity}`).join(', ');
+  }
+
+  resultBox.className = 'p-4 rounded-xl bg-white border-2 border-emerald-500/80 shadow-md space-y-3 text-xs';
   resultBox.innerHTML = `
-    <div class="flex items-center justify-between border-b border-emerald-200 pb-2">
+    <div class="flex items-center justify-between border-b border-slate-200 pb-2.5">
       <div class="flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded bg-[#16A34A] text-white font-mono font-bold text-xs">${booking.code}</span>
-        <span class="font-bold text-[#0F172A] text-sm">${escapeSearchHTML(booking.pitchName)}</span>
+        <span class="px-2.5 py-1 rounded-md bg-[#0F172A] text-white font-mono font-extrabold text-sm tracking-wide">${booking.code}</span>
+        <span class="font-bold text-[#0F172A] text-sm sm:text-base">${escapeSearchHTML(booking.pitchName)}</span>
       </div>
-      <span class="px-2.5 py-0.5 rounded-full bg-white border border-emerald-300 text-emerald-700 font-bold text-[11px]">${escapeSearchHTML(booking.status)}</span>
+      ${statusBadgeHtml}
     </div>
-    <div class="grid grid-cols-2 gap-2 pt-1 text-[#334155]">
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[#334155] bg-slate-50 p-3 rounded-lg border border-slate-200">
       <div>👤 Khách hàng: <b class="text-[#0F172A]">${escapeSearchHTML(booking.customerName)}</b></div>
-      <div>📞 Điện thoại: <b class="font-mono text-[#0F172A]">${escapeSearchHTML(booking.phone)}</b></div>
-      <div>📅 Ngày đá: <b class="text-[#0F172A]">${window.SanBongApp.formatDateVN(booking.date)}</b></div>
+      <div>📞 Số điện thoại: <b class="font-mono text-[#0F172A]">${escapeSearchHTML(booking.phone || 'Chưa lưu')}</b></div>
+      <div>📅 Ngày thi đấu: <b class="text-[#0F172A]">${window.SanBongApp.formatDateVN(booking.date)}</b></div>
       <div>⏰ Khung giờ: <b class="text-[#16A34A]">${escapeSearchHTML(booking.slotTime)}</b></div>
+      <div class="sm:col-span-2 pt-1 border-t border-slate-200 text-slate-600">
+        🥤 Dịch vụ kèm theo: <b>${srvListText}</b>
+      </div>
     </div>
-    <div class="p-2.5 rounded-lg bg-white border border-emerald-200 flex flex-wrap items-center justify-between gap-2 mt-1">
-      <span>Tổng đơn: <b>${window.SanBongApp.formatVND(total)}</b></span>
-      <span>Đã cọc 30%: <b class="text-[#16A34A]">${window.SanBongApp.formatVND(deposit)}</b></span>
-      <span>Còn phải thu cuối giờ: <b class="text-[#DC2626]">${window.SanBongApp.formatVND(remaining)}</b></span>
+
+    <div class="p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex flex-wrap items-center justify-between gap-2">
+      <span>Tổng giá trị ca: <b class="text-sm font-bold text-[#0F172A]">${window.SanBongApp.formatVND(total)}</b></span>
+      <span>Đã cọc trước: <b class="text-emerald-700 font-bold">${window.SanBongApp.formatVND(deposit)}</b></span>
+      <span>Còn phải thu: <b class="text-sm font-extrabold text-[#DC2626]">${window.SanBongApp.formatVND(remaining)}</b></span>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+      <button type="button" onclick="closeQRScannerModal(); openInvoiceModal('${booking.code}')" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 border border-slate-300">
+        <span>🖨️ In Vé / Hóa đơn</span>
+      </button>
+      <button type="button" onclick="closeQRScannerModal(); openInPlayModal('${booking.code}')" class="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs">
+        <span>⚙️ Mở Điều Hành / Quản Lý Ca</span>
+      </button>
     </div>
   `;
   resultBox.classList.remove('hidden');
+
+  if (checkinBtn) {
+    if (canCheckin) {
+      checkinBtn.disabled = false;
+      checkinBtn.className = 'btn-sm btn-primary font-bold shadow';
+      checkinBtn.innerHTML = '✅ Xác nhận Check-in Nhận Sân';
+      checkinBtn.onclick = () => confirmQRCheckin(booking.code);
+    } else if (booking.status === 'Đang đá') {
+      checkinBtn.disabled = false;
+      checkinBtn.className = 'btn-sm bg-sky-600 hover:bg-sky-700 text-white font-bold shadow';
+      checkinBtn.innerHTML = '⚙️ Mở Điều Hành & Thu Tiền';
+      checkinBtn.onclick = () => {
+        closeQRScannerModal();
+        openInPlayModal(booking.code);
+      };
+    } else {
+      checkinBtn.disabled = true;
+      checkinBtn.className = 'btn-sm bg-slate-200 text-slate-400 cursor-not-allowed';
+      checkinBtn.innerHTML = 'Đã hoàn thành / Không thể check-in';
+    }
+  }
 }
 
-async function confirmQRCheckin() {
-  if (!activeQRBookingCode) {
+async function confirmQRCheckin(codeOpt) {
+  const code = codeOpt || activeQRBookingCode;
+  if (!code) {
     const inputVal = document.getElementById('qr-code-input')?.value.trim();
     if (inputVal) lookupQRTicket(inputVal);
     if (!activeQRBookingCode) {
@@ -1350,20 +1516,28 @@ async function confirmQRCheckin() {
     }
   }
 
-  const code = activeQRBookingCode;
-  try {
-    await fetch('../api/bookings.php?action=checkin&code=' + encodeURIComponent(code), { method: 'POST' });
-  } catch (e) {}
-
+  const finalCode = code || activeQRBookingCode;
   const db = window.SanBongApp?.SanBongDB;
-  if (db) db.checkinBooking(code);
+  const b = db ? db.getBookingByCode(finalCode) : null;
+  const pitchName = b ? b.pitchName : 'sân';
+
+  try {
+    await fetch('../api/bookings.php?action=checkin&code=' + encodeURIComponent(finalCode), { method: 'POST' });
+  } catch (e) {
+    console.warn('API Checkin offline fallback:', e);
+  }
+
+  if (db) db.checkinBooking(finalCode);
+
+  if (window.SanBongApp?.playScanBeep) window.SanBongApp.playScanBeep(true);
 
   closeQRScannerModal();
   renderOverviewTodayBookings();
   renderTimelineGantt();
+  renderOverviewKPIs();
 
   if (window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast('🎉 QUÉT QR CHECK-IN THÀNH CÔNG: Đội khách mã ' + code + ' đã nhận sân bắt đầu thi đấu!', 'success', 4000);
+    window.SanBongApp.showToast('🎉 CHECK-IN THÀNH CÔNG: Đội khách mã ' + finalCode + ' đã nhận ' + pitchName + '! Đèn sân đã bật & bắt đầu tính giờ thi đấu.', 'success', 4500);
   }
 }
 
@@ -1374,7 +1548,6 @@ window.handleQRImageUpload = handleQRImageUpload;
 window.lookupQRTicket = lookupQRTicket;
 window.confirmQRCheckin = confirmQRCheckin;
 
-// =========================================================
 // 2. ĐIỀU HÀNH TRẬN ĐẤU ĐANG CHƠI & THU TIỀN CÒN LẠI (INLINE TIMELINE & MODAL)
 // =========================================================
 function renderInlineInPlaySelector() {

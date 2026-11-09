@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v27">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v28">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -40,6 +40,9 @@
         <div class="text-center p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shrink-0">
           <div id="ticket-qr-mount" class="w-36 h-36 flex items-center justify-center bg-white rounded-xl"></div>
           <div class="text-[11px] font-bold text-[#475569] mt-2 uppercase tracking-wider">Mã QR Check-in</div>
+          <button type="button" onclick="window.SanBongApp.downloadTicketQR && window.SanBongApp.downloadTicketQR(document.getElementById('ticket-booking-code')?.textContent)" class="mt-2 text-[11px] font-bold text-[#16A34A] hover:underline flex items-center justify-center gap-1 mx-auto cursor-pointer">
+            <span>💾</span> Tải vé QR về máy
+          </button>
         </div>
 
         <div class="flex-1 w-full space-y-2 text-center sm:text-left">
@@ -144,9 +147,9 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="/js/data.js?v=20261109_v27"></script>
-  <script src="/js/app.js?v=20261109_v27"></script>
-  <script src="/js/api.js?v=20261109_v27"></script>
-  <script src="/js/success.js?v=20261109_v27"></script>
+  <script src="/js/data.js?v=20261109_v28"></script>
+  <script src="/js/app.js?v=20261109_v28"></script>
+  <script src="/js/api.js?v=20261109_v28"></script>
+  <script src="/js/success.js?v=20261109_v28"></script>
 </body>
 </html>

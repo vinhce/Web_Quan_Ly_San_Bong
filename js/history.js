@@ -181,7 +181,7 @@ function viewQRCode(bookingCode) {
   const qrMount = document.getElementById('modal-qr-mount');
   if (qrMount) {
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(b.code)}`;
-    qrMount.innerHTML = `<img src="${qrApiUrl}" alt="QR ${b.code}" class="w-36 h-36 object-contain rounded-lg" onerror="this.outerHTML=window.SanBongApp.renderQRCodeSVG(140)">`;
+    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(b.code, 150);
   }
 
   const modal = document.getElementById('ticket-modal');

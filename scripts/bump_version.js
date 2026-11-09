@@ -13,11 +13,13 @@ const files = [
   'portal-admin/index.html'
 ];
 
+const newVersion = process.argv[2] || '20261109_v28';
+
 for (const file of files) {
   if (!fs.existsSync(file)) continue;
   let c = fs.readFileSync(file, 'utf8');
-  c = c.replace(/\?v=20261109_v\d+/g, '?v=20261109_v27');
+  c = c.replace(/\?v=20261109_v\d+/g, '?v=' + newVersion);
   fs.writeFileSync(file, c, 'utf8');
   console.log('Bumped version in:', file);
 }
-console.log('Done bumping to v27!');
+console.log('Done bumping to ' + newVersion + '!');
