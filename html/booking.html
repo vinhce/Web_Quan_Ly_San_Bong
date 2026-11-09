@@ -51,9 +51,23 @@
             1. Chọn sân & Ngày thi đấu
           </h3>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Phân tầng 1: Chọn quy mô sân (Sân 5 - Sân 7 - Sân 11) -->
+          <div>
+            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2">
+              Chọn loại sân
+            </label>
+            <div id="pitch-type-selector" class="grid grid-cols-3 gap-2 sm:gap-3">
+              <!-- Rendered by JS: 3 nút chọn Sân 5, Sân 7, Sân 11 -->
+            </div>
+          </div>
+
+          <!-- Phân tầng 2: Chọn sân chi tiết & Ngày đá -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
             <div>
-              <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1.5">Sân bóng</label>
+              <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>Chọn sân cụ thể</span>
+                <span id="selected-type-badge" class="text-[11px] font-bold text-[#16A34A] lowercase font-sans"></span>
+              </label>
               <select id="booking-pitch-select" class="input-field font-semibold">
                 <!-- Rendered by JS -->
               </select>

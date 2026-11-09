@@ -3,6 +3,7 @@
  */
 
 let selectedPitchId = 'P7-A';
+let selectedPitchType = 7;
 let selectedDate = '';
 let selectedSlotId = 'S08'; // mặc định
 let appliedServices = [
@@ -11,23 +12,38 @@ let appliedServices = [
 ];
 let appliedVoucherCode = '';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const db = window.SanBongApp?.SanBongDB;
+function initBookingPage() {
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   if (!db) return;
 
-  // Đọc query param pitchId
+  // Đọc query param pitchId hoặc type
   const urlParams = new URLSearchParams(window.location.search);
   const paramPitch = urlParams.get('pitchId') || urlParams.get('pitch');
+  const paramType = urlParams.get('type');
+
   if (paramPitch && db.getPitchById(paramPitch)) {
     selectedPitchId = paramPitch;
+    const p = db.getPitchById(paramPitch);
+    if (p && p.type) selectedPitchType = Number(p.type);
+  } else if (paramType && [5, 7, 11].includes(Number(paramType))) {
+    selectedPitchType = Number(paramType);
+    const pitchesOfType = db.getPitches().filter(p => Number(p.type) === selectedPitchType);
+    if (pitchesOfType.length > 0) {
+      const activeOne = pitchesOfType.find(p => p.status !== 'Bảo trì') || pitchesOfType[0];
+      selectedPitchId = activeOne.id;
+    }
+  } else {
+    const curP = db.getPitchById(selectedPitchId);
+    if (curP && curP.type) selectedPitchType = Number(curP.type);
   }
 
   // Đặt ngày hôm nay
   const today = new Date().toISOString().split('T')[0];
   selectedDate = today;
   const dateInput = document.getElementById('booking-date-input');
-  if (dateInput) dateInput.value = today;
+  if (dateInput && !dateInput.value) dateInput.value = today;
 
+  renderPitchTypeSelector();
   initPitchSelect();
   initDateStrip();
   renderSlots();
@@ -44,35 +60,121 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Sự kiện đổi sân
-  document.getElementById('booking-pitch-select')?.addEventListener('change', (e) => {
-    selectedPitchId = e.target.value;
-    renderSlots();
-    updateBillSummary();
-  });
+  const pitchSelect = document.getElementById('booking-pitch-select');
+  if (pitchSelect && !pitchSelect._bound) {
+    pitchSelect._bound = true;
+    pitchSelect.addEventListener('change', (e) => {
+      selectedPitchId = e.target.value;
+      const curP = db.getPitchById(selectedPitchId);
+      if (curP && curP.type) {
+        selectedPitchType = Number(curP.type);
+        renderPitchTypeSelector();
+      }
+      renderSlots();
+      updateBillSummary();
+    });
+  }
 
   // Sự kiện đổi ngày
-  document.getElementById('booking-date-input')?.addEventListener('change', (e) => {
-    selectedDate = e.target.value;
-    initDateStrip();
-    renderSlots();
-    updateBillSummary();
-  });
+  const dateInputEl = document.getElementById('booking-date-input');
+  if (dateInputEl && !dateInputEl._bound) {
+    dateInputEl._bound = true;
+    dateInputEl.addEventListener('change', (e) => {
+      selectedDate = e.target.value;
+      initDateStrip();
+      renderSlots();
+      updateBillSummary();
+    });
+  }
 
   // Sự kiện Voucher
-  document.getElementById('apply-voucher-btn')?.addEventListener('click', applyVoucher);
+  const voucherBtn = document.getElementById('apply-voucher-btn');
+  if (voucherBtn && !voucherBtn._bound) {
+    voucherBtn._bound = true;
+    voucherBtn.addEventListener('click', applyVoucher);
+  }
 
   // Nút thanh toán chuyển qua checkout.html
-  document.getElementById('proceed-checkout-btn')?.addEventListener('click', proceedToCheckout);
-});
+  const checkoutBtn = document.getElementById('proceed-checkout-btn');
+  if (checkoutBtn && !checkoutBtn._bound) {
+    checkoutBtn._bound = true;
+    checkoutBtn.addEventListener('click', proceedToCheckout);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initBookingPage);
+} else {
+  initBookingPage();
+}
+
+function renderPitchTypeSelector() {
+  const container = document.getElementById('pitch-type-selector');
+  if (!container) return;
+
+  const types = [
+    { type: 5, name: 'Sân 5 người', desc: 'Mini 5 vs 5 · 20m x 40m', price: 'Từ 250.000đ/h' },
+    { type: 7, name: 'Sân 7 người', desc: 'Chuẩn 7 vs 7 · 30m x 50m', price: 'Từ 280.000đ/h' },
+    { type: 11, name: 'Sân 11 người', desc: 'Chuẩn FIFA · 68m x 105m', price: 'Từ 800.000đ/h' }
+  ];
+
+  container.innerHTML = types.map(t => {
+    const isAct = t.type === selectedPitchType;
+    return `
+      <button type="button" onclick="selectPitchType(${t.type})" class="p-2.5 sm:p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+        isAct
+          ? 'bg-[#DCFCE7]/60 border-[#16A34A] ring-2 ring-[#16A34A]/25 shadow-sm'
+          : 'bg-white border-[#E2E8F0] hover:border-[#16A34A]/60 hover:bg-[#F8FAFC]'
+      }">
+        <div class="flex items-center justify-between w-full mb-1">
+          <span class="font-heading font-extrabold text-xs sm:text-sm ${isAct ? 'text-[#15803D]' : 'text-[#0F172A]'}">
+            ${t.name}
+          </span>
+          <span class="w-2.5 h-2.5 rounded-full ${isAct ? 'bg-[#16A34A]' : 'bg-slate-300'}"></span>
+        </div>
+        <div class="text-[10px] sm:text-xs text-[#64748B] truncate">${t.desc}</div>
+        <div class="text-[11px] sm:text-xs font-bold text-[#16A34A] mt-1">${t.price}</div>
+      </button>
+    `;
+  }).join('');
+}
+
+window.selectPitchType = function(type) {
+  selectedPitchType = Number(type);
+  renderPitchTypeSelector();
+
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  if (!db) return;
+
+  const pitchesOfType = db.getPitches().filter(p => Number(p.type) === selectedPitchType);
+  const stillValid = pitchesOfType.some(p => p.id === selectedPitchId);
+  if (!stillValid && pitchesOfType.length > 0) {
+    const activeOne = pitchesOfType.find(p => p.status !== 'Bảo trì') || pitchesOfType[0];
+    selectedPitchId = activeOne.id;
+  }
+
+  initPitchSelect();
+  renderSlots();
+  updateBillSummary();
+};
 
 function initPitchSelect() {
-  const db = window.SanBongApp.SanBongDB;
-  const pitches = db.getPitches();
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  if (!db) return;
+
+  const allPitches = db.getPitches();
+  const pitches = allPitches.filter(p => Number(p.type) === selectedPitchType);
   const select = document.getElementById('booking-pitch-select');
   if (!select) return;
+
+  const typeBadge = document.getElementById('selected-type-badge');
+  if (typeBadge) {
+    typeBadge.textContent = `(${pitches.length} sân có sẵn)`;
+  }
+
   select.innerHTML = pitches.map(p => `
     <option value="${p.id}" ${p.id === selectedPitchId ? 'selected' : ''} ${p.status === 'Bảo trì' ? 'disabled' : ''}>
-      ${p.name} (${p.typeName} - ${window.SanBongApp.formatVND(p.basePrice)}/h) ${p.status === 'Bảo trì' ? ' [BẢO TRÌ]' : ''}
+      ${p.name} - ${window.SanBongApp ? window.SanBongApp.formatVND(p.basePrice) : p.basePrice + 'đ'}/h ${p.status === 'Bảo trì' ? ' [ĐANG BẢO TRÌ]' : ''}
     </option>
   `).join('');
 }
