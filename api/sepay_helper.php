@@ -1,8 +1,4 @@
 <?php
-/**
- * SÂN BÓNG PRO - SEPAY INTEGRATION HELPER (api/sepay_helper.php)
- * Xử lý kết nối cổng thanh toán VietQR tự động qua SePay API v2
- */
 
 require_once __DIR__ . '/security_helper.php';
 
@@ -18,9 +14,6 @@ function get_sepay_config() {
     ];
 }
 
-/**
- * Tạo URL mã QR thanh toán nhanh VietQR từ SePay
- */
 function generate_sepay_qr_url($amount, $orderCode) {
     $cfg = get_sepay_config();
     $bank = urlencode($cfg['bank_code']);
@@ -31,9 +24,6 @@ function generate_sepay_qr_url($amount, $orderCode) {
     return "https://qr.sepay.vn/img?bank={$bank}&acc={$acc}&template=compact&amount={$amt}&des={$des}";
 }
 
-/**
- * Gọi SePay API lấy danh sách giao dịch gần nhất
- */
 function fetch_sepay_transactions($limit = 20) {
     $cfg = get_sepay_config();
     $token = $cfg['api_token'];
@@ -74,9 +64,6 @@ function fetch_sepay_transactions($limit = 20) {
     ];
 }
 
-/**
- * Lấy số tiền đặt cọc dự kiến của đơn từ CSDL hoặc logs/expected_orders.json
- */
 function get_expected_deposit_amount($pdo, $bookingCode) {
     $cleanCode = str_replace(['-', ' '], '', strtoupper($bookingCode));
 
@@ -104,14 +91,10 @@ function get_expected_deposit_amount($pdo, $bookingCode) {
     return 0;
 }
 
-/**
- * Xác thực thanh toán SePay có đối chiếu số tiền cọc bắt buộc ($expectedAmount > 0)
- */
 function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
     $expectedAmount = (int)$expectedAmount;
     $cleanCode = str_replace(['-', ' '], '', strtoupper($bookingCode));
 
-    // 1. Kiểm tra sổ cái Webhook (sepay_paid_orders.json)
     $ledgerFile = __DIR__ . '/sepay_paid_orders.json';
     if (file_exists($ledgerFile)) {
         $paidOrders = json_decode(@file_get_contents($ledgerFile), true);
@@ -130,7 +113,6 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
         }
     }
 
-    // 2. Kiểm tra qua SePay API (transactions/list)
     $result = fetch_sepay_transactions(30);
     if (!empty($result['success']) && !empty($result['transactions'])) {
         foreach ($result['transactions'] as $tx) {
@@ -163,9 +145,6 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
     ];
 }
 
-/**
- * Kiểm tra và tự động xác thực đơn đặt sân dựa trên giao dịch SePay
- */
 function verify_sepay_payment_for_booking($pdo, $bookingCode, $expectedAmount = 0) {
     if ($expectedAmount <= 0) {
         $expectedAmount = get_expected_deposit_amount($pdo, $bookingCode);

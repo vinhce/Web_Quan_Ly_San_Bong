@@ -4,12 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bảng Điều Khiển Quản Trị – Sân Bóng Pro Admin</title>
-  <!-- Favicon / Tab Icon -->
-  <!-- Favicon / Tab Icon -->
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
-  <!-- Pre-render RBAC Gate: Chặn tức thì mọi truy cập không phải Admin -->
+  
   <script>
     (function() {
       try {
@@ -25,14 +24,13 @@
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v17">
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
-  <!-- LEFT ADMIN SIDEBAR (Frame 11-19 Unified Shell) -->
   <aside class="w-64 bg-white border-r border-[#E2E8F0] flex flex-col justify-between shrink-0 select-none z-30">
     <div class="p-4">
-      <!-- Admin Brand -->
+      
       <a href="/" class="flex items-center gap-3 px-2 py-2 mb-6 group">
         <div class="w-9 h-9 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>
@@ -43,7 +41,6 @@
         </div>
       </a>
 
-      <!-- 9 Modules Navigation Tabs -->
       <nav class="space-y-1">
         <button onclick="switchAdminTab('overview')" id="nav-overview" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-bold transition-all bg-[#DCFCE7] text-[#16A34A]">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
@@ -93,7 +90,6 @@
       </nav>
     </div>
 
-    <!-- Admin User Bottom Pill -->
     <div class="p-4 border-t border-[#E2E8F0]">
       <div class="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -117,10 +113,8 @@
     </div>
   </aside>
 
-  <!-- RIGHT CONTENT WORKSPACE -->
   <div class="flex-1 flex flex-col h-screen overflow-hidden">
 
-    <!-- Top Admin Header Bar -->
     <header class="h-16 bg-white border-b border-[#E2E8F0] px-6 flex items-center justify-between shrink-0">
       <div class="flex items-baseline gap-3">
         <h1 id="admin-module-title" class="font-heading font-extrabold text-xl text-[#0F172A]">1. Tổng quan hệ thống</h1>
@@ -136,7 +130,7 @@
             <input type="text" id="admin-global-search" oninput="performAdminSearch()" onkeydown="if(event.key==='Enter')performAdminSearch()" placeholder="Tìm mã đơn, SĐT khách..." class="w-full bg-transparent border-none outline-none text-xs text-[#0F172A] placeholder-[#94A3B8] font-medium" autocomplete="off">
             <button type="button" id="admin-search-clear" onclick="clearAdminSearch()" class="hidden text-slate-400 hover:text-slate-600 font-bold text-xs p-1" title="Xóa">✕</button>
           </div>
-          <!-- Dropdown kết quả tìm kiếm tức thì -->
+          
           <div id="admin-search-results" class="hidden absolute right-0 top-11 w-96 max-h-96 overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 z-50 divide-y divide-slate-100 p-2"></div>
         </div>
         <button onclick="switchAdminTab('quick-booking')" class="btn-sm btn-primary">
@@ -145,14 +139,10 @@
       </div>
     </header>
 
-    <!-- TAB CONTENTS (Dynamic 9 Modules) -->
     <main class="flex-1 overflow-y-auto p-6 bg-[#F8FAFC]">
 
-      <!-- ========================================== -->
-      <!-- TAB 1: TỔNG QUAN KPI & BIỂU ĐỒ (Frame 11) -->
-      <!-- ========================================== -->
       <div id="tab-content-overview" class="space-y-6">
-        <!-- 4 KPI Cards -->
+        
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Doanh thu hôm nay</div>
@@ -183,14 +173,13 @@
           </div>
         </div>
 
-        <!-- Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div class="lg:col-span-8 ui-card p-5">
             <div class="flex items-center justify-between mb-4">
               <h3 class="font-heading font-bold text-base text-[#0F172A]">Doanh thu 7 ngày gần nhất</h3>
               <span class="text-xs text-[#16A34A] font-bold">Tổng tuần: 28.600.000đ</span>
             </div>
-            <!-- SVG Vector Chart Line -->
+            
             <svg viewBox="0 0 680 180" class="w-full h-44">
               <defs>
                 <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
@@ -231,13 +220,12 @@
           </div>
         </div>
 
-        <!-- Ca đá sắp diễn ra trong ngày -->
         <div class="ui-card p-5 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Lịch thi đấu hôm nay cần theo dõi</h3>
             <span class="text-xs text-[#16A34A] font-bold">Giờ cao điểm 17:30 - 21:00</span>
           </div>
-                  <!-- Banner Quy che An han 15 phut & No-Show Release -->
+                  
         <div class="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 flex items-start gap-3 text-xs mb-3">
           <div class="p-2 rounded-lg bg-amber-500 text-white font-bold shrink-0 text-sm">⏱️ 15P</div>
           <div class="space-y-1">
@@ -250,21 +238,18 @@
           </div>
         </div>
           <div id="overview-today-bookings" class="space-y-2 text-xs">
-            <!-- Rendered by JS -->
+            
           </div>
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 2: LỊCH ĐẶT SÂN TIMELINE GANTT (Frame 12) -->
-      <!-- ========================================== -->
       <div id="tab-content-timeline" class="space-y-4 hidden">
         <div class="ui-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <span class="font-heading font-bold text-sm text-[#0F172A]">Lịch ma trận sân hôm nay:</span>
             <span class="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">Thứ Sáu, 06/11/2026</span>
           </div>
-          <!-- Legend Status Pills -->
+          
           <div class="flex items-center gap-2 text-xs flex-wrap">
             <span class="px-2 py-0.5 rounded-full bg-white border border-[#16A34A] text-[#16A34A]">Trống</span>
             <span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A]">Đã xác nhận</span>
@@ -274,27 +259,22 @@
           </div>
         </div>
 
-        <!-- Gantt Chart Container -->
         <div class="ui-card p-5 overflow-x-auto">
           <div class="min-w-[900px]">
-            <!-- Timeline Hours Header 05:30 -> 22:30 -->
+            
             <div class="grid grid-cols-12 border-b border-[#E2E8F0] pb-2 text-[11px] font-bold text-[#64748B] pl-28 text-center">
               <div>05:30</div><div>07:00</div><div>08:30</div><div>14:00</div><div>15:30</div>
               <div>17:00</div><div class="text-[#DC2626] font-extrabold">17:30 ▼</div><div>18:30</div>
               <div>20:00</div><div>21:30</div><div>22:30</div><div>23:00</div>
             </div>
 
-            <!-- 6 Rows for 6 Pitches (Frame 12) -->
             <div id="gantt-rows" class="divide-y divide-[#E2E8F0] pt-2">
-              <!-- Rendered by JS -->
+              
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 3: ĐẶT SÂN TẠI QUẦY (Frame 13) -->
-      <!-- ========================================== -->
       <div id="tab-content-quick-booking" class="space-y-6 hidden">
         <div class="ui-card p-6 max-w-2xl mx-auto space-y-4">
           <div class="border-b border-[#E2E8F0] pb-3">
@@ -318,13 +298,13 @@
               <div>
                 <label class="block font-bold text-[#475569] mb-1">Chọn sân bóng *</label>
                 <select id="admin-pitch-select" class="input-field w-full font-bold">
-                  <!-- Rendered by JS -->
+                  
                 </select>
               </div>
               <div>
                 <label class="block font-bold text-[#475569] mb-1">Khung giờ đá *</label>
                 <select id="admin-slot-select" class="input-field w-full font-bold text-[#16A34A]">
-                  <!-- Rendered by JS -->
+                  
                 </select>
               </div>
             </div>
@@ -352,9 +332,6 @@
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 4: QUẢN LÝ 17 SÂN & BẬT TẮT BẢO TRÌ (Frame 14) -->
-      <!-- ========================================== -->
       <div id="tab-content-pitches" class="space-y-4 hidden">
         <div class="flex items-center justify-between">
           <h3 class="font-heading font-bold text-base text-[#0F172A]">Danh sách sân bóng trực thuộc hệ thống</h3>
@@ -362,13 +339,10 @@
         </div>
 
         <div id="admin-pitches-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          <!-- Rendered by JS with real-time Maintenance toggle -->
+          
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 5: BẢNG GIÁ CẤU HÌNH (Frame 15) -->
-      <!-- ========================================== -->
       <div id="tab-content-pricing" class="space-y-6 hidden">
         <div class="ui-card p-6 space-y-4">
           <h3 class="font-heading font-bold text-lg text-[#0F172A]">Cấu hình bảng giá theo khung giờ (VND / Giờ)</h3>
@@ -410,9 +384,6 @@
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 6: KHÁCH HÀNG & HỘI VIÊN (Frame 16) -->
-      <!-- ========================================== -->
       <div id="tab-content-customers" class="space-y-4 hidden">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -442,7 +413,7 @@
           </table>
         </div>
       </div>
-      <!-- ========================================== -->
+      
       <div id="tab-content-customers" class="space-y-4 hidden">
         <div class="ui-card overflow-hidden">
           <table class="w-full text-left text-xs">
@@ -486,9 +457,6 @@
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 7: THANH TOÁN & DUYỆT CỌC VIETQR (Frame 17) -->
-      <!-- ========================================== -->
       <div id="tab-content-payments" class="space-y-4 hidden">
         <div class="ui-card p-4 flex items-center justify-between">
           <div>
@@ -511,15 +479,12 @@
               </tr>
             </thead>
             <tbody id="admin-payments-tbody" class="divide-y divide-[#E2E8F0]">
-              <!-- Rendered dynamically with 1-click Approve -->
+              
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 8: BÁO CÁO THỐNG KÊ (Frame 18) -->
-      <!-- ========================================== -->
       <div id="tab-content-reports" class="space-y-6 hidden">
         <div class="flex items-center justify-between">
           <div>
@@ -554,7 +519,6 @@
           </div>
         </div>
 
-        <!-- Phân bổ theo loại sân -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="ui-card p-5 flex items-center justify-between">
             <div>
@@ -582,7 +546,6 @@
           </div>
         </div>
 
-        <!-- Bảng kê doanh thu theo từng sân -->
         <div class="ui-card overflow-hidden">
           <div class="p-4 border-b border-[#E2E8F0] font-heading font-bold text-sm text-[#0F172A]">
             Bảng kê hiệu suất khai thác chi tiết theo từng sân bóng
@@ -602,7 +565,7 @@
           </table>
         </div>
       </div>
-      <!-- ========================================== -->
+      
       <div id="tab-content-reports" class="space-y-6 hidden">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="ui-card p-5">
@@ -623,9 +586,6 @@
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- TAB 9: CÀI ĐẶT HỆ THỐNG (Frame 19) -->
-      <!-- ========================================== -->
       <div id="tab-content-settings" class="space-y-6 hidden">
         <div class="ui-card p-6 max-w-2xl mx-auto space-y-4">
           <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
@@ -677,10 +637,9 @@
     </main>
   </div>
 
-  <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v15"></script>
-  <script src="/js/app.js?v=20261109_v15"></script>
-  <script src="/js/api.js?v=20261109_v15"></script>
-  <script src="/js/admin.js?v=20261109_v15"></script>
+  <script src="/js/data.js?v=20261109_v17"></script>
+  <script src="/js/app.js?v=20261109_v17"></script>
+  <script src="/js/api.js?v=20261109_v17"></script>
+  <script src="/js/admin.js?v=20261109_v17"></script>
 </body>
 </html>

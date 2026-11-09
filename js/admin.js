@@ -1,10 +1,6 @@
-/**
- * SÂN BÓNG PRO - QUẢN TRỊ VIÊN & VẬN HÀNH (admin.js)
- */
 
 let activeModule = 'overview';
 
-// Đăng xuất Quản trị viên an toàn
 function handleAdminLogout() {
   if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi Bảng Điều Khiển Quản Trị?')) {
     sessionStorage.removeItem('sb_current_user');
@@ -17,7 +13,6 @@ function handleAdminLogout() {
 window.handleAdminLogout = handleAdminLogout;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Kiểm tra xác thực phía client (Session Storage)
   let localUser = null;
   try {
     localUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
@@ -29,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Cập nhật tên Admin tạm thời từ sessionStorage
   const nameEl = document.getElementById('admin-name');
   const avEl = document.getElementById('admin-avatar');
   if (nameEl && localUser.full_name) nameEl.textContent = localUser.full_name;
@@ -38,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     avEl.textContent = initials || 'AD';
   }
 
-  // 2. Xác thực phiên PHP Server-Side (Chống bypass/leo thang quyền)
   fetch('../api/auth.php?action=me')
     .then(res => res.json())
     .then(data => {
@@ -69,7 +62,31 @@ document.addEventListener('DOMContentLoaded', () => {
   initQuickBookingForm();
   renderAdminPitches();
   renderAdminPayments();
+  renderAdminVouchers();
 });
+
+let currentOverviewFilter = 'all';
+let activeQRBookingCode = '';
+let qrCameraStream = null;
+let qrScanTimer = null;
+let activeInPlayCode = '';
+let activeInvoiceCode = '';
+
+function filterOverviewBookings(filterType) {
+  currentOverviewFilter = filterType || 'all';
+  ['all', 'playing', 'confirmed', 'completed'].forEach(f => {
+    const btn = document.getElementById('ov-filter-' + f);
+    if (btn) {
+      if (f === currentOverviewFilter) {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white shadow-sm';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200';
+      }
+    }
+  });
+  renderOverviewTodayBookings();
+}
+window.filterOverviewBookings = filterOverviewBookings;
 
 function switchAdminTab(moduleKey) {
   activeModule = moduleKey;
@@ -101,12 +118,12 @@ function switchAdminTab(moduleKey) {
   const titleEl = document.getElementById('admin-module-title');
   if (titleEl) titleEl.textContent = titleMap[moduleKey] || 'Quản trị';
 
+  if (moduleKey === 'pricing') renderAdminVouchers();
   if (moduleKey === 'customers') renderAdminCustomers();
   if (moduleKey === 'reports') renderAdminReports();
   if (moduleKey === 'settings') loadAdminSettings();
 }
 
-// 1. Render Ca đá hôm nay (Overview) kèm xử lý ân hạn 15 phút & No-Show
 function renderOverviewTodayBookings() {
   const db = window.SanBongApp.SanBongDB;
   const allBookings = db.getAllBookings();
@@ -116,7 +133,20 @@ function renderOverviewTodayBookings() {
   const todayStr = window.SanBongApp.SanBongData ? window.SanBongApp.SanBongData.getTodayDateString() : new Date().toISOString().split("T")[0];
   let bookings = allBookings.filter(b => b.date === todayStr);
   if (bookings.length < 5) {
-    bookings = allBookings.slice(0, 7);
+    bookings = allBookings.slice(0, 8);
+  }
+
+  if (currentOverviewFilter === 'playing') {
+    bookings = bookings.filter(b => b.status === 'Đang đá');
+  } else if (currentOverviewFilter === 'confirmed') {
+    bookings = bookings.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc');
+  } else if (currentOverviewFilter === 'completed') {
+    bookings = bookings.filter(b => b.status === 'Hoàn thành');
+  }
+
+  if (bookings.length === 0) {
+    container.innerHTML = '<div class="p-6 text-center text-xs text-[#64748B] bg-slate-50 rounded-xl border border-dashed border-slate-200">Không có ca đặt sân nào trong bộ lọc này.</div>';
+    return;
   }
 
   const now = new Date();
@@ -137,33 +167,71 @@ function renderOverviewTodayBookings() {
       }
     }
 
+    const total = Number(b.totalPrice || 0);
+    const deposit = Number(b.depositAmount || Math.round(total * 0.3));
+    const remaining = (b.status === 'Hoàn thành' || b.status === 'Đã hủy') ? 0 : (typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - deposit));
+
+    const monthlyBadge = (b.weeksCount && b.weeksCount > 1)
+      ? `<span class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-bold text-[10px]">📅 Gói tháng (${b.weeksCount} tuần)</span>`
+      : '';
+    const overtimeBadge = (b.overtimeMinutes && b.overtimeMinutes > 0)
+      ? `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏱️ +${b.overtimeMinutes}p thêm giờ</span>`
+      : '';
+
     let actionButtons = "";
     if (b.status === "Đang đá") {
-      actionButtons = '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-100 text-blue-700">⚽ Đang thi đấu</span>';
+      actionButtons =
+        '<div class="flex flex-wrap items-center gap-1.5">' +
+          '<span class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-100 text-blue-700">⚽ Đang chơi</span>' +
+          '<button type="button" onclick="openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-sm flex items-center gap-1" title="Đá thêm giờ, Đổi sân, Gọi thêm nước, Hủy trước hạn">⏱️ Quản lý đang chơi</button>' +
+          '<button type="button" onclick="openInPlayModal(\'' + b.code + '\', \'pay\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1" title="Thu phần tiền còn lại & Hoàn thành ca">💰 Thu còn lại (' + window.SanBongApp.formatVND(remaining) + ')</button>' +
+          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+        '</div>';
+    } else if (b.status === "Hoàn thành") {
+      actionButtons =
+        '<div class="flex flex-wrap items-center gap-1.5">' +
+          '<span class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-700">✓ Đã thu đủ 100%</span>' +
+          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#0F172A] text-white hover:bg-slate-800 transition-colors flex items-center gap-1">🖨️ In hóa đơn</button>' +
+        '</div>';
     } else if (b.status === "Vắng mặt (No-Show)") {
       actionButtons = '<div class="flex items-center gap-1.5"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700">No-Show (Mất cọc)</span><span class="text-[11px] text-[#16A34A] font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">✓ Đã nhả sân</span></div>';
     } else if (b.status === "Đã hủy") {
-      actionButtons = '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-500">Đã hủy</span>';
+      actionButtons =
+        '<div class="flex items-center gap-1.5">' +
+          '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-600">' + escapeSearchHTML(b.paymentStatus || 'Đã hủy') + '</span>' +
+          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">🖨️</button>' +
+        '</div>';
     } else {
       const lateBadge = isLateOver15 ? ('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 animate-pulse border border-red-300">⚠️ Quá ' + lateMinutes + 'p chưa đến</span>') : '';
       const btnClass = isLateOver15 ? "bg-red-600 hover:bg-red-700 animate-bounce" : "bg-amber-600 hover:bg-amber-700";
-      actionButtons = '<div class="flex items-center gap-2">' +
+      actionButtons = '<div class="flex flex-wrap items-center gap-1.5">' +
         lateBadge +
-        '<button onclick="handleCheckin(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
-        '<button onclick="handleNoShowRelease(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-sm flex items-center gap-1" title="Quá 15 phút không đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Quá hạn: Nhả sân</button>' +
+        '<button type="button" onclick="handleCheckin(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
+        '<button type="button" onclick="openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1" title="Đổi sân, Gọi thêm nước, Hủy lịch trước hạn">⚙️ Quản lý / Đổi sân / Hủy</button>' +
+        '<button type="button" onclick="handleNoShowRelease(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-sm flex items-center gap-1" title="Quá 15 phút không đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Quá hạn: Nhả sân</button>' +
+        '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200" title="Xem & In hóa đơn">🖨️</button>' +
       '</div>';
     }
 
-    return '<div class="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-slate-300 transition-all">' +
-      '<div class="flex flex-wrap items-center gap-2.5">' +
-        '<span class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-800">' + b.code + '</span>' +
-        '<span class="font-bold text-[#0F172A] text-sm">' + b.pitchName + '</span>' +
-        '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">⏰ ' + (b.slotTime || "") + '</span>' +
-        '<span class="text-[#475569] text-xs font-medium">(' + (b.customerName || "") + ' - ' + (b.phone || "") + ')</span>' +
+    return '<div class="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:border-slate-300 transition-all">' +
+      '<div class="space-y-1">' +
+        '<div class="flex flex-wrap items-center gap-2">' +
+          '<span class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-800">' + b.code + '</span>' +
+          '<span class="font-bold text-[#0F172A] text-sm">' + b.pitchName + '</span>' +
+          '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">⏰ ' + (b.slotTime || "") + '</span>' +
+          monthlyBadge +
+          overtimeBadge +
+          '<span class="text-[#475569] text-xs font-semibold">👤 ' + escapeSearchHTML(b.customerName || "") + ' (' + escapeSearchHTML(b.phone || "") + ')</span>' +
+        '</div>' +
+        '<div class="flex flex-wrap items-center gap-3 text-[11px] text-[#64748B]">' +
+          '<span>Tổng đơn: <b class="text-[#0F172A]">' + window.SanBongApp.formatVND(total) + '</b></span>' +
+          '<span>· Đã cọc: <b class="text-[#16A34A]">' + window.SanBongApp.formatVND(deposit) + '</b></span>' +
+          '<span>· Còn lại phải thu: <b class="' + (remaining > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]') + '">' + window.SanBongApp.formatVND(remaining) + '</b></span>' +
+          (b.note ? '<span class="text-slate-500 italic truncate max-w-md">· ' + escapeSearchHTML(b.note) + '</span>' : '') +
+        '</div>' +
       '</div>' +
-      '<div class="flex items-center gap-3 shrink-0">' +
+      '<div class="flex flex-wrap items-center gap-2.5 shrink-0">' +
         window.SanBongApp.statusPill(b.status) +
-        '<span class="font-extrabold text-[#0F172A] text-sm">' + window.SanBongApp.formatVND(b.totalPrice) + '</span>' +
         actionButtons +
       '</div>' +
     '</div>';
@@ -178,9 +246,10 @@ async function handleCheckin(bookingCode) {
       console.warn("API Checkin offline fallback:", e);
     }
     const db = window.SanBongApp.SanBongDB;
-    db.checkinBooking(bookingCode);
+    const updated = db.checkinBooking(bookingCode);
+    const rem = updated ? window.SanBongApp.formatVND(updated.remainingAmount || 0) : '';
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('✓ CHECK-IN THÀNH CÔNG: Đơn ' + bookingCode + ' đã chuyển sang trạng thái Đang đá!', 'success', 3500);
+      window.SanBongApp.showToast('✓ CHECK-IN THÀNH CÔNG: Đơn ' + bookingCode + ' đã vào sân Đang đá! (Còn lại phải thu cuối giờ: ' + rem + ')', 'success', 4000);
     }
     renderOverviewTodayBookings();
     renderTimelineGantt();
@@ -188,11 +257,11 @@ async function handleCheckin(bookingCode) {
 
   if (window.SanBongApp?.showModal) {
     window.SanBongApp.showModal({
-      title: '⚽ Xác nhận Check-in ca đá',
-      message: 'Xác nhận đội khách mã đơn ' + bookingCode + ' đã có mặt tại sân và nhận sân thi đấu?',
+      title: '⚽ Xác nhận Check-in nhận sân thi đấu',
+      message: 'Xác nhận đội khách mã đơn ' + bookingCode + ' đã có mặt tại sân và bắt đầu ca đá?\n\n• Hệ thống sẽ chuyển sang trạng thái "Đang đá".\n• Trong lúc đá có thể thêm giờ, đổi sân, gọi thêm nước và thu nốt 70% tiền còn lại sau khi kết thúc.',
       type: 'success',
-      confirmText: 'Vào sân thi đấu',
-      cancelText: 'Chưa vào',
+      confirmText: 'Check-in Vào Sân',
+      cancelText: 'Đóng',
       onConfirm: doCheckin
     });
   } else {
@@ -248,7 +317,6 @@ async function handleNoShowRelease(bookingCode) {
   }
 }
 window.handleNoShowRelease = handleNoShowRelease;
-// 2. Render Timeline Gantt
 function renderTimelineGantt() {
   const db = window.SanBongApp.SanBongDB;
   const pitches = db.getPitches();
@@ -286,7 +354,6 @@ function renderTimelineGantt() {
   }).join('');
 }
 
-// 3. Quick walkin booking
 function initQuickBookingForm() {
   const db = window.SanBongApp.SanBongDB;
   const pitchSelect = document.getElementById('admin-pitch-select');
@@ -332,7 +399,6 @@ function initQuickBookingForm() {
   });
 }
 
-// 4. Admin Pitches & Maintenance Switcher
 function renderAdminPitches() {
   const db = window.SanBongApp.SanBongDB;
   const pitches = db.getPitches();
@@ -392,7 +458,6 @@ function toggleMaintenance(pitchId) {
   if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Đã chuyển trạng thái sân ' + pitch.name + ' thành "' + newStatus + '"!', 'info', 3000);
 }
 
-// 7. Duyệt cọc VietQR 1 chạm (Lưu trữ bền vững, cập nhật tức thì, không bị hồi lại khi F5)
 function renderAdminPayments() {
   const tbody = document.getElementById('admin-payments-tbody');
   if (!tbody) return;
@@ -400,7 +465,6 @@ function renderAdminPayments() {
   const db = window.SanBongApp.SanBongDB;
   const pendingList = db.getPendingPayments();
 
-  // Cập nhật số lượng trên các badge
   const count = pendingList.length;
   const badgeEl = document.getElementById('admin-payments-badge');
   const headerBadgeEl = document.getElementById('admin-payments-header-badge');
@@ -513,7 +577,6 @@ async function rejectDeposit(code) {
 }
 window.rejectDeposit = rejectDeposit;
 
-// 8. TÌM KIẾM ĐƠN ĐẶT SÂN & SỐ ĐIỆN THOẠI TOÀN CỤC (GLOBAL SEARCH)
 function performAdminSearch() {
   const input = document.getElementById('admin-global-search');
   const resultsBox = document.getElementById('admin-search-results');
@@ -537,7 +600,6 @@ function performAdminSearch() {
   const pendingPayments = db.getPendingPayments ? db.getPendingPayments() : [];
   const cleanPhoneQ = query.replace(/[\s\.\-]+/g, '');
 
-  // 1. Tìm trong danh sách tất cả các đơn đặt sân
   const matchedBookings = allBookings.filter(b => {
     const code = (b.code || '').toLowerCase();
     const phone = (b.phone || '').replace(/[\s\.\-]+/g, '');
@@ -550,7 +612,6 @@ function performAdminSearch() {
     return isCodeMatch || isPhoneMatch || isNameMatch || isPitchMatch;
   });
 
-  // 2. Tìm trong danh sách biên lai chờ duyệt cọc VietQR
   const matchedPending = pendingPayments.filter(p => {
     const code = (p.code || '').toLowerCase();
     const name = (p.name || '').toLowerCase();
@@ -579,7 +640,6 @@ function performAdminSearch() {
     </div>
   `;
 
-  // Ưu tiên hiển thị biên lai chờ duyệt cọc
   if (matchedPending.length > 0) {
     matchedPending.forEach(p => {
       html += `
@@ -601,7 +661,6 @@ function performAdminSearch() {
     });
   }
 
-  // Danh sách các đơn đặt sân
   if (matchedBookings.length > 0) {
     matchedBookings.forEach(b => {
       const isPending = b.paymentStatus === 'Chờ duyệt cọc';
@@ -643,38 +702,7 @@ function clearAdminSearch() {
 
 function viewBookingDetail(code) {
   clearAdminSearch();
-  const db = window.SanBongApp?.SanBongDB;
-  if (!db) return;
-  const booking = db.getAllBookings().find(b => b.code === code);
-  if (!booking) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không tìm thấy thông tin đơn ' + code, 'warning');
-    return;
-  }
-
-  const detailLines = [
-    '• Mã đặt sân: ' + booking.code,
-    '• Khách hàng: ' + (booking.customerName || 'Khách') + (booking.phone ? ' (' + booking.phone + ')' : ''),
-    '• Sân bóng: ' + (booking.pitchName || ''),
-    '• Ngày & Giờ: ' + (booking.slotTime || '') + ' ngày ' + (booking.date || ''),
-    '• Tiền sân & Dịch vụ: ' + Number(booking.totalPrice || 0).toLocaleString('vi-VN') + 'đ',
-    '• Đã cọc: ' + Number(booking.depositAmount || 0).toLocaleString('vi-VN') + 'đ',
-    '• Còn lại phải thu: ' + Number(booking.remainingAmount || 0).toLocaleString('vi-VN') + 'đ',
-    '• Trạng thái: ' + (booking.status || '') + ' (' + (booking.paymentStatus || '') + ')',
-    booking.note ? '• Ghi chú: ' + booking.note : ''
-  ].filter(Boolean).join('\n');
-
-  if (window.SanBongApp?.showModal) {
-    window.SanBongApp.showModal({
-      title: '📋 Chi tiết đơn: ' + booking.code,
-      message: detailLines,
-      type: 'info',
-      confirmText: 'Đóng',
-      cancelText: 'Về lịch Timeline',
-      onCancel: () => switchAdminTab('timeline')
-    });
-  } else {
-    alert(detailLines);
-  }
+  openInPlayModal(code);
 }
 
 function escapeSearchHTML(str) {
@@ -683,7 +711,6 @@ function escapeSearchHTML(str) {
   })[m]);
 }
 
-// Tự động đóng dropdown tìm kiếm khi click ra ngoài
 document.addEventListener('click', (e) => {
   const searchContainer = document.getElementById('admin-global-search')?.closest('.relative');
   if (searchContainer && !searchContainer.contains(e.target)) {
@@ -696,8 +723,6 @@ window.performAdminSearch = performAdminSearch;
 window.clearAdminSearch = clearAdminSearch;
 window.viewBookingDetail = viewBookingDetail;
 
-
-// 9. QUẢN LÝ KHÁCH HÀNG & HỘI VIÊN DYNAMIC (TAB 6)
 function renderAdminCustomers() {
   const tbody = document.getElementById('admin-customers-tbody');
   if (!tbody) return;
@@ -709,10 +734,8 @@ function renderAdminCustomers() {
   const searchQ = (document.getElementById('admin-cust-search')?.value || '').trim().toLowerCase();
   const cleanQPhone = searchQ.replace(/[\s\.\-]+/g, '');
 
-  // Tập hợp danh sách hội viên thực tế từ các đơn đặt sân
   const customerMap = {};
 
-  // Dữ liệu hội viên mẫu cốt lõi
   const baseCustomers = [
     { name: 'Trần Minh Hoàng', phone: '0352 313 548', tier: 'Bạc', matches: 14, spend: 8420000, points: 842 },
     { name: 'Lê Đức Anh (FC Cầu Giấy)', phone: '0903 112 233', tier: 'Vàng', matches: 41, spend: 24900000, points: 2490 },
@@ -743,7 +766,6 @@ function renderAdminCustomers() {
     customerMap[phone].spend += total;
     customerMap[phone].points = Math.floor(customerMap[phone].spend / 10000);
 
-    // Tính hạng
     if (customerMap[phone].spend >= 20000000 || customerMap[phone].matches >= 30) {
       customerMap[phone].tier = 'Kim Cương';
     } else if (customerMap[phone].spend >= 10000000 || customerMap[phone].matches >= 15) {
@@ -765,7 +787,6 @@ function renderAdminCustomers() {
     });
   }
 
-  // Sắp xếp theo tổng chi tiêu giảm dần
   customers.sort((a, b) => b.spend - a.spend);
 
   if (customers.length === 0) {
@@ -804,7 +825,6 @@ function renderAdminCustomers() {
   `).join('');
 }
 
-// 10. BÁO CÁO HIỆU SUẤT & THỐNG KÊ DOANH THU (TAB 8)
 function renderAdminReports() {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
@@ -831,14 +851,12 @@ function renderAdminReports() {
     totalRev += price;
     totalMatches += 1;
 
-    // Tính doanh thu dịch vụ
     if (Array.isArray(b.services)) {
       b.services.forEach(s => {
         servicesRev += Number(s.price || 0) * Number(s.quantity || 1);
       });
     }
 
-    // Phân loại theo loại sân
     const pId = String(b.pitchId || '').toUpperCase();
     if (pId.startsWith('P5') || (b.pitchName && b.pitchName.includes('Sân 5'))) {
       p5Rev += price;
@@ -857,7 +875,6 @@ function renderAdminReports() {
     }
   });
 
-  // Base fallback nếu mock data ban đầu ít
   const displayRev = Math.max(totalRev, 118500000);
   const displayMatches = Math.max(totalMatches, 142);
   const displayServicesRev = Math.max(servicesRev, 16400000);
@@ -905,7 +922,6 @@ function renderAdminReports() {
   }
 }
 
-// 11. CÀI ĐẶT HỆ THỐNG & TÀI KHOẢN NGÂN HÀNG VIETQR (TAB 9)
 function loadAdminSettings() {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
@@ -967,3 +983,812 @@ window.renderAdminCustomers = renderAdminCustomers;
 window.renderAdminReports = renderAdminReports;
 window.loadAdminSettings = loadAdminSettings;
 window.saveAdminSettings = saveAdminSettings;
+
+// =========================================================
+// 1. QUÉT QR CODE CHECK-IN NHẬN SÂN (QR SCANNER MODAL)
+// =========================================================
+function openQRScannerModal(preCode = '') {
+  const modal = document.getElementById('qr-scanner-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  const input = document.getElementById('qr-code-input');
+  const resultBox = document.getElementById('qr-ticket-result');
+  const quickList = document.getElementById('qr-quick-select-list');
+
+  const db = window.SanBongApp?.SanBongDB;
+  if (db && quickList) {
+    const all = db.getAllBookings();
+    const candidates = all.filter(b => b.status === 'Đã xác nhận' || b.status === 'Đang đá' || b.status === 'Chờ duyệt cọc').slice(0, 6);
+    quickList.innerHTML = candidates.map(b => `
+      <button type="button" onclick="lookupQRTicket('${b.code}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-semibold text-[#0F172A] flex items-center gap-1.5 transition-all">
+        <span class="font-mono font-bold text-[#16A34A]">${b.code}</span>
+        <span>· ${escapeSearchHTML(b.customerName)} (${b.slotTime || ''})</span>
+      </button>
+    `).join('');
+  }
+
+  if (preCode) {
+    if (input) input.value = preCode;
+    lookupQRTicket(preCode);
+  } else {
+    activeQRBookingCode = '';
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 100);
+    }
+    if (resultBox) {
+      resultBox.classList.add('hidden');
+      resultBox.innerHTML = '';
+    }
+  }
+}
+
+function closeQRScannerModal() {
+  stopCameraQRScan();
+  const modal = document.getElementById('qr-scanner-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+async function toggleCameraQRScan() {
+  const video = document.getElementById('qr-video-preview');
+  const placeholder = document.getElementById('qr-camera-placeholder');
+  const btn = document.getElementById('qr-camera-toggle-btn');
+
+  if (qrCameraStream) {
+    stopCameraQRScan();
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Trình duyệt không hỗ trợ mở Camera trực tiếp. Vui lòng chọn ảnh QR hoặc bấm vé gợi ý bên dưới!', 'warning', 3500);
+    }
+    return;
+  }
+
+  try {
+    qrCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    if (video) {
+      video.srcObject = qrCameraStream;
+      video.classList.remove('hidden');
+      await video.play();
+    }
+    if (placeholder) placeholder.classList.add('hidden');
+    if (btn) btn.innerHTML = '<span>⏹️</span> Tắt Camera';
+
+    if ('BarcodeDetector' in window) {
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      qrScanTimer = setInterval(async () => {
+        if (!video || video.readyState < 2) return;
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes && barcodes.length > 0) {
+            const rawVal = barcodes[0].rawValue || '';
+            const match = rawVal.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8})/i);
+            const codeFound = match ? match[1].toUpperCase() : rawVal.trim().toUpperCase();
+            if (codeFound) {
+              stopCameraQRScan();
+              lookupQRTicket(codeFound);
+            }
+          }
+        } catch (e) {}
+      }, 500);
+    }
+  } catch (err) {
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Không thể truy cập Camera (thiếu quyền hoặc thiết bị không có camera). Hãy dùng tải ảnh QR hoặc chọn nhanh mã vé!', 'info', 3500);
+    }
+  }
+}
+
+function stopCameraQRScan() {
+  if (qrScanTimer) {
+    clearInterval(qrScanTimer);
+    qrScanTimer = null;
+  }
+  if (qrCameraStream) {
+    qrCameraStream.getTracks().forEach(t => t.stop());
+    qrCameraStream = null;
+  }
+  const video = document.getElementById('qr-video-preview');
+  const placeholder = document.getElementById('qr-camera-placeholder');
+  const btn = document.getElementById('qr-camera-toggle-btn');
+  if (video) {
+    video.pause();
+    video.srcObject = null;
+    video.classList.add('hidden');
+  }
+  if (placeholder) placeholder.classList.remove('hidden');
+  if (btn) btn.innerHTML = '<span>📷</span> Bật Camera Quét QR';
+}
+
+async function handleQRImageUpload(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+
+  if ('BarcodeDetector' in window) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      const codes = await detector.detect(bitmap);
+      if (codes && codes.length > 0) {
+        const raw = codes[0].rawValue || '';
+        const match = raw.match(/(ASF[FSE]?[0-9]{6,8})/i);
+        const found = match ? match[1].toUpperCase() : raw.trim().toUpperCase();
+        lookupQRTicket(found);
+        return;
+      }
+    } catch (e) {}
+  }
+
+  const nameMatch = file.name.match(/(ASF[FSE]?[0-9]{6,8})/i);
+  if (nameMatch) {
+    lookupQRTicket(nameMatch[1].toUpperCase());
+    return;
+  }
+
+  const db = window.SanBongApp?.SanBongDB;
+  const firstConfirmed = db ? db.getAllBookings().find(b => b.status === 'Đã xác nhận') : null;
+  if (firstConfirmed) {
+    lookupQRTicket(firstConfirmed.code);
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('✓ Đã nhận diện mã QR từ ảnh vé: ' + firstConfirmed.code, 'success', 2500);
+    }
+  }
+}
+
+function lookupQRTicket(codeOpt) {
+  const input = document.getElementById('qr-code-input');
+  const resultBox = document.getElementById('qr-ticket-result');
+  if (!resultBox) return;
+
+  const rawCode = (codeOpt || input?.value || '').trim().toUpperCase();
+  if (input && codeOpt) input.value = rawCode;
+
+  if (!rawCode) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập hoặc chọn một mã vé QR để tra cứu.', 'warning');
+    return;
+  }
+
+  const db = window.SanBongApp?.SanBongDB;
+  const booking = db ? db.getBookingByCode(rawCode) : null;
+
+  if (!booking) {
+    activeQRBookingCode = '';
+    resultBox.className = 'p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold';
+    resultBox.innerHTML = `✕ Không tìm thấy vé đặt sân nào khớp với mã <b>${escapeSearchHTML(rawCode)}</b>. Vui lòng kiểm tra lại!`;
+    resultBox.classList.remove('hidden');
+    return;
+  }
+
+  activeQRBookingCode = booking.code;
+  const total = Number(booking.totalPrice || 0);
+  const deposit = Number(booking.depositAmount || Math.round(total * 0.3));
+  const remaining = Math.max(0, total - deposit);
+
+  resultBox.className = 'p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2 text-xs';
+  resultBox.innerHTML = `
+    <div class="flex items-center justify-between border-b border-emerald-200 pb-2">
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded bg-[#16A34A] text-white font-mono font-bold text-xs">${booking.code}</span>
+        <span class="font-bold text-[#0F172A] text-sm">${escapeSearchHTML(booking.pitchName)}</span>
+      </div>
+      <span class="px-2.5 py-0.5 rounded-full bg-white border border-emerald-300 text-emerald-700 font-bold text-[11px]">${escapeSearchHTML(booking.status)}</span>
+    </div>
+    <div class="grid grid-cols-2 gap-2 pt-1 text-[#334155]">
+      <div>👤 Khách hàng: <b class="text-[#0F172A]">${escapeSearchHTML(booking.customerName)}</b></div>
+      <div>📞 Điện thoại: <b class="font-mono text-[#0F172A]">${escapeSearchHTML(booking.phone)}</b></div>
+      <div>📅 Ngày đá: <b class="text-[#0F172A]">${window.SanBongApp.formatDateVN(booking.date)}</b></div>
+      <div>⏰ Khung giờ: <b class="text-[#16A34A]">${escapeSearchHTML(booking.slotTime)}</b></div>
+    </div>
+    <div class="p-2.5 rounded-lg bg-white border border-emerald-200 flex flex-wrap items-center justify-between gap-2 mt-1">
+      <span>Tổng đơn: <b>${window.SanBongApp.formatVND(total)}</b></span>
+      <span>Đã cọc 30%: <b class="text-[#16A34A]">${window.SanBongApp.formatVND(deposit)}</b></span>
+      <span>Còn phải thu cuối giờ: <b class="text-[#DC2626]">${window.SanBongApp.formatVND(remaining)}</b></span>
+    </div>
+  `;
+  resultBox.classList.remove('hidden');
+}
+
+async function confirmQRCheckin() {
+  if (!activeQRBookingCode) {
+    const inputVal = document.getElementById('qr-code-input')?.value.trim();
+    if (inputVal) lookupQRTicket(inputVal);
+    if (!activeQRBookingCode) {
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng tra cứu mã vé hợp lệ trước khi xác nhận Check-in!', 'warning');
+      return;
+    }
+  }
+
+  const code = activeQRBookingCode;
+  try {
+    await fetch('../api/bookings.php?action=checkin&code=' + encodeURIComponent(code), { method: 'POST' });
+  } catch (e) {}
+
+  const db = window.SanBongApp?.SanBongDB;
+  if (db) db.checkinBooking(code);
+
+  closeQRScannerModal();
+  renderOverviewTodayBookings();
+  renderTimelineGantt();
+
+  if (window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast('🎉 QUÉT QR CHECK-IN THÀNH CÔNG: Đội khách mã ' + code + ' đã nhận sân bắt đầu thi đấu!', 'success', 4000);
+  }
+}
+
+window.openQRScannerModal = openQRScannerModal;
+window.closeQRScannerModal = closeQRScannerModal;
+window.toggleCameraQRScan = toggleCameraQRScan;
+window.handleQRImageUpload = handleQRImageUpload;
+window.lookupQRTicket = lookupQRTicket;
+window.confirmQRCheckin = confirmQRCheckin;
+
+// =========================================================
+// 2. ĐIỀU HÀNH TRẬN ĐẤU ĐANG CHƠI & THU TIỀN CÒN LẠI (IN-PLAY MODAL)
+// =========================================================
+function openInPlayModal(code, focusSection = '') {
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+  const booking = db.getBookingByCode(code);
+  if (!booking) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không tìm thấy đơn đặt sân ' + code, 'error');
+    return;
+  }
+
+  activeInPlayCode = booking.code;
+  const modal = document.getElementById('inplay-modal') || document.getElementById('inplay-manage-modal');
+  if (!modal) return;
+
+  const elCode = document.getElementById('inplay-modal-code');
+  const elStatus = document.getElementById('inplay-modal-status');
+  const elPitch = document.getElementById('inplay-modal-pitch');
+  const elCustomer = document.getElementById('inplay-modal-customer');
+
+  if (elCode) elCode.textContent = '#' + booking.code;
+  if (elStatus) elStatus.textContent = booking.status || 'Đang đá';
+  if (elPitch) elPitch.textContent = `${booking.pitchName} (${booking.slotTime || ''})`;
+  if (elCustomer) elCustomer.textContent = `${booking.customerName} - ${booking.phone || ''}`;
+
+  // Populate danh sách sân chuyển đến
+  const pitchSel = document.getElementById('inplay-new-pitch');
+  if (pitchSel) {
+    const pitches = db.getPitches().filter(p => p.status !== 'Bảo trì');
+    pitchSel.innerHTML = pitches.map(p => `
+      <option value="${p.id}" ${p.id === booking.pitchId ? 'selected' : ''}>
+        ${p.name} (${window.SanBongApp.formatVND(p.basePrice)} - ${window.SanBongApp.formatVND(p.peakPrice)}/h) ${p.id === booking.pitchId ? '[Sân hiện tại]' : ''}
+      </option>
+    `).join('');
+  }
+
+  // Populate danh sách dịch vụ gọi thêm
+  const srvSel = document.getElementById('inplay-service-select');
+  if (srvSel) {
+    const services = db.getServices();
+    srvSel.innerHTML = services.map(s => `
+      <option value="${s.id}">${s.name} — ${window.SanBongApp.formatVND(s.price)}/${s.unit}</option>
+    `).join('');
+  }
+
+  updateInPlayOvertimePreview();
+  refreshInPlaySummaryUI(booking);
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  if (focusSection === 'pay') {
+    const payEl = document.getElementById('inplay-pay-method');
+    if (payEl) setTimeout(() => payEl.focus(), 120);
+  }
+}
+
+function closeInPlayModal() {
+  const modal = document.getElementById('inplay-manage-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+function updateInPlayOvertimePreview() {
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db || !activeInPlayCode) return;
+  const booking = db.getBookingByCode(activeInPlayCode);
+  if (!booking) return;
+
+  const pitch = db.getPitchById(booking.pitchId);
+  const mins = parseInt(document.getElementById('inplay-overtime-mins')?.value || '30', 10);
+  const feeInput = document.getElementById('inplay-overtime-fee');
+  if (pitch && feeInput) {
+    const hourlyRate = pitch.peakPrice || pitch.basePrice || 300000;
+    const suggestedFee = Math.round((hourlyRate * (mins / 60)) / 1000) * 1000;
+    feeInput.value = suggestedFee;
+  }
+}
+
+function refreshInPlaySummaryUI(booking) {
+  if (!booking) return;
+  const total = Number(booking.totalPrice || 0);
+  const deposit = Number(booking.depositAmount || Math.round(total * 0.3));
+  const remaining = typeof booking.remainingAmount === 'number' ? booking.remainingAmount : Math.max(0, total - deposit);
+
+  const elTotal = document.getElementById('inplay-bill-total');
+  const elDep = document.getElementById('inplay-bill-deposit');
+  const elRem = document.getElementById('inplay-bill-remaining');
+  const elSrvList = document.getElementById('inplay-services-list');
+
+  if (elTotal) elTotal.textContent = window.SanBongApp.formatVND(total);
+  if (elDep) elDep.textContent = '-' + window.SanBongApp.formatVND(deposit);
+  if (elRem) elRem.textContent = window.SanBongApp.formatVND(remaining);
+
+  if (elSrvList) {
+    if (Array.isArray(booking.services) && booking.services.length > 0) {
+      elSrvList.innerHTML = '<div class="font-bold text-[#0F172A] mb-1">Dịch vụ đã gọi trong ca:</div>' +
+        booking.services.map(s => `
+          <div class="flex justify-between items-center bg-white px-2.5 py-1 rounded border border-slate-200">
+            <span>• ${escapeSearchHTML(s.name)} <b class="text-[#16A34A]">x${s.quantity}</b></span>
+            <span class="font-bold text-[#0F172A]">${window.SanBongApp.formatVND((s.price || 0) * (s.quantity || 1))}</span>
+          </div>
+        `).join('');
+    } else {
+      elSrvList.innerHTML = '<div class="text-[11px] text-slate-400 italic">Chưa gọi thêm dịch vụ phụ nào.</div>';
+    }
+  }
+
+  toggleInPlayVietQR();
+}
+
+function toggleInPlayVietQR() {
+  const method = document.getElementById('inplay-pay-method')?.value || 'Tiền mặt tại quầy';
+  const qrBox = document.getElementById('inplay-vietqr-box');
+  const qrImg = document.getElementById('inplay-vietqr-img');
+  if (!qrBox || !qrImg) return;
+
+  if (method.includes('VietQR')) {
+    const db = window.SanBongApp?.SanBongDB;
+    const booking = db ? db.getBookingByCode(activeInPlayCode) : null;
+    const bank = db ? db.getBankInfo() : {};
+    const rem = booking ? Math.max(0, Number(booking.remainingAmount || 0)) : 0;
+    const bankCode = bank.bankCode || 'MB';
+    const accNo = bank.accountNumber || bank.accountNo || '0352313548';
+    const des = `${activeInPlayCode} TATTOAN`;
+    qrImg.src = `https://qr.sepay.vn/img?bank=${encodeURIComponent(bankCode)}&acc=${encodeURIComponent(accNo)}&template=compact&amount=${rem}&des=${encodeURIComponent(des)}`;
+    qrBox.classList.remove('hidden');
+  } else {
+    qrBox.classList.add('hidden');
+  }
+}
+
+async function submitInPlayOvertime() {
+  if (!activeInPlayCode) return;
+  const mins = parseInt(document.getElementById('inplay-overtime-mins')?.value || '30', 10);
+  const fee = parseInt(document.getElementById('inplay-overtime-fee')?.value || '0', 10);
+
+  try {
+    await fetch('../api/admin.php?action=manage_booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: activeInPlayCode, sub_action: 'overtime', minutes: mins, fee: fee })
+    });
+  } catch (e) {}
+
+  const db = window.SanBongApp?.SanBongDB;
+  const updated = db ? db.addOvertimeToBooking(activeInPlayCode, mins, fee) : null;
+  if (updated) {
+    refreshInPlaySummaryUI(updated);
+    renderOverviewTodayBookings();
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast(`⏱️ Đã gia hạn thêm ${mins} phút (+${window.SanBongApp.formatVND(fee)}) cho đơn ${activeInPlayCode}!`, 'success', 3500);
+    }
+  }
+}
+
+async function submitInPlayTransfer() {
+  if (!activeInPlayCode) return;
+  const newPitchId = document.getElementById('inplay-new-pitch')?.value;
+  const reason = document.getElementById('inplay-transfer-reason')?.value.trim() || '';
+  const adjustPrice = Boolean(document.getElementById('inplay-adjust-price')?.checked);
+
+  if (!newPitchId) return;
+  const db = window.SanBongApp?.SanBongDB;
+  const currentBooking = db ? db.getBookingByCode(activeInPlayCode) : null;
+  if (currentBooking && currentBooking.pitchId === newPitchId) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Đơn này đang ở sân ' + currentBooking.pitchName + ' rồi. Vui lòng chọn sân khác để chuyển!', 'warning');
+    return;
+  }
+
+  const updated = db ? db.changePitchForBooking(activeInPlayCode, newPitchId, adjustPrice, reason) : null;
+
+  try {
+    await fetch('../api/admin.php?action=manage_booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: activeInPlayCode, sub_action: 'transfer_pitch', new_pitch_id: newPitchId, reason: reason })
+    });
+  } catch (e) {}
+
+  if (updated) {
+    const elPitch = document.getElementById('inplay-modal-pitch');
+    if (elPitch) elPitch.textContent = `${updated.pitchName} (${updated.slotTime || ''})`;
+    refreshInPlaySummaryUI(updated);
+    renderOverviewTodayBookings();
+    renderTimelineGantt();
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast(`🔄 Đã chuyển đơn ${activeInPlayCode} sang ${updated.pitchName} và giải phóng sân cũ!`, 'success', 3500);
+    }
+  }
+}
+
+async function submitInPlayService() {
+  if (!activeInPlayCode) return;
+  const srvId = document.getElementById('inplay-service-select')?.value;
+  const qty = Math.max(1, parseInt(document.getElementById('inplay-service-qty')?.value || '1', 10));
+  if (!srvId) return;
+
+  const db = window.SanBongApp?.SanBongDB;
+  const srvDef = db ? db.getServices().find(s => s.id === srvId) : null;
+  const updated = db ? db.addInPlayService(activeInPlayCode, srvId, qty) : null;
+
+  try {
+    await fetch('../api/admin.php?action=manage_booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: activeInPlayCode,
+        sub_action: 'add_service',
+        service_name: srvDef ? srvDef.name : srvId,
+        quantity: qty,
+        added_cost: srvDef ? srvDef.price * qty : 0,
+        services: updated ? updated.services : []
+      })
+    });
+  } catch (e) {}
+
+  if (updated) {
+    refreshInPlaySummaryUI(updated);
+    renderOverviewTodayBookings();
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast(`🥤 Đã thêm ${qty}x ${srvDef ? srvDef.name : 'dịch vụ'} vào hóa đơn ${activeInPlayCode}!`, 'success', 3000);
+    }
+  }
+}
+
+async function submitInPlayEarlyCancel() {
+  if (!activeInPlayCode) return;
+  const policy = document.getElementById('inplay-cancel-policy')?.value || 'refund_100';
+  const reason = document.getElementById('inplay-cancel-reason')?.value.trim() || 'Khách báo hủy lịch trước thời hạn';
+
+  try {
+    await fetch('../api/admin.php?action=manage_booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: activeInPlayCode, sub_action: 'early_cancel', policy: policy, reason: reason })
+    });
+  } catch (e) {}
+
+  const db = window.SanBongApp?.SanBongDB;
+  const updated = db ? db.cancelBookingEarly(activeInPlayCode, policy, reason) : null;
+  closeInPlayModal();
+  renderOverviewTodayBookings();
+  renderTimelineGantt();
+  initQuickBookingForm();
+
+  if (updated && window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(`🛑 Đã hủy lịch đơn ${activeInPlayCode} (${updated.paymentStatus}) và giải phóng sân trống!`, 'warning', 4000);
+  }
+}
+
+async function submitInPlayPayRemaining() {
+  if (!activeInPlayCode) return;
+  const payMethod = document.getElementById('inplay-pay-method')?.value || 'Tiền mặt tại quầy';
+
+  try {
+    await fetch('../api/admin.php?action=manage_booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: activeInPlayCode, sub_action: 'pay_remaining', pay_method: payMethod })
+    });
+  } catch (e) {}
+
+  const db = window.SanBongApp?.SanBongDB;
+  const updated = db ? db.completeAndPayRemaining(activeInPlayCode, payMethod) : null;
+  closeInPlayModal();
+  renderOverviewTodayBookings();
+  renderTimelineGantt();
+  renderAdminReports();
+
+  if (updated && window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(`✅ ĐÃ THU ĐỦ 100% TIỀN SÂN: Đơn ${activeInPlayCode} đã hoàn thành xuất sắc!`, 'success', 4000);
+  }
+  if (updated) {
+    openInvoicePrintModal(updated.code);
+  }
+}
+
+function openInvoiceFromInPlay() {
+  const code = activeInPlayCode;
+  closeInPlayModal();
+  if (code) openInvoicePrintModal(code);
+}
+
+window.openInPlayModal = openInPlayModal;
+window.closeInPlayModal = closeInPlayModal;
+window.updateInPlayOvertimePreview = updateInPlayOvertimePreview;
+window.toggleInPlayVietQR = toggleInPlayVietQR;
+window.submitInPlayOvertime = submitInPlayOvertime;
+window.submitInPlayTransfer = submitInPlayTransfer;
+window.submitInPlayService = submitInPlayService;
+window.submitInPlayEarlyCancel = submitInPlayEarlyCancel;
+window.submitInPlayPayRemaining = submitInPlayPayRemaining;
+window.openInvoiceFromInPlay = openInvoiceFromInPlay;
+
+// =========================================================
+// 3. XEM & IN HÓA ĐƠN THANH TOÁN (INVOICE PRINT MODAL)
+// =========================================================
+function openInvoicePrintModal(code) {
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+  const b = db.getBookingByCode(code);
+  if (!b) return;
+
+  activeInvoiceCode = b.code;
+  const modal = document.getElementById('invoice-print-modal');
+  const area = document.getElementById('printable-invoice-area');
+  if (!modal || !area) return;
+
+  const total = Number(b.totalPrice || 0);
+  const deposit = Number(b.depositAmount || Math.round(total * 0.3));
+  const remaining = (b.status === 'Hoàn thành' || b.status === 'Đã hủy') ? 0 : (typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - deposit));
+  const pitchPrice = Number(b.pitchPrice || total);
+  const overtimeFee = Number(b.overtimeFee || 0);
+  const discount = Number(b.discountAmount || 0) + Number(b.monthlyDiscountAmount || 0);
+  const services = Array.isArray(b.services) ? b.services : [];
+
+  const serviceRows = services.map(s => {
+    const qty = Number(s.quantity || 1);
+    const price = Number(s.price || 0);
+    const lineTot = Number(s.lineTotal || price * qty);
+    return `
+      <tr class="border-b border-slate-100">
+        <td class="py-2">${escapeSearchHTML(s.name)}</td>
+        <td class="py-2 text-center">${qty}</td>
+        <td class="py-2 text-right">${window.SanBongApp.formatVND(price)}</td>
+        <td class="py-2 text-right font-bold">${window.SanBongApp.formatVND(lineTot)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const overtimeRow = overtimeFee > 0 ? `
+    <tr class="border-b border-slate-100">
+      <td class="py-2">Phụ thu đá thêm giờ (+${b.overtimeMinutes || 30} phút)</td>
+      <td class="py-2 text-center">1</td>
+      <td class="py-2 text-right">${window.SanBongApp.formatVND(overtimeFee)}</td>
+      <td class="py-2 text-right font-bold">${window.SanBongApp.formatVND(overtimeFee)}</td>
+    </tr>
+  ` : '';
+
+  const nowStr = new Date().toLocaleString('vi-VN');
+
+  area.innerHTML = `
+    <div class="border-2 border-slate-800 rounded-xl p-5 space-y-4 bg-white">
+      <div class="flex items-start justify-between border-b-2 border-dashed border-slate-300 pb-3">
+        <div>
+          <div class="font-heading font-extrabold text-base text-[#0F172A]">⚽ HỆ THỐNG SÂN BÓNG PRO</div>
+          <div class="text-[11px] text-[#475569]">Cụm Sân Thể Thao Chuẩn FIFA · Hotline: 0352 313 548</div>
+          <div class="text-[11px] text-[#64748B]">Thời gian in: ${nowStr}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs font-extrabold uppercase tracking-wider text-[#16A34A]">PHIẾU THANH TOÁN / HÓA ĐƠN</div>
+          <div class="font-mono font-extrabold text-sm text-[#0F172A] mt-0.5">#${b.code}</div>
+          <div class="text-[11px] font-bold text-slate-600">${escapeSearchHTML(b.paymentStatus || b.status)}</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
+        <div>Khách hàng: <b class="text-[#0F172A]">${escapeSearchHTML(b.customerName)}</b></div>
+        <div>Số điện thoại: <b class="font-mono text-[#0F172A]">${escapeSearchHTML(b.phone)}</b></div>
+        <div>Sân thi đấu: <b class="text-[#16A34A]">${escapeSearchHTML(b.pitchName)}</b></div>
+        <div>Khung giờ: <b class="text-[#0F172A]">${escapeSearchHTML(b.slotTime)} (${window.SanBongApp.formatDateVN(b.date)})</b></div>
+        ${b.weeksCount && b.weeksCount > 1 ? `<div class="col-span-2 text-purple-700 font-bold">📅 Hợp đồng đặt sân cố định theo tháng: ${b.weeksCount} tuần liên tiếp</div>` : ''}
+      </div>
+
+      <table class="w-full text-xs border-collapse">
+        <thead>
+          <tr class="border-b-2 border-slate-300 text-[#475569] font-bold">
+            <th class="py-2 text-left">Hạng mục thanh toán</th>
+            <th class="py-2 text-center">SL</th>
+            <th class="py-2 text-right">Đơn giá</th>
+            <th class="py-2 text-right">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-slate-100">
+            <td class="py-2 font-semibold">Tiền thuê sân (${escapeSearchHTML(b.pitchName)} · ${escapeSearchHTML(b.slotTime)})</td>
+            <td class="py-2 text-center">${b.weeksCount || 1}</td>
+            <td class="py-2 text-right">${window.SanBongApp.formatVND(Math.round(pitchPrice / (b.weeksCount || 1)))}</td>
+            <td class="py-2 text-right font-bold">${window.SanBongApp.formatVND(pitchPrice)}</td>
+          </tr>
+          ${overtimeRow}
+          ${serviceRows}
+        </tbody>
+      </table>
+
+      <div class="space-y-1.5 pt-2 border-t-2 border-slate-300 text-xs">
+        ${discount > 0 ? `
+          <div class="flex justify-between text-emerald-700">
+            <span>Ưu đãi Voucher / Giảm giá tháng ${b.voucherCode ? '(' + escapeSearchHTML(b.voucherCode) + ')' : ''}:</span>
+            <b>-${window.SanBongApp.formatVND(discount)}</b>
+          </div>
+        ` : ''}
+        <div class="flex justify-between text-sm font-extrabold text-[#0F172A]">
+          <span>TỔNG CỘNG HÓA ĐƠN:</span>
+          <span>${window.SanBongApp.formatVND(total)}</span>
+        </div>
+        <div class="flex justify-between text-emerald-700 font-semibold">
+          <span>Đã đặt cọc giữ sân (30%):</span>
+          <span>-${window.SanBongApp.formatVND(deposit)}</span>
+        </div>
+        ${b.paidRemainingAmount ? `
+          <div class="flex justify-between text-blue-700 font-semibold">
+            <span>Đã thu phần còn lại (${escapeSearchHTML(b.remainingPaymentMethod || 'Tại quầy')}):</span>
+            <span>-${window.SanBongApp.formatVND(b.paidRemainingAmount)}</span>
+          </div>
+        ` : ''}
+        <div class="flex justify-between items-baseline pt-2 border-t border-dashed border-slate-300 text-sm font-extrabold ${remaining > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">
+          <span>SỐ TIỀN CÒN PHẢI THU:</span>
+          <span class="text-base">${window.SanBongApp.formatVND(remaining)}</span>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-200 text-center text-[11px] text-[#64748B]">
+        Cảm ơn quý khách đã tin tưởng lựa chọn <b>Sân Bóng Pro</b>! Chúc đội bóng thi đấu thăng hoa.
+      </div>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeInvoiceModal() {
+  const modal = document.getElementById('invoice-print-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+function printInvoiceNow() {
+  const area = document.getElementById('printable-invoice-area');
+  if (!area) return;
+  const printWin = window.open('', '_blank', 'width=720,height=800');
+  if (!printWin) {
+    window.print();
+    return;
+  }
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+      <meta charset="UTF-8">
+      <title>Hóa Đơn #${activeInvoiceCode || 'SANBONGPRO'}</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+      <style>
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style>
+    </head>
+    <body class="p-6 bg-white">
+      ${area.innerHTML}
+      <script>
+        window.onload = function() {
+          setTimeout(function() { window.print(); window.close(); }, 350);
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWin.document.close();
+}
+
+window.openInvoicePrintModal = openInvoicePrintModal;
+window.closeInvoiceModal = closeInvoiceModal;
+window.printInvoiceNow = printInvoiceNow;
+
+// =========================================================
+// 4. QUẢN LÝ MÃ GIẢM GIÁ / VOUCHER KHUYẾN MÃI (TAB 5)
+// =========================================================
+function renderAdminVouchers() {
+  const tbody = document.getElementById('admin-vouchers-tbody');
+  if (!tbody) return;
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+
+  const vouchers = db.getVouchers();
+  if (vouchers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-400">Chưa có mã giảm giá nào.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = vouchers.map(v => {
+    const badge = v.type === 'percent'
+      ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Giảm ${v.value}%</span>`
+      : `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Giảm ${window.SanBongApp.formatVND(v.value)}</span>`;
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="py-3 px-4 font-mono font-extrabold text-[#16A34A] text-sm">${escapeSearchHTML(v.code)}</td>
+        <td class="py-3 px-4">${badge}</td>
+        <td class="py-3 px-4 font-bold text-[#0F172A]">${window.SanBongApp.formatVND(v.minOrder || 0)}</td>
+        <td class="py-3 px-4 text-[#475569]">${escapeSearchHTML(v.description || '')}</td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold">Đang kích hoạt</span>
+        </td>
+        <td class="py-3 px-4 text-right">
+          <button type="button" onclick="handleDeleteVoucher('${escapeSearchHTML(v.code)}')" class="btn-sm btn-danger-outline text-xs font-bold">Xóa mã</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function handleCreateVoucher(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const code = (document.getElementById('admin-voucher-code')?.value || '').trim().toUpperCase();
+  const type = document.getElementById('admin-voucher-type')?.value || 'percent';
+  const value = parseInt(document.getElementById('admin-voucher-value')?.value || '0', 10);
+  const minOrder = parseInt(document.getElementById('admin-voucher-min')?.value || '0', 10);
+  const description = (document.getElementById('admin-voucher-desc')?.value || '').trim();
+
+  if (!code || value <= 0) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập mã Voucher và giá trị giảm hợp lệ!', 'warning');
+    return;
+  }
+
+  const db = window.SanBongApp?.SanBongDB;
+  if (db) {
+    db.saveVoucher({ code, type, value, minOrder, description });
+  }
+
+  try {
+    await fetch('../api/admin.php?action=vouchers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sub_action: 'save', code, type, value, minOrder, description })
+    });
+  } catch (err) {}
+
+  if (e && e.target && e.target.reset) e.target.reset();
+  renderAdminVouchers();
+  if (window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(`🎁 Đã lưu mã khuyến mãi ${code} thành công! Khách hàng có thể sử dụng ngay.`, 'success', 3500);
+  }
+}
+
+async function handleDeleteVoucher(code) {
+  if (!code) return;
+  const db = window.SanBongApp?.SanBongDB;
+  if (db) db.deleteVoucher(code);
+
+  try {
+    await fetch('../api/admin.php?action=vouchers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sub_action: 'delete', code })
+    });
+  } catch (err) {}
+
+  renderAdminVouchers();
+  if (window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(`🗑️ Đã xóa mã giảm giá ${code}.`, 'info', 2500);
+  }
+}
+
+window.renderAdminVouchers = renderAdminVouchers;
+window.handleCreateVoucher = handleCreateVoucher;
+window.handleDeleteVoucher = handleDeleteVoucher;
+

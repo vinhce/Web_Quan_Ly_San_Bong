@@ -1,12 +1,7 @@
-/**
- * SÂN BÓNG PRO - UI SHELLS & NOTIFICATION SYSTEM (ui.js)
- * Tách module nhẹ: Navbar, Footer, Modern Toast & Modal Dialog (thay thế alert/confirm)
- */
 
 (function () {
   'use strict';
 
-  // Sử dụng helpers & db đã khởi tạo
   const escapeHTML = (str) => (window.SanBongHelpers ? window.SanBongHelpers.escapeHTML(str) : String(str || ''));
   const getRelativePath = (t) => (window.SanBongHelpers ? window.SanBongHelpers.getRelativePath(t) : t);
   const Icons = (window.SanBongHelpers && window.SanBongHelpers.Icons) ? window.SanBongHelpers.Icons : {};
@@ -37,9 +32,7 @@ function handleLogout() {
     }
   }
 
-  // 8. REUSABLE UI SHELLS: NAVBAR & FOOTER
   function renderNavbar(activePage = 'Trang chủ') {
-    // 1. Phân quyền người dùng (RBAC) - Đọc thông tin phiên an toàn
     let currentUser = null;
     try {
       currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
@@ -52,12 +45,10 @@ function handleLogout() {
       { label: 'Lịch sử & Hội viên', href: getRelativePath('history') }
     ];
 
-    // Chỉ hiển thị liên kết Quản trị Portal nếu người dùng đăng nhập là ADMIN
     if (currentUser && currentUser.role === 'admin') {
       navItems.push({ label: '🛡️ Quản trị Portal', href: getRelativePath('portal-admin/') });
     }
 
-    // Auth Section bên phải
     let authSectionHtml = '';
     if (currentUser && currentUser.full_name) {
       const user = {
@@ -105,7 +96,6 @@ function handleLogout() {
         </div>
       </div>`;
     } else {
-      // Khách vãng lai chưa đăng nhập
       authSectionHtml = `
       <div class="flex items-center gap-2 sm:gap-3">
         <a href="${getRelativePath('login')}" class="h-9 px-3.5 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold text-[#16A34A] border border-[#16A34A] hover:bg-[#DCFCE7]/60 transition-all">
@@ -219,7 +209,6 @@ function handleLogout() {
     </footer>`;
   }
 
-  // 9. MODERN TOAST NOTIFICATION UTILITY (Thay thế hoàn toàn alert)
   function showToast(message, type = 'info', duration = 3500) {
     let container = document.getElementById('sb-toast-container');
     if (!container) {
@@ -276,7 +265,6 @@ function handleLogout() {
     }
   }
 
-  // 10. MODERN MODAL DIALOG UTILITY (Thay thế confirm & alert modal)
   function showModal(options) {
     const { title, message, type = 'info', confirmText = 'Xác nhận', cancelText = null, onConfirm = null } = options;
     const modalId = 'sb-dialog-modal';
@@ -343,17 +331,14 @@ function handleLogout() {
     }
   }
 
-  // Chuyển hướng an toàn toàn bộ window.alert cũ sang modern toast
   window.alert = function (msg) {
     showToast(String(msg), 'warning');
   };
 
-  // Chuyển hướng an toàn toàn bộ window.alert cũ sang modern toast
   window.alert = function (msg) {
     showToast(String(msg), 'warning');
   };
 
-  // Xuất ra window.SanBongUI
   window.SanBongUI = {
     renderNavbar,
     renderFooter,
@@ -362,7 +347,6 @@ function handleLogout() {
     showModal
   };
 
-  // Expose trực tiếp các hàm thông báo ra window
   window.showToast = showToast;
   window.showModal = showModal;
 

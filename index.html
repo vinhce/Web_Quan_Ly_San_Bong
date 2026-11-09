@@ -4,22 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sân Bóng Pro – Hệ thống đặt sân bóng đá tự động chuẩn FIFA</title>
-  <!-- Favicon / Tab Icon -->
-  <!-- Favicon / Tab Icon -->
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="css/style.css?v=20261109_v15">
+  <link rel="stylesheet" href="css/style.css?v=20261109_v17">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <!-- TOP NAVBAR -->
   <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Trang chủ"></div>
 
-  <!-- HERO BANNER SECTION (Frame 1 & 20) -->
   <section class="relative bg-[#0F172A] text-white overflow-hidden py-12 lg:py-20 border-b border-[#1E293B]">
-    <!-- Vector Pitch Backdrop & Radial Glows (Strictly Clipped) -->
+    
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
       <div class="absolute inset-0 opacity-20">
         <div id="hero-pitch-bg" class="w-full h-full"></div>
@@ -48,7 +45,6 @@
         </p>
       </div>
 
-      <!-- QUICK SEARCH BAR WIDGET (Frame 1 & 20 Responsive) -->
       <div class="ui-card p-4 sm:p-5 shadow-2xl bg-white text-[#0F172A] border-slate-200">
         <form id="hero-search-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-end">
           <div>
@@ -82,7 +78,6 @@
         </form>
       </div>
 
-      <!-- Trust Badges -->
       <div class="flex flex-wrap items-center gap-6 sm:gap-10 mt-6 pt-6 border-t border-slate-800 text-xs sm:text-sm text-slate-300">
         <div class="flex items-center gap-2">
           <span class="font-heading font-extrabold text-lg sm:text-xl text-[#4ADE80]">17 sân</span>
@@ -100,10 +95,8 @@
     </div>
   </section>
 
-  <!-- MAIN CONTENT CONTAINER -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-10 space-y-12">
 
-    <!-- 1. FEATURED PITCHES SECTION (Frame 1 & 20) -->
     <section class="relative">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
@@ -115,7 +108,7 @@
             <span>Xem tất cả 17 sân</span>
             <span class="group-hover:translate-x-1 transition-transform">→</span>
           </a>
-          <!-- Header Prev / Next Navigation With Clean Spacing -->
+          
           <div class="flex items-center gap-2 pl-4 border-l border-slate-200">
             <button id="featured-prev-btn" class="w-10 h-10 rounded-xl border border-[#E2E8F0] bg-white flex items-center justify-center text-[#475569] hover:bg-[#F8FAFC] hover:border-[#16A34A] hover:text-[#16A34A] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm" title="Xem sân trước" disabled>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
@@ -127,14 +120,13 @@
         </div>
       </div>
 
-      <!-- CAROUSEL TRACK WITH FLOATING CHEVRONS (Ample Padding & Clearance) -->
       <div class="relative group/carousel">
         <button id="featured-float-prev" class="hidden sm:flex absolute -left-6 lg:-left-16 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-slate-200 shadow-xl items-center justify-center text-slate-700 hover:text-[#16A34A] hover:border-[#16A34A] hover:scale-110 active:scale-95 transition-all opacity-0 pointer-events-none disabled:opacity-0 disabled:pointer-events-none group-hover/carousel:opacity-100" title="Cuộn sang trái">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
         </button>
 
         <div id="featured-pitches-grid" class="flex gap-6 overflow-x-auto scroll-smooth no-scrollbar py-3 px-1 snap-x snap-mandatory">
-          <!-- Rendered by JS from SanBongDB -->
+          
         </div>
 
         <button id="featured-float-next" class="hidden sm:flex absolute -right-6 lg:-right-16 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-slate-200 shadow-xl items-center justify-center text-slate-700 hover:text-[#16A34A] hover:border-[#16A34A] hover:scale-110 active:scale-95 transition-all group-hover/carousel:opacity-100" title="Xem tiếp sân bên phải">
@@ -143,9 +135,8 @@
       </div>
     </section>
 
-    <!-- 2. QUICK PRICE TABLE & 4-STEP BOOKING FLOW (Frame 1) -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      <!-- Bảng giá tóm tắt (8 Cols) -->
+      
       <div class="lg:col-span-8 ui-card p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -193,7 +184,6 @@
         </div>
       </div>
 
-      <!-- Quy trình 4 bước trực quan (4 Cols) -->
       <div class="lg:col-span-4 ui-card p-6 flex flex-col justify-between">
         <h3 class="font-heading font-bold text-xl text-[#0F172A] mb-4">Đặt sân chỉ 4 bước</h3>
         <div class="space-y-4">
@@ -233,17 +223,15 @@
       </div>
     </section>
 
-    <!-- 3. VOUCHER & REVIEWS SECTION (Frame 1) -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      <!-- Khu vực Mã giảm giá (5 Cols) -->
+      
       <div class="lg:col-span-5 space-y-4">
         <h3 class="font-heading font-bold text-xl text-[#0F172A]">Mã ưu đãi độc quyền</h3>
         <div id="vouchers-list" class="space-y-3">
-          <!-- Rendered by JS -->
+          
         </div>
       </div>
 
-      <!-- Đánh giá khách hàng (7 Cols) -->
       <div class="lg:col-span-7 space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="font-heading font-bold text-xl text-[#0F172A]">Cộng đồng cầu thủ nói gì</h3>
@@ -276,7 +264,6 @@
       </div>
     </section>
 
-      <!-- 4. FAQ & CÂU HỎI THƯỜNG GẶP -->
     <section class="ui-card p-6 md:p-8 space-y-4">
       <div class="text-center max-w-xl mx-auto mb-6">
         <h3 class="font-heading font-extrabold text-2xl text-[#0F172A]">Câu hỏi thường gặp</h3>
@@ -324,23 +311,20 @@
 
   </main>
 
-  <!-- PITCH DETAIL MODAL (Cửa sổ Popup chi tiết khi bấm nút) -->
   <div id="pitch-detail-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeModal()">
     <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div id="modal-content" class="p-6 space-y-6">
-        <!-- Rendered dynamically by openPitchDetail() -->
+        
       </div>
     </div>
   </div>
 
-  <!-- FOOTER -->
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v15"></script>
-  <script src="/js/app.js?v=20261109_v15"></script>
-  <script src="/js/api.js?v=20261109_v15"></script>
-  <script src="/js/index.js?v=20261109_v15"></script>
+  <script src="/js/data.js?v=20261109_v17"></script>
+  <script src="/js/app.js?v=20261109_v17"></script>
+  <script src="/js/api.js?v=20261109_v17"></script>
+  <script src="/js/index.js?v=20261109_v17"></script>
 
 </body>
 </html>

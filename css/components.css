@@ -1,9 +1,5 @@
-/**
- * SÂN BÓNG PRO - UI COMPONENTS (components.css)
- * Cards, Buttons, Form Inputs
- */
 
-/* Thẻ Card */
+
 .ui-card {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
@@ -11,7 +7,6 @@
   box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
 }
 
-/* Nút bấm chuẩn */
 .btn-base {
   height: 44px;
   border-radius: 10px;
@@ -75,7 +70,6 @@
   background: #FEE2E2;
 }
 
-/* Ô nhập liệu */
 .input-field {
   height: 44px;
   border-radius: 10px;
@@ -98,7 +92,6 @@
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
 }
 
-/* Ẩn thanh cuộn Carousel nhưng vẫn cuộn mượt */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

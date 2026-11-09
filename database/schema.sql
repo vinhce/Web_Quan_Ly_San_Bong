@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS `rate_limits` (
 -- 1. Tài khoản mặc định: Admin và User (Mật khẩu hash bằng Argon2id)
 INSERT INTO `users` (`id`, `username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
 VALUES 
-(1, 'admin', 'admin@sanbongpro.vn', '0987654321', 'Ban Quản Trị Sân', '$argon2id$v=19$m=65536,t=4,p=1$SUpYZlUyT2FoY0V4L3NsVg$4E1a7uqFzUM7/odFJ1d4jg23P6cc0hH4SrTPDI2zUEU', 'admin', 'active'),
+(1, 'admin', 'admin@sanbongpro.vn', '0987654321', 'Ban Quản Trị Sân', '$argon2id$v=19$m=65536,t=4,p=1$VTVUaVRrNThhNldzcENpZg$kNqghJJEnQqDG/6phhZwri5Q6skH+e/dy+/fZhkxqb8', 'admin', 'active'),
 (2, 'user', 'khachhang@sanbongpro.vn', '0352313548', 'Trần Minh Hoàng', '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4', 'user', 'active'),
 (3, 'vxyen0801', 'vxyen0801@sanbongpro.vn', '0352313548', 'Quản Trị Viên (vxyen0801)', '$argon2id$v=19$m=65536,t=4,p=1$UThRTGkvdndJYXdBVHBDUg$bvWQoJidWljt12fhtDaAYPay1LhfDvc1B2+5jPEkPE4', 'admin', 'active')
 ON DUPLICATE KEY UPDATE `password_hash`=VALUES(`password_hash`), `role`=VALUES(`role`), `status`=VALUES(`status`);
@@ -187,5 +187,8 @@ INSERT INTO `vouchers` (`code`, `description`, `discount_type`, `discount_value`
 VALUES
 ('WELCOME10', 'Giảm 10% tổng đơn cho khách hàng mới', 'percent', 10, 0, 1),
 ('GIAM50K', 'Giảm ngay 50.000đ cho đơn đặt sân từ 500.000đ', 'fixed', 50000, 500000, 1),
-('VIPGOLD', 'Giảm 15% cho thành viên Vàng & Kim Cương', 'percent', 15, 300000, 1)
+('VIPGOLD', 'Giảm 15% cho thành viên Vàng & Kim Cương', 'percent', 15, 300000, 1),
+('DATTHANG15', 'Giảm 15% ưu đãi hợp đồng đặt sân theo tháng', 'percent', 15, 800000, 1),
+('SINHVIEN30K', 'Giảm 30.000đ trợ giá học sinh - sinh viên', 'fixed', 30000, 200000, 1),
+('CUOITUAN100K', 'Giảm 100.000đ cho đơn đặt sân 11 người / Giải đấu', 'fixed', 100000, 900000, 1)
 ON DUPLICATE KEY UPDATE `description`=`description`;

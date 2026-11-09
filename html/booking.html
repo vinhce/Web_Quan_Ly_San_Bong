@@ -4,20 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đặt Sân Bóng – Chọn Giờ, Dịch Vụ & Thanh Toán</title>
-  <!-- Favicon / Tab Icon -->
-  <!-- Favicon / Tab Icon -->
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v17">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <!-- TOP NAVBAR -->
   <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Đặt sân nhanh"></div>
 
-  <!-- STEPPER (Frame 4 & 21) -->
   <div class="bg-white border-b border-[#E2E8F0] py-4">
     <div class="max-w-4xl mx-auto px-4 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
@@ -37,31 +34,64 @@
     </div>
   </div>
 
-  <!-- MAIN BOOKING CONTAINER -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-      <!-- LEFT CONFIGURATION FORM (7 COLS) -->
       <div class="lg:col-span-7 space-y-6">
 
-        <!-- 1. CHỌN SÂN & NGÀY -->
         <div class="ui-card p-5 sm:p-6 space-y-4">
           <h3 class="font-heading font-bold text-lg text-[#0F172A] flex items-center gap-2">
             <span class="w-2 h-5 rounded-sm bg-[#16A34A]"></span>
             1. Chọn sân & Ngày thi đấu
           </h3>
 
-          <!-- Phân tầng 1: Chọn quy mô sân (Sân 5 - Sân 7 - Sân 11) -->
+          <div>
+            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2">
+              Hình thức đặt lịch
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button type="button" id="mode-single-btn" onclick="setBookingMode('single')" class="px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all">
+                <span>⚽ Đặt lẻ theo trận</span>
+              </button>
+              <button type="button" id="mode-monthly-btn" onclick="setBookingMode('monthly')" class="px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all">
+                <span>📅 Đặt lịch cố định theo tháng (Giảm tới 15%)</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="monthly-booking-panel" class="hidden p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="text-xs font-bold text-[#15803D] flex items-center gap-1.5">
+                <span>🏆</span>
+                <span>Cấu hình gói đặt sân cố định theo tháng (cùng khung giờ mỗi tuần)</span>
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-bold">Ưu đãi Hợp đồng tháng</span>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-[#475569] mb-1">Chọn thời hạn đăng ký cố định:</label>
+              <select id="monthly-weeks-select" onchange="updateMonthlyPackage()" class="input-field font-bold text-xs sm:text-sm text-[#0F172A] bg-white">
+                <option value="4">Gói 1 Tháng (4 tuần liên tiếp - Giảm thêm 5%)</option>
+                <option value="8">Gói 2 Tháng (8 tuần liên tiếp - Giảm thêm 10%)</option>
+                <option value="12">Gói 3 Tháng (12 tuần liên tiếp - Giảm thêm 15%)</option>
+              </select>
+            </div>
+            <div>
+              <div class="text-[11px] font-bold text-[#475569] mb-1.5">Lịch các buổi thi đấu cố định hàng tuần trong gói:</div>
+              <div id="monthly-dates-preview" class="flex flex-wrap gap-1.5 text-xs">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+          </div>
+
           <div>
             <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2">
               Chọn loại sân
             </label>
             <div id="pitch-type-selector" class="grid grid-cols-3 gap-2 sm:gap-3">
-              <!-- Rendered by JS: 3 nút chọn Sân 5, Sân 7, Sân 11 -->
+              
             </div>
           </div>
 
-          <!-- Phân tầng 2: Chọn sân chi tiết & Ngày đá -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
             <div>
               <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1.5 flex items-center justify-between">
@@ -69,7 +99,7 @@
                 <span id="selected-type-badge" class="text-[11px] font-bold text-[#16A34A] lowercase font-sans"></span>
               </label>
               <select id="booking-pitch-select" class="input-field font-semibold">
-                <!-- Rendered by JS -->
+                
               </select>
             </div>
             <div>
@@ -78,16 +108,14 @@
             </div>
           </div>
 
-          <!-- Quick Date Strip (Frame 21 Mobile/Desktop) -->
           <div class="pt-2">
             <label class="block text-xs font-semibold text-[#64748B] mb-2">Chọn nhanh ngày trong tuần:</label>
             <div id="quick-date-strip" class="grid grid-cols-5 gap-2 text-center text-xs">
-              <!-- Rendered by JS -->
+              
             </div>
           </div>
         </div>
 
-        <!-- 2. MA TRẬN KHUNG GIỜ (SLOTS MATRIX) -->
         <div class="ui-card p-5 sm:p-6 space-y-4">
           <div class="flex items-center justify-between">
             <div>
@@ -102,7 +130,6 @@
             </span>
           </div>
 
-          <!-- Slot Status Legend -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-[#475569] p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
             <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded border border-[#16A34A] bg-white"></span>Còn trống</div>
             <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-[#16A34A]"></span>Đang chọn</div>
@@ -110,13 +137,11 @@
             <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-[#DBEAFE] text-[#2563EB] border border-[#2563EB]"></span>Đang đá</div>
           </div>
 
-          <!-- Slot Chips Grid -->
           <div id="slots-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <!-- Rendered by JS based on selected pitch & date -->
+            
           </div>
         </div>
 
-        <!-- 3. DỊCH VỤ THÊM (Frame 4) -->
         <div class="ui-card p-5 sm:p-6 space-y-4">
           <div class="flex items-center justify-between">
             <h3 class="font-heading font-bold text-lg text-[#0F172A] flex items-center gap-2">
@@ -137,11 +162,10 @@
           </div>
 
           <div id="services-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <!-- Rendered by JS -->
+            
           </div>
         </div>
 
-        <!-- 4. THÔNG TIN NGƯỜI ĐẶT & MÃ GIẢM GIÁ (Frame 4) -->
         <div class="ui-card p-5 sm:p-6 space-y-4">
           <h3 class="font-heading font-bold text-lg text-[#0F172A] flex items-center gap-2">
             <span class="w-2 h-5 rounded-sm bg-[#16A34A]"></span>
@@ -164,7 +188,6 @@
             <input type="text" id="cust-note" placeholder="Ví dụ: Cần trọng tài bắt kỹ, khởi động trước 15 phút..." class="input-field">
           </div>
 
-          <!-- Voucher input box -->
           <div class="pt-2 border-t border-[#F1F5F9]">
             <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1.5">Mã ưu đãi / Voucher</label>
             <div class="flex gap-2">
@@ -174,7 +197,7 @@
               </button>
             </div>
             <div id="voucher-msg" class="text-xs mt-1.5 font-semibold"></div>
-            <div class="flex flex-wrap items-center gap-1.5 mt-2">
+            <div id="voucher-quick-list" class="flex flex-wrap items-center gap-1.5 mt-2">
               <span class="text-[11px] text-[#64748B]">Gợi ý 1 chạm:</span>
               <button type="button" onclick="quickApplyVoucher('WELCOME10')" class="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-[#16A34A] text-[11px] font-bold border border-emerald-200 transition-colors">WELCOME10 (-10%)</button>
               <button type="button" onclick="quickApplyVoucher('GIAM50K')" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-[#D97706] text-[11px] font-bold border border-amber-200 transition-colors">GIAM50K (-50k)</button>
@@ -185,7 +208,6 @@
 
       </div>
 
-      <!-- RIGHT SUMMARY BILL CARD (5 COLS STICKY) -->
       <div class="lg:col-span-5 sticky top-24 space-y-4">
         <div class="ui-card p-6 space-y-5 border-emerald-100 shadow-md">
           <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
@@ -193,10 +215,8 @@
             <span class="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">Tự động tính</span>
           </div>
 
-          <!-- Pitch Preview SVG Mini -->
           <div id="summary-pitch-svg" class="rounded-xl overflow-hidden border border-[#E2E8F0]"></div>
 
-          <!-- Details Breakdown -->
           <div class="space-y-2.5 text-sm">
             <div class="flex justify-between">
               <span class="text-[#64748B]">Sân bóng:</span>
@@ -220,7 +240,6 @@
             </div>
           </div>
 
-          <!-- Totals & Deposit 30% -->
           <div class="pt-3 border-t border-[#E2E8F0] space-y-3">
             <div class="flex justify-between items-baseline">
               <span class="font-bold text-base text-[#0F172A]">Tổng chi phí:</span>
@@ -243,13 +262,11 @@
             </div>
           </div>
 
-          <!-- Policy Agreement -->
           <label class="flex items-start gap-2.5 text-xs text-[#475569] cursor-pointer pt-2">
             <input type="checkbox" id="policy-agree" checked class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A] mt-0.5">
             <span>Tôi đồng ý với chính sách cọc & cam kết nhận sân: Sân bóng được giữ tối đa 15 phút sau giờ bắt đầu ca đá; quá 15 phút không đến check-in sẽ bị hủy No-Show, tịch thu cọc 30% và nhả sân trống.</span>
           </label>
 
-          <!-- Proceed Button -->
           <button type="button" id="proceed-checkout-btn" class="btn-base btn-primary w-full text-base font-bold shadow-lg">
             Tiến hành chuyển khoản cọc →
           </button>
@@ -259,13 +276,11 @@
     </div>
   </main>
 
-  <!-- FOOTER -->
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v15"></script>
-  <script src="/js/app.js?v=20261109_v15"></script>
-  <script src="/js/api.js?v=20261109_v15"></script>
-  <script src="/js/booking.js?v=20261109_v15"></script>
+  <script src="/js/data.js?v=20261109_v17"></script>
+  <script src="/js/app.js?v=20261109_v17"></script>
+  <script src="/js/api.js?v=20261109_v17"></script>
+  <script src="/js/booking.js?v=20261109_v17"></script>
 </body>
 </html>

@@ -1,6 +1,3 @@
-/**
- * SÂN BÓNG PRO - THANH TOÁN TỰ ĐỘNG QUA SEPAY VIETQR (checkout.js)
- */
 
 let currentDraft = null;
 let generatedBookingCode = '';
@@ -12,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
-  // 1. Kiểm tra trạng thái đăng nhập: Bắt buộc đăng nhập để xác định danh tính & tích lũy điểm
   const currentUser = db.getUser();
   if (!currentUser || !currentUser.name) {
     if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Vui lòng đăng nhập hoặc đăng ký tài khoản để tiếp tục thanh toán chuyển khoản!', 'info', 3000); }
@@ -21,7 +17,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // 2. Đọc đơn nháp từ sessionStorage
   const rawDraft = sessionStorage.getItem('sb_booking_draft');
   if (rawDraft) {
     try {
@@ -31,14 +26,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Nếu không có draft, chuyển hướng về trang Đặt sân
   if (!currentDraft) {
     if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Bạn chưa chọn sân và khung giờ. Đang chuyển về trang Đặt sân...', 'warning', 2500); }
     window.location.replace(window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking');
     return;
   }
 
-  // Tự động đồng bộ thông tin hội viên đã đăng nhập vào draft
   if (!currentDraft.customerName || currentDraft.customerName === '---' || currentDraft.customerName === 'Khách vãng lai') {
     currentDraft.customerName = currentUser.name;
   }
@@ -47,7 +40,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
 
-  // Tạo mã booking theo chuẩn SePay phân loại sân (ASFF = Sân 5, ASFS = Sân 7, ASFE = Sân 11)
   const pitch = db.getPitchById(currentDraft.pitchId);
   const pitchIdStr = String(currentDraft.pitchId || '').toUpperCase();
   let prefix = 'ASFS';
@@ -68,7 +60,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentDraft.code = generatedBookingCode;
   }
 
-  // Khóa mốc thời gian hết hạn bền vững (localStorage + sessionStorage) để chống reset khi F5
   const holdKey = 'sb_hold_expire_' + generatedBookingCode;
   let savedExpire = Number(currentDraft.expiresAt || localStorage.getItem(holdKey) || 0);
   const now = Date.now();
@@ -84,10 +75,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const initialRemaining = Math.max(0, Math.ceil((Number(currentDraft.expiresAt) - Date.now()) / 1000));
   startCountdown(initialRemaining);
 
-  // Khởi tạo đơn lên CSDL trước để SePay Webhook / Polling có thể ghi nhận
   await createInitialBookingRecord();
 
-  // Bắt đầu lắng nghe tự động từ SePay (Polling 2.5s)
   startSePayAutoListener(generatedBookingCode);
 
   document.getElementById('confirm-payment-btn')?.addEventListener('click', () => confirmPayment(false));
@@ -98,7 +87,6 @@ async function createInitialBookingRecord() {
   const slots = db.getTimeSlots();
   const slot = slots.find(s => s.id === currentDraft.slotId);
 
-  // Kiểm tra nếu đơn đã tạo trong localStorage thì không tạo trùng khi F5
   let existing = db.getAllBookings().find(b => b.code === generatedBookingCode);
   const newBooking = existing || db.createBooking({
     code: generatedBookingCode,
@@ -109,6 +97,9 @@ async function createInitialBookingRecord() {
     date: currentDraft.date,
     slotId: currentDraft.slotId,
     slotTime: slot ? slot.time : '18:30 - 20:00',
+    bookingMode: currentDraft.bookingMode || 'single',
+    weeksCount: currentDraft.weeksCount || 1,
+    monthlyDates: currentDraft.monthlyDates || [],
     services: currentDraft.services,
     voucherCode: currentDraft.voucherCode,
     note: currentDraft.note,
@@ -119,7 +110,6 @@ async function createInitialBookingRecord() {
 
   sessionStorage.setItem('sb_latest_booking', JSON.stringify(newBooking));
 
-  // Gửi lên CSDL server qua API
   if (window.SanBongApp?.SanBongAPI) {
     try {
       await window.SanBongApp.SanBongAPI.postBooking({
@@ -137,29 +127,28 @@ function renderCheckoutDetails() {
   const slots = db.getTimeSlots();
   const slot = slots.find(s => s.id === currentDraft.slotId) || slots[3];
 
+  const weeks = Math.max(1, parseInt(currentDraft.weeksCount, 10) || 1);
   const calc = db.calculatePrice(
     currentDraft.pitchId,
     currentDraft.date,
     currentDraft.slotId,
     currentDraft.services,
-    currentDraft.voucherCode
+    currentDraft.voucherCode,
+    weeks
   );
 
   const bank = db.getBankInfo();
 
-  // Mini pitch SVG
   const svgContainer = document.getElementById('checkout-pitch-svg');
   if (svgContainer) {
     svgContainer.innerHTML = window.SanBongApp.renderPitchSVG(pitch.variant || 'standard', 'h-24');
   }
 
-  // Header Order Badge
   const orderBadge = document.getElementById('order-code-badge');
   if (orderBadge) orderBadge.textContent = generatedBookingCode;
   const memoBadge = document.getElementById('bank-memo');
   if (memoBadge) memoBadge.textContent = generatedBookingCode;
 
-  // Bank info
   const bName = document.getElementById('bank-name');
   if (bName) bName.textContent = bank.bankName || 'Ngân hàng Quân Đội (MBBank)';
   const bAcc = document.getElementById('bank-account');
@@ -169,7 +158,6 @@ function renderCheckoutDetails() {
   const bAmt = document.getElementById('bank-amount');
   if (bAmt) bAmt.textContent = window.SanBongApp.formatVND(calc.depositAmount);
 
-  // Sinh mã SePay VietQR động
   const qrImg = document.getElementById('sepay-qr-img');
   const qrLoading = document.getElementById('sepay-qr-loading');
   if (qrImg) {
@@ -178,18 +166,21 @@ function renderCheckoutDetails() {
     const sepayAmt = calc.depositAmount || 0;
     const sepayDes = generatedBookingCode;
     const qrUrl = `https://qr.sepay.vn/img?bank=${encodeURIComponent(sepayBank)}&acc=${encodeURIComponent(sepayAcc)}&template=compact&amount=${sepayAmt}&des=${encodeURIComponent(sepayDes)}`;
-    
+
     qrImg.src = qrUrl;
     qrImg.onload = () => {
       if (qrLoading) qrLoading.classList.add('hidden');
     };
   }
 
-  // Order Summary
   const pName = document.getElementById('co-pitch-name');
   if (pName) pName.textContent = `${pitch.name} (${pitch.typeName})`;
   const pTime = document.getElementById('co-pitch-time');
-  if (pTime) pTime.textContent = `${window.SanBongApp.formatDateVN(currentDraft.date)} · ${slot.time}`;
+  if (pTime) {
+    pTime.textContent = weeks > 1
+      ? `Gói cố định ${weeks} tuần (bắt đầu ${window.SanBongApp.formatDateVN(currentDraft.date)}) · ${slot.time}`
+      : `${window.SanBongApp.formatDateVN(currentDraft.date)} · ${slot.time}`;
+  }
   const cName = document.getElementById('co-customer');
   if (cName) cName.textContent = currentDraft.customerName;
   const cPhone = document.getElementById('co-phone');
@@ -212,7 +203,6 @@ function renderCheckoutDetails() {
   if (rAmt) rAmt.textContent = window.SanBongApp.formatVND(calc.remainingAmount);
 }
 
-// Lắng nghe trạng thái thanh toán từ SePay theo thời gian thực (Polling mỗi 2.5s)
 function startSePayAutoListener(bookingCode) {
   if (sepayPollTimer) clearInterval(sepayPollTimer);
   const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
@@ -236,12 +226,10 @@ function startSePayAutoListener(bookingCode) {
         }
       }
     } catch (e) {
-      // Bỏ qua lỗi mạng ngắt quãng
     }
   }, 2500);
 }
 
-// Xử lý khi SePay thông báo tiền đã vào tài khoản
 function handleSePayPaymentSuccess(result) {
   const badge = document.getElementById('payment-status-badge');
   const text = document.getElementById('payment-status-text');
@@ -253,7 +241,6 @@ function handleSePayPaymentSuccess(result) {
     text.innerHTML = '🎉 <strong>ĐÃ NHẬN TIỀN CỌC!</strong> Cổng SePay xác nhận giao dịch thành công. Đang chuyển hướng...';
   }
 
-  // Tự động chuyển trang sau 1.5 giây
   setTimeout(() => {
     confirmPayment(true);
   }, 1500);
@@ -385,7 +372,6 @@ async function confirmPayment(isAuto = false) {
   const btn = document.getElementById('confirm-payment-btn');
   const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
 
-  // NẾU BẤM THỦ CÔNG MÀ CHƯA CÓ XÁC NHẬN TỪ SEPAY -> GỌI API KIỂM TRA NGAY LẬP TỨC
   if (!isAuto && !isPaymentAlreadyConfirmed) {
     if (btn) {
       btn.disabled = true;
@@ -408,7 +394,6 @@ async function confirmPayment(isAuto = false) {
       console.warn('Lỗi kiểm tra SePay:', e);
     }
 
-    // CHƯA NHẬN ĐƯỢC TIỀN: BẬT LẠI NÚT, CẬP NHẬT BADGE CẢNH BÁO VÀ CHẶN CHUYỂN TRANG
     if (btn) {
       btn.disabled = false;
       btn.textContent = '✓ Tôi đã chuyển khoản thành công';
@@ -420,7 +405,6 @@ async function confirmPayment(isAuto = false) {
       text.textContent = `Chưa nhận được giao dịch với nội dung "${generatedBookingCode}". Vui lòng quét mã chuyển khoản trước!`;
     }
 
-    // Khôi phục lại polling để tự động bắt nếu tiền vào sau vài giây
     startSePayAutoListener(generatedBookingCode);
 
     if (window.SanBongApp?.showModal) {
@@ -441,16 +425,14 @@ async function confirmPayment(isAuto = false) {
     btn.textContent = '✓ SePay xác nhận thành công! Đang chuyển hướng...';
   }
 
-  // Cập nhật trạng thái đơn trong LocalStorage
   const db = window.SanBongApp.SanBongDB;
   db.updateBookingStatus(generatedBookingCode, 'Đã xác nhận', 'Đã cọc 30%');
 
-  // Khấu trừ điểm đã đổi nước & tích luỹ điểm thưởng dùng cho trận sau
   const user = db.getUser();
   const currentPoints = typeof user?.points === 'number' ? user.points : 0;
   const pointsUsed = redeemedBottles * 100;
   const afterDeduction = Math.max(0, currentPoints - pointsUsed);
-  const POINTS_AWARDED = 100; // Điểm thưởng trận sau
+  const POINTS_AWARDED = 100;
   const newPoints = afterDeduction + POINTS_AWARDED;
 
   if (db.updateUser) {
@@ -498,7 +480,6 @@ async function confirmPayment(isAuto = false) {
     localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
   } catch (e) {}
 
-  // Chuyển sang màn hình thành công với Clean URL
   const successUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('success') : '/success';
   window.location.href = `${successUrl}?code=${generatedBookingCode}`;
 }

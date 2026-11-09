@@ -1,6 +1,3 @@
-/**
- * SÂN BÓNG PRO - THÀNH CÔNG & VÉ ĐẶT SÂN (success.js)
- */
 
 document.addEventListener('DOMContentLoaded', async () => {
   const mainEl = document.querySelector('main');
@@ -37,7 +34,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // Xác thực bắt buộc với cổng SePay phía Server trước khi hiển thị vé
   const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
   let serverVerifiedPaid = false;
   try {
@@ -89,11 +85,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     db.updateBookingStatus(booking.code, 'Đã xác nhận', 'Đã cọc 30%');
   }
 
-  // Điền dữ liệu vào vé
   const codeEl = document.getElementById('ticket-booking-code');
   if (codeEl) codeEl.textContent = booking.code;
 
-  // Cập nhật trạng thái thanh toán thực tế của vé
   const badgeEl = document.getElementById('ticket-status-badge');
   const isPaid = booking.paymentStatus === 'Đã cọc 30%' || booking.paymentStatus === 'Đã thanh toán đủ';
   if (badgeEl) {
@@ -131,7 +125,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     srvEl.textContent = srvList.length > 0 ? srvList.join(', ') : 'Không có dịch vụ thêm';
   }
 
-  // Tích luỹ & Điểm thưởng trận sau
   const pointsNoteEl = document.getElementById('ticket-points-used-note');
   if (pointsNoteEl) {
     if (booking.redeemedBottles && booking.redeemedBottles > 0) {
@@ -148,7 +141,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     balanceEl.textContent = `${currentBalance} điểm`;
   }
 
-  // Render Vector QR Check-in Code
   const qrMount = document.getElementById('ticket-qr-mount');
   if (qrMount) {
     qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(140);

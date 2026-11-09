@@ -1,7 +1,3 @@
-/**
- * SÂN BÓNG PRO - DANH SÁCH SÂN LOGIC (fields.js)
- * Tích hợp Optimistic UI (hiển thị 0ms) & Revalidation ngầm qua Fetch API
- */
 
 let currentPitches = [];
 
@@ -9,12 +5,10 @@ function initFieldsPage() {
   const app = window.SanBongApp;
   const db = window.SanBongDB || app?.SanBongDB;
 
-  // 1. Nạp ngay từ bộ nhớ / DB mặc định (0ms)
   currentPitches = (db?.getPitches && db.getPitches().length > 0)
     ? db.getPitches()
     : (window.SanBongData?.DEFAULT_PITCHES || []);
 
-  // Parse URL parameters (từ search form ở trang chủ)
   const urlParams = new URLSearchParams(window.location.search);
   const typeParam = urlParams.get('type');
   if (typeParam && typeParam !== 'all') {
@@ -25,7 +19,6 @@ function initFieldsPage() {
   renderPitches();
   setupEventListeners();
 
-  // 2. Revalidate ngầm từ API máy chủ
   if (app?.SanBongAPI?.getPitches) {
     app.SanBongAPI.getPitches()
       .then(pitches => {
@@ -177,7 +170,6 @@ function setupEventListeners() {
   }
 }
 
-// Modal chi tiết sân (Frame 3)
 function openPitchDetail(pitchId) {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   const pitch = db?.getPitchById ? db.getPitchById(pitchId) : currentPitches.find(x => x.id === pitchId);

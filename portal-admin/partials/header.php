@@ -16,6 +16,7 @@
           <!-- Dropdown kết quả tìm kiếm tức thì -->
           <div id="admin-search-results" class="hidden absolute right-0 top-11 w-96 max-h-96 overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 z-50 divide-y divide-slate-100 p-2"></div>
         </div>
+        <button type="button" onclick="openQRScannerModal()" class="btn-sm bg-[#0F172A] hover:bg-slate-800 text-white font-bold flex items-center gap-1.5 shadow-sm"><span>📷</span> Quét QR Check-in</button>
         <button onclick="switchAdminTab('quick-booking')" class="btn-sm btn-primary">
           + Đặt sân tại quầy
         </button>

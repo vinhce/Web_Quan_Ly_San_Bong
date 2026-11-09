@@ -1,22 +1,16 @@
 <?php
-/**
- * SÂN BÓNG PRO - SEPAY WEBHOOK ENDPOINT (api/sepay_webhook.php)
- * Tiếp nhận thông báo biến động số dư tự động từ SePay qua Webhook
- */
 
 require_once __DIR__ . '/security_helper.php';
 require_once __DIR__ . '/sepay_helper.php';
 
 $pdo = getDBConnection(false);
 
-// 1. Đọc payload DUY NHẤT 1 LẦN
 $rawPayload = file_get_contents('php://input');
 $payload = json_decode($rawPayload, true);
 if (!is_array($payload) || empty($payload)) {
     $payload = !empty($_POST) ? $_POST : [];
 }
 
-// 2. Trích xuất mã đặt sân dạng ASFF/ASFS/ASFExxxxxx, ASFxxxxxx, DHxxxxxx hoặc SB-YYYYMMDD-XXXX
 $content = $payload['content'] ?? $payload['transaction_content'] ?? $payload['description'] ?? '';
 $explicitCode = $payload['code'] ?? '';
 $transferAmount = (int)($payload['transferAmount'] ?? $payload['amount_in'] ?? 0);
@@ -32,7 +26,6 @@ if (!empty($explicitCode) && preg_match('/^[A-Z0-9\-]{4,20}$/i', $explicitCode))
     }
 }
 
-// 3. Thu thập headers & Xác thực Webhook Key hoặc đối chiếu trực tiếp SePay API v2 (H1 & M4)
 $headers = function_exists('getallheaders') ? getallheaders() : [];
 $authHeader = $_SERVER['HTTP_AUTHORIZATION'] 
     ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] 
@@ -66,7 +59,6 @@ if (!empty($providedKey)) {
     }
 }
 
-// Nếu SePay gọi Webhook ở chế độ "Không cần chứng thực" (thiếu header), đối chiếu chéo với máy chủ SePay qua SEPAY_API_TOKEN
 if (!$isAuthorizedWebhook && !empty($foundCode) && $transferAmount > 0) {
     $sepayCheck = fetch_sepay_transactions(20);
     if (!empty($sepayCheck['success']) && !empty($sepayCheck['transactions'])) {
@@ -82,9 +74,6 @@ if (!$isAuthorizedWebhook && !empty($foundCode) && $transferAmount > 0) {
         }
     }
 }
-
-// Xác thực bắt buộc: Phải có SePay Webhook Key hợp lệ hoặc đối chiếu khớp giao dịch thật từ SePay API v2
-
 
 if (!$isAuthorizedWebhook) {
     $unauthLog = [
@@ -105,7 +94,6 @@ if (!$isAuthorizedWebhook) {
     exit;
 }
 
-// Ghi log chẩn đoán (đã che auth_header) vào thư mục logs bảo mật ngoài webroot
 $logEntry = [
     'time'           => date('Y-m-d H:i:s'),
     'remote_ip'      => $_SERVER['REMOTE_ADDR'] ?? '',
@@ -116,14 +104,13 @@ $logEntry = [
 ];
 @file_put_contents(__DIR__ . '/../logs/webhook_debug.log', json_encode($logEntry, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n---\n", FILE_APPEND);
 
-// 4. Đối chiếu số tiền cọc dự kiến của đơn (H2)
 $expectedDeposit = !empty($foundCode) ? get_expected_deposit_amount($pdo, $foundCode) : 0;
 if ($expectedDeposit <= 0) {
     $expectedDeposit = $transferAmount;
 }
 
 if (!empty($foundCode) && $transferAmount >= $expectedDeposit && $transferAmount > 0) {
-    // 5. Lưu vào sổ cái giao dịch đã xác thực (sepay_paid_orders.json)
+    
     $ledgerFile = __DIR__ . '/sepay_paid_orders.json';
     $paidOrders = [];
     if (file_exists($ledgerFile)) {
@@ -145,7 +132,6 @@ if (!empty($foundCode) && $transferAmount >= $expectedDeposit && $transferAmount
     ];
     @file_put_contents($ledgerFile, json_encode($paidOrders, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-    // 6. Nếu có CSDL, cập nhật trạng thái đơn sang 'Đã cọc 30%'
     if ($pdo) {
         try {
             $stmt = $pdo->prepare("SELECT id, code, deposit_amount, payment_status FROM bookings WHERE code = ? OR REPLACE(code, '-', '') = ? LIMIT 1");
@@ -165,7 +151,6 @@ if (!empty($foundCode) && $transferAmount >= $expectedDeposit && $transferAmount
     error_log("[SEPAY WEBHOOK SUCCESS] Ghi nhận webhook: {$foundCode} | Tiền: {$transferAmount}đ");
 }
 
-// LUÔN TRẢ 200 OK VÀ {"success": true} CHO SEPAY ĐỂ ĐẢM BẢO MÔ PHỎNG VÀ WEBHOOK LUÔN THÀNH CÔNG
 header('Content-Type: application/json; charset=utf-8');
 http_response_code(200);
 echo json_encode([

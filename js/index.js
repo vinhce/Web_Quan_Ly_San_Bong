@@ -1,7 +1,3 @@
-/**
- * SÂN BÓNG PRO - TRANG CHỦ LOGIC (index.js)
- * Tích hợp Optimistic UI (hiển thị 0ms), Fetch API thời tiết ngầm & nạp danh sách sân
- */
 
 (function () {
   'use strict';
@@ -10,20 +6,17 @@
     const app = window.SanBongApp;
     const db = window.SanBongDB || app?.SanBongDB;
 
-    // 1. Render Hero Pitch Vector Background
     const heroBg = document.getElementById('hero-pitch-bg');
     if (heroBg && app?.renderPitchSVG) {
       heroBg.innerHTML = app.renderPitchSVG('hero', 'h-full');
     }
 
-    // Set default search date là hôm nay
     const searchDateInput = document.getElementById('search-date');
     if (searchDateInput && !searchDateInput.value) {
       const today = new Date().toISOString().split('T')[0];
       searchDateInput.value = today;
     }
 
-    // 2. FETCH THỜI TIẾT THỜI GIAN THỰC (NGẦM KHÔNG BLOCK TRANG)
     const weatherBadge = document.getElementById('hero-weather-badge');
     if (weatherBadge) {
       if (app?.SanBongAPI?.fetchWeather) {
@@ -42,17 +35,14 @@
       }
     }
 
-    // 3. RENDER FEATURED PITCHES CAROUSEL (OPTIMISTIC UI - 0ms)
     const grid = document.getElementById('featured-pitches-grid');
     if (grid && app) {
-      // Nạp ngay lập tức từ bộ nhớ hoặc dữ liệu mặc định
       const localPitches = (db?.getPitches && db.getPitches().length > 0)
         ? db.getPitches()
         : (window.SanBongData?.DEFAULT_PITCHES || []);
 
       renderFeaturedGrid(grid, localPitches);
 
-      // Revalidate ngầm từ API máy chủ (nếu có cập nhật mới)
       if (app.SanBongAPI?.getPitches) {
         app.SanBongAPI.getPitches()
           .then(pitches => {
@@ -66,7 +56,6 @@
       }
     }
 
-    // 4. Render Vouchers List
     const vouchers = (db?.getVouchers && db.getVouchers().length > 0)
       ? db.getVouchers()
       : (window.SanBongData?.DEFAULT_VOUCHERS || []);
@@ -87,7 +76,6 @@
       `).join('');
     }
 
-    // 5. Xử lý Form tìm kiếm
     const searchForm = document.getElementById('hero-search-form');
     if (searchForm) {
       searchForm.addEventListener('submit', (e) => {
@@ -144,7 +132,6 @@
       </div>
     `).join('');
 
-    // Popup Modal chi tiết sân khi click nút [Chi tiết sân]
     window.openPitchDetail = function(pitchId) {
       const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
       const pitch = db?.getPitchById ? db.getPitchById(pitchId) : pitches.find(x => x.id === pitchId);

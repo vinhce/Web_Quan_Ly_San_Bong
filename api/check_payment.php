@@ -1,8 +1,4 @@
 <?php
-/**
- * SÂN BÓNG PRO - API KIỂM TRA TRẠNG THÁI THANH TOÁN THỜI GIAN THỰC (api/check_payment.php)
- * Frontend tự động thăm dò (polling) để cập nhật ngay khi SePay ghi nhận tiền vào tài khoản
- */
 
 require_once __DIR__ . '/sepay_helper.php';
 

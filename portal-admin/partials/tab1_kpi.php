@@ -98,6 +98,15 @@
             </div>
           </div>
         </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-1">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" onclick="filterOverviewBookings('all')" id="ov-filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white">Tất cả ca</button>
+              <button type="button" onclick="filterOverviewBookings('playing')" id="ov-filter-playing" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⚽ Đang chơi</button>
+              <button type="button" onclick="filterOverviewBookings('confirmed')" id="ov-filter-confirmed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⏳ Chờ Check-in</button>
+              <button type="button" onclick="filterOverviewBookings('completed')" id="ov-filter-completed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">✓ Hoàn thành & Đã thu đủ</button>
+            </div>
+            <button type="button" onclick="openQRScannerModal()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm">📷 Quét QR Check-in</button>
+          </div>
           <div id="overview-today-bookings" class="space-y-2 text-xs">
             <!-- Rendered by JS -->
           </div>

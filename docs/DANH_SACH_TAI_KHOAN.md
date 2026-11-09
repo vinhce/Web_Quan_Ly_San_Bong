@@ -27,13 +27,13 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 
 ---
 
-### 2.2. Tài khoản Quản trị viên Dự phòng (Admin Backup)
-> Tài khoản quản trị viên mặc định dùng trong các tình huống khẩn cấp hoặc bảo trì kỹ thuật.
+### 2.2. Tài khoản Quản trị viên (Admin)
+> Dùng để đăng nhập quản trị hệ thống, duyệt cọc, bảo trì sân, xem doanh thu và đặt sân tại quầy.
 
 - **Tên đăng nhập (Username):** `admin`
-- **Mật khẩu (Password):** `********` *(Mật khẩu quản trị viên)*
+- **Mật khẩu (Password):** `admin123`
 - **Email:** `admin@sanbongpro.vn`
-- **Vai trò (Role):** `admin`
+- **Vai trò (Role):** `admin` (Quản trị viên)
 
 ---
 

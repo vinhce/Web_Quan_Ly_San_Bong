@@ -1,9 +1,4 @@
 <?php
-/**
- * SÂN BÓNG PRO - API DANH SÁCH SÂN BÓNG (api/pitches.php)
- * - Truy vấn CSDL chuẩn Prepared Statements chống SQL Injection
- * - Trả JSON an toàn, parse đúng kiểu dữ liệu
- */
 
 require_once __DIR__ . '/security_helper.php';
 
@@ -22,8 +17,7 @@ try {
     }
 
     $pitches = $stmt->fetchAll();
-    
-    // Parse amenities_json thành array
+
     foreach ($pitches as &$p) {
         $p['amenities'] = !empty($p['amenities_json']) ? json_decode($p['amenities_json'], true) : [];
         unset($p['amenities_json']);
@@ -32,7 +26,6 @@ try {
         $p['peakPrice'] = (int)$p['peakPrice'];
     }
 
-    // Lấy kèm danh sách time slots và extra services nếu có yêu cầu all=1
     $all = isset($_GET['all']) && $_GET['all'] == '1';
     $data = ['pitches' => $pitches];
 

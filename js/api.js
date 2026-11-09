@@ -1,14 +1,7 @@
-/**
- * SÂN BÓNG PRO - API & FETCH SERVICE (api.js)
- * Tích hợp chuẩn Fetch API (async/await) để tải dữ liệu JSON, thời tiết & ngân hàng
- */
 
 window.SanBongApp = window.SanBongApp || {};
 
 window.SanBongApp.SanBongAPI = {
-  /**
-   * 1. Fetch dữ liệu sân bóng từ CSDL MySQL (api/pitches.php) hoặc fallback data/data.json
-   */
   async fetchInitialData() {
     try {
       const apiUrl = window.SanBongApp.getRelativePath('api/pitches.php?all=1');
@@ -26,7 +19,6 @@ window.SanBongApp.SanBongAPI = {
         }
       }
     } catch (e) {
-      // Bỏ qua nếu môi trường tĩnh chưa bật PHP, chuyển sang fallback
     }
 
     try {
@@ -37,7 +29,6 @@ window.SanBongApp.SanBongAPI = {
       }
       return await response.json();
     } catch (error) {
-      // Fallback an toàn nếu mở qua giao thức file:// không qua web server
       return {
         pitches: window.SanBongApp.SanBongDB?.getPitches() || window.SanBongData?.DEFAULT_PITCHES || [],
         timeSlots: window.SanBongApp.SanBongDB?.getTimeSlots() || window.SanBongData?.DEFAULT_TIME_SLOTS || [],
@@ -48,18 +39,11 @@ window.SanBongApp.SanBongAPI = {
     }
   },
 
-  /**
-   * 2. Fetch danh sách sân bóng
-   */
   async getPitches() {
     const data = await this.fetchInitialData();
     return data.pitches || window.SanBongApp.SanBongDB.getPitches();
   },
 
-  /**
-   * 3. Fetch thời tiết sân bóng theo thời gian thực (Khu liên hợp Mỹ Đình, Hà Nội)
-   * Sử dụng Open-Meteo Public API (CORS enabled, không cần API key)
-   */
   async fetchWeather() {
     try {
       const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=21.0285&longitude=105.7684&current_weather=true';
@@ -99,9 +83,6 @@ window.SanBongApp.SanBongAPI = {
     }
   },
 
-  /**
-   * 4. Fetch danh sách các ngân hàng từ VietQR Open API
-   */
   async fetchBanks() {
     try {
       const response = await fetch('https://api.vietqr.io/v2/banks');
@@ -121,9 +102,6 @@ window.SanBongApp.SanBongAPI = {
     }
   },
 
-  /**
-   * 5. Gửi dữ liệu đặt sân (POST request qua CSDL PHP hoặc fallback an toàn)
-   */
   async postBooking(bookingPayload) {
     try {
       const apiUrl = window.SanBongApp.getRelativePath('api/bookings.php');
@@ -139,7 +117,6 @@ window.SanBongApp.SanBongAPI = {
         return { success: true, data: result.data || result };
       }
     } catch (e) {
-      // Fallback nếu chạy môi trường không có PHP
     }
 
     return { success: false, localOnly: true };

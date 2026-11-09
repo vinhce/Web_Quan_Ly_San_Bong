@@ -4,20 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Danh Sách Sân Bóng – Cụm 17 Sân Tiêu Chuẩn FIFA</title>
-  <!-- Favicon / Tab Icon -->
-  <!-- Favicon / Tab Icon -->
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v17">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <!-- TOP NAVBAR -->
   <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Danh sách sân"></div>
 
-  <!-- BREADCRUMB & HEADER -->
   <div class="bg-white border-b border-[#E2E8F0]">
     <div class="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
       <div class="text-xs text-[#64748B] mb-1.5 flex items-center gap-1.5">
@@ -42,11 +39,9 @@
     </div>
   </div>
 
-  <!-- MAIN CONTAINER (FILTER + GRID) -->
   <main class="flex-1 max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="flex flex-col lg:flex-row gap-6 xl:gap-8 items-start">
 
-      <!-- LEFT FILTER SIDEBAR (4 Cols) -->
       <aside class="w-full lg:w-72 xl:w-80 shrink-0 ui-card p-5 space-y-6 sticky top-24">
         <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
           <h3 class="font-heading font-bold text-base text-[#0F172A] flex items-center gap-2">
@@ -56,7 +51,6 @@
           <button id="reset-filter-btn" class="text-xs font-semibold text-[#16A34A] hover:underline">Đặt lại</button>
         </div>
 
-        <!-- 1. Loại sân -->
         <div>
           <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Loại sân bóng</label>
           <div class="space-y-2 text-sm font-medium">
@@ -79,7 +73,6 @@
           </div>
         </div>
 
-        <!-- 2. Trạng thái -->
         <div>
           <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Trạng thái sân</label>
           <div class="space-y-2 text-sm font-medium">
@@ -90,7 +83,6 @@
           </div>
         </div>
 
-        <!-- 3. Khoảng giá -->
         <div>
           <div class="flex items-center justify-between text-xs font-bold text-[#475569] uppercase tracking-wider mb-2">
             <span>Mức giá tối đa</span>
@@ -104,7 +96,6 @@
           </div>
         </div>
 
-        <!-- 4. Tiện ích mong muốn -->
         <div>
           <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Tiện ích đi kèm</label>
           <div class="grid grid-cols-2 gap-2 text-xs font-medium text-[#475569]">
@@ -120,13 +111,11 @@
         </a>
       </aside>
 
-      <!-- RIGHT PITCHES GRID (8 Cols) -->
       <div class="flex-1 min-w-0 space-y-6">
         <div id="pitches-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 xl:gap-6">
-          <!-- Rendered dynamically -->
+          
         </div>
 
-        <!-- Empty state nếu lọc không ra -->
         <div id="no-pitches-state" class="hidden ui-card p-12 text-center space-y-3">
           <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -139,22 +128,19 @@
     </div>
   </main>
 
-  <!-- PITCH DETAIL MODAL / DRAWER (Frame 3) -->
   <div id="pitch-detail-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div id="modal-content" class="p-6 space-y-6">
-        <!-- Rendered dynamically by openPitchDetail() -->
+        
       </div>
     </div>
   </div>
 
-  <!-- FOOTER -->
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v15"></script>
-  <script src="/js/app.js?v=20261109_v15"></script>
-  <script src="/js/api.js?v=20261109_v15"></script>
-  <script src="/js/fields.js?v=20261109_v15"></script>
+  <script src="/js/data.js?v=20261109_v17"></script>
+  <script src="/js/app.js?v=20261109_v17"></script>
+  <script src="/js/api.js?v=20261109_v17"></script>
+  <script src="/js/fields.js?v=20261109_v17"></script>
 </body>
 </html>

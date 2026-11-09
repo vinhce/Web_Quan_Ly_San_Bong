@@ -1,16 +1,7 @@
 <?php
-/**
- * SÂN BÓNG PRO - KẾT NỐI DATABASE BẢO MẬT (config/database.php)
- * Sử dụng PDO với Prepared Statements chuẩn, ngăn chặn SQL Injection tuyệt đối
- */
 
-// Chống truy cập trực tiếp nếu cần thiết
 defined('SANBONG_APP') or define('SANBONG_APP', true);
 
-/**
- * Tải file cấu hình .env một cách an toàn không cần thư viện ngoài
- * Ưu tiên đọc .env ngoài public_html trước (dirname(__DIR__, 2) . '/.env')
- */
 function loadEnv($path = null) {
     if ($path === null) {
         $outsidePath = dirname(__DIR__, 2) . '/.env';
@@ -39,13 +30,8 @@ function loadEnv($path = null) {
     }
 }
 
-// Tự động load .env
 loadEnv();
 
-/**
- * Lấy kết nối PDO Singleton an toàn
- * @param bool $fatalOnFail Nếu true sẽ exit trả JSON 500 khi lỗi, false sẽ trả null
- */
 function getDBConnection($fatalOnFail = true) {
     static $pdo = null;
     if ($pdo !== null) {
@@ -63,7 +49,7 @@ function getDBConnection($fatalOnFail = true) {
     $options = [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false, // Bắt buộc false để chống SQL Injection triệt để
+        PDO::ATTR_EMULATE_PREPARES   => false, 
         PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
     ];
 
@@ -72,14 +58,13 @@ function getDBConnection($fatalOnFail = true) {
         ensureSchemaInitialized($pdo);
         return $pdo;
     } catch (PDOException $e) {
-        // Ghi log lỗi vào file riêng của server, KHÔNG in ra màn hình cho người dùng
+        
         error_log("[DB CONNECTION ERROR] " . $e->getMessage());
         
         if (!$fatalOnFail) {
             return null;
         }
 
-        // Trả lỗi chung chung kèm HTTP 500
         http_response_code(500);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
@@ -91,9 +76,6 @@ function getDBConnection($fatalOnFail = true) {
     }
 }
 
-/**
- * Tự động khởi tạo bảng và dữ liệu mẫu nếu database mới tạo chưa có bảng
- */
 function ensureSchemaInitialized(PDO $pdo) {
     $markerFile = dirname(__DIR__) . '/logs/.schema_v4_ready';
     if (is_file($markerFile)) {
@@ -105,7 +87,7 @@ function ensureSchemaInitialized(PDO $pdo) {
             return;
         }
         $sql = file_get_contents($schemaPath);
-        // Loại bỏ comment dòng và lệnh CREATE DATABASE / USE để tương thích shared hosting
+        
         $sql = preg_replace('/^\s*--.*$/m', '', $sql);
         $sql = preg_replace('/^\s*(CREATE\s+DATABASE|USE)\s+.*?;?\s*$/im', '', $sql);
         $statements = preg_split('/;\s*(?:[\r\n]+|$)/', $sql);

@@ -4,20 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Thanh Toán Đặt Sân – Chuyển Khoản Đặt Cọc 30%</title>
-  <!-- Favicon / Tab Icon -->
-  <!-- Favicon / Tab Icon -->
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v17">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <!-- TOP NAVBAR -->
   <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Đặt sân nhanh"></div>
 
-  <!-- STEPPER (Frame 5) -->
   <div class="bg-white border-b border-[#E2E8F0] py-4">
     <div class="max-w-4xl mx-auto px-4 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
@@ -37,14 +34,11 @@
     </div>
   </div>
 
-  <!-- MAIN CHECKOUT CONTENT -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-      <!-- LEFT: BANK TRANSFER (7 COLS) -->
       <div class="lg:col-span-7 space-y-6">
 
-        <!-- Countdown Banner 10:00 -->
         <div class="px-5 py-3.5 rounded-xl bg-[#FEF3C7] border border-[#F59E0B] text-[#D97706] flex items-center justify-between font-bold text-sm shadow-sm">
           <div class="flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -54,7 +48,6 @@
           <span class="text-xs hidden sm:inline font-normal">Hết giờ mã đặt sân tự động nhả</span>
         </div>
 
-        <!-- Transfer Account Information Card -->
         <div class="ui-card p-6 space-y-6 border-slate-200">
           <div class="flex items-center justify-between pb-4 border-b border-[#E2E8F0]">
             <div>
@@ -66,7 +59,6 @@
             </span>
           </div>
 
-          <!-- SePay VietQR Box -->
           <div class="p-4 rounded-2xl bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] flex flex-col md:flex-row items-center gap-6">
             <div class="relative shrink-0 p-3 bg-white rounded-xl shadow-md border border-[#E2E8F0]">
               <img id="sepay-qr-img" src="" alt="Mã VietQR SePay" class="w-48 h-48 object-contain rounded-lg">
@@ -82,8 +74,7 @@
               </div>
               <h3 class="font-heading font-bold text-base text-[#0F172A]">Quét mã VietQR bằng App Ngân hàng</h3>
               <p class="text-xs text-[#64748B]">Mở app ngân hàng (MBBank, Vietcombank, Techcombank, VPBank, Momo...), chọn Quét mã QR. Hệ thống sẽ tự động điền STK, số tiền và nội dung chuyển khoản.</p>
-              
-              <!-- Real-time payment listening badge -->
+
               <div id="payment-status-badge" class="p-2.5 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-xs font-bold flex items-center justify-center md:justify-start gap-2">
                 <div class="w-2 h-2 rounded-full bg-[#F59E0B] animate-ping"></div>
                 <span id="payment-status-text">Đang lắng nghe giao dịch chuyển khoản từ SePay...</span>
@@ -91,7 +82,6 @@
             </div>
           </div>
 
-          <!-- Transfer Account Information -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
               <span class="text-[#64748B] text-xs">Ngân hàng:</span>
@@ -127,7 +117,6 @@
             </div>
           </div>
 
-          <!-- LOYALTY POINTS WATER EXCHANGE SECTION -->
           <div class="p-4 rounded-2xl bg-gradient-to-br from-[#F8FAFC] to-[#F0FDF4] border border-[#DCFCE7] space-y-3.5">
             <div class="flex items-center justify-between pb-2.5 border-b border-[#DCFCE7]">
               <div class="flex items-center gap-2">
@@ -143,7 +132,6 @@
               </div>
             </div>
 
-            <!-- Selector Row -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
               <div class="flex items-center gap-3">
                 <span class="text-2xl">💧</span>
@@ -160,7 +148,6 @@
               </div>
             </div>
 
-            <!-- Notice & Rule Badge -->
             <div class="space-y-1.5 text-xs">
               <div id="points-exchange-summary" class="hidden p-2.5 rounded-lg bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] font-semibold flex items-center justify-between">
                 <span>Khấu trừ: <strong id="points-to-deduct">0 điểm</strong></span>
@@ -176,7 +163,6 @@
             </div>
           </div>
 
-          <!-- Confirmation Action Buttons -->
           <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
             <button type="button" id="confirm-payment-btn" class="btn-base btn-primary w-full sm:flex-1 text-base font-bold shadow-lg">
               ✓ Tôi đã chuyển khoản thành công
@@ -189,7 +175,6 @@
 
       </div>
 
-      <!-- RIGHT: ORDER SUMMARY (5 COLS) -->
       <div class="lg:col-span-5 space-y-4">
         <div class="ui-card p-6 space-y-5">
           <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
@@ -217,7 +202,7 @@
               <span id="co-phone" class="font-bold">---</span>
             </div>
             <div id="co-services-row" class="text-xs text-[#64748B] pt-1 border-t border-[#F1F5F9]">
-              <!-- Services list -->
+              
             </div>
             <div id="co-redeemed-water-row" class="hidden text-xs text-[#16A34A] font-semibold pt-1 border-t border-[#F1F5F9] flex justify-between">
               <span>💧 Đổi điểm lấy nước:</span>
@@ -253,13 +238,11 @@
     </div>
   </main>
 
-  <!-- FOOTER -->
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v15"></script>
-  <script src="/js/app.js?v=20261109_v15"></script>
-  <script src="/js/api.js?v=20261109_v15"></script>
-  <script src="/js/checkout.js?v=20261109_v15"></script>
+  <script src="/js/data.js?v=20261109_v17"></script>
+  <script src="/js/app.js?v=20261109_v17"></script>
+  <script src="/js/api.js?v=20261109_v17"></script>
+  <script src="/js/checkout.js?v=20261109_v17"></script>
 </body>
 </html>

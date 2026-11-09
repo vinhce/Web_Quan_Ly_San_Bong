@@ -1,11 +1,4 @@
 <?php
-/**
- * SÂN BÓNG PRO - API ĐẶT SÂN & LỊCH SỬ ĐƠN (api/bookings.php)
- * - Chống Race Condition & Double Booking bằng Database Transaction + Row Locking (FOR UPDATE)
- * - Chống sửa giá (Price Tampering): Server tự tính toán lại toàn bộ chi phí theo CSDL
- * - Chống IDOR (Insecure Direct Object Reference): Khách chỉ xem được đơn của mình
- * - Prepared Statements 100% chống SQL Injection
- */
 
 require_once __DIR__ . '/security_helper.php';
 
@@ -13,7 +6,6 @@ secure_session_start();
 $pdo = getDBConnection(false);
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Lấy payload JSON
 $rawInput = file_get_contents('php://input');
 $data = [];
 if (!empty($rawInput)) {
@@ -29,30 +21,58 @@ if (!empty($rawInput)) {
 $data = array_merge($_POST, $data);
 $action = $_GET['action'] ?? $data['action'] ?? '';
 
-// 1.1 CHECK-IN NHẬN SÂN (POST /api/bookings.php?action=checkin)
 if ($method === 'POST' && $action === 'checkin') {
     $admin = require_admin();
-    $code = sanitize_string($data['code'] ?? '', 40);
+    $code = sanitize_string($data['code'] ?? $_GET['code'] ?? '', 40);
     if (empty($code)) {
         json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
     }
     if ($pdo === null) {
         json_response([
             'success' => true,
-            'message' => 'Check-in nhận sân thành công! Ca đá đã bắt đầu.',
-            'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã thanh toán đủ']
+            'message' => 'Check-in nhận sân thành công! Ca đá đã bắt đầu (chờ thu phần còn lại khi kết thúc ca).',
+            'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã cọc 30%']
         ]);
     }
-    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = 'Đã thanh toán đủ' WHERE code = ?");
+    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá' WHERE code = ?");
     $stmt->execute([$code]);
     json_response([
         'success' => true,
-        'message' => 'Check-in nhận sân thành công! Đơn đã hoàn tất thu tiền 100%.',
-        'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã thanh toán đủ']
+        'message' => 'Check-in nhận sân thành công! Ca đá đã bắt đầu.',
+        'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã cọc 30%']
     ]);
 }
 
-// 1.2 QUÁ HẠN 15 PHÚT / VẮNG MẶT (NO-SHOW) -> TỊCH THU CỌC & LẬP TỨC NHẢ SÂN TRỐNG
+if ($method === 'POST' && $action === 'early_cancel') {
+    $code = sanitize_string($data['code'] ?? $_GET['code'] ?? '', 40);
+    $policy = sanitize_string($data['policy'] ?? 'refund_100', 30);
+    $reason = sanitize_string($data['reason'] ?? 'Hủy lịch trước thời hạn', 200);
+    if (empty($code)) {
+        json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
+    }
+    $policyMap = [
+        'refund_100' => 'Đã hoàn cọc 100%',
+        'reserve'    => 'Bảo lưu cọc 30%',
+        'forfeit_50' => 'Phạt 50% cọc'
+    ];
+    $payStatus = $policyMap[$policy] ?? 'Đã hoàn cọc 100%';
+    if ($pdo === null) {
+        json_response([
+            'success' => true,
+            'message' => "Đã hủy lịch đặt sân trước thời hạn ({$payStatus}).",
+            'data'    => ['code' => $code, 'status' => 'Đã hủy', 'paymentStatus' => $payStatus]
+        ]);
+    }
+    $noteSuffix = " [Hủy trước hạn - {$payStatus}: {$reason}]";
+    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đã hủy', payment_status = ?, remaining_amount = 0, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+    $stmt->execute([$payStatus, $noteSuffix, $code]);
+    json_response([
+        'success' => true,
+        'message' => "Đã hủy lịch đặt sân trước thời hạn ({$payStatus}).",
+        'data'    => ['code' => $code, 'status' => 'Đã hủy', 'paymentStatus' => $payStatus]
+    ]);
+}
+
 if ($method === 'POST' && $action === 'noshow_release') {
     $admin = require_admin();
     $code = sanitize_string($data['code'] ?? '', 40);
@@ -75,9 +95,8 @@ if ($method === 'POST' && $action === 'noshow_release') {
     ]);
 }
 
-// 1. TẠO ĐƠN ĐẶT SÂN MỚI (POST /api/bookings.php)
 if ($method === 'POST' && ($action === 'create' || empty($action))) {
-    // Rate limit: tối đa 10 đơn / 5 phút trên 1 IP để chống spam
+    
     if (!check_rate_limit($pdo, 'create_booking', 10, 300)) {
         json_response([
             'success'  => false,
@@ -97,7 +116,6 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
     $note = sanitize_string($data['note'] ?? '', 255);
     $paymentMethod = sanitize_string($data['paymentMethod'] ?? 'VietQR Chuyển khoản', 50);
 
-    // Validate dữ liệu cơ bản
     if (empty($customerName) || empty($phone) || empty($pitchId) || empty($date) || empty($slotId)) {
         json_response([
             'success'  => false,
@@ -106,7 +124,6 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
         ], 400);
     }
 
-    // Validate định dạng ngày YYYY-MM-DD và không được đặt ngày trong quá khứ
     $bookingDateTime = strtotime($date);
     $today = strtotime(date('Y-m-d'));
     if (!$bookingDateTime || $bookingDateTime < $today) {
@@ -132,7 +149,6 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
         $code = $prefix . random_int(100000, 999999);
     }
 
-    // Fallback khi môi trường Hosting chưa kết nối CSDL ($pdo === null)
     if ($pdo === null) {
                 $fallbackPitches = [
             'P5-A'  => ['name' => 'Sân 5 - Sân A', 'base_price' => 250000, 'peak_price' => 350000, 'status' => 'Hoạt động'],
@@ -173,9 +189,12 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
             'SRV-REF'          => 150000
         ];
         $fallbackVouchers = [
-            'WELCOME10' => ['type' => 'percent', 'val' => 10, 'min' => 0],
-            'GIAM50K'   => ['type' => 'fixed',   'val' => 50000, 'min' => 500000],
-            'VIPGOLD'   => ['type' => 'percent', 'val' => 15, 'min' => 300000]
+            'WELCOME10'    => ['type' => 'percent', 'val' => 10, 'min' => 0],
+            'GIAM50K'      => ['type' => 'fixed',   'val' => 50000, 'min' => 500000],
+            'VIPGOLD'      => ['type' => 'percent', 'val' => 15, 'min' => 300000],
+            'DATTHANG15'   => ['type' => 'percent', 'val' => 15, 'min' => 800000],
+            'SINHVIEN30K'  => ['type' => 'fixed',   'val' => 30000, 'min' => 200000],
+            'CUOITUAN100K' => ['type' => 'fixed',   'val' => 100000, 'min' => 900000]
         ];
 
         $pitch = $fallbackPitches[$pitchId] ?? null;
@@ -245,10 +264,9 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
     }
 
     try {
-        // Bắt đầu Transaction để khóa dòng (Locking), chống Race Condition
+        
         $pdo->beginTransaction();
 
-        // 1. Kiểm tra sân có tồn tại và đang hoạt động không
         $pitchStmt = $pdo->prepare("SELECT id, name, type, base_price, peak_price, status FROM pitches WHERE id = ? FOR UPDATE");
         $pitchStmt->execute([$pitchId]);
         $pitch = $pitchStmt->fetch();
@@ -262,7 +280,6 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
             ], 400);
         }
 
-        // 2. Kiểm tra khung giờ có hợp lệ không
         $slotStmt = $pdo->prepare("SELECT id, slot_time, is_peak, duration FROM time_slots WHERE id = ?");
         $slotStmt->execute([$slotId]);
         $slot = $slotStmt->fetch();
@@ -276,13 +293,11 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
             ], 400);
         }
 
-        // 3. SERVER TÍNH TOÁN LẠI GIÁ (Chống Price Tampering)
         $isPeak = (bool)$slot['is_peak'];
         $basePrice = $isPeak ? (int)$pitch['peak_price'] : (int)$pitch['base_price'];
         $duration = (float)$slot['duration'];
         $pitchPrice = (int)round($basePrice * ($duration ?: 1.0));
 
-        // Tính tiền dịch vụ từ CSDL
         $totalServicesPrice = 0;
         $cleanServices = [];
         if (!empty($servicesInput)) {
@@ -314,7 +329,6 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
 
         $subtotal = $pitchPrice + $totalServicesPrice;
 
-        // Tính tiền voucher từ CSDL
         $discountAmount = 0;
         $appliedVoucher = null;
         if (!empty($voucherCode)) {
@@ -332,10 +346,9 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
         }
 
         $totalPrice = max(0, $subtotal - $discountAmount);
-        $depositAmount = (int)round($totalPrice * 0.3); // Cọc 30%
+        $depositAmount = (int)round($totalPrice * 0.3); 
         $remainingAmount = $totalPrice - $depositAmount;
 
-        // Lưu thông tin đơn dự kiến vào logs/expected_orders.json ngay sau khi tính giá
         $expectedFile = __DIR__ . '/../logs/expected_orders.json';
         $expectedOrders = [];
         if (file_exists($expectedFile)) {
@@ -353,7 +366,6 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
         ];
         @file_put_contents($expectedFile, json_encode($expectedOrders, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-        // 4. KIỂM TRA TRÙNG LỊCH (Double Booking & Race Condition) & CẬP NHẬT ĐƠN ĐANG CHỜ CỌC
         $checkDuplicateStmt = $pdo->prepare("SELECT id, code, deposit_amount, payment_status FROM bookings WHERE pitch_id = ? AND booking_date = ? AND slot_id = ? AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%') FOR UPDATE");
         $checkDuplicateStmt->execute([$pitchId, $date, $slotId]);
         $existingBooking = $checkDuplicateStmt->fetch();
@@ -371,7 +383,6 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
                 ], 409);
             }
 
-            // Cập nhật sang mã đơn mới nhất và số tiền cọc cho phiên thanh toán VietQR hiện tại
             $updatePendingStmt = $pdo->prepare("UPDATE bookings SET code = ?, user_id = ?, customer_name = ?, phone = ?, email = ?, slot_time = ?, services_json = ?, voucher_code = ?, total_price = ?, deposit_amount = ?, remaining_amount = ?, payment_status = 'Chờ duyệt cọc', payment_method = ?, note = ?, created_at = NOW() WHERE id = ?");
             $updatePendingStmt->execute([
                 $code,
@@ -391,7 +402,7 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
             ]);
             $bookingId = $existingBooking['id'];
         } else {
-            // 5. GHI VÀO CSDL
+            
             $insertStmt = $pdo->prepare("INSERT INTO bookings 
                 (code, user_id, customer_name, phone, email, pitch_id, booking_date, slot_id, slot_time, services_json, voucher_code, total_price, deposit_amount, remaining_amount, payment_status, payment_method, note) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt cọc', ?, ?)");
@@ -450,11 +461,9 @@ if ($method === 'POST' && ($action === 'create' || empty($action))) {
     }
 }
 
-// 2. LẤY CHI TIẾT ĐƠN HOẶC DANH SÁCH ĐƠN (CHỐNG IDOR)
 if ($method === 'GET') {
     $code = sanitize_string($_GET['code'] ?? '', 40);
 
-    // Xem chi tiết 1 đơn theo mã
     if (!empty($code)) {
         if ($pdo === null) {
             json_error('Không tìm thấy đơn đặt sân tương ứng.', 404, 'ERR_NOT_FOUND');
@@ -474,8 +483,6 @@ if ($method === 'GET') {
             ], 404);
         }
 
-        // BẢO VỆ CHỐNG IDOR:
-        // Nếu người dùng đã đăng nhập và không phải admin, họ chỉ xem được đơn của mình!
         $currentUser = $_SESSION['user'] ?? null;
         if ($currentUser && $currentUser['role'] !== 'admin') {
             if ($booking['user_id'] && $booking['user_id'] != $currentUser['id'] && $booking['phone'] !== $currentUser['phone']) {
@@ -486,7 +493,7 @@ if ($method === 'GET') {
                 ], 403);
             }
         } elseif (!$currentUser) {
-            // Khách vãng lai tra cứu đơn: Che bớt SĐT và Email để chống thu thập dữ liệu (Scraping)
+            
             if (!empty($booking['phone']) && strlen($booking['phone']) >= 7) {
                 $booking['phone'] = substr($booking['phone'], 0, 4) . '***' . substr($booking['phone'], -3);
             }
@@ -505,7 +512,6 @@ if ($method === 'GET') {
         ]);
     }
 
-    // 2.1 Quản trị viên lấy danh sách ca đá (Admin Today Bookings)
     if ($action === 'admin_list' || $action === 'today_bookings') {
         $admin = require_admin();
         if ($pdo === null) {
@@ -526,7 +532,6 @@ if ($method === 'GET') {
         json_response(['success' => true, 'data' => $list]);
     }
 
-    // Lấy danh sách lịch sử của người dùng hiện tại (My Bookings)
     $currentUser = require_auth();
     if ($pdo === null) {
         json_response([

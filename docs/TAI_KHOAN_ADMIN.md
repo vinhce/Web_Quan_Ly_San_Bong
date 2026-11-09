@@ -19,6 +19,13 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 
 ## 2. Thông tin Tài khoản Quản trị viên
 
+### 2.1. Tài khoản Quản trị viên: `admin`
+- **Username:** `admin` (hoặc email: `admin@sanbongpro.vn`)
+- **Mật khẩu:** `admin123`
+- **Vai trò:** `admin` (Toàn quyền quản trị hệ thống)
+
+### 2.2. Tài khoản Quản trị viên: `vxyen0801`
+
 | Trường thông tin | Giá trị | Ghi chú bảo mật |
 | :--- | :--- | :--- |
 | **Tên đăng nhập (SĐT / Username)** | `vxyen0801` | Có thể nhập `vxyen0801` vào ô *Số điện thoại / Email* |

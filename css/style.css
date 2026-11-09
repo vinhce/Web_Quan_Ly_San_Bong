@@ -1,7 +1,4 @@
-/**
- * SÂN BÓNG PRO - CENTRAL STYLESHEET (style.css)
- * Tách module chuẩn: base, components, booking, admin, print
- */
+
 
 @import url('base.css');
 @import url('components.css');

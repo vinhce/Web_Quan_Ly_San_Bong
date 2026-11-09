@@ -1,12 +1,7 @@
-/**
- * SÂN BÓNG PRO - HELPERS & SVG RENDERERS (helpers.js)
- * Tách module nhẹ: XSS security, formatting, clean path, SVG pitch generator, badges, VietQR
- */
 
 (function () {
   'use strict';
 
-// 1. CHỐNG XSS HELPER (Bảo mật theo chiều sâu)
   function escapeHTML(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -17,7 +12,6 @@
       .replace(/'/g, '&#39;');
   }
 
-  // 2. FORMATTING HELPERS
   function formatVND(amount) {
     const num = Number(amount) || 0;
     return num.toLocaleString('vi-VN') + 'đ';
@@ -32,7 +26,6 @@
     return dateStr;
   }
 
-  // Helper giải quyết đường dẫn Clean URLs và tương thích cả Root Hosting lẫn Localhost
   function getAppBase() {
     const pathname = (window.location && typeof window.location.pathname === 'string')
       ? window.location.pathname.replace(/\\/g, '/')
@@ -53,7 +46,6 @@
     return base ? `${base}/${cleanTarget}` : `/${cleanTarget}`;
   }
 
-  // 3. ICONS SVG DICTIONARY (24x24 & 20x20 tiêu chuẩn)
   const Icons = {
     ball: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>`,
     calendar: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>`,
@@ -81,7 +73,6 @@
     share: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>`
   };
 
-  // 4. VECTOR PITCH SVG GENERATOR (No Photos Rule - Tiêu chuẩn cao)
   function renderPitchSVG(variant = 'standard', heightClass = 'h-40') {
     const palettes = {
       standard: { c1: '#15803D', c2: '#16A34A', line: 'rgba(255,255,255,0.85)' },
@@ -125,7 +116,6 @@
     </div>`;
   }
 
-  // 5. STATUS PILL BADGE HELPER
   function statusPill(label) {
     const map = {
       'Trống': 'bg-white text-[#16A34A] border border-[#16A34A]',
@@ -147,7 +137,6 @@
     return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(label)}</span>`;
   }
 
-  // 6. VIETQR GENERATOR (Hỗ trợ URL API VietQR chuẩn và Fallback SVG)
   function getVietQRUrl(bankCode, accountNo, amount, memo) {
     const safeBank = encodeURIComponent(bankCode || 'VCB');
     const safeAcc = encodeURIComponent(accountNo || '0123456789');
@@ -184,7 +173,6 @@
     </svg>`;
   }
 
-  // Xuất ra window.SanBongHelpers
   window.SanBongHelpers = {
     escapeHTML,
     formatVND,
@@ -198,7 +186,6 @@
     renderQRCodeSVG
   };
 
-  // Expose các hàm tiện ích thường dùng trực tiếp ra window
   window.escapeHTML = escapeHTML;
   window.formatVND = formatVND;
   window.formatDateVN = formatDateVN;

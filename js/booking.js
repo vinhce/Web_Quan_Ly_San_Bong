@@ -1,22 +1,115 @@
-/**
- * SÂN BÓNG PRO - ĐẶT SÂN LOGIC (booking.js)
- */
 
 let selectedPitchId = 'P7-A';
 let selectedPitchType = 7;
 let selectedDate = '';
-let selectedSlotId = 'S08'; // mặc định
+let selectedSlotId = 'S08';
+let bookingMode = 'single';
+let monthlyWeeks = 4;
+let monthlyDates = [];
 let appliedServices = [
   { id: 'SRV-WATER', quantity: 4 },
   { id: 'SRV-BIB', quantity: 2 }
 ];
 let appliedVoucherCode = '';
 
+function setBookingMode(mode) {
+  bookingMode = mode === 'monthly' ? 'monthly' : 'single';
+  const singleBtn = document.getElementById('mode-single-btn');
+  const monthlyBtn = document.getElementById('mode-monthly-btn');
+  const panel = document.getElementById('monthly-booking-panel');
+
+  if (bookingMode === 'monthly') {
+    if (monthlyBtn) monthlyBtn.className = 'px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
+    if (singleBtn) singleBtn.className = 'px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
+    if (panel) panel.classList.remove('hidden');
+    updateMonthlyPackage();
+  } else {
+    if (singleBtn) singleBtn.className = 'px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
+    if (monthlyBtn) monthlyBtn.className = 'px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
+    if (panel) panel.classList.add('hidden');
+    monthlyDates = [];
+  }
+  updateBillSummary();
+}
+window.setBookingMode = setBookingMode;
+
+function updateMonthlyPackage() {
+  const select = document.getElementById('monthly-weeks-select');
+  const preview = document.getElementById('monthly-dates-preview');
+  monthlyWeeks = Math.max(4, parseInt(select?.value || '4', 10) || 4);
+
+  if (!selectedDate) {
+    selectedDate = new Date().toISOString().split('T')[0];
+  }
+
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  const baseDate = new Date(selectedDate + 'T00:00:00');
+  const dates = [];
+  for (let i = 0; i < monthlyWeeks; i++) {
+    const d = new Date(baseDate);
+    d.setDate(baseDate.getDate() + i * 7);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const iso = `${yyyy}-${mm}-${dd}`;
+    let isFree = true;
+    if (db && selectedPitchId && selectedSlotId) {
+      const daySlots = db.getSlotsWithStatus(selectedPitchId, iso);
+      const found = daySlots.find(s => s.id === selectedSlotId);
+      if (found && (found.status === 'Đã đặt' || found.status === 'Đang đá' || found.status === 'Bảo trì')) {
+        isFree = false;
+      }
+    }
+    dates.push({ iso, label: `${dd}/${mm}/${yyyy}`, isFree, index: i + 1 });
+  }
+  monthlyDates = dates;
+
+  if (preview) {
+    preview.innerHTML = dates.map(item => `
+      <span class="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 ${
+        item.isFree
+          ? 'bg-white border-emerald-300 text-[#15803D]'
+          : 'bg-amber-50 border-amber-300 text-amber-800'
+      }">
+        <span>Buổi ${item.index}: ${item.label}</span>
+        <span>${item.isFree ? '✓ Trống' : '⚠️ Đổi giờ linh hoạt'}</span>
+      </span>
+    `).join('');
+  }
+
+  updateBillSummary();
+}
+window.updateMonthlyPackage = updateMonthlyPackage;
+
+function renderVoucherQuickList() {
+  const container = document.getElementById('voucher-quick-list');
+  if (!container) return;
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  if (!db) return;
+
+  const vouchers = db.getVouchers();
+  const palettes = [
+    'bg-emerald-50 hover:bg-emerald-100 text-[#16A34A] border-emerald-200',
+    'bg-amber-50 hover:bg-amber-100 text-[#D97706] border-amber-200',
+    'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200',
+    'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200',
+    'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200',
+    'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200'
+  ];
+
+  container.innerHTML = '<span class="text-[11px] text-[#64748B]">Gợi ý 1 chạm:</span>' +
+    vouchers.map((v, idx) => {
+      const cls = palettes[idx % palettes.length];
+      const lbl = v.type === 'percent' ? `-${v.value}%` : `-${Math.round(v.value / 1000)}k`;
+      return `<button type="button" onclick="quickApplyVoucher('${v.code}')" title="${v.description || ''}" class="px-2 py-0.5 rounded ${cls} text-[11px] font-bold border transition-colors">${v.code} (${lbl})</button>`;
+    }).join('');
+}
+window.renderVoucherQuickList = renderVoucherQuickList;
+
 function initBookingPage() {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   if (!db) return;
 
-  // Đọc query param pitchId hoặc type
   const urlParams = new URLSearchParams(window.location.search);
   const paramPitch = urlParams.get('pitchId') || urlParams.get('pitch');
   const paramType = urlParams.get('type');
@@ -37,7 +130,6 @@ function initBookingPage() {
     if (curP && curP.type) selectedPitchType = Number(curP.type);
   }
 
-  // Đặt ngày hôm nay
   const today = new Date().toISOString().split('T')[0];
   selectedDate = today;
   const dateInput = document.getElementById('booking-date-input');
@@ -48,9 +140,10 @@ function initBookingPage() {
   initDateStrip();
   renderSlots();
   renderServices();
+  renderVoucherQuickList();
+  updateMonthlyPackage();
   updateBillSummary();
 
-  // Tự động điền thông tin nếu hội viên đã đăng nhập
   const curUser = window.SanBongApp?.SanBongDB?.getUser();
   if (curUser && curUser.name) {
     const nameInput = document.getElementById('cust-name');
@@ -59,7 +152,6 @@ function initBookingPage() {
     if (phoneInput && !phoneInput.value && curUser.phone) phoneInput.value = curUser.phone;
   }
 
-  // Sự kiện đổi sân
   const pitchSelect = document.getElementById('booking-pitch-select');
   if (pitchSelect && !pitchSelect._bound) {
     pitchSelect._bound = true;
@@ -75,7 +167,6 @@ function initBookingPage() {
     });
   }
 
-  // Sự kiện đổi ngày
   const dateInputEl = document.getElementById('booking-date-input');
   if (dateInputEl && !dateInputEl._bound) {
     dateInputEl._bound = true;
@@ -87,14 +178,12 @@ function initBookingPage() {
     });
   }
 
-  // Sự kiện Voucher
   const voucherBtn = document.getElementById('apply-voucher-btn');
   if (voucherBtn && !voucherBtn._bound) {
     voucherBtn._bound = true;
     voucherBtn.addEventListener('click', applyVoucher);
   }
 
-  // Nút thanh toán chuyển qua checkout.html
   const checkoutBtn = document.getElementById('proceed-checkout-btn');
   if (checkoutBtn && !checkoutBtn._bound) {
     checkoutBtn._bound = true;
@@ -214,6 +303,7 @@ function selectQuickDate(iso) {
   if (dateInput) dateInput.value = iso;
   initDateStrip();
   renderSlots();
+  if (bookingMode === 'monthly') updateMonthlyPackage();
   updateBillSummary();
 }
 
@@ -266,6 +356,7 @@ function renderSlots() {
 function selectSlot(slotId) {
   selectedSlotId = slotId;
   renderSlots();
+  if (bookingMode === 'monthly') updateMonthlyPackage();
   updateBillSummary();
 }
 
@@ -321,11 +412,20 @@ function applyVoucher() {
   }
 
   const db = window.SanBongApp.SanBongDB;
-  const v = db.getVouchers().find(vc => vc.code === code);
+  const v = db.getVouchers().find(vc => vc.code.toUpperCase() === code);
   if (v) {
-    appliedVoucherCode = code;
-    msg.textContent = `✓ Đã áp dụng: ${v.code} (${v.description})`;
-    msg.className = 'text-xs mt-1.5 font-semibold text-[#16A34A]';
+    const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
+    const preCalc = db.calculatePrice(selectedPitchId, selectedDate, selectedSlotId, appliedServices, '', weeks);
+    const subtotal = preCalc ? preCalc.subtotal : 0;
+    if (subtotal < (v.minOrder || 0)) {
+      appliedVoucherCode = code;
+      msg.textContent = `⚠️ Mã ${v.code} yêu cầu đơn tối thiểu ${window.SanBongApp.formatVND(v.minOrder)} (Hiện tại: ${window.SanBongApp.formatVND(subtotal)}). Hãy chọn thêm dịch vụ hoặc gói tháng!`;
+      msg.className = 'text-xs mt-1.5 font-semibold text-[#D97706]';
+    } else {
+      appliedVoucherCode = code;
+      msg.textContent = `✓ Đã áp dụng: ${v.code} (${v.description})`;
+      msg.className = 'text-xs mt-1.5 font-semibold text-[#16A34A]';
+    }
   } else {
     appliedVoucherCode = '';
     msg.textContent = '✕ Mã giảm giá không hợp lệ hoặc đã hết hạn.';
@@ -359,10 +459,15 @@ function updateBillSummary() {
   const slots = db.getTimeSlots();
   const currentSlot = slots.find(s => s.id === selectedSlotId);
   const slotTimeText = currentSlot ? currentSlot.time : 'Chưa chọn';
+  const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
   const summaryDatetime = document.getElementById('summary-datetime');
-  if (summaryDatetime) summaryDatetime.textContent = `${window.SanBongApp.formatDateVN(selectedDate)} · ${slotTimeText}`;
+  if (summaryDatetime) {
+    summaryDatetime.textContent = weeks > 1
+      ? `Gói ${weeks} tuần (từ ${window.SanBongApp.formatDateVN(selectedDate)}) · ${slotTimeText}`
+      : `${window.SanBongApp.formatDateVN(selectedDate)} · ${slotTimeText}`;
+  }
 
-  const calc = db.calculatePrice(selectedPitchId, selectedDate, selectedSlotId, appliedServices, appliedVoucherCode);
+  const calc = db.calculatePrice(selectedPitchId, selectedDate, selectedSlotId, appliedServices, appliedVoucherCode, weeks);
 
   if (calc) {
     const elPitch = document.getElementById('summary-pitch-price');
@@ -372,9 +477,16 @@ function updateBillSummary() {
     const elDep = document.getElementById('summary-deposit-price');
     const elRem = document.getElementById('summary-remaining-price');
 
-    if (elPitch) elPitch.textContent = window.SanBongApp.formatVND(calc.pitchPrice);
+    if (elPitch) {
+      elPitch.textContent = weeks > 1
+        ? `${window.SanBongApp.formatVND(calc.pitchPrice)} (${weeks} buổi)`
+        : window.SanBongApp.formatVND(calc.pitchPrice);
+    }
     if (elSrv) elSrv.textContent = window.SanBongApp.formatVND(calc.serviceTotal);
-    if (elDisc) elDisc.textContent = `-${window.SanBongApp.formatVND(calc.discountAmount)}`;
+    if (elDisc) {
+      const totalDisc = (calc.monthlyDiscountAmount || 0) + (calc.discountAmount || 0);
+      elDisc.textContent = `-${window.SanBongApp.formatVND(totalDisc)}`;
+    }
     if (elTot) elTot.textContent = window.SanBongApp.formatVND(calc.totalPrice);
     if (elDep) elDep.textContent = window.SanBongApp.formatVND(calc.depositAmount);
     if (elRem) elRem.textContent = window.SanBongApp.formatVND(calc.remainingAmount);
@@ -387,7 +499,7 @@ function proceedToCheckout() {
 
   let name = document.getElementById('cust-name')?.value.trim() || '';
   let phone = document.getElementById('cust-phone')?.value.trim() || '';
-  const note = document.getElementById('cust-note')?.value.trim() || '';
+  let note = document.getElementById('cust-note')?.value.trim() || '';
   const agree = document.getElementById('policy-agree')?.checked;
 
   if (!selectedSlotId) {
@@ -403,11 +515,19 @@ function proceedToCheckout() {
     return;
   }
 
-  // Lưu bản nháp đặt sân vào sessionStorage trước
+  const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
+  if (weeks > 1) {
+    const dateLabels = monthlyDates.map(d => d.label).join(', ');
+    note = (note ? note + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]`;
+  }
+
   const bookingDraft = {
     pitchId: selectedPitchId,
     date: selectedDate,
     slotId: selectedSlotId,
+    bookingMode: bookingMode,
+    weeksCount: weeks,
+    monthlyDates: monthlyDates,
     services: appliedServices,
     voucherCode: appliedVoucherCode,
     customerName: name || user?.name || '',
@@ -416,7 +536,6 @@ function proceedToCheckout() {
   };
   sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
 
-  // Yêu cầu bắt buộc đăng nhập/đăng ký tài khoản để định danh người chuyển khoản & tích lũy điểm thưởng
   if (!user || !user.name) {
     if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast('Đang chuyển hướng sang Đăng nhập / Đăng ký để định danh người chuyển cọc và tích điểm thưởng...', 'info', 3000);

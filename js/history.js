@@ -1,6 +1,3 @@
-/**
- * SÂN BÓNG PRO - LỊCH SỬ ĐẶT SÂN (history.js)
- */
 
 let currentFilter = 'all';
 
@@ -16,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const pLabel = document.getElementById('points-label');
 
   if (!user || !user.name) {
-    // Khách vãng lai chưa đăng nhập
     if (mName) mName.textContent = 'Khách vãng lai';
     if (mPhone) {
       const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=history') : '/login?redirect=history';
@@ -62,7 +58,6 @@ function renderHistory() {
   const user = db.getUser();
   const all = db.getAllBookings();
 
-  // Chỉ hiển thị đơn của người dùng đăng nhập; khách vãng lai chỉ thấy đơn vừa đặt
   let userBookings = [];
   if (user && user.phone) {
     userBookings = all.filter(b => b.phone === user.phone || b.customerName === user.name);
@@ -76,7 +71,6 @@ function renderHistory() {
     }
   }
 
-  // Tra cứu theo mã đơn hoặc SĐT nếu người dùng nhập vào ô tìm kiếm
   const searchInput = document.getElementById('history-search-input');
   const searchVal = (searchInput ? searchInput.value : '').trim().toLowerCase();
   const cleanSearchPhone = searchVal.replace(/[\s\.\-]+/g, '');
@@ -113,16 +107,24 @@ function renderHistory() {
   }
 
   container.innerHTML = list.map(b => {
-    const isConfirmed = b.status === 'Đã xác nhận';
+    const isConfirmed = b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc';
     const isCompleted = b.status === 'Hoàn thành';
+    const monthlyTag = (b.weeksCount && b.weeksCount > 1)
+      ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">📅 Gói ${b.weeksCount} tuần</span>`
+      : '';
+    const overtimeTag = (b.overtimeMinutes && b.overtimeMinutes > 0)
+      ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">⏱️ +${b.overtimeMinutes}p thêm giờ</span>`
+      : '';
 
     return `
       <div class="ui-card p-5 space-y-4 hover:shadow-md transition-shadow">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E2E8F0] gap-2">
-          <div class="flex items-center gap-3">
-            <span class="font-mono font-bold text-sm text-[#0F172A]">${b.code}</span>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <span class="font-mono font-bold text-sm px-2.5 py-0.5 rounded bg-slate-100 text-[#0F172A]">${b.code}</span>
             ${window.SanBongApp.statusPill(b.status)}
             ${b.paymentStatus ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold">${b.paymentStatus}</span>` : ''}
+            ${monthlyTag}
+            ${overtimeTag}
           </div>
           <div class="text-xs text-[#64748B]">Tạo lúc: ${b.createdAt || 'Hôm nay'}</div>
         </div>
@@ -135,21 +137,22 @@ function renderHistory() {
             </div>
             <div class="text-xs text-[#64748B] mt-1">
               Tổng tiền: <b class="text-[#0F172A]">${window.SanBongApp.formatVND(b.totalPrice)}</b>
-              (Đã cọc: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(b.depositAmount)}</span> · Còn lại: ${window.SanBongApp.formatVND(b.remainingAmount)})
+              (Đã cọc: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(b.depositAmount)}</span> · Còn lại: <b class="${b.remainingAmount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(b.remainingAmount)}</b>)
             </div>
+            ${b.note ? `<div class="text-[11px] text-slate-500 mt-1 italic">${b.note}</div>` : ''}
           </div>
 
           <div class="flex items-center gap-2 flex-wrap">
-            <button onclick="viewQRCode('${b.code}')" class="btn-base btn-secondary text-xs">
-              Xem vé QR
+            <button onclick="viewQRCode('${b.code}')" class="btn-base btn-secondary text-xs font-bold">
+              📷 Xem vé QR & Hóa đơn
             </button>
             ${isConfirmed ? `
-              <button onclick="cancelBooking('${b.code}')" class="btn-base btn-danger-outline text-xs">
-                Hủy sân & Hoàn cọc
+              <button onclick="cancelBooking('${b.code}')" class="btn-base btn-danger-outline text-xs font-bold">
+                🛑 Hủy trước hạn & Hoàn cọc
               </button>
             ` : ''}
             ${isCompleted ? `
-              <a href="/booking?pitchId=${b.pitchId}" class="btn-base btn-primary text-xs">
+              <a href="/booking?pitchId=${b.pitchId}" class="btn-base btn-primary text-xs font-bold">
                 Đặt lại ca này
               </a>
             ` : ''}
@@ -170,11 +173,15 @@ function viewQRCode(bookingCode) {
   const mPitch = document.getElementById('modal-pitch');
   if (mPitch) mPitch.textContent = b.pitchName;
   const mTime = document.getElementById('modal-time');
-  if (mTime) mTime.textContent = `${window.SanBongApp.formatDateVN(b.date)} · ${b.slotTime}`;
+  if (mTime) {
+    const rem = window.SanBongApp.formatVND(b.remainingAmount || 0);
+    mTime.innerHTML = `${window.SanBongApp.formatDateVN(b.date)} · ${b.slotTime}<br><span class="text-[11px] font-bold text-[#0F172A]">Tổng: ${window.SanBongApp.formatVND(b.totalPrice)} · Đã cọc: ${window.SanBongApp.formatVND(b.depositAmount)} · Còn lại: <span class="text-[#DC2626]">${rem}</span></span>`;
+  }
 
   const qrMount = document.getElementById('modal-qr-mount');
   if (qrMount) {
-    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(140);
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(b.code)}`;
+    qrMount.innerHTML = `<img src="${qrApiUrl}" alt="QR ${b.code}" class="w-36 h-36 object-contain rounded-lg" onerror="this.outerHTML=window.SanBongApp.renderQRCodeSVG(140)">`;
   }
 
   const modal = document.getElementById('ticket-modal');
@@ -193,20 +200,36 @@ function closeTicketModal() {
 }
 
 function cancelBooking(bookingCode) {
-  const doCancel = () => {
+  const doCancel = async () => {
+    try {
+      await fetch('../api/bookings.php?action=early_cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: bookingCode,
+          policy: 'refund_100',
+          reason: 'Khách hàng chủ động hủy lịch trước thời hạn'
+        })
+      });
+    } catch (e) {}
+
     const db = window.SanBongApp.SanBongDB;
-    db.updateBookingStatus(bookingCode, 'Đã hủy', 'Đã hoàn cọc');
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã hủy lịch đặt sân thành công! Số tiền hoàn cọc đã được chuyển về tài khoản.', 'success', 3500);
+    if (db.cancelBookingEarly) {
+      db.cancelBookingEarly(bookingCode, 'refund_100', 'Khách hàng chủ động hủy lịch trước thời hạn');
+    } else {
+      db.updateBookingStatus(bookingCode, 'Đã hủy', 'Đã hoàn cọc 100%');
+    }
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã hủy lịch đặt sân trước thời hạn thành công! Tiền cọc 100% đã được ghi nhận hoàn trả và nhả sân.', 'success', 4000);
     renderHistory();
   };
 
   if (window.SanBongApp?.showModal) {
     window.SanBongApp.showModal({
-      title: 'Xác nhận hủy đặt sân',
-      message: `Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\nTiền cọc sẽ được hoàn lại tự động theo chính sách sân.`,
+      title: '🛑 Xác nhận hủy lịch trước thời hạn',
+      message: `Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode} trước giờ bóng lăn?\n\n• Hệ thống sẽ hoàn 100% tiền cọc theo chính sách hủy trước hạn và giải phóng sân cho đội khác.`,
       type: 'warning',
-      confirmText: 'Xác nhận hủy',
-      cancelText: 'Giữ đơn',
+      confirmText: 'Xác nhận hủy & Hoàn cọc',
+      cancelText: 'Giữ lịch đá',
       onConfirm: doCancel
     });
   } else {

@@ -1,7 +1,3 @@
-/**
- * SÂN BÓNG PRO - MOCK DATABASE & INITIAL DATA
- * Lưu trữ bền vững qua localStorage
- */
 
 const DEFAULT_PITCHES = [
   {
@@ -398,6 +394,27 @@ const DEFAULT_VOUCHERS = [
     type: 'percent',
     value: 15,
     minOrder: 300000
+  },
+  {
+    code: 'DATTHANG15',
+    description: 'Giảm 15% ưu đãi hợp đồng đặt sân theo tháng',
+    type: 'percent',
+    value: 15,
+    minOrder: 800000
+  },
+  {
+    code: 'SINHVIEN30K',
+    description: 'Giảm 30.000đ trợ giá học sinh - sinh viên',
+    type: 'fixed',
+    value: 30000,
+    minOrder: 200000
+  },
+  {
+    code: 'CUOITUAN100K',
+    description: 'Giảm 100.000đ cho đơn đặt sân 11 người / Giải đấu',
+    type: 'fixed',
+    value: 100000,
+    minOrder: 900000
   }
 ];
 
@@ -409,10 +426,9 @@ const DEFAULT_BANK_INFO = {
   accountNumber: '0352313548',
   accountName: 'NGUYEN QUANG VINH',
   branch: 'Chi nhánh Hà Nội',
-  depositRate: 0.3 // Cọc 30%
+  depositRate: 0.3
 };
 
-// Hàm lấy ngày hôm nay theo format YYYY-MM-DD
 function getTodayDateString(offsetDays = 0) {
   const d = new Date();
   if (offsetDays !== 0) {
@@ -448,7 +464,7 @@ const DEFAULT_BOOKINGS = [
     totalPrice: 666000,
     depositAmount: 200000,
     remainingAmount: 466000,
-    status: 'Đã xác nhận', // 'Đã xác nhận' | 'Đang đá' | 'Hoàn thành' | 'Đã hủy'
+    status: 'Đã xác nhận',
     paymentStatus: 'Đã cọc 30%',
     paymentMethod: 'VietQR Chuyển khoản',
     createdAt: `${todayStr} 08:30`,
@@ -551,7 +567,6 @@ const DEFAULT_BOOKINGS = [
   }
 ];
 
-// Xuất các đối tượng vào global window để script khác sử dụng trực tiếp
 window.SanBongData = {
   DEFAULT_PITCHES,
   DEFAULT_TIME_SLOTS,

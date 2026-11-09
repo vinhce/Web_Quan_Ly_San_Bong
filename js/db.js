@@ -1,12 +1,7 @@
-/**
- * SÂN BÓNG PRO - LOCALSTORAGE DATABASE ENGINE (db.js)
- * Tách module nhẹ: Quản lý CSDL đặt sân, khung giờ (slots), cọc VietQR, khách hàng, no-show
- */
 
 (function () {
   'use strict';
 
-  // Helper getRelativePath fallback nếu helpers.js load sau
   function getRelativePath(target) {
     if (window.SanBongHelpers && typeof window.SanBongHelpers.getRelativePath === 'function') {
       return window.SanBongHelpers.getRelativePath(target);
@@ -24,7 +19,6 @@
     return base ? `${base}/${cleanTarget}` : `/${cleanTarget}`;
   }
 
-// 7. CENTRAL STATE & LOCALSTORAGE DATABASE
   const STORAGE_KEYS = {
     PITCHES: 'sb_pitches_v2',
     TIME_SLOTS: 'sb_slots_v1',
@@ -51,8 +45,21 @@
       }
       if (!localStorage.getItem(STORAGE_KEYS.VOUCHERS)) {
         localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(data.DEFAULT_VOUCHERS || []));
+      } else {
+        try {
+          const savedVouchers = JSON.parse(localStorage.getItem(STORAGE_KEYS.VOUCHERS) || '[]');
+          const defVouchers = data.DEFAULT_VOUCHERS || [];
+          if (Array.isArray(savedVouchers) && savedVouchers.length < defVouchers.length) {
+            const merged = [...savedVouchers];
+            defVouchers.forEach(dv => {
+              if (!merged.some(sv => sv.code === dv.code)) {
+                merged.push(dv);
+              }
+            });
+            localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(merged));
+          }
+        } catch (e) {}
       }
-      // Luôn dọn dẹp tài khoản demo trong LocalStorage để người dùng truy cập là Khách vãng lai
       try {
         localStorage.removeItem(STORAGE_KEYS.USER);
         localStorage.removeItem('sb_user');
@@ -84,7 +91,6 @@
         localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(defaultPending));
       }
 
-      // Tự động nâng cấp các mã đơn cũ tiền tố SB-... sang chuẩn SePay ASFF/ASFS/ASFE
       try {
         const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS);
         if (rawPending && rawPending.includes('SB-')) {
@@ -173,6 +179,35 @@
       }
     },
 
+    saveVoucher(v) {
+      if (!v || !v.code) return null;
+      const code = String(v.code).trim().toUpperCase();
+      const item = {
+        code,
+        description: String(v.description || '').trim() || `Ưu đãi mã ${code}`,
+        type: v.type === 'fixed' ? 'fixed' : 'percent',
+        value: Math.max(0, Number(v.value) || 0),
+        minOrder: Math.max(0, Number(v.minOrder) || 0)
+      };
+      const list = this.getVouchers();
+      const idx = list.findIndex(x => String(x.code).toUpperCase() === code);
+      if (idx >= 0) {
+        list[idx] = item;
+      } else {
+        list.unshift(item);
+      }
+      localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(list));
+      return item;
+    },
+
+    deleteVoucher(code) {
+      if (!code) return false;
+      const target = String(code).trim().toUpperCase();
+      const list = this.getVouchers().filter(x => String(x.code).toUpperCase() !== target);
+      localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(list));
+      return true;
+    },
+
     getBankInfo() {
       try {
         return JSON.parse(localStorage.getItem(STORAGE_KEYS.BANK)) || {};
@@ -257,20 +292,22 @@
       });
     },
 
-    calculatePrice(pitchId, dateStr, slotIdOrTime, servicesList = [], voucherCode = '') {
+    calculatePrice(pitchId, dateStr, slotIdOrTime, servicesList = [], voucherCode = '', weeksCount = 1) {
       const pitch = this.getPitchById(pitchId);
       if (!pitch) return null;
 
+      const weeks = Math.max(1, parseInt(weeksCount, 10) || 1);
       const slots = this.getTimeSlots();
       const slot = slots.find(s => s.id === slotIdOrTime || s.time === slotIdOrTime);
       const isPeak = slot ? slot.isPeak : false;
 
-      let pitchPrice = isPeak ? pitch.peakPrice : pitch.basePrice;
+      let singlePitchPrice = isPeak ? pitch.peakPrice : pitch.basePrice;
       if (slot && slot.duration && slot.duration > 1) {
-        pitchPrice = Math.round(pitchPrice * slot.duration);
+        singlePitchPrice = Math.round(singlePitchPrice * slot.duration);
       }
+      const pitchPrice = singlePitchPrice * weeks;
 
-      let serviceTotal = 0;
+      let singleServiceTotal = 0;
       const allServices = this.getServices();
       const appliedServices = [];
 
@@ -278,8 +315,8 @@
         servicesList.forEach(item => {
           const srvDef = allServices.find(s => s.id === item.id);
           if (srvDef && item.quantity > 0) {
-            const lineTotal = srvDef.price * item.quantity;
-            serviceTotal += lineTotal;
+            const lineTotal = srvDef.price * item.quantity * weeks;
+            singleServiceTotal += srvDef.price * item.quantity;
             appliedServices.push({
               id: srvDef.id,
               name: srvDef.name,
@@ -292,7 +329,16 @@
         });
       }
 
+      const serviceTotal = singleServiceTotal * weeks;
       const subtotal = pitchPrice + serviceTotal;
+
+      let monthlyDiscountRate = 0;
+      if (weeks >= 12) monthlyDiscountRate = 0.15;
+      else if (weeks >= 8) monthlyDiscountRate = 0.10;
+      else if (weeks >= 4) monthlyDiscountRate = 0.05;
+      const monthlyDiscountAmount = Math.round(subtotal * monthlyDiscountRate);
+
+      const afterMonthlySubtotal = Math.max(0, subtotal - monthlyDiscountAmount);
 
       let discountAmount = 0;
       let appliedVoucher = null;
@@ -301,27 +347,34 @@
         if (v && subtotal >= (v.minOrder || 0)) {
           appliedVoucher = v;
           if (v.type === 'percent') {
-            discountAmount = Math.round((subtotal * v.value) / 100);
+            discountAmount = Math.round((afterMonthlySubtotal * v.value) / 100);
           } else {
             discountAmount = v.value;
           }
-          if (discountAmount > subtotal) discountAmount = subtotal;
+          if (discountAmount > afterMonthlySubtotal) discountAmount = afterMonthlySubtotal;
         }
       }
 
-      const totalPrice = Math.max(0, subtotal - discountAmount);
-      const depositRate = 0.3; // 30%
+      const totalDiscount = monthlyDiscountAmount + discountAmount;
+      const totalPrice = Math.max(0, subtotal - totalDiscount);
+      const depositRate = 0.3;
       const depositAmount = Math.round(totalPrice * depositRate);
       const remainingAmount = totalPrice - depositAmount;
 
       return {
         pitchPrice,
+        singlePitchPrice,
         isPeak,
         serviceTotal,
+        singleServiceTotal,
         appliedServices,
         subtotal,
+        weeksCount: weeks,
+        monthlyDiscountRate,
+        monthlyDiscountAmount,
         voucherCode: appliedVoucher ? appliedVoucher.code : '',
         discountAmount,
+        totalDiscount,
         totalPrice,
         depositAmount,
         remainingAmount
@@ -342,13 +395,15 @@
         prefix = 'ASFE';
       }
       const bookingCode = bookingInput.code || `${prefix}${rand6}`;
+      const weeksCount = Math.max(1, parseInt(bookingInput.weeksCount, 10) || 1);
 
       const pricing = this.calculatePrice(
         bookingInput.pitchId,
         bookingInput.date,
         bookingInput.slotId || bookingInput.slotTime,
         bookingInput.services || [],
-        bookingInput.voucherCode || ''
+        bookingInput.voucherCode || '',
+        weeksCount
       );
 
       const newBooking = {
@@ -361,6 +416,10 @@
         date: bookingInput.date,
         slotId: bookingInput.slotId || '',
         slotTime: bookingInput.slotTime || '',
+        bookingMode: bookingInput.bookingMode || (weeksCount > 1 ? 'monthly' : 'single'),
+        weeksCount: weeksCount,
+        monthlyDates: Array.isArray(bookingInput.monthlyDates) ? bookingInput.monthlyDates : [],
+        monthlyDiscountAmount: pricing ? pricing.monthlyDiscountAmount : 0,
         pitchPrice: pricing ? pricing.pitchPrice : 0,
         services: pricing ? pricing.appliedServices : [],
         voucherCode: pricing ? pricing.voucherCode : '',
@@ -397,7 +456,133 @@
     },
 
     checkinBooking(bookingCode) {
-      return this.updateBookingStatus(bookingCode, 'Đang đá', 'Đã thanh toán đủ');
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      if (booking) {
+        booking.status = 'Đang đá';
+        booking.checkinTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        if (!booking.paymentStatus || booking.paymentStatus === 'Chờ duyệt cọc' || booking.paymentStatus === 'Chờ cọc 30%') {
+          booking.paymentStatus = 'Đã cọc 30%';
+        }
+        if (typeof booking.remainingAmount !== 'number' || booking.remainingAmount <= 0) {
+          const total = Number(booking.totalPrice || 0);
+          const dep = Number(booking.depositAmount || Math.round(total * 0.3));
+          booking.remainingAmount = Math.max(0, total - dep);
+        }
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+        return booking;
+      }
+      return null;
+    },
+
+    addOvertimeToBooking(bookingCode, minutes, fee) {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      if (!booking) return null;
+      const mins = Math.max(0, parseInt(minutes, 10) || 0);
+      const extraFee = Math.max(0, parseInt(fee, 10) || 0);
+      booking.overtimeMinutes = (Number(booking.overtimeMinutes) || 0) + mins;
+      booking.overtimeFee = (Number(booking.overtimeFee) || 0) + extraFee;
+      booking.totalPrice = (Number(booking.totalPrice) || 0) + extraFee;
+      booking.remainingAmount = (Number(booking.remainingAmount) || 0) + extraFee;
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đá thêm ${mins}p: +${extraFee.toLocaleString('vi-VN')}đ]`;
+      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+      return booking;
+    },
+
+    changePitchForBooking(bookingCode, newPitchId, adjustPrice = false, reason = '') {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      const newPitch = this.getPitchById(newPitchId);
+      if (!booking || !newPitch) return null;
+      const oldPitchName = booking.pitchName || booking.pitchId;
+      booking.pitchId = newPitch.id;
+      booking.pitchName = newPitch.name;
+
+      let diff = 0;
+      if (adjustPrice) {
+        const slots = this.getTimeSlots();
+        const slot = slots.find(s => s.id === booking.slotId || s.time === booking.slotTime);
+        const isPeak = slot ? slot.isPeak : false;
+        const duration = (slot && slot.duration) ? slot.duration : 1;
+        const weeks = Math.max(1, Number(booking.weeksCount) || 1);
+        const newPitchPrice = Math.round((isPeak ? newPitch.peakPrice : newPitch.basePrice) * duration) * weeks;
+        const oldPitchPrice = Number(booking.pitchPrice || 0);
+        diff = newPitchPrice - oldPitchPrice;
+        booking.pitchPrice = newPitchPrice;
+        booking.totalPrice = Math.max(0, Number(booking.totalPrice || 0) + diff);
+        booking.remainingAmount = Math.max(0, Number(booking.remainingAmount || 0) + diff);
+      }
+      const diffNote = adjustPrice && diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff.toLocaleString('vi-VN')}đ)` : ' (Giữ nguyên giá)';
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đổi sân: ${oldPitchName} -> ${newPitch.name}${diffNote}${reason ? ' - Lý do: ' + reason : ''}]`;
+      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+      return booking;
+    },
+
+    addInPlayService(bookingCode, serviceId, quantity = 1) {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      const srvDef = this.getServices().find(s => s.id === serviceId);
+      if (!booking || !srvDef) return null;
+      const qty = Math.max(1, parseInt(quantity, 10) || 1);
+      const addedCost = srvDef.price * qty;
+
+      if (!Array.isArray(booking.services)) booking.services = [];
+      const existing = booking.services.find(s => s.id === srvDef.id);
+      if (existing) {
+        existing.quantity = (Number(existing.quantity) || 0) + qty;
+        existing.lineTotal = existing.quantity * srvDef.price;
+      } else {
+        booking.services.push({
+          id: srvDef.id,
+          name: srvDef.name,
+          price: srvDef.price,
+          quantity: qty,
+          unit: srvDef.unit,
+          lineTotal: addedCost
+        });
+      }
+
+      booking.totalPrice = (Number(booking.totalPrice) || 0) + addedCost;
+      booking.remainingAmount = (Number(booking.remainingAmount) || 0) + addedCost;
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Gọi thêm: ${srvDef.name} x${qty} (+${addedCost.toLocaleString('vi-VN')}đ)]`;
+      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+      return booking;
+    },
+
+    cancelBookingEarly(bookingCode, policy = 'refund_100', reason = '') {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      if (!booking) return null;
+      const policyMap = {
+        'refund_100': 'Đã hoàn cọc 100%',
+        'reserve': 'Bảo lưu cọc 30%',
+        'forfeit_50': 'Phạt 50% cọc'
+      };
+      booking.status = 'Đã hủy';
+      booking.paymentStatus = policyMap[policy] || 'Đã hoàn cọc 100%';
+      booking.remainingAmount = 0;
+      booking.cancelPolicy = policy;
+      booking.cancelReason = reason || 'Hủy lịch trước thời hạn';
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Hủy trước hạn - ${booking.paymentStatus}${reason ? ': ' + reason : ''}]`;
+      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+      return booking;
+    },
+
+    completeAndPayRemaining(bookingCode, payMethod = 'Tiền mặt tại quầy') {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      if (!booking) return null;
+      const paidRem = Number(booking.remainingAmount || 0);
+      booking.paidRemainingAmount = paidRem;
+      booking.remainingPaymentMethod = payMethod;
+      booking.remainingAmount = 0;
+      booking.status = 'Hoàn thành';
+      booking.paymentStatus = 'Đã thanh toán 100%';
+      booking.completedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đã tất toán phần còn lại ${paidRem.toLocaleString('vi-VN')}đ qua ${payMethod}]`;
+      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+      return booking;
     },
 
     releaseNoShowBooking(bookingCode) {
@@ -423,7 +608,6 @@
         list = [];
       }
 
-      // Đọc danh sách các biên lai đã xử lý (duyệt hoặc từ chối) để chống hồi lại sau F5
       let processed = [];
       try {
         processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
@@ -432,10 +616,8 @@
         processed = [];
       }
 
-      // Lọc bỏ bất kỳ mã nào đã xử lý
       list = list.filter(item => !processed.includes(item.code));
 
-      // Tự động đồng bộ bất kỳ đơn đặt sân mới nào có paymentStatus = 'Chờ duyệt cọc'
       const pendingBookings = this.getAllBookings().filter(b => b.paymentStatus === 'Chờ duyệt cọc' && b.status !== 'Đã hủy' && !processed.includes(b.code));
       pendingBookings.forEach(pb => {
         if (!list.some(item => item.code === pb.code)) {
@@ -462,7 +644,6 @@
       list = list.filter(item => item.code !== bookingCode);
       localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(list));
 
-      // Lưu vĩnh viễn vào danh sách đã xử lý
       try {
         let processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
         if (!Array.isArray(processed)) processed = [];
@@ -490,7 +671,6 @@
       list = list.filter(item => item.code !== bookingCode);
       localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(list));
 
-      // Lưu vĩnh viễn vào danh sách đã xử lý
       try {
         let processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
         if (!Array.isArray(processed)) processed = [];
@@ -505,10 +685,8 @@
     }
   };
 
-  // Khởi tạo Database ngay khi nạp file
   SanBongDB.init();
 
-  // Xuất ra window.SanBongDB
   window.SanBongDB = SanBongDB;
 
 })();

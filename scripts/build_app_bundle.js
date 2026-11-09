@@ -1,0 +1,62 @@
+const fs = require('fs');
+
+const helpersCode = fs.readFileSync('js/helpers.js', 'utf8');
+const dbCode = fs.readFileSync('js/db.js', 'utf8');
+const uiCode = fs.readFileSync('js/ui.js', 'utf8');
+
+const orchestrator = `(function () {
+  'use strict';
+
+  const helpers = window.SanBongHelpers || {};
+  const db = window.SanBongDB || {};
+  const ui = window.SanBongUI || {};
+
+  window.SanBongApp = {
+    escapeHTML: helpers.escapeHTML || (s => s),
+    formatVND: helpers.formatVND || (n => Number(n).toLocaleString('vi-VN') + 'đ'),
+    formatDateVN: helpers.formatDateVN || (d => d),
+    getRelativePath: helpers.getRelativePath || (p => p),
+    Icons: helpers.Icons || {},
+    renderPitchSVG: helpers.renderPitchSVG || (() => ''),
+    statusPill: helpers.statusPill || (s => '<span>' + s + '</span>'),
+    getVietQRUrl: helpers.getVietQRUrl || (() => ''),
+    renderQRCodeSVG: helpers.renderQRCodeSVG || (() => ''),
+    SanBongDB: db,
+    renderNavbar: ui.renderNavbar || (() => ''),
+    renderFooter: ui.renderFooter || (() => ''),
+    handleLogout: ui.handleLogout || (() => {}),
+    showToast: ui.showToast || ((m) => console.log(m)),
+    showModal: ui.showModal || ((cfg) => { if (confirm(cfg.message || cfg.title)) cfg.onConfirm && cfg.onConfirm(); })
+  };
+
+  function initAppShell() {
+    if (window.SanBongDB && typeof window.SanBongDB.init === 'function') {
+      window.SanBongDB.init();
+    }
+
+    const currentUI = window.SanBongUI || ui;
+    const navPlaceholder = document.getElementById('app-navbar');
+    if (navPlaceholder && currentUI.renderNavbar) {
+      const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
+      navPlaceholder.innerHTML = activePage
+        ? currentUI.renderNavbar(activePage)
+        : currentUI.renderNavbar();
+    }
+
+    const footerPlaceholder = document.getElementById('app-footer');
+    if (footerPlaceholder && currentUI.renderFooter) {
+      footerPlaceholder.innerHTML = currentUI.renderFooter();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAppShell);
+  } else {
+    initAppShell();
+  }
+})();
+`;
+
+const bundle = helpersCode + '\n\n' + dbCode + '\n\n' + uiCode + '\n\n' + orchestrator;
+fs.writeFileSync('js/app.js', bundle, 'utf8');
+console.log('Successfully bundled js/app.js! Size:', bundle.length, 'bytes');

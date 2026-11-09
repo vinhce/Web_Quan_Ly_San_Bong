@@ -28,5 +28,16 @@ backups/
 api/*.json
 api/*.log
 temp_app.txt
+scripts/deploy*.js
+scripts/tmp*
+scripts/patch*
+scripts/inspect*
+scripts/test*
+scripts/verify*
+scripts/strip*
+scripts/original*
+scripts/dry_run*
+scripts/simulate*
+test_e2e_sanbong.py
 
 

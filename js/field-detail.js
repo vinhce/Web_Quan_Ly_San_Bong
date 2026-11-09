@@ -1,7 +1,3 @@
-/**
- * SÂN BÓNG PRO - CHI TIẾT SÂN LOGIC (field-detail.js)
- * Hiển thị toàn diện thông số kỹ thuật, tiện ích, ma trận khung giờ & đặt sân nhanh
- */
 
 document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -26,18 +22,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!pitch) return;
 
-  // 1. Cập nhật Tiêu đề trang & Breadcrumb
   document.title = `${pitch.name} – Chi Tiết Sân Tiêu Chuẩn FIFA | Sân Bóng Pro`;
   const breadcrumbName = document.getElementById('breadcrumb-pitch-name');
   if (breadcrumbName) breadcrumbName.textContent = pitch.name;
 
-  // 2. Render SVG đồ họa sân bóng
   const svgContainer = document.getElementById('detail-pitch-svg');
   if (svgContainer && window.SanBongApp) {
     svgContainer.innerHTML = window.SanBongApp.renderPitchSVG(pitch.variant || 'standard', 'h-80 sm:h-96 w-full');
   }
 
-  // 3. Render Badges & Info chính
   const titleEl = document.getElementById('detail-pitch-title');
   if (titleEl) titleEl.textContent = pitch.name;
 
@@ -68,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const specGrass = document.getElementById('detail-spec-grass');
   if (specGrass) specGrass.textContent = pitch.grass;
 
-  // Nút Đặt sân chính ở Hero
   const primaryBookBtn = document.getElementById('detail-primary-book-btn');
   if (primaryBookBtn) {
     if (pitch.status === 'Bảo trì') {
@@ -82,7 +74,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // 4. Render Danh sách tiện ích
   const amenitiesList = document.getElementById('detail-amenities-list');
   if (amenitiesList) {
     const amenities = pitch.amenities || [
@@ -101,7 +92,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     `).join('');
   }
 
-  // 5. Quản lý Lịch khung giờ theo ngày
   const today = new Date().toISOString().split('T')[0];
   const scheduleDateInput = document.getElementById('detail-schedule-date');
   const widgetDateInput = document.getElementById('widget-date');
@@ -145,7 +135,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
     }).join('');
 
-    // Populate Widget Select Dropdown
     if (widgetSlotSelect) {
       widgetSlotSelect.innerHTML = slotsWithStatus.map(s => {
         const isDis = s.status !== 'Trống';

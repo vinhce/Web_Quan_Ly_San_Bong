@@ -1,7 +1,3 @@
-/**
- * SÂN BÓNG PRO - ĐĂNG NHẬP / ĐĂNG KÝ BẢO MẬT (login.js)
- * Tích hợp chuẩn CSDL MySQL & API Argon2id, Inline Validation (Không dùng alert)
- */
 
 function setAuthMessage(msg, type = 'error') {
   const box = document.getElementById('auth-alert-box');
@@ -56,7 +52,6 @@ function markFieldError(inputId) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Tự động chuyển tab nếu URL có param ?tab=register
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('tab') === 'register') {
     switchAuthTab('register');
@@ -66,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
     bg.innerHTML = window.SanBongApp.renderPitchSVG('bright', 'h-full');
   }
 
-  // 1. Xử lý Đăng nhập với API PHP + CSDL (Không popup alert)
   document.getElementById('login-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearFieldErrors();
@@ -108,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (response.ok && res.success) {
         setAuthMessage('✓ Đăng nhập thành công! Đang chuyển hướng...', 'success');
-        // Lưu thông tin người dùng an toàn vào sessionStorage
         sessionStorage.setItem('sb_current_user', JSON.stringify(res.user));
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -145,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 2. Xử lý Đăng ký với API PHP + CSDL (Không popup alert)
   document.getElementById('register-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearFieldErrors();

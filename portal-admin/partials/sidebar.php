@@ -15,7 +15,7 @@
       <nav class="space-y-1">
         <button onclick="switchAdminTab('overview')" id="nav-overview" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-bold transition-all bg-[#DCFCE7] text-[#16A34A]">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-          <span>1. Tổng quan KPI</span>
+          <span>1. Tổng quan & Đang chơi</span>
         </button>
 
         <button onclick="switchAdminTab('timeline')" id="nav-timeline" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
@@ -35,7 +35,7 @@
 
         <button onclick="switchAdminTab('pricing')" id="nav-pricing" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
-          <span>5. Bảng giá cấu hình</span>
+          <span>5. Bảng giá & Voucher</span>
         </button>
 
         <button onclick="switchAdminTab('customers')" id="nav-customers" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">

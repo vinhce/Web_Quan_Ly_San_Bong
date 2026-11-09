@@ -4,17 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đăng Nhập & Đăng Ký – Hệ Thống Sân Bóng Pro</title>
-  <!-- Favicon / Tab Icon -->
-  <!-- Favicon / Tab Icon -->
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v17">
 </head>
 <body class="min-h-screen flex flex-col justify-between antialiased">
 
-  <!-- TOP BRAND HEADER -->
   <header class="w-full h-16 bg-white border-b border-[#E2E8F0] px-6 md:px-12 flex items-center justify-between sticky top-0 z-50">
     <a href="/" class="flex items-center gap-3">
       <div class="w-9 h-9 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md">
@@ -27,13 +25,11 @@
     </a>
   </header>
 
-  <!-- MAIN SPLIT LOGIN / REGISTER (Frame 7 & 8) -->
   <main class="flex-1 flex items-center justify-center p-4 md:p-8">
     <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 ui-card overflow-hidden shadow-2xl border-slate-200">
 
-      <!-- LEFT: BRAND & FEATURE HIGHLIGHT (Frame 7 & 8 Dark Column) -->
       <div class="bg-[#0F172A] p-8 md:p-10 flex flex-col justify-between text-white relative overflow-hidden">
-        <!-- Background Pitch SVG Vector -->
+        
         <div class="absolute inset-0 opacity-15 pointer-events-none">
           <div id="login-pitch-bg" class="w-full h-full"></div>
         </div>
@@ -63,9 +59,8 @@
         </div>
       </div>
 
-      <!-- RIGHT: LOGIN / REGISTER FORMS WITH TABS (Frame 7 & 8) -->
       <div class="p-6 md:p-8 space-y-5 bg-white">
-        <!-- Switcher Tabs -->
+        
         <div class="grid grid-cols-2 p-1 rounded-xl bg-[#F1F5F9] text-center text-xs font-bold">
           <button id="tab-btn-login" onclick="switchAuthTab('login')" class="py-2.5 rounded-lg bg-white text-[#16A34A] shadow-sm transition-all">
             Đăng nhập
@@ -75,10 +70,8 @@
           </button>
         </div>
 
-        <!-- Inline Alert Box -->
         <div id="auth-alert-box" class="hidden p-3.5 rounded-xl text-xs font-semibold flex items-start gap-2.5 transition-all mb-2"></div>
 
-        <!-- FORM 1: ĐĂNG NHẬP (Frame 7) -->
         <form id="login-form" class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Số điện thoại / Email</label>
@@ -97,7 +90,6 @@
           </button>
         </form>
 
-        <!-- FORM 2: ĐĂNG KÝ (Frame 8) -->
         <form id="register-form" class="space-y-3.5 hidden">
           <div>
             <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Họ và tên *</label>
@@ -124,15 +116,13 @@
     </div>
   </main>
 
-  <!-- SIMPLE FOOTER -->
   <footer class="mt-auto w-full py-4 text-center text-xs text-[#94A3B8]">
     © 2026 Sân Bóng Pro · Hệ thống quản lý đặt sân bóng đá tự động
   </footer>
 
-  <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v15"></script>
-  <script src="/js/app.js?v=20261109_v15"></script>
-  <script src="/js/api.js?v=20261109_v15"></script>
-  <script src="/js/login.js?v=20261109_v15"></script>
+  <script src="/js/data.js?v=20261109_v17"></script>
+  <script src="/js/app.js?v=20261109_v17"></script>
+  <script src="/js/api.js?v=20261109_v17"></script>
+  <script src="/js/login.js?v=20261109_v17"></script>
 </body>
 </html>

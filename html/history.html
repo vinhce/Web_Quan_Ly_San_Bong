@@ -4,26 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lịch Sử Đặt Sân & Hội Viên – Sân Bóng Pro</title>
-  <!-- Favicon / Tab Icon -->
-  <!-- Favicon / Tab Icon -->
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v17">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <!-- TOP NAVBAR -->
   <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Lịch sử & Hội viên"></div>
 
-  <!-- MAIN CONTAINER (Frame 9 & 23) -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-      <!-- LEFT: MEMBER CARD & NAV (4 COLS) -->
       <aside class="lg:col-span-4 space-y-6">
-        <!-- Member Profile Header -->
+        
         <div class="ui-card p-6 space-y-5">
           <div class="flex items-center gap-4">
             <div id="member-avatar" class="w-14 h-14 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-extrabold text-xl flex items-center justify-center shadow-sm">
@@ -38,7 +34,6 @@
             </div>
           </div>
 
-          <!-- Points Progress bar -->
           <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
             <div class="flex justify-between text-xs font-semibold">
               <span class="text-[#64748B]">Điểm tích lũy</span>
@@ -53,7 +48,6 @@
             </div>
           </div>
 
-          <!-- Navigation links -->
           <div class="space-y-1 text-sm font-medium">
             <div class="px-3.5 py-2.5 rounded-lg bg-[#DCFCE7] text-[#16A34A] font-bold flex items-center justify-between">
               <span>Lịch sử đặt sân</span>
@@ -68,7 +62,6 @@
           </div>
         </div>
 
-        <!-- Quick Tips & Policies -->
         <div class="ui-card p-5 space-y-2 text-xs text-[#64748B]">
           <h4 class="font-bold text-[#0F172A] text-sm mb-1">Chính sách hủy sân</h4>
           <p>• Hủy trước 24 giờ: Hoàn lại 100% tiền cọc về tài khoản ngân hàng trong 2 tiếng.</p>
@@ -77,10 +70,8 @@
         </div>
       </aside>
 
-      <!-- RIGHT: BOOKING LIST (8 COLS) -->
       <div class="lg:col-span-8 space-y-6">
 
-        <!-- Header & Filter Tabs -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 class="font-heading font-extrabold text-2xl text-[#0F172A]">Lịch sử đặt sân của bạn</h1>
@@ -100,12 +91,10 @@
           </div>
         </div>
 
-        <!-- Bookings Cards Container -->
         <div id="history-container" class="space-y-4">
-          <!-- Rendered dynamically by JS -->
+          
         </div>
 
-        <!-- Empty State -->
         <div id="no-history-state" class="hidden ui-card p-12 text-center space-y-3">
           <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
@@ -122,7 +111,6 @@
     </div>
   </main>
 
-  <!-- QR TICKET MODAL -->
   <div id="ticket-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
       <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
@@ -147,13 +135,11 @@
     </div>
   </div>
 
-  <!-- FOOTER -->
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v15"></script>
-  <script src="/js/app.js?v=20261109_v15"></script>
-  <script src="/js/api.js?v=20261109_v15"></script>
-  <script src="/js/history.js?v=20261109_v15"></script>
+  <script src="/js/data.js?v=20261109_v17"></script>
+  <script src="/js/app.js?v=20261109_v17"></script>
+  <script src="/js/api.js?v=20261109_v17"></script>
+  <script src="/js/history.js?v=20261109_v17"></script>
 </body>
 </html>
