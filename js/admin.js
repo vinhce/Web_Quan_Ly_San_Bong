@@ -232,12 +232,23 @@ function renderOverviewTodayBookings() {
 
     const cleanNote = b.note ? String(b.note).replace(/Hủy No-Show do quá 15p/g, 'Quá 15p khách chưa đến').replace(/No-Show/g, 'Khách chưa đến') : '';
 
-    return '<div class="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:border-slate-300 transition-all">' +
-      '<div class="space-y-1">' +
+    let cardBorderCls = 'border-2 border-amber-300 border-l-[5px] border-l-[#D97706] bg-amber-50/10 hover:border-amber-400';
+    if (normStatus === 'Đang đá') {
+      cardBorderCls = 'border-2 border-blue-300 border-l-[5px] border-l-[#2563EB] bg-blue-50/15 hover:border-blue-400';
+    } else if (normStatus === 'Đã xác nhận') {
+      cardBorderCls = 'border-2 border-emerald-300 border-l-[5px] border-l-[#16A34A] bg-emerald-50/10 hover:border-emerald-400';
+    } else if (normStatus === 'Khách chưa đến' || normStatus === 'Đã hủy') {
+      cardBorderCls = 'border-2 border-red-300 border-l-[5px] border-l-[#DC2626] bg-red-50/10 hover:border-red-400';
+    } else if (normStatus === 'Hoàn thành') {
+      cardBorderCls = 'border-2 border-slate-300 border-l-[5px] border-l-[#475569] bg-slate-50/40 hover:border-slate-400';
+    }
+
+    return '<div class="p-4 rounded-xl ' + cardBorderCls + ' shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition-all">' +
+      '<div class="space-y-1.5">' +
         '<div class="flex flex-wrap items-center gap-2">' +
-          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 hover:bg-emerald-100 text-slate-800 hover:text-emerald-800 transition-colors cursor-pointer" title="Bấm để xem & điều hành đơn">' + b.code + '</button>' +
+          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="font-mono font-bold text-xs px-2.5 py-0.5 rounded-md bg-white border border-slate-300 hover:border-[#16A34A] text-[#0F172A] hover:text-[#16A34A] shadow-2xs transition-colors cursor-pointer" title="Bấm để xem & điều hành đơn">' + b.code + '</button>' +
           '<span class="font-bold text-[#0F172A] text-sm">' + b.pitchName + '</span>' +
-          '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">⏰ ' + (b.slotTime || "") + '</span>' +
+          '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">⏰ ' + (b.slotTime || "") + '</span>' +
           monthlyBadge +
           overtimeBadge +
           '<span class="text-[#475569] text-xs font-semibold">👤 ' + escapeSearchHTML(b.customerName || "") + ' (' + escapeSearchHTML(b.phone || "") + ')</span>' +

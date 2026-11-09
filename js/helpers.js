@@ -122,24 +122,25 @@
       displayLabel = 'Khách chưa đến';
     }
     const map = {
-      'Trống': 'bg-white text-[#16A34A] border border-[#16A34A]',
-      'Giữ chỗ': 'bg-[#FEF3C7] text-[#D97706]',
-      'Chờ thanh toán': 'bg-[#FEF3C7] text-[#D97706]',
-      'Đã xác nhận': 'bg-[#DCFCE7] text-[#16A34A]',
-      'Hoạt động': 'bg-[#DCFCE7] text-[#16A34A]',
-      'Đang đá': 'bg-[#DBEAFE] text-[#2563EB]',
-      'Hoàn thành': 'bg-[#F1F5F9] text-[#475569]',
-      'Đã hủy': 'bg-[#FEE2E2] text-[#DC2626]',
-      'Vắng mặt': 'bg-[#DC2626] text-white',
+      'Trống': 'bg-white text-[#16A34A] border border-[#16A34A] font-semibold',
+      'Giữ chỗ': 'bg-[#FEF3C7] text-[#D97706] border border-[#F59E0B] font-semibold',
+      'Chờ duyệt cọc': 'bg-[#FEF3C7] text-[#D97706] border border-[#F59E0B] font-semibold',
+      'Chờ thanh toán': 'bg-[#FEF3C7] text-[#D97706] border border-[#F59E0B] font-semibold',
+      'Đã xác nhận': 'bg-[#DCFCE7] text-[#16A34A] border border-[#16A34A] font-semibold',
+      'Hoạt động': 'bg-[#DCFCE7] text-[#16A34A] border border-[#16A34A] font-semibold',
+      'Đang đá': 'bg-[#DBEAFE] text-[#2563EB] border border-[#2563EB] font-semibold',
+      'Hoàn thành': 'bg-[#F1F5F9] text-[#475569] border border-[#94A3B8] font-semibold',
+      'Đã hủy': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-semibold',
+      'Vắng mặt': 'bg-[#DC2626] text-white border border-[#B91C1C] font-semibold',
       'Vắng mặt (No-Show)': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
       'Khách chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
       'Quá giờ chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
       'Tịch thu cọc 30%': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] font-semibold',
       'Đã nhả sân trống': 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC] font-bold',
-      'Đã khóa': 'bg-[#FEE2E2] text-[#DC2626]',
-      'Bảo trì': 'hatch-slate border border-[#CBD5E1] text-[#475569]'
+      'Đã khóa': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-semibold',
+      'Bảo trì': 'hatch-slate border border-[#CBD5E1] text-[#475569] font-semibold'
     };
-    const cls = map[displayLabel] || map[label] || 'bg-[#F1F5F9] text-[#475569]';
+    const cls = map[displayLabel] || map[label] || 'bg-[#F1F5F9] text-[#475569] border border-[#CBD5E1] font-semibold';
     return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(displayLabel)}</span>`;
   }
 
