@@ -190,6 +190,13 @@ try {
         if ($subAction === 'early_cancel') {
             $policy = sanitize_string($data['policy'] ?? 'refund_100', 30);
             $reason = sanitize_string($data['reason'] ?? 'Hủy lịch trước thời hạn', 150);
+            if ($policy === 'noshow_forfeit') {
+                $payStatus = 'Tịch thu cọc 30%';
+                $noteAdd = " [Quá 15p khách chưa đến - Đã nhả sân trống: {$reason}]";
+                $stmt = $pdo->prepare("UPDATE bookings SET status = 'Khách chưa đến', payment_status = ?, remaining_amount = 0, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+                $stmt->execute([$payStatus, $noteAdd, $code]);
+                json_response(['success' => true, 'message' => "Đã chuyển đơn {$code} sang trạng thái Khách chưa đến ({$payStatus})."]);
+            }
             $policyMap = [
                 'refund_100' => 'Đã hoàn cọc 100%',
                 'reserve'    => 'Bảo lưu cọc 30%',

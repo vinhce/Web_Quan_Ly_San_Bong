@@ -75,23 +75,45 @@ if ($method === 'POST' && $action === 'early_cancel') {
 
 if ($method === 'POST' && $action === 'noshow_release') {
     $admin = require_admin();
-    $code = sanitize_string($data['code'] ?? '', 40);
+    $code = sanitize_string($data['code'] ?? $_GET['code'] ?? '', 40);
     if (empty($code)) {
         json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
     }
     if ($pdo === null) {
         json_response([
             'success' => true,
-            'message' => 'Đã hủy đơn do khách vắng mặt (No-Show quá 15 phút), tịch thu cọc 30% và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!',
-            'data'    => ['code' => $code, 'status' => 'Vắng mặt (No-Show)', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
+            'message' => 'Đã đánh dấu khách chưa đến (quá 15 phút), tịch thu cọc 30% và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!',
+            'data'    => ['code' => $code, 'status' => 'Khách chưa đến', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
         ]);
     }
-    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Vắng mặt (No-Show)', payment_status = 'Tịch thu cọc 30%', note = CONCAT(IFNULL(note,''), ' [Hủy No-Show do quá 15p - Đã nhả sân trống]') WHERE code = ?");
+    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Khách chưa đến', payment_status = 'Tịch thu cọc 30%', note = CONCAT(IFNULL(note,''), ' [Quá 15p khách chưa đến - Đã nhả sân trống]') WHERE code = ?");
     $stmt->execute([$code]);
     json_response([
         'success' => true,
-        'message' => 'Đã hủy đơn do khách vắng mặt (No-Show quá 15 phút), tịch thu cọc 30% và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!',
-        'data'    => ['code' => $code, 'status' => 'Vắng mặt (No-Show)', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
+        'message' => 'Đã đánh dấu khách chưa đến (quá 15 phút), tịch thu cọc 30% và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!',
+        'data'    => ['code' => $code, 'status' => 'Khách chưa đến', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
+    ]);
+}
+
+if ($method === 'POST' && $action === 'restore') {
+    $admin = require_admin();
+    $code = sanitize_string($data['code'] ?? $_GET['code'] ?? '', 40);
+    if (empty($code)) {
+        json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
+    }
+    if ($pdo === null) {
+        json_response([
+            'success' => true,
+            'message' => 'Đã khôi phục lại ca đá thành công!',
+            'data'    => ['code' => $code, 'status' => 'Đã xác nhận', 'paymentStatus' => 'Đã cọc 30%']
+        ]);
+    }
+    $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đã xác nhận', payment_status = 'Đã cọc 30%', remaining_amount = GREATEST(0, total_price - deposit_amount), note = CONCAT(IFNULL(note,''), ' [Đã khôi phục lại ca đá]') WHERE code = ?");
+    $stmt->execute([$code]);
+    json_response([
+        'success' => true,
+        'message' => 'Đã khôi phục lại ca đá thành công!',
+        'data'    => ['code' => $code, 'status' => 'Đã xác nhận', 'paymentStatus' => 'Đã cọc 30%']
     ]);
 }
 

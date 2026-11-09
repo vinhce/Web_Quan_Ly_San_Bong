@@ -50,8 +50,11 @@
             <span class="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">Đồng bộ tức thì sang trang Đặt Sân</span>
           </div>
 
-          <form onsubmit="handleCreateVoucher(event)" class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
-            <div class="text-xs font-bold text-[#0F172A] uppercase tracking-wider">Tạo mã Voucher mới</div>
+          <form id="admin-voucher-form" onsubmit="handleCreateVoucher(event)" class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
+            <div class="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center">
+              <span id="admin-voucher-form-title">Tạo mã Voucher mới</span>
+              <span id="admin-voucher-edit-badge" class="hidden ml-2 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">Đang chỉnh sửa mã</span>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               <div>
                 <label class="block text-[11px] font-bold text-[#475569] mb-1">Mã Voucher *</label>
@@ -77,8 +80,9 @@
                 <input type="text" id="admin-voucher-desc" required placeholder="Mô tả chương trình khuyến mãi" class="input-field h-9 text-xs">
               </div>
             </div>
-            <div class="flex justify-end pt-1">
-              <button type="submit" class="btn-sm btn-primary font-bold">+ Thêm mã Voucher</button>
+            <div class="flex items-center justify-end gap-2 pt-1">
+              <button type="button" id="admin-voucher-cancel-btn" onclick="cancelEditVoucher()" class="hidden btn-sm btn-secondary font-bold">Hủy sửa</button>
+              <button type="submit" id="admin-voucher-submit-btn" class="btn-base btn-primary text-xs font-bold px-4 py-2">+ Thêm mã Voucher</button>
             </div>
           </form>
 

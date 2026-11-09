@@ -117,6 +117,10 @@
   }
 
   function statusPill(label) {
+    let displayLabel = label;
+    if (displayLabel === 'Vắng mặt (No-Show)' || String(displayLabel || '').includes('No-Show')) {
+      displayLabel = 'Khách chưa đến';
+    }
     const map = {
       'Trống': 'bg-white text-[#16A34A] border border-[#16A34A]',
       'Giữ chỗ': 'bg-[#FEF3C7] text-[#D97706]',
@@ -128,13 +132,15 @@
       'Đã hủy': 'bg-[#FEE2E2] text-[#DC2626]',
       'Vắng mặt': 'bg-[#DC2626] text-white',
       'Vắng mặt (No-Show)': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
+      'Khách chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
+      'Quá giờ chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
       'Tịch thu cọc 30%': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] font-semibold',
       'Đã nhả sân trống': 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC] font-bold',
       'Đã khóa': 'bg-[#FEE2E2] text-[#DC2626]',
       'Bảo trì': 'hatch-slate border border-[#CBD5E1] text-[#475569]'
     };
-    const cls = map[label] || 'bg-[#F1F5F9] text-[#475569]';
-    return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(label)}</span>`;
+    const cls = map[displayLabel] || map[label] || 'bg-[#F1F5F9] text-[#475569]';
+    return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(displayLabel)}</span>`;
   }
 
   function getVietQRUrl(bankCode, accountNo, amount, memo) {
@@ -303,10 +309,11 @@
           }
         }
         const rawBookings = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
-        if (rawBookings && rawBookings.includes('SB-')) {
+        if (rawBookings) {
           const bList = JSON.parse(rawBookings);
           if (Array.isArray(bList)) {
             const pitches = this.getPitches();
+            let changed = false;
             const upgradedB = bList.map(b => {
               if (b.code && b.code.startsWith('SB-')) {
                 const p = pitches.find(pitch => pitch.id === b.pitchId);
@@ -314,10 +321,23 @@
                 if (p?.type === 5 || (b.pitchId && b.pitchId.startsWith('P5'))) pfx = 'ASFF';
                 else if (p?.type === 11 || (b.pitchId && b.pitchId.startsWith('P11'))) pfx = 'ASFE';
                 b.code = b.code.replace(/^SB-\d+-?/, pfx + '26');
+                changed = true;
+              }
+              if (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) {
+                b.status = 'Khách chưa đến';
+                changed = true;
+              }
+              if (b.note && String(b.note).includes('No-Show')) {
+                b.note = String(b.note)
+                  .replace(/Hủy No-Show do quá 15p/g, 'Quá 15p khách chưa đến')
+                  .replace(/No-Show/g, 'Quá 15p khách chưa đến');
+                changed = true;
               }
               return b;
             });
-            localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(upgradedB));
+            if (changed) {
+              localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(upgradedB));
+            }
           }
         }
       } catch (e) {}
@@ -378,22 +398,37 @@
     saveVoucher(v) {
       if (!v || !v.code) return null;
       const code = String(v.code).trim().toUpperCase();
+      const origCode = v.originalCode ? String(v.originalCode).trim().toUpperCase() : code;
+      const list = this.getVouchers();
+      const origIdx = list.findIndex(x => String(x.code).toUpperCase() === origCode);
+      const existingIdx = origIdx >= 0 ? origIdx : list.findIndex(x => String(x.code).toUpperCase() === code);
+      const prevActive = existingIdx >= 0 && list[existingIdx].isActive !== undefined ? Boolean(list[existingIdx].isActive) : true;
       const item = {
         code,
         description: String(v.description || '').trim() || `Ưu đãi mã ${code}`,
         type: v.type === 'fixed' ? 'fixed' : 'percent',
         value: Math.max(0, Number(v.value) || 0),
-        minOrder: Math.max(0, Number(v.minOrder) || 0)
+        minOrder: Math.max(0, Number(v.minOrder) || 0),
+        isActive: v.isActive !== undefined ? Boolean(v.isActive) : prevActive
       };
-      const list = this.getVouchers();
-      const idx = list.findIndex(x => String(x.code).toUpperCase() === code);
-      if (idx >= 0) {
-        list[idx] = item;
+      if (existingIdx >= 0) {
+        list[existingIdx] = item;
       } else {
         list.unshift(item);
       }
       localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(list));
       return item;
+    },
+
+    toggleVoucherActive(code) {
+      if (!code) return null;
+      const target = String(code).trim().toUpperCase();
+      const list = this.getVouchers();
+      const idx = list.findIndex(x => String(x.code).toUpperCase() === target);
+      if (idx < 0) return null;
+      list[idx].isActive = list[idx].isActive === false ? true : false;
+      localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(list));
+      return list[idx];
     },
 
     deleteVoucher(code) {
@@ -468,7 +503,7 @@
       const pitch = this.getPitchById(pitchId);
       const isPitchMaintenance = pitch && pitch.status === 'Bảo trì';
 
-      const bookings = this.getAllBookings().filter(b => b.pitchId === pitchId && b.date === dateStr && b.status !== 'Đã hủy' && b.status !== 'Vắng mặt (No-Show)' && b.paymentStatus !== 'Tịch thu cọc 30%');
+      const bookings = this.getAllBookings().filter(b => b.pitchId === pitchId && b.date === dateStr && b.status !== 'Đã hủy' && b.status !== 'Khách chưa đến' && b.status !== 'Vắng mặt (No-Show)' && b.paymentStatus !== 'Tịch thu cọc 30%');
 
       return slots.map(slot => {
         if (isPitchMaintenance) {
@@ -539,7 +574,7 @@
       let discountAmount = 0;
       let appliedVoucher = null;
       if (voucherCode) {
-        const v = this.getVouchers().find(vc => vc.code.toUpperCase() === voucherCode.trim().toUpperCase());
+        const v = this.getVouchers().find(vc => vc.code.toUpperCase() === voucherCode.trim().toUpperCase() && vc.isActive !== false);
         if (v && subtotal >= (v.minOrder || 0)) {
           appliedVoucher = v;
           if (v.type === 'percent') {
@@ -785,9 +820,23 @@
       const bookings = this.getAllBookings();
       const booking = bookings.find(b => b.code === bookingCode);
       if (booking) {
-        booking.status = 'Vắng mặt (No-Show)';
+        booking.status = 'Khách chưa đến';
         booking.paymentStatus = 'Tịch thu cọc 30%';
-        booking.note = (booking.note ? booking.note + ' ' : '') + '[Hủy No-Show do quá 15p - Đã nhả sân trống]';
+        booking.note = (booking.note ? booking.note + ' | ' : '') + '[Quá 15p khách chưa đến - Đã nhả sân trống]';
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+        return booking;
+      }
+      return null;
+    },
+
+    restoreBooking(bookingCode) {
+      const bookings = this.getAllBookings();
+      const booking = bookings.find(b => b.code === bookingCode);
+      if (booking) {
+        booking.status = 'Đã xác nhận';
+        booking.paymentStatus = 'Đã cọc 30%';
+        booking.remainingAmount = Math.max(0, Number(booking.totalPrice || 0) - Number(booking.depositAmount || 0));
+        booking.note = (booking.note ? booking.note + ' | ' : '') + '[Đã khôi phục lại ca đá]';
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
         return booking;
       }

@@ -117,6 +117,10 @@
   }
 
   function statusPill(label) {
+    let displayLabel = label;
+    if (displayLabel === 'Vắng mặt (No-Show)' || String(displayLabel || '').includes('No-Show')) {
+      displayLabel = 'Khách chưa đến';
+    }
     const map = {
       'Trống': 'bg-white text-[#16A34A] border border-[#16A34A]',
       'Giữ chỗ': 'bg-[#FEF3C7] text-[#D97706]',
@@ -128,13 +132,15 @@
       'Đã hủy': 'bg-[#FEE2E2] text-[#DC2626]',
       'Vắng mặt': 'bg-[#DC2626] text-white',
       'Vắng mặt (No-Show)': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
+      'Khách chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
+      'Quá giờ chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
       'Tịch thu cọc 30%': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] font-semibold',
       'Đã nhả sân trống': 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC] font-bold',
       'Đã khóa': 'bg-[#FEE2E2] text-[#DC2626]',
       'Bảo trì': 'hatch-slate border border-[#CBD5E1] text-[#475569]'
     };
-    const cls = map[label] || 'bg-[#F1F5F9] text-[#475569]';
-    return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(label)}</span>`;
+    const cls = map[displayLabel] || map[label] || 'bg-[#F1F5F9] text-[#475569]';
+    return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(displayLabel)}</span>`;
   }
 
   function getVietQRUrl(bankCode, accountNo, amount, memo) {

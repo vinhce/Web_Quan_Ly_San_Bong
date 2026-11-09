@@ -23,6 +23,11 @@
           <span>2. Lịch đặt sân Timeline</span>
         </button>
 
+        <button onclick="openInPlaySection()" id="nav-timeline-inplay" class="w-full h-9 pl-7 pr-3 rounded-lg flex items-center gap-2.5 text-[11px] font-bold text-[#16A34A] bg-emerald-50/70 hover:bg-[#DCFCE7] border border-emerald-200/70 transition-all">
+          <span>⚽</span>
+          <span class="truncate">Điều hành ca đá & Thanh toán</span>
+        </button>
+
         <button onclick="switchAdminTab('quick-booking')" id="nav-quick-booking" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="16"/><line x1="8" x2="8" y1="12" y2="12"/></svg>
           <span>3. Đặt sân tại quầy</span>

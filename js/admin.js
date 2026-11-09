@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderOverviewTodayBookings();
   renderTimelineGantt();
+  populateInPlayWorkspace();
   initQuickBookingForm();
   renderAdminPitches();
   renderAdminPayments();
@@ -71,16 +72,17 @@ let qrCameraStream = null;
 let qrScanTimer = null;
 let activeInPlayCode = '';
 let activeInvoiceCode = '';
+let editingVoucherCode = '';
 
 function filterOverviewBookings(filterType) {
   currentOverviewFilter = filterType || 'all';
-  ['all', 'playing', 'confirmed', 'completed'].forEach(f => {
+  ['all', 'playing', 'confirmed', 'completed', 'noshow'].forEach(f => {
     const btn = document.getElementById('ov-filter-' + f);
     if (btn) {
       if (f === currentOverviewFilter) {
-        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white shadow-sm';
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white shadow-sm cursor-pointer';
       } else {
-        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200';
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer';
       }
     }
   });
@@ -106,10 +108,10 @@ function switchAdminTab(moduleKey) {
 
   const titleMap = {
     'overview': '1. Tổng quan KPI & Chỉ số tài chính',
-    'timeline': '2. Lịch đặt sân Timeline Gantt trực quan',
+    'timeline': '2. Lịch đặt sân Timeline & Điều hành ca đá',
     'quick-booking': '3. Đặt sân tại quầy (Tạo nhanh đơn)',
     'pitches': '4. Quản lý hệ thống sân bóng & Bật/Tắt bảo trì',
-    'pricing': '5. Cấu hình bảng giá niêm yết',
+    'pricing': '5. Cấu hình bảng giá niêm yết & Voucher',
     'customers': '6. Danh sách khách hàng & Hội viên',
     'payments': '7. Duyệt biên lai cọc VietQR 1 chạm',
     'reports': '8. Báo cáo thống kê hiệu suất sân',
@@ -118,6 +120,16 @@ function switchAdminTab(moduleKey) {
   const titleEl = document.getElementById('admin-module-title');
   if (titleEl) titleEl.textContent = titleMap[moduleKey] || 'Quản trị';
 
+  if (moduleKey === 'timeline') {
+    renderTimelineGantt();
+    if (!activeInPlayCode) {
+      const db = window.SanBongApp?.SanBongDB;
+      const firstB = db ? db.getAllBookings()[0] : null;
+      if (firstB) populateInPlayWorkspace(firstB.code);
+    } else {
+      populateInPlayWorkspace(activeInPlayCode);
+    }
+  }
   if (moduleKey === 'pricing') renderAdminVouchers();
   if (moduleKey === 'customers') renderAdminCustomers();
   if (moduleKey === 'reports') renderAdminReports();
@@ -133,15 +145,17 @@ function renderOverviewTodayBookings() {
   const todayStr = window.SanBongApp.SanBongData ? window.SanBongApp.SanBongData.getTodayDateString() : new Date().toISOString().split("T")[0];
   let bookings = allBookings.filter(b => b.date === todayStr);
   if (bookings.length < 5) {
-    bookings = allBookings.slice(0, 8);
+    bookings = allBookings.slice(0, 10);
   }
 
   if (currentOverviewFilter === 'playing') {
-    bookings = bookings.filter(b => b.status === 'Đang đá');
+    bookings = allBookings.filter(b => b.status === 'Đang đá');
   } else if (currentOverviewFilter === 'confirmed') {
-    bookings = bookings.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc');
+    bookings = allBookings.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc');
   } else if (currentOverviewFilter === 'completed') {
-    bookings = bookings.filter(b => b.status === 'Hoàn thành');
+    bookings = allBookings.filter(b => b.status === 'Hoàn thành');
+  } else if (currentOverviewFilter === 'noshow') {
+    bookings = allBookings.filter(b => b.status === 'Khách chưa đến' || b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show') || b.status === 'Đã hủy');
   }
 
   if (bookings.length === 0) {
@@ -153,6 +167,7 @@ function renderOverviewTodayBookings() {
   const curMinutes = now.getHours() * 60 + now.getMinutes();
 
   container.innerHTML = bookings.map(b => {
+    const normStatus = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
     let isLateOver15 = false;
     let lateMinutes = 0;
 
@@ -160,7 +175,7 @@ function renderOverviewTodayBookings() {
       const parts = b.slotTime.split("-")[0].trim().split(":");
       if (parts.length === 2) {
         const startMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-        if (curMinutes > startMin + 15 && b.status !== "Đang đá" && b.status !== "Hoàn thành" && b.status !== "Vắng mặt (No-Show)" && b.status !== "Đã hủy") {
+        if (curMinutes > startMin + 15 && normStatus !== "Đang đá" && normStatus !== "Hoàn thành" && normStatus !== "Khách chưa đến" && normStatus !== "Đã hủy") {
           isLateOver15 = true;
           lateMinutes = curMinutes - startMin;
         }
@@ -169,7 +184,7 @@ function renderOverviewTodayBookings() {
 
     const total = Number(b.totalPrice || 0);
     const deposit = Number(b.depositAmount || Math.round(total * 0.3));
-    const remaining = (b.status === 'Hoàn thành' || b.status === 'Đã hủy') ? 0 : (typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - deposit));
+    const remaining = (normStatus === 'Hoàn thành' || normStatus === 'Đã hủy' || normStatus === 'Khách chưa đến') ? 0 : (typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - deposit));
 
     const monthlyBadge = (b.weeksCount && b.weeksCount > 1)
       ? `<span class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-bold text-[10px]">📅 Gói tháng (${b.weeksCount} tuần)</span>`
@@ -179,44 +194,49 @@ function renderOverviewTodayBookings() {
       : '';
 
     let actionButtons = "";
-    if (b.status === "Đang đá") {
+    if (normStatus === "Đang đá") {
       actionButtons =
         '<div class="flex flex-wrap items-center gap-1.5">' +
           '<span class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-100 text-blue-700">⚽ Đang chơi</span>' +
-          '<button type="button" onclick="openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-sm flex items-center gap-1" title="Đá thêm giờ, Đổi sân, Gọi thêm nước, Hủy trước hạn">⏱️ Quản lý đang chơi</button>' +
-          '<button type="button" onclick="openInPlayModal(\'' + b.code + '\', \'pay\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1" title="Thu phần tiền còn lại & Hoàn thành ca">💰 Thu còn lại (' + window.SanBongApp.formatVND(remaining) + ')</button>' +
-          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Đá thêm giờ, Đổi sân, Gọi thêm nước, Hủy trước hạn">⚙️ Quản lý đang chơi</button>' +
+          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\', \'pay\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Thu phần tiền còn lại & Hoàn thành ca">💰 Thu còn lại (' + window.SanBongApp.formatVND(remaining) + ')</button>' +
+          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
         '</div>';
-    } else if (b.status === "Hoàn thành") {
+    } else if (normStatus === "Hoàn thành") {
       actionButtons =
         '<div class="flex flex-wrap items-center gap-1.5">' +
           '<span class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-700">✓ Đã thu đủ 100%</span>' +
-          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#0F172A] text-white hover:bg-slate-800 transition-colors flex items-center gap-1">🖨️ In hóa đơn</button>' +
+          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer">⚙️ Xem & Điều hành</button>' +
+          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#0F172A] text-white hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer">🖨️ In hóa đơn</button>' +
         '</div>';
-    } else if (b.status === "Vắng mặt (No-Show)") {
-      actionButtons = '<div class="flex items-center gap-1.5"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700">No-Show (Mất cọc)</span><span class="text-[11px] text-[#16A34A] font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">✓ Đã nhả sân</span></div>';
-    } else if (b.status === "Đã hủy") {
+    } else if (normStatus === "Khách chưa đến" || normStatus === "Đã hủy") {
+      const cancelLabel = normStatus === "Khách chưa đến" ? "Khách chưa đến (Mất cọc)" : escapeSearchHTML(b.paymentStatus || "Đã hủy lịch");
       actionButtons =
-        '<div class="flex items-center gap-1.5">' +
-          '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-600">' + escapeSearchHTML(b.paymentStatus || 'Đã hủy') + '</span>' +
-          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">🖨️</button>' +
+        '<div class="flex flex-wrap items-center gap-1.5">' +
+          '<span class="px-2 py-0.5 rounded bg-red-50 text-red-600 text-[11px] font-bold border border-red-200">' + cancelLabel + '</span>' +
+          '<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">✓ Đã nhả sân</span>' +
+          '<button type="button" onclick="restoreCancelledBooking(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-sm cursor-pointer" title="Khách đã tới sân - Khôi phục lại ca đá này">🔄 Khôi phục ca</button>' +
+          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer" title="Mở bảng điều hành chi tiết ca đá">⚙️ Xem & Điều hành</button>' +
+          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
         '</div>';
     } else {
       const lateBadge = isLateOver15 ? ('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 animate-pulse border border-red-300">⚠️ Quá ' + lateMinutes + 'p chưa đến</span>') : '';
       const btnClass = isLateOver15 ? "bg-red-600 hover:bg-red-700 animate-bounce" : "bg-amber-600 hover:bg-amber-700";
       actionButtons = '<div class="flex flex-wrap items-center gap-1.5">' +
         lateBadge +
-        '<button type="button" onclick="handleCheckin(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
-        '<button type="button" onclick="openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1" title="Đổi sân, Gọi thêm nước, Hủy lịch trước hạn">⚙️ Quản lý / Đổi sân / Hủy</button>' +
-        '<button type="button" onclick="handleNoShowRelease(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-sm flex items-center gap-1" title="Quá 15 phút không đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Quá hạn: Nhả sân</button>' +
-        '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200" title="Xem & In hóa đơn">🖨️</button>' +
+        '<button type="button" onclick="handleCheckin(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
+        '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1 cursor-pointer" title="Đổi sân, Gọi thêm nước, Hủy lịch trước hạn">⚙️ Quản lý / Đổi sân / Hủy</button>' +
+        '<button type="button" onclick="handleNoShowRelease(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Quá 15 phút khách chưa đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Chưa đến: Nhả sân</button>' +
+        '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
       '</div>';
     }
+
+    const cleanNote = b.note ? String(b.note).replace(/Hủy No-Show do quá 15p/g, 'Quá 15p khách chưa đến').replace(/No-Show/g, 'Khách chưa đến') : '';
 
     return '<div class="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:border-slate-300 transition-all">' +
       '<div class="space-y-1">' +
         '<div class="flex flex-wrap items-center gap-2">' +
-          '<span class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-800">' + b.code + '</span>' +
+          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 hover:bg-emerald-100 text-slate-800 hover:text-emerald-800 transition-colors cursor-pointer" title="Bấm để xem & điều hành đơn">' + b.code + '</button>' +
           '<span class="font-bold text-[#0F172A] text-sm">' + b.pitchName + '</span>' +
           '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">⏰ ' + (b.slotTime || "") + '</span>' +
           monthlyBadge +
@@ -227,11 +247,11 @@ function renderOverviewTodayBookings() {
           '<span>Tổng đơn: <b class="text-[#0F172A]">' + window.SanBongApp.formatVND(total) + '</b></span>' +
           '<span>· Đã cọc: <b class="text-[#16A34A]">' + window.SanBongApp.formatVND(deposit) + '</b></span>' +
           '<span>· Còn lại phải thu: <b class="' + (remaining > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]') + '">' + window.SanBongApp.formatVND(remaining) + '</b></span>' +
-          (b.note ? '<span class="text-slate-500 italic truncate max-w-md">· ' + escapeSearchHTML(b.note) + '</span>' : '') +
+          (cleanNote ? '<span class="text-slate-500 italic truncate max-w-md">· ' + escapeSearchHTML(cleanNote) + '</span>' : '') +
         '</div>' +
       '</div>' +
       '<div class="flex flex-wrap items-center gap-2.5 shrink-0">' +
-        window.SanBongApp.statusPill(b.status) +
+        window.SanBongApp.statusPill(normStatus) +
         actionButtons +
       '</div>' +
     '</div>';
@@ -253,6 +273,7 @@ async function handleCheckin(bookingCode) {
     }
     renderOverviewTodayBookings();
     renderTimelineGantt();
+    if (activeInPlayCode === bookingCode) populateInPlayWorkspace(bookingCode);
   };
 
   if (window.SanBongApp?.showModal) {
@@ -280,10 +301,10 @@ async function handleNoShowRelease(bookingCode) {
   const confirmMsg =
     "• Đội bóng: " + custName + "\n" +
     "• Sân: " + pitchName + " | Khung giờ: " + slotTime + "\n" +
-    "• Đã quá 15 phút kể từ giờ bắt đầu ca đá mà khách không đến nhận sân.\n\n" +
+    "• Đã quá 15 phút kể từ giờ bắt đầu ca đá mà khách chưa đến nhận sân.\n\n" +
     "HỆ THỐNG SẼ THỰC HIỆN:\n" +
     "1. Tịch thu cọc 30% bồi thường chi phí giữ sân.\n" +
-    "2. Chuyển trạng thái đơn thành \"Vắng mặt (No-Show)\".\n" +
+    "2. Chuyển trạng thái đơn thành \"Khách chưa đến\".\n" +
     "3. GIẢI PHÓNG & NHẢ SÂN TRỐNG NGAY LẬP TỨC để đón khách mới tại quầy hoặc online.\n\n" +
     "Bạn có chắc chắn muốn giải phóng sân này?";
 
@@ -296,16 +317,17 @@ async function handleNoShowRelease(bookingCode) {
 
     db.releaseNoShowBooking(bookingCode);
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('⚡ ĐÃ NHẢ SÂN THÀNH CÔNG: Sân ' + pitchName + ' hiện đã Còn trống để đón khách mới!', 'success', 4000);
+      window.SanBongApp.showToast('⚡ ĐÃ NHẢ SÂN THÀNH CÔNG: Đơn ' + bookingCode + ' chuyển sang "Khách chưa đến", sân ' + pitchName + ' đã trống để đón khách mới!', 'success', 4000);
     }
     renderOverviewTodayBookings();
     renderTimelineGantt();
     initQuickBookingForm();
+    if (activeInPlayCode === bookingCode) populateInPlayWorkspace(bookingCode);
   };
 
   if (window.SanBongApp?.showModal) {
     window.SanBongApp.showModal({
-      title: '⚠️ Xử lý khách quá hạn (No-Show)',
+      title: '⚠️ Xử lý khách quá giờ chưa đến (Nhả sân)',
       message: confirmMsg,
       type: 'warning',
       confirmText: 'Tịch thu cọc & Nhả sân',
@@ -317,14 +339,66 @@ async function handleNoShowRelease(bookingCode) {
   }
 }
 window.handleNoShowRelease = handleNoShowRelease;
+
 function renderTimelineGantt() {
   const db = window.SanBongApp.SanBongDB;
   const pitches = db.getPitches();
+  const allBookings = db.getAllBookings();
   const container = document.getElementById('gantt-rows');
   if (!container) return;
 
-  container.innerHTML = pitches.map(p => {
+  const parseSlotPos = (slotTimeStr, fallbackIdx = 0) => {
+    if (slotTimeStr && slotTimeStr.includes('-')) {
+      const [sPart, ePart] = slotTimeStr.split('-').map(x => x.trim());
+      const [sh, sm] = sPart.split(':').map(Number);
+      const [eh, em] = ePart.split(':').map(Number);
+      if (!isNaN(sh) && !isNaN(eh)) {
+        const startMin = sh * 60 + (sm || 0);
+        const endMin = eh * 60 + (em || 0);
+        const minBase = 6 * 60;
+        const maxSpan = 17.5 * 60;
+        const left = Math.max(1, Math.min(84, Math.round(((startMin - minBase) / maxSpan) * 100)));
+        const width = Math.max(12, Math.min(99 - left, Math.round(((endMin - startMin) / maxSpan) * 100)));
+        return { left, width };
+      }
+    }
+    const presets = [
+      { left: 42, width: 16 },
+      { left: 60, width: 17 },
+      { left: 79, width: 14 }
+    ];
+    return presets[fallbackIdx % presets.length];
+  };
+
+  container.innerHTML = pitches.map((p, pIdx) => {
     const isMaint = p.status === 'Bảo trì';
+    let pitchBookings = allBookings.filter(b => b.pitchId === p.id);
+    if (pitchBookings.length === 0 && allBookings.length > 0) {
+      const sampleB = allBookings[pIdx % allBookings.length];
+      if (sampleB) pitchBookings = [sampleB];
+    }
+
+    const barsHtml = pitchBookings.map((b, bIdx) => {
+      const pos = parseSlotPos(b.slotTime, bIdx);
+      const normStatus = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
+      let styleCls = 'bg-[#DCFCE7] border-[#16A34A] text-[#16A34A]';
+      if (normStatus === 'Đang đá') {
+        styleCls = 'bg-[#DBEAFE] border-[#2563EB] text-[#2563EB]';
+      } else if (normStatus === 'Chờ duyệt cọc' || normStatus === 'Giữ chỗ') {
+        styleCls = 'bg-[#FEF3C7] border-[#F59E0B] text-[#D97706]';
+      } else if (normStatus === 'Khách chưa đến' || normStatus === 'Đã hủy') {
+        styleCls = 'bg-[#FEE2E2] border-[#EF4444] text-[#DC2626]';
+      } else if (normStatus === 'Hoàn thành') {
+        styleCls = 'bg-slate-200 border-slate-400 text-slate-700';
+      }
+      const isSelected = b.code === activeInPlayCode ? 'ring-2 ring-[#0F172A] z-10' : '';
+      return `
+        <div onclick="openInPlaySection('${b.code}')" title="Bấm để điều hành ca đá #${b.code} · ${escapeSearchHTML(b.customerName)} (${escapeSearchHTML(b.slotTime || '')} - ${escapeSearchHTML(normStatus)})" class="absolute top-1 bottom-1 rounded border px-2 py-0.5 text-[10px] truncate font-bold cursor-pointer hover:scale-[1.01] transition-transform flex items-center justify-between gap-1 shadow-xs ${styleCls} ${isSelected}" style="left:${pos.left}%; width:${pos.width}%;">
+          <span class="truncate">${escapeSearchHTML(b.customerName)} (${escapeSearchHTML(normStatus)})</span>
+          <span class="font-mono text-[9px] opacity-75 shrink-0">#${b.code.slice(-4)}</span>
+        </div>
+      `;
+    }).join('');
 
     return `
       <div class="flex items-center h-16 relative">
@@ -334,24 +408,13 @@ function renderTimelineGantt() {
             <div class="w-full h-full hatch-slate flex items-center justify-center font-bold text-xs text-[#DC2626]">
               Đang bảo dưỡng mặt cỏ toàn bộ ngày
             </div>
-          ` : `
-            <!-- Slot Đang đá 17:00 - 18:30 -->
-            <div class="absolute left-[45%] w-[15%] top-1 bottom-1 rounded bg-[#DBEAFE] border border-[#2563EB] text-[#2563EB] px-2 py-0.5 text-[10px] truncate font-bold">
-              Lê Đức Anh (Đang đá)
-            </div>
-            <!-- Slot Đã xác nhận 18:30 - 20:00 -->
-            <div class="absolute left-[62%] w-[16%] top-1 bottom-1 rounded bg-[#DCFCE7] border border-[#16A34A] text-[#16A34A] px-2 py-0.5 text-[10px] truncate font-bold">
-              Trần Minh Hoàng
-            </div>
-            <!-- Slot Giữ chỗ 20:00 - 21:30 -->
-            <div class="absolute left-[80%] w-[12%] top-1 bottom-1 rounded bg-[#FEF3C7] border border-[#F59E0B] text-[#D97706] px-1.5 py-0.5 text-[10px] truncate font-bold">
-              Giữ chỗ
-            </div>
-          `}
+          ` : barsHtml}
         </div>
       </div>
     `;
   }).join('');
+
+  renderInlineInPlaySelector();
 }
 
 function initQuickBookingForm() {
@@ -1230,20 +1293,54 @@ window.lookupQRTicket = lookupQRTicket;
 window.confirmQRCheckin = confirmQRCheckin;
 
 // =========================================================
-// 2. ĐIỀU HÀNH TRẬN ĐẤU ĐANG CHƠI & THU TIỀN CÒN LẠI (IN-PLAY MODAL)
+// 2. ĐIỀU HÀNH TRẬN ĐẤU ĐANG CHƠI & THU TIỀN CÒN LẠI (INLINE TIMELINE & MODAL)
 // =========================================================
-function openInPlayModal(code, focusSection = '') {
+function renderInlineInPlaySelector() {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
-  const booking = db.getBookingByCode(code);
-  if (!booking) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không tìm thấy đơn đặt sân ' + code, 'error');
-    return;
+  const allBookings = db.getAllBookings();
+  if (!activeInPlayCode && allBookings.length > 0) {
+    activeInPlayCode = allBookings[0].code;
   }
 
+  const selectEl = document.getElementById('inline-inplay-select');
+  if (selectEl) {
+    selectEl.innerHTML = allBookings.map(b => {
+      const st = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
+      return `<option value="${b.code}" ${b.code === activeInPlayCode ? 'selected' : ''}>#${b.code} · ${escapeSearchHTML(b.pitchName)} (${escapeSearchHTML(b.slotTime || '')}) · ${escapeSearchHTML(b.customerName)} [${escapeSearchHTML(st)}]</option>`;
+    }).join('');
+  }
+
+  const quickCardsEl = document.getElementById('inline-inplay-quick-cards');
+  if (quickCardsEl) {
+    quickCardsEl.innerHTML = allBookings.slice(0, 8).map(b => {
+      const isSel = b.code === activeInPlayCode;
+      const st = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
+      let badgeCls = 'bg-slate-100 text-slate-700';
+      if (st === 'Đang đá') badgeCls = 'bg-blue-100 text-blue-700';
+      else if (st === 'Đã xác nhận') badgeCls = 'bg-emerald-100 text-emerald-700';
+      else if (st === 'Khách chưa đến' || st === 'Đã hủy') badgeCls = 'bg-red-100 text-red-700';
+      return `
+        <button type="button" onclick="openInPlaySection('${b.code}')" class="px-3 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${isSel ? 'bg-emerald-50 border-[#16A34A] ring-2 ring-[#16A34A]/20 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}">
+          <span class="font-mono font-bold text-xs text-[#0F172A]">#${b.code}</span>
+          <span class="text-xs font-semibold text-[#334155] truncate max-w-[130px]">${escapeSearchHTML(b.customerName)}</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeCls}">${escapeSearchHTML(st)}</span>
+        </button>
+      `;
+    }).join('');
+  }
+}
+
+function populateInPlayWorkspace(code) {
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return null;
+  const all = db.getAllBookings();
+  const targetCode = code || activeInPlayCode || (all[0] ? all[0].code : '');
+  const booking = db.getBookingByCode(targetCode) || all[0] || null;
+  if (!booking) return null;
+
   activeInPlayCode = booking.code;
-  const modal = document.getElementById('inplay-modal') || document.getElementById('inplay-manage-modal');
-  if (!modal) return;
+  const normStatus = (booking.status === 'Vắng mặt (No-Show)' || String(booking.status || '').includes('No-Show')) ? 'Khách chưa đến' : (booking.status || 'Đang đá');
 
   const elCode = document.getElementById('inplay-modal-code');
   const elStatus = document.getElementById('inplay-modal-status');
@@ -1251,11 +1348,28 @@ function openInPlayModal(code, focusSection = '') {
   const elCustomer = document.getElementById('inplay-modal-customer');
 
   if (elCode) elCode.textContent = '#' + booking.code;
-  if (elStatus) elStatus.textContent = booking.status || 'Đang đá';
+  if (elStatus) elStatus.textContent = normStatus;
   if (elPitch) elPitch.textContent = `${booking.pitchName} (${booking.slotTime || ''})`;
   if (elCustomer) elCustomer.textContent = `${booking.customerName} - ${booking.phone || ''}`;
 
-  // Populate danh sách sân chuyển đến
+  const checkinBtn = document.getElementById('inline-checkin-btn');
+  if (checkinBtn) {
+    if (normStatus === 'Đã xác nhận' || normStatus === 'Chờ duyệt cọc') {
+      checkinBtn.classList.remove('hidden');
+    } else {
+      checkinBtn.classList.add('hidden');
+    }
+  }
+
+  const restoreBtn = document.getElementById('inline-restore-btn');
+  if (restoreBtn) {
+    if (normStatus === 'Khách chưa đến' || normStatus === 'Đã hủy') {
+      restoreBtn.classList.remove('hidden');
+    } else {
+      restoreBtn.classList.add('hidden');
+    }
+  }
+
   const pitchSel = document.getElementById('inplay-new-pitch');
   if (pitchSel) {
     const pitches = db.getPitches().filter(p => p.status !== 'Bảo trì');
@@ -1266,7 +1380,6 @@ function openInPlayModal(code, focusSection = '') {
     `).join('');
   }
 
-  // Populate danh sách dịch vụ gọi thêm
   const srvSel = document.getElementById('inplay-service-select');
   if (srvSel) {
     const services = db.getServices();
@@ -1275,24 +1388,92 @@ function openInPlayModal(code, focusSection = '') {
     `).join('');
   }
 
+  renderInlineInPlaySelector();
   updateInPlayOvertimePreview();
   refreshInPlaySummaryUI(booking);
+  return booking;
+}
 
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
+function openInPlaySection(code, focusSection = '') {
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+
+  if (activeModule !== 'timeline') {
+    switchAdminTab('timeline');
+  }
+
+  const booking = populateInPlayWorkspace(code);
+  if (!booking) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không tìm thấy đơn đặt sân ' + (code || ''), 'error');
+    return;
+  }
+
+  renderTimelineGantt();
+
+  const workspace = document.getElementById('timeline-inplay-workspace');
+  if (workspace) {
+    workspace.classList.remove('hidden');
+    workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    workspace.classList.add('ring-4', 'ring-emerald-400/50', 'transition-all');
+    setTimeout(() => {
+      workspace.classList.remove('ring-4', 'ring-emerald-400/50');
+    }, 1400);
+  } else {
+    const modal = document.getElementById('inplay-modal') || document.getElementById('inplay-manage-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+  }
 
   if (focusSection === 'pay') {
     const payEl = document.getElementById('inplay-pay-method');
-    if (payEl) setTimeout(() => payEl.focus(), 120);
+    if (payEl) setTimeout(() => payEl.focus(), 200);
   }
 }
 
+function openInPlayModal(code, focusSection = '') {
+  openInPlaySection(code, focusSection);
+}
+
 function closeInPlayModal() {
-  const modal = document.getElementById('inplay-manage-modal');
+  const modal = document.getElementById('inplay-manage-modal') || document.getElementById('inplay-modal');
   if (modal) {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
   }
+}
+
+async function handleInlineCheckinCurrent() {
+  if (!activeInPlayCode) return;
+  await handleCheckin(activeInPlayCode);
+}
+
+async function restoreCancelledBooking(code) {
+  const targetCode = code || activeInPlayCode;
+  if (!targetCode) return;
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+
+  try {
+    await fetch('../api/bookings.php?action=restore&code=' + encodeURIComponent(targetCode), { method: 'POST' });
+  } catch (e) {}
+
+  const updated = db.restoreBooking(targetCode);
+  if (updated) {
+    renderOverviewTodayBookings();
+    renderTimelineGantt();
+    initQuickBookingForm();
+    populateInPlayWorkspace(targetCode);
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast(`🔄 Đã khôi phục đơn #${targetCode} về trạng thái "Đã xác nhận"!`, 'success', 3500);
+    }
+  }
+}
+
+async function restoreCurrentCancelledBooking() {
+  if (!activeInPlayCode) return;
+  await restoreCancelledBooking(activeInPlayCode);
 }
 
 function updateInPlayOvertimePreview() {
@@ -1313,9 +1494,10 @@ function updateInPlayOvertimePreview() {
 
 function refreshInPlaySummaryUI(booking) {
   if (!booking) return;
+  const normStatus = (booking.status === 'Vắng mặt (No-Show)' || String(booking.status || '').includes('No-Show')) ? 'Khách chưa đến' : (booking.status || 'Đang đá');
   const total = Number(booking.totalPrice || 0);
   const deposit = Number(booking.depositAmount || Math.round(total * 0.3));
-  const remaining = typeof booking.remainingAmount === 'number' ? booking.remainingAmount : Math.max(0, total - deposit);
+  const remaining = (normStatus === 'Hoàn thành' || normStatus === 'Đã hủy' || normStatus === 'Khách chưa đến') ? 0 : (typeof booking.remainingAmount === 'number' ? booking.remainingAmount : Math.max(0, total - deposit));
 
   const elTotal = document.getElementById('inplay-bill-total');
   const elDep = document.getElementById('inplay-bill-deposit');
@@ -1382,6 +1564,7 @@ async function submitInPlayOvertime() {
   if (updated) {
     refreshInPlaySummaryUI(updated);
     renderOverviewTodayBookings();
+    renderTimelineGantt();
     if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast(`⏱️ Đã gia hạn thêm ${mins} phút (+${window.SanBongApp.formatVND(fee)}) cho đơn ${activeInPlayCode}!`, 'success', 3500);
     }
@@ -1462,6 +1645,23 @@ async function submitInPlayEarlyCancel() {
   if (!activeInPlayCode) return;
   const policy = document.getElementById('inplay-cancel-policy')?.value || 'refund_100';
   const reason = document.getElementById('inplay-cancel-reason')?.value.trim() || 'Khách báo hủy lịch trước thời hạn';
+  const db = window.SanBongApp?.SanBongDB;
+
+  if (policy === 'noshow_forfeit') {
+    try {
+      await fetch('../api/bookings.php?action=noshow_release&code=' + encodeURIComponent(activeInPlayCode), { method: 'POST' });
+    } catch (e) {}
+    const updatedNoShow = db ? db.releaseNoShowBooking(activeInPlayCode) : null;
+    closeInPlayModal();
+    renderOverviewTodayBookings();
+    renderTimelineGantt();
+    initQuickBookingForm();
+    populateInPlayWorkspace(activeInPlayCode);
+    if (updatedNoShow && window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast(`⚠️ Đã đánh dấu đơn ${activeInPlayCode} là "Khách chưa đến" (tịch thu cọc 30%) & nhả sân trống!`, 'warning', 4000);
+    }
+    return;
+  }
 
   try {
     await fetch('../api/admin.php?action=manage_booking', {
@@ -1471,12 +1671,13 @@ async function submitInPlayEarlyCancel() {
     });
   } catch (e) {}
 
-  const db = window.SanBongApp?.SanBongDB;
   const updated = db ? db.cancelBookingEarly(activeInPlayCode, policy, reason) : null;
   closeInPlayModal();
   renderOverviewTodayBookings();
   renderTimelineGantt();
+  populateInPlayWorkspace();
   initQuickBookingForm();
+  populateInPlayWorkspace(activeInPlayCode);
 
   if (updated && window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(`🛑 Đã hủy lịch đơn ${activeInPlayCode} (${updated.paymentStatus}) và giải phóng sân trống!`, 'warning', 4000);
@@ -1501,6 +1702,7 @@ async function submitInPlayPayRemaining() {
   renderOverviewTodayBookings();
   renderTimelineGantt();
   renderAdminReports();
+  populateInPlayWorkspace(activeInPlayCode);
 
   if (updated && window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(`✅ ĐÃ THU ĐỦ 100% TIỀN SÂN: Đơn ${activeInPlayCode} đã hoàn thành xuất sắc!`, 'success', 4000);
@@ -1516,8 +1718,13 @@ function openInvoiceFromInPlay() {
   if (code) openInvoicePrintModal(code);
 }
 
+window.openInPlaySection = openInPlaySection;
 window.openInPlayModal = openInPlayModal;
 window.closeInPlayModal = closeInPlayModal;
+window.renderInlineInPlaySelector = renderInlineInPlaySelector;
+window.handleInlineCheckinCurrent = handleInlineCheckinCurrent;
+window.restoreCancelledBooking = restoreCancelledBooking;
+window.restoreCurrentCancelledBooking = restoreCurrentCancelledBooking;
 window.updateInPlayOvertimePreview = updateInPlayOvertimePreview;
 window.toggleInPlayVietQR = toggleInPlayVietQR;
 window.submitInPlayOvertime = submitInPlayOvertime;
@@ -1541,9 +1748,10 @@ function openInvoicePrintModal(code) {
   const area = document.getElementById('printable-invoice-area');
   if (!modal || !area) return;
 
+  const normStatus = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || '');
   const total = Number(b.totalPrice || 0);
   const deposit = Number(b.depositAmount || Math.round(total * 0.3));
-  const remaining = (b.status === 'Hoàn thành' || b.status === 'Đã hủy') ? 0 : (typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - deposit));
+  const remaining = (normStatus === 'Hoàn thành' || normStatus === 'Đã hủy' || normStatus === 'Khách chưa đến') ? 0 : (typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - deposit));
   const pitchPrice = Number(b.pitchPrice || total);
   const overtimeFee = Number(b.overtimeFee || 0);
   const discount = Number(b.discountAmount || 0) + Number(b.monthlyDiscountAmount || 0);
@@ -1573,6 +1781,7 @@ function openInvoicePrintModal(code) {
   ` : '';
 
   const nowStr = new Date().toLocaleString('vi-VN');
+  const displayPayStatus = String(b.paymentStatus || normStatus).replace(/Vắng mặt \(No-Show\)/g, 'Khách chưa đến').replace(/No-Show/g, 'Khách chưa đến');
 
   area.innerHTML = `
     <div class="border-2 border-slate-800 rounded-xl p-5 space-y-4 bg-white">
@@ -1585,7 +1794,7 @@ function openInvoicePrintModal(code) {
         <div class="text-right">
           <div class="text-xs font-extrabold uppercase tracking-wider text-[#16A34A]">PHIẾU THANH TOÁN / HÓA ĐƠN</div>
           <div class="font-mono font-extrabold text-sm text-[#0F172A] mt-0.5">#${b.code}</div>
-          <div class="text-[11px] font-bold text-slate-600">${escapeSearchHTML(b.paymentStatus || b.status)}</div>
+          <div class="text-[11px] font-bold text-slate-600">${escapeSearchHTML(displayPayStatus)}</div>
         </div>
       </div>
 
@@ -1715,28 +1924,96 @@ function renderAdminVouchers() {
   }
 
   tbody.innerHTML = vouchers.map(v => {
+    const isActive = v.isActive !== false;
     const badge = v.type === 'percent'
       ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Giảm ${v.value}%</span>`
       : `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Giảm ${window.SanBongApp.formatVND(v.value)}</span>`;
+    const statusBadge = isActive
+      ? `<span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold">Đang kích hoạt</span>`
+      : `<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[11px] font-bold">Đang tạm khóa</span>`;
 
     return `
-      <tr class="hover:bg-slate-50 transition-colors">
+      <tr class="hover:bg-slate-50 transition-colors ${isActive ? '' : 'opacity-65'}">
         <td class="py-3 px-4 font-mono font-extrabold text-[#16A34A] text-sm">${escapeSearchHTML(v.code)}</td>
         <td class="py-3 px-4">${badge}</td>
         <td class="py-3 px-4 font-bold text-[#0F172A]">${window.SanBongApp.formatVND(v.minOrder || 0)}</td>
         <td class="py-3 px-4 text-[#475569]">${escapeSearchHTML(v.description || '')}</td>
-        <td class="py-3 px-4">
-          <span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold">Đang kích hoạt</span>
-        </td>
+        <td class="py-3 px-4">${statusBadge}</td>
         <td class="py-3 px-4 text-right">
-          <button type="button" onclick="handleDeleteVoucher('${escapeSearchHTML(v.code)}')" class="btn-sm btn-danger-outline text-xs font-bold">Xóa mã</button>
+          <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
+            <button type="button" onclick="handleEditVoucher('${escapeSearchHTML(v.code)}')" class="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 cursor-pointer">✏️ Sửa mã</button>
+            <button type="button" onclick="handleToggleVoucher('${escapeSearchHTML(v.code)}')" class="px-2.5 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-[11px] border border-amber-200 cursor-pointer">${v.isActive === false ? '🔓 Bật' : '🔒 Tắt'}</button>
+            <button type="button" onclick="handleDeleteVoucher('${escapeSearchHTML(v.code)}')" class="px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] border border-red-200 cursor-pointer">🗑️ Xóa</button>
+          </div>
         </td>
       </tr>
     `;
   }).join('');
 }
 
-async function handleCreateVoucher(e) {
+function handleEditVoucher(code) {
+  if (!code) return;
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
+  const target = String(code).trim().toUpperCase();
+  const v = db.getVouchers().find(x => String(x.code).toUpperCase() === target);
+  if (!v) return;
+
+  editingVoucherCode = v.code;
+
+  const codeEl = document.getElementById('admin-voucher-code');
+  const typeEl = document.getElementById('admin-voucher-type');
+  const valEl = document.getElementById('admin-voucher-value');
+  const minEl = document.getElementById('admin-voucher-min');
+  const descEl = document.getElementById('admin-voucher-desc');
+
+  if (codeEl) codeEl.value = v.code;
+  if (typeEl) typeEl.value = v.type || 'percent';
+  if (valEl) valEl.value = v.value || 0;
+  if (minEl) minEl.value = v.minOrder || 0;
+  if (descEl) descEl.value = v.description || '';
+
+  const titleEl = document.getElementById('admin-voucher-form-title');
+  const badgeEl = document.getElementById('admin-voucher-edit-badge');
+  const cancelBtn = document.getElementById('admin-voucher-cancel-btn');
+  const submitBtn = document.getElementById('admin-voucher-submit-btn');
+
+  if (titleEl) titleEl.textContent = 'Chỉnh sửa mã Voucher: ' + v.code;
+  if (badgeEl) badgeEl.classList.remove('hidden');
+  if (cancelBtn) cancelBtn.classList.remove('hidden');
+  if (submitBtn) submitBtn.textContent = '💾 Lưu cập nhật Voucher';
+
+  const formEl = document.getElementById('admin-voucher-form');
+  if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (valEl) setTimeout(() => valEl.focus(), 150);
+}
+
+function cancelEditVoucher() {
+  editingVoucherCode = '';
+  const formEl = document.getElementById('admin-voucher-form');
+  if (formEl && formEl.reset) formEl.reset();
+
+  const codeEl = document.getElementById('admin-voucher-code');
+  const valEl = document.getElementById('admin-voucher-value');
+  const minEl = document.getElementById('admin-voucher-min');
+  const descEl = document.getElementById('admin-voucher-desc');
+  if (codeEl) codeEl.value = '';
+  if (valEl) valEl.value = '';
+  if (minEl) minEl.value = '';
+  if (descEl) descEl.value = '';
+
+  const titleEl = document.getElementById('admin-voucher-form-title');
+  const badgeEl = document.getElementById('admin-voucher-edit-badge');
+  const cancelBtn = document.getElementById('admin-voucher-cancel-btn');
+  const submitBtn = document.getElementById('admin-voucher-submit-btn');
+
+  if (titleEl) titleEl.textContent = 'Tạo mã Voucher mới';
+  if (badgeEl) badgeEl.classList.add('hidden');
+  if (cancelBtn) cancelBtn.classList.add('hidden');
+  if (submitBtn) submitBtn.textContent = '+ Thêm mã Voucher';
+}
+
+async function handleSaveVoucher(e) {
   if (e && e.preventDefault) e.preventDefault();
   const code = (document.getElementById('admin-voucher-code')?.value || '').trim().toUpperCase();
   const type = document.getElementById('admin-voucher-type')?.value || 'percent';
@@ -1749,23 +2026,52 @@ async function handleCreateVoucher(e) {
     return;
   }
 
+  const isEditing = Boolean(editingVoucherCode);
+  const origCode = editingVoucherCode || code;
+
   const db = window.SanBongApp?.SanBongDB;
   if (db) {
-    db.saveVoucher({ code, type, value, minOrder, description });
+    db.saveVoucher({ code, originalCode: origCode, type, value, minOrder, description });
   }
 
   try {
     await fetch('../api/admin.php?action=vouchers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sub_action: 'save', code, type, value, minOrder, description })
+      body: JSON.stringify({ sub_action: 'save', code, original_code: origCode, type, value, minOrder, description })
     });
   } catch (err) {}
 
-  if (e && e.target && e.target.reset) e.target.reset();
+  cancelEditVoucher();
   renderAdminVouchers();
   if (window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast(`🎁 Đã lưu mã khuyến mãi ${code} thành công! Khách hàng có thể sử dụng ngay.`, 'success', 3500);
+    window.SanBongApp.showToast(
+      isEditing
+        ? `✓ Đã cập nhật mã khuyến mãi ${code} thành công!`
+        : `🎁 Đã thêm mã khuyến mãi ${code} thành công! Khách hàng có thể sử dụng ngay.`,
+      'success',
+      3500
+    );
+  }
+}
+
+async function handleCreateVoucher(e) {
+  return handleSaveVoucher(e);
+}
+
+async function handleToggleVoucher(code) {
+  if (!code) return;
+  const db = window.SanBongApp?.SanBongDB;
+  const updated = db ? db.toggleVoucherActive(code) : null;
+  renderAdminVouchers();
+  if (updated && window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(
+      updated.isActive !== false
+        ? `🔓 Đã bật kích hoạt mã giảm giá ${updated.code}.`
+        : `🔒 Đã tạm khóa mã giảm giá ${updated.code}.`,
+      'info',
+      2500
+    );
   }
 }
 
@@ -1773,6 +2079,9 @@ async function handleDeleteVoucher(code) {
   if (!code) return;
   const db = window.SanBongApp?.SanBongDB;
   if (db) db.deleteVoucher(code);
+  if (editingVoucherCode && editingVoucherCode.toUpperCase() === String(code).toUpperCase()) {
+    cancelEditVoucher();
+  }
 
   try {
     await fetch('../api/admin.php?action=vouchers', {
@@ -1789,6 +2098,10 @@ async function handleDeleteVoucher(code) {
 }
 
 window.renderAdminVouchers = renderAdminVouchers;
+window.handleSaveVoucher = handleSaveVoucher;
 window.handleCreateVoucher = handleCreateVoucher;
+window.handleEditVoucher = handleEditVoucher;
+window.cancelEditVoucher = cancelEditVoucher;
+window.handleToggleVoucher = handleToggleVoucher;
 window.handleDeleteVoucher = handleDeleteVoucher;
 
