@@ -1,132 +1,209 @@
-# Sân Bóng Pro – Hệ Thống Đặt Sân Bóng Đá Trực Tuyến
+# ⚽ Sân Bóng Pro — Hệ Thống Quản Lý & Đặt Sân Bóng Đá Trực Tuyến
 
-Hệ thống đặt sân bóng đá tự động, chuẩn hóa giao diện trực quan và trải nghiệm mượt mà. Dự án được xây dựng bằng kiến trúc Frontend thuần (Static Web) tách bạch rõ ràng theo các thư mục `css/`, `js/`, `html/`, `data/` và chỉ có tệp `index.html` ở thư mục gốc ngoài cùng. Dữ liệu được nạp bất đồng bộ qua **Fetch API** và lưu trữ bền vững trên trình duyệt qua `LocalStorage`, giúp bất kỳ ai trong nhóm tải về đều có thể mở lên chạy và code tiếp được ngay mà không cần cài đặt môi trường phức tạp hay cơ sở dữ liệu nặng nề.
+> **Hệ thống đặt sân bóng đá tự động, chuẩn hóa giao diện trực quan chuẩn FIFA, tích hợp thanh toán VietQR SePay 1 chạm và phân hệ quản trị vận hành toàn diện.**
+
+* **Domain chính thức (Production Live):** [https://fxzioyr.id.vn](https://fxzioyr.id.vn)
+* **Kho lưu trữ GitHub:** [github.com/vinhce/Web_Quan_Ly_San_Bong](https://github.com/vinhce/Web_Quan_Ly_San_Bong)
+* **Trạng thái Go-Live:** ✅ **SẴN SÀNG VẬN HÀNH THẬT 100% (PRODUCTION READY - QA PASS)**
 
 ---
 
 ## 📍 Thông Tin Cơ Sở & Liên Hệ
 
-* **Địa chỉ sân bóng:** Khu liên hợp Thể thao Pro, Số 18 Đường Lê Đức Thọ, Phường Mỹ Đình, Quận Nam Từ Liêm, TP. Hà Nội.
-* **Hotline hỗ trợ 24/7:** **0352 313 548**
+* **Địa chỉ cơ sở:** Khu liên hợp Thể thao Pro, Số 18 Đường Lê Đức Thọ, Phường Mỹ Đình, Quận Nam Từ Liêm, TP. Hà Nội.
+* **Hotline hỗ trợ 24/7:** **[0352 313 548](tel:0352313548)**
+* **Hỗ trợ qua Zalo:** **[zalo.me/0352313548](https://zalo.me/0352313548)**
 * **Giờ mở cửa:** 05:30 – 23:00 (Tất cả các ngày trong tuần)
-* **Thông tin tài khoản nhận cọc:**
-  * **Chính sách cọc:** Chuyển khoản cọc 30%, 70% còn lại thanh toán tại quầy khi nhận sân.
+* **Tài khoản thụ hưởng VietQR (SePay):**
+  * **Ngân hàng:** MB Bank (Ngân hàng Quân Đội)
+  * **Số tài khoản:** `0352313548`
+  * **Chủ tài khoản:** `DO THANH LONG`
+  * **Chính sách đặt cọc:** Thanh toán cọc 30% qua VietQR để giữ chỗ tức thì; 70% còn lại thanh toán tại quầy khi nhận sân.
 
 ---
 
-## 🚀 Hướng Dẫn Tải Về & Khởi Chạy (Dành Cho Thành Viên Nhóm)
+## 🌟 Tính Năng Nổi Bật
 
-### 1. Tải mã nguồn về máy
-Mở Terminal / Git Bash / Command Prompt và chạy lệnh:
-```bash
-git clone https://github.com/vinhce/Web_Quan_Ly_San_Bong.git
-cd Web_Quan_Ly_San_Bong
+### 1. Dành cho Khách hàng (Customer Experience)
+- **Xem & Tìm sân trực quan:** Phân loại sân 5, sân 7, sân 11 người chuẩn FIFA; hiển thị tình trạng mặt cỏ, kích thước và biểu đồ giá linh hoạt.
+- **Dự báo thời tiết sân bóng:** Tích hợp Open-Meteo API lấy dữ liệu nhiệt độ, thời tiết thực tế tại sân Mỹ Đình theo thời gian thực.
+- **Ma trận đặt slot giờ thông minh:** Hiển thị trực quan các slot (Trống, Đang đá, Đã đặt), chống đặt trùng giờ. Hạn chế đặt lùi ngày trong quá khứ.
+- **Thanh toán VietQR tự động qua SePay:** Sinh mã VietQR động theo chuẩn ngân hàng, đối soát và tự động duyệt đơn ngay khi có biến động số dư.
+- **Mã đơn chuẩn hóa:** Định dạng mã đơn tiện ích theo chuẩn ngân hàng (`ASFF` Sân 5, `ASFS` Sân 7, `ASFE` Sân 11).
+- **Vé điện tử & QR Check-in:** Phát hành vé check-in ngay sau khi cọc, hỗ trợ in vé PDF và chỉ đường Google Maps đến sân.
+- **Hệ thống hội viên & Voucher:** Quản lý lịch sử đặt sân, tích điểm theo chi tiêu và phân hạng thành viên (Đồng, Bạc, Vàng, Kim Cương) kèm mã giảm giá 1 chạm.
+- **Widget liên hệ nổi (Floating Widget):** Tích hợp nút gọi Hotline và Chat Zalo trực tiếp ở góc màn hình trên mọi trang.
+
+### 2. Phân hệ Quản trị Vận hành (Portal Admin)
+- **Tab 1 - Tổng quan KPI:** Doanh thu hôm nay, tỷ lệ lấp đầy sân, số ca đá đã đặt, cảnh báo bảo trì.
+- **Tab 2 - Lịch đặt sân Timeline Gantt:** Biểu đồ thời gian trực quan theo từng sân bóng từ 05:30 đến 23:00.
+- **Tab 3 - Đặt sân nhanh tại quầy:** Hỗ trợ lễ tân tạo đơn nhanh cho khách vãng lai, áp dụng chiết khấu trực tiếp.
+- **Tab 4 - Quản lý sân bóng:** Thêm, sửa thông tin, bật/tắt chế độ bảo trì sân tức thì.
+- **Tab 5 - Bảng giá & Giờ cao điểm:** Cấu hình khung giá ngày thường, giờ cao điểm và ngày cuối tuần.
+- **Tab 6 - Khách & Hội viên CRM:** Theo dõi danh sách khách hàng, tổng chi tiêu, lịch sử ca đá và thứ hạng tích điểm.
+- **Tab 7 - Duyệt cọc VietQR 1 chạm:** Quản lý biên lai chuyển khoản ngân hàng, duyệt/từ chối cọc tức thì kèm đồng bộ số lượng.
+- **Tab 8 - Báo cáo doanh thu chuyên sâu:** Biểu đồ doanh thu theo ngày/tháng, phân tích loại sân sinh lời cao nhất, xuất file Excel CSV.
+- **Tab 9 - Cài đặt hệ thống:** Tùy chỉnh hotline, tỷ lệ cọc bắt buộc, giờ mở cửa và thông tin tài khoản VietQR.
+
+---
+
+## 🔒 Kiến Trúc Bảo Mật & Hạ Tầng (OWASP Web Security Standard)
+
+Hệ thống tuân thủ nghiêm ngặt chuẩn an toàn thông tin ứng dụng web theo đặc tả `security-web.md`:
+
+```mermaid
+flowchart TD
+    Client["Trình duyệt Client"] -->|HTTPS / HSTS| CDN["OneShield Bot Protection & Apache WAF"]
+    CDN -->|Rewrite Clean URLs| Router[".htaccess Security Controller"]
+    Router -->|RBAC Session Check| Admin["Portal Admin (index.php)"]
+    Router -->|Input Validation & Rate Limit| API["PHP 8.1 REST API"]
+    API -->|Argon2id & Prepared Statements| DB[("MySQL Database (7 Tables)")]
+    API -->|Webhook Key Verification| SePay["Cổng SePay Bank Webhook"]
 ```
 
-### 2. Khởi chạy ứng dụng
-Không cần cài đặt `npm`, không cần `composer` hay cài đặt PHP/Node.js:
-- **Cách 1 (Nhanh nhất):** Nhấp đúp chuột trực tiếp vào tệp `index.html` ở thư mục ngoài cùng để mở trên trình duyệt (Chrome, Edge, Brave, Cốc Cốc, Firefox).
-- **Cách 2 (Khuyến nghị cho Fetch API):** Chạy qua máy chủ tĩnh như Live Server (VS Code), Laragon (`http://localhost/Quan_Ly_San_Bong`), hoặc XAMPP.
+1. **Xác thực & Mã hóa:** Mật khẩu lưu trữ băm bằng thuật toán **Argon2id** (`PASSWORD_ARGON2ID`). Không lưu mật khẩu dạng plaintext.
+2. **Kiểm soát phiên làm việc (Session RBAC):** Cookie phiên gắn đủ 3 cờ `HttpOnly`, `Secure`, `SameSite=Lax`. Hết hạn phiên 2 giờ (7200s), tự động hủy và đổi `session_id` khi đăng nhập.
+3. **Bảo vệ cổng Quản trị:** Phân hệ `/portal-admin/` kiểm tra quyền `role === 'admin'` ở tầng máy chủ PHP; người dùng chưa đăng nhập bị chuyển hướng 302 về trang đăng nhập.
+4. **Phòng chống tấn công:**
+   - **Chống SQL Injection:** 100% câu lệnh qua PDO Prepared Statements với tham số hóa.
+   - **Chống IDOR:** Kiểm tra quyền sở hữu đơn đặt sân ở máy chủ; khách vãng lai bị che mờ số điện thoại và email.
+   - **Chống Brute Force:** Bộ lọc Rate Limiting chặn tạm 15 phút (`HTTP 429`) khi nhập sai quá 5 lần.
+   - **Chống Sửa giá (Price Tampering):** Máy chủ tự tính toán lại toàn bộ chi phí theo bảng giá trong CSDL, không phụ thuộc vào dữ liệu gửi từ trình duyệt.
+   - **Chống Giả mạo Webhook:** Webhook SePay bắt buộc xác thực `SEPAY_WEBHOOK_KEY` qua so sánh chuỗi an toàn `hash_equals` hoặc đối chiếu giao dịch gốc.
+5. **Security Headers trên Trình duyệt:**
+   - `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
+   - `Content-Security-Policy: default-src 'self' ...`
+   - `X-Content-Type-Options: nosniff`
+   - `X-Frame-Options: SAMEORIGIN`
+   - `Referrer-Policy: strict-origin-when-cross-origin`
+   - `Permissions-Policy: geolocation=(), camera=(), microphone=()`
+6. **Bảo vệ tệp tin nhạy cảm:** Tệp cấu hình `.env` được đặt ngoài thư mục `public_html`. Tệp `.git`, `.json`, `.log`, `.bak`, `.sql` bị chặn truy cập trực tiếp bằng mã lỗi `403 Forbidden`.
 
 ---
 
-## 📁 Cấu Trúc Thư Mục Chuẩn Hóa (Không Phình File)
-
-Dự án đã được phân tách gọn gàng, loại bỏ hoàn toàn các đoạn mã inline cồng kềnh:
+## 📁 Cấu Trúc Mã Nguồn Chuẩn Hóa
 
 ```text
 Web_Quan_Ly_San_Bong/
-├── index.html          # Trang chủ ngoài cùng: Giới thiệu, banner tìm kiếm nhanh, sân nổi bật, voucher
-├── data/
-│   └── data.json       # Cơ sở dữ liệu JSON cho Fetch API (6 sân bóng, slot giờ, dịch vụ, voucher)
-├── css/
-│   ├── base.css        # Reset, typography, font chữ Inter & Plus Jakarta Sans
-│   ├── components.css  # Thẻ UI Card, nút bấm (primary/secondary/danger/sm), ô input
-│   ├── booking.css     # Style cho slot chips khung giờ thi đấu
-│   ├── admin.css       # Style cho phân hệ quản trị, timeline Gantt, sọc chéo bảo trì
-│   ├── print.css       # Định dạng khi bấm in vé check-in điện tử
-│   └── style.css       # Master stylesheet nạp và điều phối các module CSS trên
-├── js/
-│   ├── api.js          # API & Fetch Service: Quản lý fetch() tải JSON, thời tiết sân bóng, ngân hàng
-│   ├── data.js         # Mock Database: Dữ liệu khởi tạo (6 sân bóng, slot giờ, dịch vụ, voucher, tài khoản NH)
-│   ├── app.js          # Core Engine: State LocalStorage (SanBongDB), Navbar/Footer dùng chung, render SVG sân bóng
-│   ├── index.js        # Logic riêng trang chủ index.html (Fetch thời tiết & sân bóng)
-│   ├── fields.js       # Logic danh sách & bộ lọc sân bóng (Fetch dữ liệu sân)
-│   ├── booking.js      # Logic đặt sân, chọn slot giờ, dịch vụ & áp voucher
-│   ├── checkout.js     # Logic thanh toán cọc ngân hàng & Fetch POST đặt sân
-│   ├── success.js      # Logic vé điện tử & QR check-in
-│   ├── history.js      # Logic lịch sử đặt sân, hủy sân & điểm thưởng hội viên
-│   ├── admin.js        # Logic 9 phân hệ quản trị viên (KPI, Gantt, bật/tắt bảo trì sân, duyệt cọc)
-│   └── login.js        # Logic đăng nhập, đăng ký tài khoản hội viên
-├── html/
-│   ├── fields.html     # Danh sách sân: Bộ lọc theo loại sân (5, 7, 11 người), khoảng giá, tiện ích
-│   ├── booking.html    # Đặt sân: Chọn ngày, ma trận khung giờ trực quan, dịch vụ thêm, mã giảm giá
-│   ├── checkout.html   # Thanh toán cọc 30%: Thông tin chuyển khoản MB Bank
-│   ├── success.html    # Đặt sân thành công: Vé điện tử kèm mã QR check-in sân, chức năng in vé
-│   ├── history.html    # Lịch sử đặt sân & Hội viên: Danh sách trận đã đặt, hạng thành viên (SĐT: 0352 313 548)
-│   ├── admin.html      # Quản trị Admin: 9 module vận hành, timeline Gantt, tạo đơn tại quầy, duyệt cọc
-│   └── login.html      # Trang đăng nhập / đăng ký hội viên
-├── .gitignore          # Cấu hình bỏ qua các tệp tạm
-└── README.md           # Tài liệu hướng dẫn sử dụng và phát triển
+├── index.html                        # Trang chủ: Tìm kiếm nhanh, sân nổi bật, voucher, thời tiết
+├── .htaccess                         # Điều hướng Clean URLs, ép HTTPS 301, chặn file nhạy cảm, nạp Header bảo mật
+├── .env.example                      # Mẫu biến môi trường an toàn (Database, SePay API Token, Webhook Key)
+├── robots.txt                        # Chỉ dẫn công cụ tìm kiếm, chặn bot quét API và Admin
+├── css/                              # Thư mục giao diện tách module
+│   ├── base.css                      # Reset style, font chữ Plus Jakarta Sans & Inter
+│   ├── components.css                # Style UI Card, Button, Input, Modal, Badge
+│   ├── booking.css                   # Style ma trận slot giờ và thanh tiến trình
+│   ├── admin.css                     # Style biểu đồ Gantt timeline, bảng điều khiển KPI
+│   └── print.css                     # Định dạng in vé check-in điện tử
+├── js/                               # Thư mục mã nguồn logic JavaScript ES6
+│   ├── helpers.js                    # Hàm tiện ích (định dạng tiền, vẽ SVG sân bóng FIFA, icon hệ thống)
+│   ├── db.js                         # Bộ điều khiển dữ liệu SanBongDB (kết nối LocalStorage & API)
+│   ├── ui.js                         # Thành phần UI dùng chung (Navbar, Footer, Floating Widget, Toast, Modal)
+│   ├── app.js                        # Gói Bundle hợp nhất phục vụ môi trường Production
+│   ├── api.js                        # Lớp gọi API bất đồng bộ (Fetch API, Open-Meteo, VietQR, SePay)
+│   ├── index.js                      # Logic điều khiển trang chủ
+│   ├── fields.js                     # Logic tìm kiếm, lọc loại sân, giá và tiện ích
+│   ├── field-detail.js               # Logic trang chi tiết sân bóng
+│   ├── booking.js                    # Logic đặt sân, chọn slot giờ, dịch vụ thêm và voucher
+│   ├── checkout.js                   # Logic tạo mã VietQR động, đếm ngược giữ slot 10 phút, kiểm tra cọc
+│   ├── success.js                    # Logic hiển thị vé QR, in vé và tải về
+│   ├── history.js                    # Logic tra cứu đơn đặt sân và điểm thưởng hội viên
+│   ├── admin.js                      # Toàn bộ logic 9 phân hệ quản trị viên
+│   └── login.js                      # Logic xác thực đăng nhập, đăng ký và bảo vệ tài khoản
+├── html/                             # Giao diện các trang chức năng (Clean URLs)
+│   ├── fields.html                   # /fields: Danh sách và bộ lọc sân bóng
+│   ├── field-detail.html             # /field-detail: Chi tiết sân bóng, cơ sở vật chất, bảng giá
+│   ├── booking.html                  # /booking: Chọn ngày đá, slot giờ, dịch vụ và voucher
+│   ├── checkout.html                 # /checkout: Quét mã VietQR chuyển khoản cọc 30%
+│   ├── success.html                  # /success: Vé điện tử xác nhận đặt sân thành công
+│   ├── history.html                  # /history: Tra cứu lịch sử ca đá & điểm hội viên
+│   └── login.html                    # /login: Đăng nhập & Đăng ký tài khoản
+├── portal-admin/                     # Phân hệ Quản trị viên (/portal-admin)
+│   ├── index.php                     # Cổng kiểm tra quyền Session Admin (RBAC Gateway)
+│   ├── index.html                    # Giao diện điều khiển trung tâm
+│   └── partials/                     # 9 module quản trị phân tách độc lập (PHP Partials)
+│       ├── header.php                # Header điều hướng và thanh tìm kiếm toàn cục
+│       ├── sidebar.php               # Menu danh mục 9 phân hệ quản trị
+│       ├── tab1_kpi.php              # Module tổng quan KPI & doanh thu
+│       ├── tab2_timeline.php         # Module lịch đặt sân Timeline Gantt
+│       ├── tab3_quick_booking.php    # Module đặt sân nhanh tại quầy
+│       ├── tab4_pitches.php          # Module quản lý danh sách sân & bảo trì
+│       ├── tab5_pricing.php          # Module cấu hình bảng giá & giờ cao điểm
+│       ├── tab6_customers.php        # Module quản lý khách hàng & hội viên
+│       ├── tab7_deposits.php         # Module duyệt biên lai cọc VietQR 1 chạm
+│       ├── tab8_reports.php          # Module báo cáo phân tích doanh thu & xuất Excel
+│       └── tab9_settings.php         # Module cài đặt hệ thống & ngân hàng VietQR
+├── api/                              # Backend API RESTful chuẩn mực
+│   ├── security_helper.php           # Thư viện bảo mật trung tâm (Rate limit, Session, CSRF, Sanitization)
+│   ├── sepay_helper.php              # Thư viện kết nối SePay API v2 và đối soát giao dịch
+│   ├── auth.php                      # Endpoint Đăng nhập, Đăng ký, Đăng xuất, Lấy phiên (Argon2id)
+│   ├── bookings.php                  # Endpoint Tạo đơn, Chi tiết đơn, Chống IDOR, Hủy đơn
+│   ├── pitches.php                   # Endpoint Lấy danh sách sân bóng & lịch thi đấu
+│   ├── check_payment.php             # Endpoint Polling kiểm tra trạng thái cọc thời gian thực
+│   └── sepay_webhook.php             # Endpoint tiếp nhận Webhook ngân hàng tự động
+├── config/
+│   └── database.php                  # Quản lý kết nối PDO MySQL và đọc biến môi trường .env an toàn
+├── database/
+│   └── schema.sql                    # Kịch bản khởi tạo 7 bảng CSDL MySQL và dữ liệu khởi tạo mẫu
+├── logs/                             # Thư mục lưu vết bảo mật (Được bảo vệ 0750)
+│   ├── php_errors.log                # Nhật ký lỗi máy chủ nội bộ
+│   └── webhook_debug.log             # Nhật ký giao dịch webhook ngân hàng (đã che thông tin nhạy cảm)
+└── scripts/                          # Bộ công cụ tự động hóa kiểm thử và triển khai
+    ├── build_app_bundle.js           # Biên dịch tự động js/app.js từ các module con
+    ├── bump_version.js               # Đánh phiên bản Cache-Busting cho toàn bộ file HTML
+    ├── verify_all_local.js           # Bộ kiểm thử cú pháp và logic toàn diện (11 file JS)
+    ├── run_production_pentest.js     # Script kiểm thử tấn công tự động trên Live Hosting
+    └── deploy_all_to_hosting.js      # Script đồng bộ toàn bộ hệ thống lên Live Hosting qua MCP
 ```
 
 ---
 
-## 🔄 Luồng Nghiệp Vụ Hoạt Động (End-to-End Flow)
+## 🚀 Hướng Dẫn Cài Đặt & Triển Khai
 
-```mermaid
-flowchart LR
-    A["index.html / html/fields.html<br/>(Xem & Tìm sân)"] --> B["html/booking.html<br/>(Chọn giờ & dịch vụ)"]
-    B --> C["html/checkout.html<br/>(Chuyển cọc 30%)"]
-    C --> D["html/success.html<br/>(Vé điện tử QR check-in)"]
-    D --> E["html/history.html<br/>(Theo dõi lịch sử & tích điểm)"]
-    C -.-> F["html/admin.html<br/>(Quản lý & Duyệt đơn)"]
+### 1. Triển khai Cục bộ (Local Development)
+Yêu cầu: Laragon / XAMPP với PHP 8.1+ và MySQL.
+1. Clone dự án vào thư mục webroot:
+   ```bash
+   cd C:/laragon/www
+   git clone https://github.com/vinhce/Web_Quan_Ly_San_Bong.git
+   cd Web_Quan_Ly_San_Bong
+   ```
+2. Tạo tệp `.env` từ tệp mẫu:
+   ```bash
+   cp .env.example .env
+   ```
+3. Cập nhật thông tin kết nối CSDL và tài khoản SePay vào tệp `.env`.
+4. Nhập dữ liệu ban đầu vào MySQL:
+   ```bash
+   mysql -u root -p sanbongpro < database/schema.sql
+   ```
+5. Mở trình duyệt và truy cập: `http://localhost/Quan_Ly_San_Bong/`
+
+### 2. Tài khoản Đăng nhập Hệ thống
+| Vai trò | Tên đăng nhập (Username) | Mật khẩu mặc định | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| **Quản Trị Viên (Admin)** | `vxyen0801` | *Đã mã hóa Argon2id* | Toàn quyền quản trị vận hành (`/portal-admin/`) |
+| **Khách Hàng (User)** | `0352313548` (hoặc `user`) | *Đã mã hóa Argon2id* | Đặt sân, xem lịch sử đơn, tích lũy điểm thưởng |
+
+---
+
+## 🧪 Kiểm Thử & Nghiệm Thu Hệ Thống
+
+Trước khi xuất bản hoặc triển khai các bản cập nhật mới, luôn chạy bộ công cụ kiểm thử tự động:
+
+```bash
+# 1. Kiểm thử cú pháp & tính toàn vẹn 11 file JavaScript:
+node scripts/verify_all_local.js
+
+# 2. Kiểm thử an toàn bảo mật nội bộ (Rate Limit, SQLi, IDOR, RBAC):
+php scripts/security_penetration_test.php
+
+# 3. Kiểm thử tấn công tự động trực tiếp trên máy chủ Production:
+node scripts/run_production_pentest.js
 ```
 
-1. **Khách hàng duyệt sân:** Tìm kiếm theo loại sân (sân 5, sân 7, sân 11) và ngày thi đấu. Dữ liệu sân nạp bất đồng bộ qua `fetch()`.
-2. **Chọn khung giờ & dịch vụ:** Ma trận giờ trực quan tự động đánh dấu slot "Trống", "Đang đá" hoặc "Đã đặt". Tùy chọn mua nước, áo bib, thuê trọng tài và áp mã ưu đãi (ví dụ: `WELCOME10`, `GIAM50K`).
-3. **Thanh toán cọc 30%:** Trang `checkout.html` hiển thị mã QR và thông tin chuyển khoản Vietcombank.
-4. **Xác nhận qua Fetch POST:** Khi bấm xác nhận, hệ thống gọi `fetch()` gửi payload đơn đặt sân lên API endpoint.
-5. **Nhận vé check-in:** Chuyển sang `success.html` với mã đặt sân chuẩn SePay (`ASFF` Sân 5, `ASFS` Sân 7, `ASFE` Sân 11) và mã QR check-in tại quầy trước giờ thi đấu.
-6. **Quản trị viên (Admin):** Theo dõi lịch đặt trong `admin.html`, lọc theo ngày, đổi trạng thái sân hoặc xác nhận cọc.
-
 ---
 
-## 🛠️ Công Nghệ Sử Dụng
+## 📜 Giấy Phép & Bản Quyền
 
-* **Giao diện (Frontend):** HTML5 Semantics, Tailwind CSS (qua CDN), Font Plus Jakarta Sans & Inter.
-* **Tách Module CSS:** `css/base.css`, `css/components.css`, `css/booking.css`, `css/admin.css`, `css/print.css`.
-* **Giao thức Fetch API (async/await):**
-  * Fetch dữ liệu sân bóng từ tệp `data/data.json`.
-  * Fetch thời tiết thực tế tại sân Mỹ Đình từ Open-Meteo API (`https://api.open-meteo.com/v1/forecast`).
-  * Fetch danh sách ngân hàng hợp lệ từ VietQR Open API (`https://api.vietqr.io/v2/banks`).
-  * Fetch POST gửi dữ liệu đơn đặt sân.
-* **Vector Graphic:** Sơ đồ mặt cỏ sân bóng FIFA, vạch sân bóng, icon hệ thống vẽ hoàn toàn bằng SVG thuần (không lo vỡ hình, tải siêu tốc, không cần asset ảnh nặng).
-* **Quản trị State & Dữ liệu:** Vanilla JavaScript (ES6+), tích hợp sẵn `SanBongDB` tự động khởi tạo và đồng bộ trạng thái qua `localStorage`.
-
----
-
-## 💡 Hướng Dẫn Dành Cho Thành Viên Nhóm (Code Tiếp)
-
-1. **Sử dụng Fetch API (`js/api.js`):**
-   Bạn có thể gọi các hàm bất đồng bộ qua `window.SanBongApp.SanBongAPI`:
-   ```javascript
-   // 1. Tải danh sách sân bằng Fetch API:
-   const pitches = await window.SanBongApp.SanBongAPI.getPitches();
-
-   // 2. Tải thời tiết sân bóng hiện tại bằng Fetch API:
-   const weather = await window.SanBongApp.SanBongAPI.fetchWeather();
-   console.log(weather.temperature, weather.condition);
-
-   // 3. Gửi đơn đặt sân qua Fetch POST:
-   await window.SanBongApp.SanBongAPI.postBooking(newBookingData);
-   ```
-
-2. **Truy xuất cơ sở dữ liệu nội bộ (`SanBongDB`):**
-   ```javascript
-   const slots = window.SanBongApp.SanBongDB.getSlotsWithStatus('P7-A', '2026-11-08');
-   ```
-
-3. **Quy tắc điều hướng (Smart Link Routing):**
-   - Hàm `window.SanBongApp.getRelativePath(target)` trong `js/app.js` tự động tính đường dẫn tương đối tùy thuộc vào vị trí người dùng đang ở root (`index.html`) hay trong thư mục con (`html/*.html`).
-   - Các trang bên trong `html/` khi liên kết với nhau chỉ cần gọi trực tiếp tên tệp (ví dụ: `href="booking.html"`) và quay về trang chủ bằng `href="../index.html"`.
+© 2026 **Sân Bóng Pro**. Bản quyền hệ thống thuộc về đơn vị quản lý và phát triển Sân Bóng Pro. Toàn bộ mã nguồn được xây dựng hướng tới hiệu năng cao, bảo mật tối ưu và khả năng mở rộng bền vững.
