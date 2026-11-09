@@ -34,7 +34,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v29">
+  <link rel="stylesheet" href="../css/style.css?v=20261110_v30">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -391,11 +391,11 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261110_v29"></script>
-  <script src="/js/app.js?v=20261110_v29"></script>
-  <script src="/js/api.js?v=20261110_v29"></script>
-  <script src="/js/vendor/jsqr.min.js?v=20261110_v29"></script>
-  <script src="/js/admin.js?v=20261110_v29"></script>
+  <script src="/js/data.js?v=20261110_v30"></script>
+  <script src="/js/app.js?v=20261110_v30"></script>
+  <script src="/js/api.js?v=20261110_v30"></script>
+  <script src="/js/vendor/jsqr.min.js?v=20261110_v30"></script>
+  <script src="/js/admin.js?v=20261110_v30"></script>
 </body>
 </html>
 

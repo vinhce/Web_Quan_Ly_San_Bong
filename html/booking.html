@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v29">
+  <link rel="stylesheet" href="../css/style.css?v=20261110_v30">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -163,16 +163,40 @@
             </span>
           </div>
 
-          <div class="p-3 rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] text-xs text-[#15803D] flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="text-base">💧</span>
-              <span><strong>Mẹo Hội viên:</strong> Bạn có thể dùng <strong>100 điểm tích lũy = 1 chai nước suối</strong> khi chuyển khoản cọc.</span>
+          <!-- Banner thông báo khi chọn Gói Tháng: không cần gọi thêm dịch vụ vì đã có sẵn quà tặng -->
+          <div id="services-package-included-banner" class="hidden p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-500 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🎁</span>
+                <span class="font-heading font-extrabold text-sm text-[#15803D] uppercase tracking-wide" id="services-package-banner-title">
+                  Đã bao gồm trọn gói dịch vụ theo gói 3 tháng
+                </span>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-[#16A34A] text-white font-extrabold text-[10px] uppercase shadow-2xs">0Đ MIỄN PHÍ</span>
             </div>
-            <span class="text-[11px] text-[#64748B] hidden sm:inline">(Điểm thưởng trận này dùng ở trận sau)</span>
+            <p class="text-xs text-slate-700 font-medium leading-relaxed" id="services-package-banner-desc">
+              Gói 3 Tháng của bạn đã được <b>TẶNG SẴN 2 THÙNG NƯỚC SUỐI (48 CHAI) + 1 TRỌNG TÀI BẮT CHÍNH</b> cho mỗi trận thi đấu. Bạn không cần chọn thêm dịch vụ ở dưới trừ khi muốn gọi thêm ngoài gói!
+            </p>
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-emerald-200 text-[11px]">
+              <span class="text-emerald-800 font-bold">✓ Tiết kiệm 390.000đ dịch vụ mỗi trận thi đấu</span>
+              <button type="button" onclick="toggleExtraServicesContainer()" class="text-[#16A34A] hover:underline font-bold flex items-center gap-1 cursor-pointer">
+                <span>➕</span> <span id="toggle-extra-services-text">Gọi thêm dịch vụ phát sinh khác ngoài gói</span>
+              </button>
+            </div>
           </div>
 
-          <div id="services-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            
+          <div id="extra-services-wrapper">
+            <div class="p-3 rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] text-xs text-[#15803D] flex items-center justify-between mb-3.5">
+              <div class="flex items-center gap-2">
+                <span class="text-base">💧</span>
+                <span><strong>Mẹo Hội viên:</strong> Bạn có thể dùng <strong>100 điểm tích lũy = 1 chai nước suối</strong> khi chuyển khoản cọc.</span>
+              </div>
+              <span class="text-[11px] text-[#64748B] hidden sm:inline">(Điểm thưởng trận này dùng ở trận sau)</span>
+            </div>
+
+            <div id="services-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              
+            </div>
           </div>
         </div>
 
@@ -292,9 +316,9 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="/js/data.js?v=20261110_v29"></script>
-  <script src="/js/app.js?v=20261110_v29"></script>
-  <script src="/js/api.js?v=20261110_v29"></script>
-  <script src="/js/booking.js?v=20261110_v29"></script>
+  <script src="/js/data.js?v=20261110_v30"></script>
+  <script src="/js/app.js?v=20261110_v30"></script>
+  <script src="/js/api.js?v=20261110_v30"></script>
+  <script src="/js/booking.js?v=20261110_v30"></script>
 </body>
 </html>

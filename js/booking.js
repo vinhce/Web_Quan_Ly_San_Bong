@@ -6,6 +6,7 @@ let selectedSlotId = 'S08';
 let bookingMode = 'single';
 let monthlyWeeks = 12;
 let monthlyDates = [];
+let extraServicesCollapsed = false;
 let appliedServices = [
   { id: 'SRV-WATER', quantity: 4 },
   { id: 'SRV-BIB', quantity: 2 }
@@ -22,13 +23,19 @@ function setBookingMode(mode) {
     if (monthlyBtn) monthlyBtn.className = 'px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
     if (singleBtn) singleBtn.className = 'px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
     if (panel) panel.classList.remove('hidden');
+    // Khi đặt gói: Không cần gọi thêm dịch vụ vì gói đã bao gồm quà tặng trọn gói
+    appliedServices = [];
+    extraServicesCollapsed = true;
     updateMonthlyPackage();
   } else {
     if (singleBtn) singleBtn.className = 'px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
     if (monthlyBtn) monthlyBtn.className = 'px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
     if (panel) panel.classList.add('hidden');
     monthlyDates = [];
+    extraServicesCollapsed = false;
   }
+  updatePackageServicesUI();
+  renderServices();
   updateBillSummary();
 }
 window.setBookingMode = setBookingMode;
@@ -107,6 +114,8 @@ function updateMonthlyPackage() {
   }
   monthlyDates = dates;
 
+  updatePackageServicesUI();
+  renderServices();
   if (preview) {
     preview.innerHTML = dates.map(item => `
       <span class="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 ${
@@ -123,6 +132,51 @@ function updateMonthlyPackage() {
   updateBillSummary();
 }
 window.updateMonthlyPackage = updateMonthlyPackage;
+
+
+function updatePackageServicesUI() {
+  const banner = document.getElementById('services-package-included-banner');
+  const bannerTitle = document.getElementById('services-package-banner-title');
+  const bannerDesc = document.getElementById('services-package-banner-desc');
+  const wrapper = document.getElementById('extra-services-wrapper');
+  const toggleBtnText = document.getElementById('toggle-extra-services-text');
+
+  if (bookingMode === 'monthly') {
+    if (banner) {
+      banner.classList.remove('hidden');
+      if (monthlyWeeks >= 12) {
+        if (bannerTitle) bannerTitle.textContent = 'ĐÃ BAO GỒM TRỌN GÓI: 2 THÙNG NƯỚC + 1 TRỌNG TÀI MỖI TRẬN';
+        if (bannerDesc) bannerDesc.innerHTML = 'Gói 3 Tháng của bạn đã được <b>TẶNG SẴN 2 THÙNG NƯỚC (48 CHAI) + 1 TRỌNG TÀI CHUYÊN NGHIỆP</b> cho mỗi trận thi đấu (0đ). Bạn không cần chọn thêm dịch vụ ở dưới!';
+      } else if (monthlyWeeks >= 8) {
+        if (bannerTitle) bannerTitle.textContent = 'ĐÃ BAO GỒM TRỌN GÓI: 1 THÙNG NƯỚC + 1 BỘ ÁO BIB MỖI TRẬN';
+        if (bannerDesc) bannerDesc.innerHTML = 'Gói 2 Tháng của bạn đã được <b>TẶNG SẴN 1 THÙNG NƯỚC (24 CHAI) + 1 BỘ ÁO BIB</b> cho mỗi trận thi đấu (0đ).';
+      } else {
+        if (bannerTitle) bannerTitle.textContent = 'ĐÃ BAO GỒM TRỌN GÓI: 1 LỐC NƯỚC + MIỄN PHÍ BÓNG ĐÁ MỖI TRẬN';
+        if (bannerDesc) bannerDesc.innerHTML = 'Gói 1 Tháng của bạn đã được <b>TẶNG SẴN 1 LỐC NƯỚC (12 CHAI) + BÓNG ĐÁ</b> cho mỗi trận thi đấu (0đ).';
+      }
+    }
+
+    if (wrapper) {
+      if (extraServicesCollapsed) {
+        wrapper.classList.add('hidden');
+        if (toggleBtnText) toggleBtnText.textContent = 'Gọi thêm dịch vụ phát sinh khác ngoài gói';
+      } else {
+        wrapper.classList.remove('hidden');
+        if (toggleBtnText) toggleBtnText.textContent = 'Thu gọn danh sách dịch vụ ngoài gói';
+      }
+    }
+  } else {
+    if (banner) banner.classList.add('hidden');
+    if (wrapper) wrapper.classList.remove('hidden');
+  }
+}
+window.updatePackageServicesUI = updatePackageServicesUI;
+
+function toggleExtraServicesContainer() {
+  extraServicesCollapsed = !extraServicesCollapsed;
+  updatePackageServicesUI();
+}
+window.toggleExtraServicesContainer = toggleExtraServicesContainer;
 
 function renderVoucherQuickList() {
   const container = document.getElementById('voucher-quick-list');
@@ -420,11 +474,28 @@ function renderServices() {
     const existing = appliedServices.find(s => s.id === srv.id);
     const qty = existing ? existing.quantity : 0;
 
+    const isPkg = bookingMode === 'monthly';
+    let pkgGiftBadge = '';
+    if (isPkg) {
+      if (monthlyWeeks >= 12) {
+        if (srv.id === 'SRV-WATER') pkgGiftBadge = '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-300">🎁 Đã tặng sẵn 2 thùng/trận</span>';
+        else if (srv.id === 'SRV-REF') pkgGiftBadge = '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-300">🎁 Đã tặng sẵn 1 trọng tài/trận</span>';
+      } else if (monthlyWeeks >= 8) {
+        if (srv.id === 'SRV-WATER') pkgGiftBadge = '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-300">🎁 Đã tặng sẵn 1 thùng/trận</span>';
+        else if (srv.id === 'SRV-BIB') pkgGiftBadge = '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-300">🎁 Đã tặng sẵn 1 bộ/trận</span>';
+      } else if (monthlyWeeks >= 4) {
+        if (srv.id === 'SRV-BALL') pkgGiftBadge = '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-300">🎁 Đã tặng miễn phí bóng/trận</span>';
+      }
+    }
+
     return `
       <div class="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between">
         <div>
-          <div class="text-sm font-bold text-[#0F172A]">${srv.name}</div>
-          <div class="text-xs text-[#16A34A] font-semibold">${window.SanBongApp.formatVND(srv.price)} / ${srv.unit}</div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm font-bold text-[#0F172A]">${srv.name}</span>
+            ${pkgGiftBadge}
+          </div>
+          <div class="text-xs text-[#16A34A] font-semibold">${window.SanBongApp.formatVND(srv.price)} / ${srv.unit} ${pkgGiftBadge ? '<span class="text-slate-500 font-normal">(Giá nếu gọi thêm ngoài gói)</span>' : ''}</div>
         </div>
         <div class="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded-lg p-1">
           <button onclick="changeServiceQty('${srv.id}', -1)" class="w-6 h-6 rounded bg-[#F1F5F9] hover:bg-[#E2E8F0] flex items-center justify-center font-bold text-xs">−</button>
