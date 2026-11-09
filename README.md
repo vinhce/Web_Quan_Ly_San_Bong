@@ -48,39 +48,6 @@
 
 ---
 
-## Kiến Trúc Bảo Mật & Hạ Tầng (OWASP Web Security Standard)
-
-Hệ thống tuân thủ nghiêm ngặt chuẩn an toàn thông tin ứng dụng web theo đặc tả `security-web.md`:
-
-```mermaid
-flowchart TD
-    Client["Trình duyệt Client"] -->|HTTPS / HSTS| CDN["OneShield Bot Protection & Apache WAF"]
-    CDN -->|Rewrite Clean URLs| Router[".htaccess Security Controller"]
-    Router -->|RBAC Session Check| Admin["Portal Admin (index.php)"]
-    Router -->|Input Validation & Rate Limit| API["PHP 8.1 REST API"]
-    API -->|Argon2id & Prepared Statements| DB[("MySQL Database (7 Tables)")]
-    API -->|Webhook Key Verification| SePay["Cổng SePay Bank Webhook"]
-```
-
-1. **Xác thực & Mã hóa:** Mật khẩu lưu trữ băm bằng thuật toán **Argon2id** (`PASSWORD_ARGON2ID`). Không lưu mật khẩu dạng plaintext.
-2. **Kiểm soát phiên làm việc (Session RBAC):** Cookie phiên gắn đủ 3 cờ `HttpOnly`, `Secure`, `SameSite=Lax`. Hết hạn phiên 2 giờ (7200s), tự động hủy và đổi `session_id` khi đăng nhập.
-3. **Bảo vệ cổng Quản trị:** Phân hệ `/portal-admin/` kiểm tra quyền `role === 'admin'` ở tầng máy chủ PHP; người dùng chưa đăng nhập bị chuyển hướng 302 về trang đăng nhập.
-4. **Phòng chống tấn công:**
-   - **Chống SQL Injection:** 100% câu lệnh qua PDO Prepared Statements với tham số hóa.
-   - **Chống IDOR:** Kiểm tra quyền sở hữu đơn đặt sân ở máy chủ; khách vãng lai bị che mờ số điện thoại và email.
-   - **Chống Brute Force:** Bộ lọc Rate Limiting chặn tạm 15 phút (`HTTP 429`) khi nhập sai quá 5 lần.
-   - **Chống Sửa giá (Price Tampering):** Máy chủ tự tính toán lại toàn bộ chi phí theo bảng giá trong CSDL, không phụ thuộc vào dữ liệu gửi từ trình duyệt.
-   - **Chống Giả mạo Webhook:** Webhook SePay bắt buộc xác thực `SEPAY_WEBHOOK_KEY` qua so sánh chuỗi an toàn `hash_equals` hoặc đối chiếu giao dịch gốc.
-5. **Security Headers trên Trình duyệt:**
-   - `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
-   - `Content-Security-Policy: default-src 'self' ...`
-   - `X-Content-Type-Options: nosniff`
-   - `X-Frame-Options: SAMEORIGIN`
-   - `Referrer-Policy: strict-origin-when-cross-origin`
-   - `Permissions-Policy: geolocation=(), camera=(), microphone=()`
-6. **Bảo vệ tệp tin nhạy cảm:** Tệp cấu hình `.env` được đặt ngoài thư mục `public_html`. Tệp `.git`, `.json`, `.log`, `.bak`, `.sql` bị chặn truy cập trực tiếp bằng mã lỗi `403 Forbidden`.
-
----
 
 ## Cấu Trúc Mã Nguồn Chuẩn Hóa
 
