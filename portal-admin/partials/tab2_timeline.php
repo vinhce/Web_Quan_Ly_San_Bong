@@ -20,7 +20,7 @@
         <div class="ui-card p-5 overflow-x-auto">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-3 text-xs">
             <span class="font-bold text-[#0F172A]">Sơ đồ Timeline các sân hoạt động trong ngày</span>
-            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[#15803D] font-semibold">💡 Bấm vào bất kỳ ca đá nào trên Timeline để mở bảng Điều Hành Ca Đá & Thanh Toán bên dưới</span>
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[#15803D] font-semibold">💡 Bấm vào ca đá trên Timeline để chuyển sang màn hình Điều Hành Ca Đá & Thanh Toán</span>
           </div>
           <div class="min-w-[900px]">
             <!-- Timeline Hours Header 05:30 -> 22:30 -->
@@ -36,8 +36,10 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- TÍCH HỢP TRỰC TIẾP: ĐIỀU HÀNH CA ĐÁ & THANH TOÁN NGAY TẠI LỊCH ĐẶT SÂN TIMELINE -->
+      <!-- TAB 2B: ĐIỀU HÀNH CA ĐÁ & THANH TOÁN (Màn hình riêng ngay dưới mục 2 Timeline) -->
+      <div id="tab-content-inplay-control" class="space-y-4 hidden">
         <div id="timeline-inplay-workspace" class="rounded-2xl shadow-sm overflow-hidden border border-slate-200">
           <!-- Header nổi bật -->
           <div class="bg-[#0F172A] text-white p-5 rounded-t-2xl flex flex-wrap items-center justify-between gap-3">
@@ -45,7 +47,7 @@
               <div class="w-10 h-10 rounded-xl bg-[#16A34A] text-white flex items-center justify-center text-lg font-extrabold shrink-0">⚽</div>
               <div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <h3 class="font-heading font-extrabold text-sm sm:text-base">Điều Hành Ca Đá & Thanh Toán (Tích hợp trực tiếp tại Lịch Đặt Sân)</h3>
+                  <h3 class="font-heading font-extrabold text-sm sm:text-base">Điều Hành Ca Đá & Thanh Toán</h3>
                   <span id="inplay-modal-code" class="px-2 py-0.5 rounded bg-slate-800 text-emerald-400 font-mono text-xs font-bold">#---</span>
                   <span id="inplay-modal-status" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold">Đang đá</span>
                 </div>
@@ -62,7 +64,7 @@
           </div>
 
           <!-- Thanh danh sách thẻ chọn nhanh các đơn đặt sân -->
-          <div id="inline-inplay-quick-cards" class="px-5 py-3 bg-slate-100 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs"></div>
+          <div id="inline-inplay-quick-cards" class="px-5 py-3 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center gap-2 text-xs"></div>
 
           <!-- Phần thân 2 cột -->
           <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 bg-white rounded-b-2xl border border-t-0 border-slate-200">

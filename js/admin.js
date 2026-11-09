@@ -92,7 +92,7 @@ window.filterOverviewBookings = filterOverviewBookings;
 
 function switchAdminTab(moduleKey) {
   activeModule = moduleKey;
-  const allModules = ['overview', 'timeline', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'reports', 'settings'];
+  const allModules = ['overview', 'timeline', 'inplay-control', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'reports', 'settings'];
 
   allModules.forEach(m => {
     const btn = document.getElementById(`nav-${m}`);
@@ -108,7 +108,8 @@ function switchAdminTab(moduleKey) {
 
   const titleMap = {
     'overview': '1. Tổng quan KPI & Chỉ số tài chính',
-    'timeline': '2. Lịch đặt sân Timeline & Điều hành ca đá',
+    'timeline': '2. Lịch đặt sân Timeline Gantt trực quan',
+    'inplay-control': 'Điều Hành Ca Đá & Thanh Toán',
     'quick-booking': '3. Đặt sân tại quầy (Tạo nhanh đơn)',
     'pitches': '4. Quản lý hệ thống sân bóng & Bật/Tắt bảo trì',
     'pricing': '5. Cấu hình bảng giá niêm yết & Voucher',
@@ -122,13 +123,11 @@ function switchAdminTab(moduleKey) {
 
   if (moduleKey === 'timeline') {
     renderTimelineGantt();
-    if (!activeInPlayCode) {
-      const db = window.SanBongApp?.SanBongDB;
-      const firstB = db ? db.getAllBookings()[0] : null;
-      if (firstB) populateInPlayWorkspace(firstB.code);
-    } else {
-      populateInPlayWorkspace(activeInPlayCode);
-    }
+  }
+  if (moduleKey === 'inplay-control') {
+    const db = window.SanBongApp?.SanBongDB;
+    const firstB = db ? db.getAllBookings()[0] : null;
+    populateInPlayWorkspace(activeInPlayCode || (firstB ? firstB.code : ''));
   }
   if (moduleKey === 'pricing') renderAdminVouchers();
   if (moduleKey === 'customers') renderAdminCustomers();
@@ -1321,10 +1320,10 @@ function renderInlineInPlaySelector() {
       else if (st === 'Đã xác nhận') badgeCls = 'bg-emerald-100 text-emerald-700';
       else if (st === 'Khách chưa đến' || st === 'Đã hủy') badgeCls = 'bg-red-100 text-red-700';
       return `
-        <button type="button" onclick="openInPlaySection('${b.code}')" class="px-3 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${isSel ? 'bg-emerald-50 border-[#16A34A] ring-2 ring-[#16A34A]/20 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}">
-          <span class="font-mono font-bold text-xs text-[#0F172A]">#${b.code}</span>
-          <span class="text-xs font-semibold text-[#334155] truncate max-w-[130px]">${escapeSearchHTML(b.customerName)}</span>
-          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeCls}">${escapeSearchHTML(st)}</span>
+        <button type="button" onclick="openInPlaySection('${b.code}')" class="px-3 py-1.5 rounded-xl border text-left transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 ${isSel ? 'bg-emerald-50 border-[#16A34A] ring-2 ring-[#16A34A]/20 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}">
+          <span class="font-mono font-bold text-xs text-[#0F172A] whitespace-nowrap">#${b.code}</span>
+          <span class="text-xs font-semibold text-[#334155] truncate max-w-[140px]">${escapeSearchHTML(b.customerName)}</span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap shrink-0 ${badgeCls}">${escapeSearchHTML(st)}</span>
         </button>
       `;
     }).join('');
@@ -1398,8 +1397,8 @@ function openInPlaySection(code, focusSection = '') {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
-  if (activeModule !== 'timeline') {
-    switchAdminTab('timeline');
+  if (activeModule !== 'inplay-control') {
+    switchAdminTab('inplay-control');
   }
 
   const booking = populateInPlayWorkspace(code);
@@ -1413,11 +1412,7 @@ function openInPlaySection(code, focusSection = '') {
   const workspace = document.getElementById('timeline-inplay-workspace');
   if (workspace) {
     workspace.classList.remove('hidden');
-    workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    workspace.classList.add('ring-4', 'ring-emerald-400/50', 'transition-all');
-    setTimeout(() => {
-      workspace.classList.remove('ring-4', 'ring-emerald-400/50');
-    }, 1400);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   } else {
     const modal = document.getElementById('inplay-modal') || document.getElementById('inplay-manage-modal');
     if (modal) {
