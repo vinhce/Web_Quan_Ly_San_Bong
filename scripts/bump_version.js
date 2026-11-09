@@ -16,8 +16,8 @@ const files = [
 for (const file of files) {
   if (!fs.existsSync(file)) continue;
   let c = fs.readFileSync(file, 'utf8');
-  c = c.replace(/\?v=20261109_v\d+/g, '?v=20261109_v22');
+  c = c.replace(/\?v=20261109_v\d+/g, '?v=20261109_v23');
   fs.writeFileSync(file, c, 'utf8');
   console.log('Bumped version in:', file);
 }
-console.log('Done bumping to v22!');
+console.log('Done bumping to v23!');
