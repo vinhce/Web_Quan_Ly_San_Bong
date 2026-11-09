@@ -164,7 +164,7 @@ window.filterOverviewBookings = filterOverviewBookings;
 
 function switchAdminTab(moduleKey) {
   activeModule = moduleKey;
-  const allModules = ['overview', 'timeline', 'inplay-control', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'reports', 'settings'];
+  const allModules = ['overview', 'timeline', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'reports', 'settings'];
 
   allModules.forEach(m => {
     const btn = document.getElementById(`nav-${m}`);
@@ -181,7 +181,6 @@ function switchAdminTab(moduleKey) {
   const titleMap = {
     'overview': '1. Tổng quan KPI & Chỉ số tài chính',
     'timeline': '2. Lịch đặt sân Timeline Gantt trực quan',
-    'inplay-control': 'Điều Hành Ca Đá & Thanh Toán',
     'quick-booking': '3. Đặt sân tại quầy (Tạo nhanh đơn)',
     'pitches': '4. Quản lý hệ thống sân bóng & Bật/Tắt bảo trì',
     'pricing': '5. Cấu hình bảng giá niêm yết & Voucher',
@@ -195,11 +194,6 @@ function switchAdminTab(moduleKey) {
 
   if (moduleKey === 'timeline') {
     renderTimelineGantt();
-  }
-  if (moduleKey === 'inplay-control') {
-    const db = window.SanBongApp?.SanBongDB;
-    const firstB = db ? db.getAllBookings()[0] : null;
-    populateInPlayWorkspace(activeInPlayCode || (firstB ? firstB.code : ''));
   }
   if (moduleKey === 'pricing') renderAdminVouchers();
   if (moduleKey === 'customers') renderAdminCustomers();
