@@ -895,7 +895,7 @@ function handleLogout() {
           </p>
           <div class="flex items-center gap-3 text-[#94A3B8] text-[13px]">
             ${Icons.phone}
-            <span>Hotline: 0352 313 548 (24/7)</span>
+            <a href="tel:0352313548" class="hover:text-emerald-400 font-bold transition-colors">Hotline: 0352 313 548 (24/7)</a>
           </div>
         </div>
 
@@ -936,6 +936,16 @@ function handleLogout() {
           <a href="#" class="hover:text-white">Điều khoản sử dụng</a>
           <a href="#" class="hover:text-white">Chính sách bảo mật</a>
         </div>
+      </div>
+
+      <!-- FLOATING QUICK ACTIONS (ZALO & HOTLINE) -->
+      <div class="fixed right-4 bottom-5 z-40 flex flex-col gap-2.5">
+        <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="w-12 h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform font-bold text-xs" title="Chat Zalo hỗ trợ 24/7">
+          <span class="text-xs font-black tracking-tighter">Zalo</span>
+        </a>
+        <a href="tel:0352313548" class="w-12 h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-lg" title="Gọi Hotline đặt sân 0352 313 548">
+          <span>📞</span>
+        </a>
       </div>
     </footer>`;
   }

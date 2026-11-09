@@ -15,7 +15,7 @@
               </div>
               <div>
                 <label class="block font-bold text-[#475569] mb-1">Số điện thoại liên hệ *</label>
-                <input type="tel" id="admin-cust-phone" required placeholder="0988 123 456" class="input-field w-full font-semibold">
+                <input type="tel" id="admin-cust-phone" required placeholder="0352 313 548" class="input-field w-full font-semibold">
               </div>
             </div>
 
