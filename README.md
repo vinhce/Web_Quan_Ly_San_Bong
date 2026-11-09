@@ -1,15 +1,15 @@
-# ⚽ Sân Bóng Pro — Hệ Thống Quản Lý & Đặt Sân Bóng Đá Trực Tuyến
+# Sân Bóng Pro — Hệ Thống Quản Lý & Đặt Sân Bóng Đá Trực Tuyến
 
 > **Hệ thống đặt sân bóng đá tự động, chuẩn hóa giao diện trực quan chuẩn FIFA, tích hợp thanh toán VietQR SePay 1 chạm và phân hệ quản trị vận hành toàn diện.**
 
 * **Domain chính thức (Production Live):** [https://fxzioyr.id.vn](https://fxzioyr.id.vn)
 * **Kho lưu trữ GitHub:** [github.com/vinhce/Web_Quan_Ly_San_Bong](https://github.com/vinhce/Web_Quan_Ly_San_Bong)
-* **Trạng thái Go-Live:** ✅ **SẴN SÀNG VẬN HÀNH THẬT 100% (PRODUCTION READY - QA PASS)**
+* **Trạng thái Go-Live:** **SẴN SÀNG VẬN HÀNH THẬT 100% (PRODUCTION READY - QA PASS)**
 * **Cập nhật:** 09/11/2026 (Phiên bản Go-Live chính thức)
 
 ---
 
-## 📍 Thông Tin Cơ Sở & Liên Hệ
+## Thông Tin Cơ Sở & Liên Hệ
 
 * **Địa chỉ cơ sở:** Khu liên hợp Thể thao Pro, Số 18 Đường Lê Đức Thọ, Phường Mỹ Đình, Quận Nam Từ Liêm, TP. Hà Nội.
 * **Hotline hỗ trợ 24/7:** **[0352 313 548](tel:0352313548)**
@@ -23,7 +23,7 @@
 
 ---
 
-## 🌟 Tính Năng Nổi Bật
+## Tính Năng Nổi Bật
 
 ### 1. Dành cho Khách hàng (Customer Experience)
 - **Xem & Tìm sân trực quan:** Phân loại sân 5, sân 7, sân 11 người chuẩn FIFA; hiển thị tình trạng mặt cỏ, kích thước và biểu đồ giá linh hoạt.
@@ -48,7 +48,7 @@
 
 ---
 
-## 🔒 Kiến Trúc Bảo Mật & Hạ Tầng (OWASP Web Security Standard)
+## Kiến Trúc Bảo Mật & Hạ Tầng (OWASP Web Security Standard)
 
 Hệ thống tuân thủ nghiêm ngặt chuẩn an toàn thông tin ứng dụng web theo đặc tả `security-web.md`:
 
@@ -82,7 +82,7 @@ flowchart TD
 
 ---
 
-## 📁 Cấu Trúc Mã Nguồn Chuẩn Hóa
+## Cấu Trúc Mã Nguồn Chuẩn Hóa
 
 ```text
 Web_Quan_Ly_San_Bong/
@@ -159,7 +159,7 @@ Web_Quan_Ly_San_Bong/
 
 ---
 
-## 🚀 Hướng Dẫn Cài Đặt & Triển Khai
+## Hướng Dẫn Cài Đặt & Triển Khai
 
 ### 1. Triển khai Cục bộ (Local Development)
 Yêu cầu: Laragon / XAMPP với PHP 8.1+ và MySQL.
@@ -188,7 +188,7 @@ Yêu cầu: Laragon / XAMPP với PHP 8.1+ và MySQL.
 
 ---
 
-## 🧪 Kiểm Thử & Nghiệm Thu Hệ Thống
+## Kiểm Thử & Nghiệm Thu Hệ Thống
 
 Trước khi xuất bản hoặc triển khai các bản cập nhật mới, luôn chạy bộ công cụ kiểm thử tự động:
 
@@ -205,6 +205,6 @@ node scripts/run_production_pentest.js
 
 ---
 
-## 📜 Giấy Phép & Bản Quyền
+## Giấy Phép & Bản Quyền
 
 © 2026 **Sân Bóng Pro**. Bản quyền hệ thống thuộc về đơn vị quản lý và phát triển Sân Bóng Pro. Toàn bộ mã nguồn được xây dựng hướng tới hiệu năng cao, bảo mật tối ưu và khả năng mở rộng bền vững.
