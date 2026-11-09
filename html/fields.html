@@ -19,7 +19,7 @@
 
   <!-- BREADCRUMB & HEADER -->
   <div class="bg-white border-b border-[#E2E8F0]">
-    <div class="max-w-7xl mx-auto px-4 md:px-8 py-5">
+    <div class="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
       <div class="text-xs text-[#64748B] mb-1.5 flex items-center gap-1.5">
         <a href="/" class="hover:text-[#16A34A]">Trang chủ</a>
         <span>/</span>
@@ -43,11 +43,11 @@
   </div>
 
   <!-- MAIN CONTAINER (FILTER + GRID) -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+  <main class="flex-1 max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="flex flex-col lg:flex-row gap-6 xl:gap-8 items-start">
 
       <!-- LEFT FILTER SIDEBAR (4 Cols) -->
-      <aside class="lg:col-span-4 ui-card p-5 space-y-6 shrink-0 sticky top-24">
+      <aside class="w-full lg:w-72 xl:w-80 shrink-0 ui-card p-5 space-y-6 sticky top-24">
         <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
           <h3 class="font-heading font-bold text-base text-[#0F172A] flex items-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -121,8 +121,8 @@
       </aside>
 
       <!-- RIGHT PITCHES GRID (8 Cols) -->
-      <div class="lg:col-span-8 space-y-6">
-        <div id="pitches-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="flex-1 min-w-0 space-y-6">
+        <div id="pitches-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 xl:gap-6">
           <!-- Rendered dynamically -->
         </div>
 
