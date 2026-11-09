@@ -34,7 +34,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v14">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
@@ -71,10 +71,10 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v14"></script>
-  <script src="/js/app.js?v=20261109_v14"></script>
-  <script src="/js/api.js?v=20261109_v14"></script>
-  <script src="/js/admin.js?v=20261109_v14"></script>
+  <script src="/js/data.js?v=20261109_v15"></script>
+  <script src="/js/app.js?v=20261109_v15"></script>
+  <script src="/js/api.js?v=20261109_v15"></script>
+  <script src="/js/admin.js?v=20261109_v15"></script>
 </body>
 </html>
 

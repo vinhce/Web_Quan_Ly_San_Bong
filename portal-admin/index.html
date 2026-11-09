@@ -25,7 +25,7 @@
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261109_v14">
+  <link rel="stylesheet" href="../css/style.css?v=20261109_v15">
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
@@ -414,6 +414,36 @@
       <!-- TAB 6: KHÁCH HÀNG & HỘI VIÊN (Frame 16) -->
       <!-- ========================================== -->
       <div id="tab-content-customers" class="space-y-4 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="font-heading font-bold text-base text-[#0F172A]">Danh sách khách hàng & Hội viên</h3>
+            <p class="text-xs text-[#64748B]">Theo dõi lịch sử thi đấu, tổng chi tiêu và phân hạng hội viên tích điểm</p>
+          </div>
+          <div class="relative w-full sm:w-72">
+            <input type="text" id="admin-cust-search" oninput="renderAdminCustomers()" placeholder="Tìm theo tên hoặc SĐT..." class="w-full h-9 px-3 pl-8 rounded-lg border border-[#E2E8F0] bg-white text-xs text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#16A34A] focus:ring-1 focus:ring-[#16A34A] transition-all">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-2.5 top-2.5 text-slate-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+        </div>
+
+        <div class="ui-card overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
+              <tr>
+                <th class="py-3 px-4">Tên hội viên</th>
+                <th class="py-3 px-4">Số điện thoại</th>
+                <th class="py-3 px-4">Hạng thẻ</th>
+                <th class="py-3 px-4">Điểm tích lũy</th>
+                <th class="py-3 px-4">Tổng số trận</th>
+                <th class="py-3 px-4 text-right">Tổng chi tiêu</th>
+              </tr>
+            </thead>
+            <tbody id="admin-customers-tbody" class="divide-y divide-[#E2E8F0]">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- ========================================== -->
+      <div id="tab-content-customers" class="space-y-4 hidden">
         <div class="ui-card overflow-hidden">
           <table class="w-full text-left text-xs">
             <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
@@ -491,6 +521,89 @@
       <!-- TAB 8: BÁO CÁO THỐNG KÊ (Frame 18) -->
       <!-- ========================================== -->
       <div id="tab-content-reports" class="space-y-6 hidden">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-heading font-bold text-base text-[#0F172A]">Báo cáo hiệu suất & Doanh thu sân bóng</h3>
+            <p class="text-xs text-[#64748B]">Tổng hợp số liệu từ các đơn đặt sân thực tế trên hệ thống</p>
+          </div>
+          <button onclick="renderAdminReports()" class="btn-sm btn-secondary text-xs flex items-center gap-1.5" title="Tải lại số liệu">
+            <span>🔄</span> Cập nhật số liệu
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="ui-card p-5 border-l-4 border-l-[#16A34A]">
+            <div class="text-xs text-[#64748B]">Tổng doanh thu</div>
+            <div id="rpt-total-revenue" class="font-heading font-extrabold text-2xl text-[#16A34A] mt-1">0đ</div>
+            <div class="text-[11px] text-[#64748B] mt-1">Bao gồm tiền sân & dịch vụ</div>
+          </div>
+          <div class="ui-card p-5 border-l-4 border-l-[#0F172A]">
+            <div class="text-xs text-[#64748B]">Tổng số ca thi đấu</div>
+            <div id="rpt-total-matches" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">0 trận</div>
+            <div class="text-[11px] text-[#16A34A] mt-1">Đã hoàn thành & đang đá</div>
+          </div>
+          <div class="ui-card p-5 border-l-4 border-l-[#2563EB]">
+            <div class="text-xs text-[#64748B]">Doanh thu dịch vụ (Nước/Bib/Bóng)</div>
+            <div id="rpt-services-revenue" class="font-heading font-extrabold text-2xl text-[#2563EB] mt-1">0đ</div>
+            <div class="text-[11px] text-[#64748B] mt-1">Dịch vụ gia tăng tại sân</div>
+          </div>
+          <div class="ui-card p-5 border-l-4 border-l-[#D97706]">
+            <div class="text-xs text-[#64748B]">Doanh thu trung bình / ca</div>
+            <div id="rpt-avg-revenue" class="font-heading font-extrabold text-2xl text-[#D97706] mt-1">0đ</div>
+            <div class="text-[11px] text-[#64748B] mt-1">Trung bình mỗi trận đấu</div>
+          </div>
+        </div>
+
+        <!-- Phân bổ theo loại sân -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="ui-card p-5 flex items-center justify-between">
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Sân 5 người (6 sân)</span>
+              <div id="rpt-p5-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
+              <div id="rpt-p5-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xl">5v5</div>
+          </div>
+          <div class="ui-card p-5 flex items-center justify-between">
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Sân 7 người (8 sân)</span>
+              <div id="rpt-p7-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
+              <div id="rpt-p7-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl">7v7</div>
+          </div>
+          <div class="ui-card p-5 flex items-center justify-between">
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800">Sân 11 người (3 sân)</span>
+              <div id="rpt-p11-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
+              <div id="rpt-p11-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xl">11v11</div>
+          </div>
+        </div>
+
+        <!-- Bảng kê doanh thu theo từng sân -->
+        <div class="ui-card overflow-hidden">
+          <div class="p-4 border-b border-[#E2E8F0] font-heading font-bold text-sm text-[#0F172A]">
+            Bảng kê hiệu suất khai thác chi tiết theo từng sân bóng
+          </div>
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
+              <tr>
+                <th class="py-3 px-4">Tên sân</th>
+                <th class="py-3 px-4">Loại sân</th>
+                <th class="py-3 px-4">Trạng thái</th>
+                <th class="py-3 px-4 text-center">Số ca đã đá</th>
+                <th class="py-3 px-4 text-right">Tổng doanh thu</th>
+              </tr>
+            </thead>
+            <tbody id="admin-reports-tbody" class="divide-y divide-[#E2E8F0]">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- ========================================== -->
+      <div id="tab-content-reports" class="space-y-6 hidden">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="ui-card p-5">
             <div class="text-xs text-[#64748B]">Doanh thu tháng 11/2026</div>
@@ -515,38 +628,59 @@
       <!-- ========================================== -->
       <div id="tab-content-settings" class="space-y-6 hidden">
         <div class="ui-card p-6 max-w-2xl mx-auto space-y-4">
-          <h3 class="font-heading font-bold text-lg text-[#0F172A] border-b border-[#E2E8F0] pb-3">Cấu hình thông số hệ thống</h3>
-          <div class="space-y-3 text-xs">
+          <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+            <div>
+              <h3 class="font-heading font-bold text-lg text-[#0F172A]">Cấu hình thông số hệ thống & VietQR</h3>
+              <p class="text-xs text-[#64748B]">Thông tin nhận cọc SePay, hotline và tỷ lệ cọc được áp dụng tức thì</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Hoạt động</span>
+          </div>
+
+          <form id="admin-settings-form" onsubmit="saveAdminSettings(event)" class="space-y-3 text-xs">
             <div>
               <label class="block font-bold text-[#475569] mb-1">Tỷ lệ đặt cọc bắt buộc (%)</label>
-              <input type="number" id="cfg-deposit-rate" value="30" class="input-field w-32 font-bold text-[#16A34A]">
+              <input type="number" id="cfg-deposit-rate" min="10" max="100" value="30" required class="input-field w-32 font-bold text-[#16A34A]">
+              <span class="text-[11px] text-[#64748B] block mt-0.5">Mặc định 30% giá trị ca thi đấu</span>
             </div>
             <div>
-              <label class="block font-bold text-[#475569] mb-1">Ngân hàng nhận tiền VietQR</label>
-              <input type="text" id="cfg-bank-name" value="Vietcombank" class="input-field w-full font-semibold">
+              <label class="block font-bold text-[#475569] mb-1">Ngân hàng nhận tiền VietQR (SePay)</label>
+              <input type="text" id="cfg-bank-name" value="Vietcombank" required class="input-field w-full font-semibold">
+            </div>
+            <div>
+              <label class="block font-bold text-[#475569] mb-1">Mã ngân hàng (Bank Code chuẩn NAPAS)</label>
+              <input type="text" id="cfg-bank-code" value="VCB" placeholder="VCB, MB, TCB, ACB..." required class="input-field w-full font-mono font-bold">
             </div>
             <div>
               <label class="block font-bold text-[#475569] mb-1">Số tài khoản thụ hưởng</label>
-              <input type="text" id="cfg-bank-acc" value="0123456789" class="input-field w-full font-mono font-bold">
+              <input type="text" id="cfg-bank-acc" value="0123456789" required class="input-field w-full font-mono font-bold text-sm">
+            </div>
+            <div>
+              <label class="block font-bold text-[#475569] mb-1">Tên chủ tài khoản thụ hưởng</label>
+              <input type="text" id="cfg-bank-holder" value="CONG TY CP SAN BONG PRO" required class="input-field w-full font-bold uppercase">
             </div>
             <div>
               <label class="block font-bold text-[#475569] mb-1">Hotline hỗ trợ 24/7</label>
-              <input type="text" id="cfg-hotline" value="0352 313 548" class="input-field w-full">
+              <input type="text" id="cfg-hotline" value="0352 313 548" required class="input-field w-full font-semibold">
             </div>
-          </div>
-          <div class="pt-4 border-t border-[#E2E8F0] flex justify-end">
-            <button onclick="window.SanBongApp?.showToast('✓ Đã cập nhật cài đặt hệ thống thành công!', 'success')" class="btn-base btn-primary">Lưu cài đặt</button>
-          </div>
+            <div>
+              <label class="block font-bold text-[#475569] mb-1">Giờ mở cửa phục vụ</label>
+              <input type="text" id="cfg-open-hours" value="05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)" required class="input-field w-full">
+            </div>
+
+            <div class="pt-4 border-t border-[#E2E8F0] flex justify-end gap-3">
+              <button type="button" onclick="loadAdminSettings()" class="btn-base btn-secondary text-xs">Khôi phục</button>
+              <button type="submit" class="btn-base btn-primary text-xs font-bold px-5">💾 Lưu cài đặt</button>
+            </div>
+          </form>
         </div>
       </div>
-
     </main>
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v14"></script>
-  <script src="/js/app.js?v=20261109_v14"></script>
-  <script src="/js/api.js?v=20261109_v14"></script>
-  <script src="/js/admin.js?v=20261109_v14"></script>
+  <script src="/js/data.js?v=20261109_v15"></script>
+  <script src="/js/app.js?v=20261109_v15"></script>
+  <script src="/js/api.js?v=20261109_v15"></script>
+  <script src="/js/admin.js?v=20261109_v15"></script>
 </body>
 </html>

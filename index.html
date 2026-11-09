@@ -10,7 +10,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="css/style.css?v=20261109_v14">
+  <link rel="stylesheet" href="css/style.css?v=20261109_v15">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -276,6 +276,52 @@
       </div>
     </section>
 
+      <!-- 4. FAQ & CÂU HỎI THƯỜNG GẶP -->
+    <section class="ui-card p-6 md:p-8 space-y-4">
+      <div class="text-center max-w-xl mx-auto mb-6">
+        <h3 class="font-heading font-extrabold text-2xl text-[#0F172A]">Câu hỏi thường gặp</h3>
+        <p class="text-xs text-[#64748B] mt-1">Giải đáp các thắc mắc phổ biến về quy trình đặt sân, đặt cọc và chính sách hoàn hủy</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1.5">
+          <div class="font-bold text-sm text-[#0F172A] flex items-center gap-2">
+            <span class="text-[#16A34A] font-extrabold">Q:</span> Tôi cần đặt cọc bao nhiêu để giữ sân?
+          </div>
+          <p class="text-[#475569] leading-relaxed">
+            Bạn chỉ cần cọc trước 30% giá trị ca thi đấu thông qua chuyển khoản VietQR tự động. 70% còn lại bạn thanh toán trực tiếp tại quầy lễ tân khi đến nhận sân (bằng tiền mặt hoặc chuyển khoản).
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1.5">
+          <div class="font-bold text-sm text-[#0F172A] flex items-center gap-2">
+            <span class="text-[#16A34A] font-extrabold">Q:</span> Chính sách hoàn cọc khi hủy sân như thế nào?
+          </div>
+          <p class="text-[#475569] leading-relaxed">
+            Hủy trước 24 giờ: Hệ thống hoàn lại 100% tiền cọc về tài khoản của bạn. Hủy trước 12 giờ: Hoàn 50% tiền cọc. Hủy dưới 12 giờ hoặc vắng mặt: Không hoàn cọc theo quy định giữ sân.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1.5">
+          <div class="font-bold text-sm text-[#0F172A] flex items-center gap-2">
+            <span class="text-[#16A34A] font-extrabold">Q:</span> Sân có bãi đỗ xe và phòng tắm không?
+          </div>
+          <p class="text-[#475569] leading-relaxed">
+            Có. Cụm sân có bãi trông giữ xe máy và ô tô rộng rãi, có bảo vệ 24/7 và camera an ninh hoàn toàn miễn phí. Khu tiện ích có phòng thay đồ và phòng tắm nóng lạnh sạch sẽ.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1.5">
+          <div class="font-bold text-sm text-[#0F172A] flex items-center gap-2">
+            <span class="text-[#16A34A] font-extrabold">Q:</span> Nếu đến trễ giờ thi đấu thì sao?
+          </div>
+          <p class="text-[#475569] leading-relaxed">
+            Hệ thống ân hạn tối đa 15 phút từ giờ bắt đầu ca đá. Quý khách vui lòng đến trước 10-15 phút xuất trình mã QR vé check-in tại quầy để nhân viên bàn giao sân đúng giờ.
+          </p>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- PITCH DETAIL MODAL (Cửa sổ Popup chi tiết khi bấm nút) -->
@@ -291,9 +337,19 @@
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261109_v14"></script>
-  <script src="/js/app.js?v=20261109_v14"></script>
-  <script src="/js/api.js?v=20261109_v14"></script>
-  <script src="/js/index.js?v=20261109_v14"></script>
+  <script src="/js/data.js?v=20261109_v15"></script>
+  <script src="/js/app.js?v=20261109_v15"></script>
+  <script src="/js/api.js?v=20261109_v15"></script>
+  <script src="/js/index.js?v=20261109_v15"></script>
+  <!-- FLOATING QUICK ACTIONS (ZALO & HOTLINE) -->
+  <div class="fixed right-4 bottom-5 z-40 flex flex-col gap-2.5">
+    <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="w-12 h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform font-bold text-xs" title="Chat Zalo hỗ trợ 24/7">
+      <span class="text-xs font-black tracking-tighter">Zalo</span>
+    </a>
+    <a href="tel:0352313548" class="w-12 h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-lg" title="Gọi Hotline đặt sân 24/7">
+      <span>📞</span>
+    </a>
+  </div>
+
 </body>
 </html>

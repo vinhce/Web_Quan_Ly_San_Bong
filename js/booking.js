@@ -41,7 +41,7 @@ function initBookingPage() {
   const today = new Date().toISOString().split('T')[0];
   selectedDate = today;
   const dateInput = document.getElementById('booking-date-input');
-  if (dateInput && !dateInput.value) dateInput.value = today;
+  if (dateInput) { dateInput.min = today; if (!dateInput.value || dateInput.value < today) dateInput.value = today; }
 
   renderPitchTypeSelector();
   initPitchSelect();
@@ -333,6 +333,15 @@ function applyVoucher() {
   }
   updateBillSummary();
 }
+
+function quickApplyVoucher(code) {
+  const input = document.getElementById('voucher-input');
+  if (input) {
+    input.value = code;
+    applyVoucher();
+  }
+}
+window.quickApplyVoucher = quickApplyVoucher;
 
 function updateBillSummary() {
   const db = window.SanBongApp.SanBongDB;
