@@ -69,6 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('storage', () => {
     refreshAllAdminViews(activeInPlayCode);
   });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeInPlayModal();
+      if (typeof closeInvoiceModal === 'function') closeInvoiceModal();
+      if (typeof closeQRScannerModal === 'function') closeQRScannerModal();
+    }
+  });
 });
 
 function renderOverviewKPIs() {
@@ -261,16 +269,16 @@ function renderOverviewTodayBookings() {
       actionButtons =
         '<div class="flex flex-wrap items-center gap-1.5">' +
           '<span class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-100 text-blue-700">⚽ Đang chơi</span>' +
-          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Đá thêm giờ, Đổi sân, Gọi thêm nước, Hủy trước hạn">⚙️ Quản lý đang chơi</button>' +
-          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\', \'pay\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Thu phần tiền còn lại & Hoàn thành ca">💰 Thu còn lại (' + window.SanBongApp.formatVND(remaining) + ')</button>' +
-          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Đá thêm giờ, Đổi sân, Gọi thêm nước, Hủy trước hạn">⚙️ Quản lý đang chơi</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + b.code + '\', \'pay\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Thu phần tiền còn lại & Hoàn thành ca">💰 Thu còn lại (' + window.SanBongApp.formatVND(remaining) + ')</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
         '</div>';
     } else if (normStatus === "Hoàn thành") {
       actionButtons =
         '<div class="flex flex-wrap items-center gap-1.5">' +
           '<span class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-700">✓ Đã thu đủ 100%</span>' +
-          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer">⚙️ Xem & Điều hành</button>' +
-          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#0F172A] text-white hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer">🖨️ In hóa đơn</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer">⚙️ Xem & Điều hành</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#0F172A] text-white hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer">🖨️ In hóa đơn</button>' +
         '</div>';
     } else if (normStatus === "Khách chưa đến" || normStatus === "Đã hủy") {
       const cancelLabel = normStatus === "Khách chưa đến" ? "Khách chưa đến (Mất cọc)" : escapeSearchHTML(b.paymentStatus || "Đã hủy lịch");
@@ -278,19 +286,19 @@ function renderOverviewTodayBookings() {
         '<div class="flex flex-wrap items-center gap-1.5">' +
           '<span class="px-2 py-0.5 rounded bg-red-50 text-red-600 text-[11px] font-bold border border-red-200">' + cancelLabel + '</span>' +
           '<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">✓ Đã nhả sân</span>' +
-          '<button type="button" onclick="restoreCancelledBooking(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-sm cursor-pointer" title="Khách đã tới sân - Khôi phục lại ca đá này">🔄 Khôi phục ca</button>' +
-          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer" title="Mở bảng điều hành chi tiết ca đá">⚙️ Xem & Điều hành</button>' +
-          '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+          '<button type="button" onclick="event.stopPropagation(); restoreCancelledBooking(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-sm cursor-pointer" title="Khách đã tới sân - Khôi phục lại ca đá này">🔄 Khôi phục ca</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer" title="Mở bảng điều hành chi tiết ca đá">⚙️ Xem & Điều hành</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 rounded-md text-xs font-bold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
         '</div>';
     } else {
       const lateBadge = isLateOver15 ? ('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 animate-pulse border border-red-300">⚠️ Quá ' + lateMinutes + 'p chưa đến</span>') : '';
       const btnClass = isLateOver15 ? "bg-red-600 hover:bg-red-700 animate-bounce" : "bg-amber-600 hover:bg-amber-700";
       actionButtons = '<div class="flex flex-wrap items-center gap-1.5">' +
         lateBadge +
-        '<button type="button" onclick="handleCheckin(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
-        '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1 cursor-pointer" title="Đổi sân, Gọi thêm nước, Hủy lịch trước hạn">⚙️ Quản lý / Đổi sân / Hủy</button>' +
-        '<button type="button" onclick="handleNoShowRelease(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Quá 15 phút khách chưa đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Chưa đến: Nhả sân</button>' +
-        '<button type="button" onclick="openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+        '<button type="button" onclick="event.stopPropagation(); handleCheckin(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
+        '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1 cursor-pointer" title="Đổi sân, Gọi thêm nước, Hủy lịch trước hạn">⚙️ Quản lý / Đổi sân / Hủy</button>' +
+        '<button type="button" onclick="event.stopPropagation(); handleNoShowRelease(\'' + b.code + '\')" class="px-2.5 py-1 text-xs font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-sm flex items-center gap-1 cursor-pointer" title="Quá 15 phút khách chưa đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Chưa đến: Nhả sân</button>' +
+        '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + b.code + '\')" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
       '</div>';
     }
 
@@ -307,11 +315,16 @@ function renderOverviewTodayBookings() {
       cardBorderCls = 'border-2 border-slate-300 border-l-[5px] border-l-[#475569] bg-slate-50/40 hover:border-slate-400';
     }
 
-    return '<div class="p-4 rounded-xl ' + cardBorderCls + ' shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition-all">' +
+    return '<div onclick="openInPlayModal(\'' + b.code + '\')" class="p-4 rounded-xl ' + cardBorderCls + ' shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition-all cursor-pointer hover:shadow-md">' +
       '<div class="space-y-1.5">' +
         '<div class="flex flex-wrap items-center gap-2">' +
-          '<button type="button" onclick="openInPlaySection(\'' + b.code + '\')" class="font-mono font-bold text-xs px-2.5 py-0.5 rounded-md bg-white border border-slate-300 hover:border-[#16A34A] text-[#0F172A] hover:text-[#16A34A] shadow-2xs transition-colors cursor-pointer" title="Bấm để xem & điều hành đơn">' + b.code + '</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + b.code + '\')" class="font-mono font-bold text-xs px-2.5 py-0.5 rounded-md bg-white border border-slate-300 hover:border-[#16A34A] text-[#0F172A] hover:text-[#16A34A] shadow-2xs transition-colors cursor-pointer" title="Bấm để mở popup chi tiết ca đá">' + b.code + '</button>' +
           '<span class="font-bold text-[#0F172A] text-sm">' + b.pitchName + '</span>' +
+          '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">⏰ ' + (b.slotTime || "") + '</span>' +
+          monthlyBadge +
+          overtimeBadge +
+          '<span class="text-[#475569] text-xs font-semibold">👤 ' + escapeSearchHTML(b.customerName || "") + ' (' + escapeSearchHTML(b.phone || "") + ')</span>' +
+        '</div>' +
           '<span class="text-[#16A34A] font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">⏰ ' + (b.slotTime || "") + '</span>' +
           monthlyBadge +
           overtimeBadge +
@@ -1480,32 +1493,23 @@ function populateInPlayWorkspace(code) {
   return booking;
 }
 
-function openInPlaySection(code, focusSection = '') {
+function openInPlayModal(code, focusSection = '') {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
-  if (activeModule !== 'inplay-control') {
-    switchAdminTab('inplay-control');
-  }
-
-  const booking = populateInPlayWorkspace(code);
+  const all = db.getAllBookings();
+  const targetCode = code || activeInPlayCode || (all[0] ? all[0].code : '');
+  const booking = populateInPlayWorkspace(targetCode);
   if (!booking) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không tìm thấy đơn đặt sân ' + (code || ''), 'error');
     return;
   }
 
-  renderTimelineGantt();
-
-  const workspace = document.getElementById('timeline-inplay-workspace');
-  if (workspace) {
-    workspace.classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  } else {
-    const modal = document.getElementById('inplay-modal') || document.getElementById('inplay-manage-modal');
-    if (modal) {
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
+  const modal = document.getElementById('inplay-manage-modal') || document.getElementById('inplay-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    try { document.body.style.overflow = 'hidden'; } catch (e) {}
   }
 
   if (focusSection === 'pay') {
@@ -1514,8 +1518,8 @@ function openInPlaySection(code, focusSection = '') {
   }
 }
 
-function openInPlayModal(code, focusSection = '') {
-  openInPlaySection(code, focusSection);
+function openInPlaySection(code, focusSection = '') {
+  openInPlayModal(code, focusSection);
 }
 
 function closeInPlayModal() {
@@ -1523,6 +1527,7 @@ function closeInPlayModal() {
   if (modal) {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+    try { document.body.style.overflow = ''; } catch (e) {}
   }
 }
 
