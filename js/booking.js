@@ -341,6 +341,18 @@ function initBookingPage() {
     voucherBtn.addEventListener('click', applyVoucher);
   }
 
+  const voucherInputEl = document.getElementById('voucher-input');
+  if (voucherInputEl && !voucherInputEl._autoApplyBound) {
+    voucherInputEl._autoApplyBound = true;
+    let _voucherTimer = null;
+    voucherInputEl.addEventListener('input', () => {
+      clearTimeout(_voucherTimer);
+      _voucherTimer = setTimeout(() => {
+        applyVoucher();
+      }, 300);
+    });
+  }
+
   const checkoutBtn = document.getElementById('proceed-checkout-btn');
   if (checkoutBtn && !checkoutBtn._bound) {
     checkoutBtn._bound = true;

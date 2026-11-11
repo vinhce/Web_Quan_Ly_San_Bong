@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261112_v33">
+  <link rel="stylesheet" href="../css/style.css?v=20261112_v34">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -56,9 +56,12 @@
             <a href="/fields" class="px-3.5 py-2.5 rounded-lg text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] block">
               Đặt sân mới
             </a>
-            <button type="button" onclick="window.SanBongApp && window.SanBongApp.handleLogout && window.SanBongApp.handleLogout()" class="w-full text-left px-3.5 py-2.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] block font-semibold">
+            <button id="btn-history-logout" type="button" onclick="window.SanBongApp && window.SanBongApp.handleLogout && window.SanBongApp.handleLogout()" class="w-full text-left px-3.5 py-2.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] block font-semibold">
               Đăng xuất tài khoản
             </button>
+            <a id="btn-history-login" href="/login?redirect=history" class="w-full text-center px-3.5 py-2.5 rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] block font-bold text-xs hidden">
+              Đăng nhập tài khoản
+            </a>
           </div>
         </div>
 
@@ -94,6 +97,26 @@
 
         <div id="history-container" class="space-y-4">
           
+        </div>
+
+        <div id="guest-state" class="hidden ui-card p-10 text-center space-y-4">
+          <div class="w-14 h-14 rounded-full bg-emerald-50 text-[#16A34A] font-extrabold text-2xl flex items-center justify-center mx-auto border border-emerald-100">
+            🔒
+          </div>
+          <div class="space-y-1">
+            <h3 class="font-heading font-extrabold text-xl text-[#0F172A]">Chế độ Khách vãng lai</h3>
+            <p class="text-xs text-[#64748B] max-w-md mx-auto leading-relaxed">
+              Lịch sử đặt sân tự động chỉ dành cho tài khoản Hội viên đã đăng nhập. Bạn có thể đăng nhập để quản lý lịch đá, hoặc nhập Mã đơn / SĐT vào ô tìm kiếm phía trên để tra cứu vé.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <a href="/login?redirect=history" class="btn-base btn-primary text-xs font-bold px-5 py-2.5">
+              👉 Đăng nhập xem lịch sử
+            </a>
+            <a href="/fields" class="btn-base btn-secondary text-xs font-bold px-5 py-2.5">
+              ⚽ Đặt sân mới
+            </a>
+          </div>
         </div>
 
         <div id="no-history-state" class="hidden ui-card p-12 text-center space-y-3">
@@ -143,9 +166,9 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="/js/data.js?v=20261112_v33"></script>
-  <script src="/js/app.js?v=20261112_v33"></script>
-  <script src="/js/api.js?v=20261112_v33"></script>
-  <script src="/js/history.js?v=20261112_v33"></script>
+  <script src="/js/data.js?v=20261112_v34"></script>
+  <script src="/js/app.js?v=20261112_v34"></script>
+  <script src="/js/api.js?v=20261112_v34"></script>
+  <script src="/js/history.js?v=20261112_v34"></script>
 </body>
 </html>

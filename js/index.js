@@ -51,36 +51,71 @@
         : (window.SanBongData?.DEFAULT_VOUCHERS || []);
       const vouchersContainer = document.getElementById('vouchers-list');
       if (vouchersContainer && app) {
-        const packagePromoCard = `
-          <div class="ui-card p-4 border-l-4 border-l-[#16A34A] bg-gradient-to-r from-emerald-50/80 via-white to-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-            <div>
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="px-2 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-extrabold uppercase tracking-wide">SIÊU VIP · GÓI 3 THÁNG</span>
-                <span class="font-heading font-bold text-sm text-[#15803D]">Giảm 15% + TẶNG 2 THÙNG NƯỚC & 1 TRỌNG TÀI MỖI TRẬN</span>
-              </div>
-              <div class="text-xs text-[#475569] mt-1 font-medium">Đặt lịch cố định hàng tuần · Tài trợ quà tặng <b>390.000đ/trận</b> (Tổng quà 4.680.000đ cả gói)!</div>
+        const activeVouchers = currentVouchers.filter(v => v.isActive !== false);
+        const monthlyVoucher = activeVouchers.find(v => String(v.code || '').toUpperCase() === 'DATTHANG15');
+        const regularVouchers = activeVouchers.filter(v => String(v.code || '').toUpperCase() !== 'DATTHANG15');
+        const pkg3m = db?.getPackagePromotion ? db.getPackagePromotion(12) : window.SanBongData?.PACKAGE_PROMOTIONS?.[12];
+        const discountPct = pkg3m?.discountRate ? Math.round(pkg3m.discountRate * 100) : 15;
+        const giftValueText = app.formatVND(pkg3m?.perMatchGiftValue || 390000);
+        const minMonthlyHint = monthlyVoucher && Number(monthlyVoucher.minOrder) > 0
+          ? `Đơn từ ${app.formatVND(monthlyVoucher.minOrder)} · ` : 'Lịch 12 tuần · ';
+        const monthlyCopyBtn = monthlyVoucher
+          ? `<button type="button" data-voucher-code="${escapeHTML(monthlyVoucher.code)}" onclick="copyVoucher(this.getAttribute('data-voucher-code'))" class="btn-sm btn-secondary !h-7 !px-2.5 text-[11px] font-bold hover:border-[#16A34A] hover:text-[#16A34A]">Sao chép ${escapeHTML(monthlyVoucher.code)}</button>`
+          : '';
+        const packagePromoBanner = `
+          <div class="col-span-full ui-card px-4 py-2.5 border-l-4 border-l-[#16A34A] bg-gradient-to-r from-emerald-50/90 via-white to-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 min-w-0">
+              <span class="inline-block px-2 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-extrabold uppercase tracking-wide shrink-0">GÓI 3 THÁNG · GIẢM ${discountPct}%</span>
+              <span class="text-xs font-bold text-[#0F172A]">Tặng 2 thùng nước &amp; 1 trọng tài mỗi trận</span>
+              <span class="text-[11px] text-[#475569]">(${escapeHTML(minMonthlyHint)}Quà ${escapeHTML(giftValueText)}/trận)</span>
             </div>
-            <a href="/booking?mode=monthly" class="btn-sm btn-primary text-xs shrink-0 font-bold flex items-center gap-1 shadow-2xs">
-              <span>⚽</span> Đặt gói ngay
-            </a>
-          </div>
-        `;
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+              ${monthlyCopyBtn}
+              <a href="/booking?mode=monthly" class="btn-sm btn-primary !h-7 !px-3 text-[11px] shrink-0 font-bold">Đặt gói →</a>
+            </div>
+          </div>`;
 
-        vouchersContainer.innerHTML = packagePromoCard + currentVouchers.filter(v => v.isActive !== false).map(v => {
+        const total = regularVouchers.length;
+        const useSixCols = total >= 5 && total % 3 !== 0;
+        const colsClass = total <= 1 ? 'grid-cols-1'
+          : total === 2 ? 'grid-cols-1 sm:grid-cols-2'
+          : total === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+          : useSixCols ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-6'
+          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+        vouchersContainer.className = `grid ${colsClass} gap-3`;
+
+        const spanAt = (idx) => {
+          const smSpan = (total > 1 && total % 2 === 1 && idx === total - 1) ? 'sm:col-span-2 ' : '';
+          if (total === 3) return idx === 2 ? 'sm:col-span-2 lg:col-span-1' : '';
+          if (!useSixCols) return smSpan ? `${smSpan}lg:col-span-1` : '';
+          const wideCount = total % 3 === 2 ? 2 : 4;
+          return `${smSpan}${idx >= total - wideCount ? 'lg:col-span-3' : 'lg:col-span-2'}`.trim();
+        };
+
+        vouchersContainer.innerHTML = packagePromoBanner + regularVouchers.map((v, idx) => {
           const safeCode = escapeHTML(v.code);
+          const isGreen = v.code === 'WELCOME10';
+          const isPurple = v.code === 'VIPGOLD';
+          const minLabel = Number(v.minOrder) > 0 ? `Đơn từ ${app.formatVND(v.minOrder)}` : 'Áp dụng mọi đơn';
+          const borderClass = isPurple
+            ? 'border-l-purple-600 bg-purple-50/30'
+            : (isGreen ? 'border-l-[#16A34A]' : 'border-l-[#F59E0B]');
+          const badgeClass = isPurple
+            ? 'bg-purple-100 text-purple-700'
+            : (isGreen ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-[#FEF3C7] text-[#B45309]');
+          const btnHoverClass = isPurple
+            ? 'hover:border-purple-600 hover:text-purple-600'
+            : 'hover:border-[#16A34A] hover:text-[#16A34A]';
+
           return `
-            <div class="ui-card p-4 border-l-4 ${v.code === 'WELCOME10' ? 'border-l-[#16A34A]' : 'border-l-[#F59E0B]'} flex items-center justify-between gap-3">
-              <div>
-                <div class="font-heading font-bold text-sm ${v.code === 'WELCOME10' ? 'text-[#16A34A]' : 'text-[#D97706]'}">
-                  ${safeCode} · ${escapeHTML(v.description)}
-                </div>
-                <div class="text-xs text-[#64748B] mt-0.5">Áp dụng cho đơn từ ${app.formatVND(v.minOrder)}</div>
+            <div class="ui-card p-3.5 border-l-4 ${borderClass} flex flex-col justify-between gap-2 ${spanAt(idx)}">
+              <div class="flex items-center justify-between gap-2">
+                <span class="inline-block font-mono font-extrabold text-[11px] px-2 py-0.5 rounded truncate ${badgeClass}">${safeCode}</span>
+                <button type="button" data-voucher-code="${safeCode}" onclick="copyVoucher(this.getAttribute('data-voucher-code'))" class="btn-sm btn-secondary !h-7 !px-2.5 text-[11px] shrink-0 font-bold ${btnHoverClass}">Sao chép</button>
               </div>
-              <button type="button" data-voucher-code="${safeCode}" onclick="copyVoucher(this.getAttribute('data-voucher-code'))" class="btn-sm btn-secondary text-xs shrink-0 font-bold hover:border-[#16A34A] hover:text-[#16A34A]">
-                Sao chép
-              </button>
-            </div>
-          `;
+              <p class="text-xs font-semibold text-[#0F172A] leading-snug line-clamp-2">${escapeHTML(v.description)}</p>
+              <div class="text-[11px] text-[#64748B]">${minLabel}</div>
+            </div>`;
         }).join('');
       }
     };
@@ -163,6 +198,24 @@
     if (rowsHtml) tbody.innerHTML = rowsHtml;
   }
 
+  function renderReviewsFallback(container, isError) {
+    const msg = isError
+      ? 'Hiện chưa tải được đánh giá từ máy chủ. Bạn có thể thử lại hoặc xem tại trang Lịch sử.'
+      : 'Chưa có đánh giá công bố nào. Hãy đặt sân và chia sẻ trải nghiệm của đội bạn sau trận đấu!';
+    container.innerHTML = `
+      <div class="sm:col-span-3 ui-card px-4 py-3 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
+        <div class="text-[#475569] text-center sm:text-left">${msg}</div>
+        <div class="flex flex-wrap items-center justify-center gap-2 shrink-0">
+          ${isError ? '<button type="button" id="home-reviews-retry-btn" class="btn-sm btn-secondary !h-7 !px-3 text-[11px] font-bold hover:border-[#16A34A] hover:text-[#16A34A]">Thử lại</button>' : ''}
+          <a href="/history" class="btn-sm btn-secondary !h-7 !px-3 text-[11px] font-bold hover:border-[#16A34A] hover:text-[#16A34A]">Đánh giá trận đã đá →</a>
+        </div>
+      </div>`;
+    document.getElementById('home-reviews-retry-btn')?.addEventListener('click', () => {
+      container.innerHTML = '<div class="sm:col-span-3 ui-card px-5 py-3.5 text-center text-xs text-[#64748B]">Đang tải đánh giá thực tế từ khách đặt sân...</div>';
+      loadHomeReviews();
+    });
+  }
+
   async function loadHomeReviews() {
     const container = document.getElementById('home-reviews-grid');
     const app = window.SanBongApp;
@@ -171,16 +224,13 @@
 
     try {
       const res = await fetch(app.getRelativePath ? app.getRelativePath('api/reviews.php') : '/api/reviews.php');
+      if (!res.ok) { renderReviewsFallback(container, true); return; }
       const json = await res.json();
-      if (!res.ok || !json?.success) return;
+      if (!json?.success) { renderReviewsFallback(container, true); return; }
 
       const reviews = Array.isArray(json.data?.reviews) ? json.data.reviews.slice(0, 3) : [];
       if (reviews.length === 0) {
-        container.innerHTML = `
-          <div class="sm:col-span-3 ui-card p-6 text-center text-xs text-[#64748B]">
-            Chưa có đánh giá công bố nào. Hãy đặt sân và chia sẻ trải nghiệm của đội bạn sau trận đấu!
-          </div>
-        `;
+        renderReviewsFallback(container, false);
         return;
       }
 
@@ -202,6 +252,7 @@
       }).join('');
     } catch (err) {
       console.warn('Không tải được đánh giá trang chủ:', err.message);
+      renderReviewsFallback(container, true);
     }
   }
 

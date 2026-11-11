@@ -1276,6 +1276,26 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           voucherError = `Mã giảm giá này chỉ áp dụng riêng cho Sân ${v.pitchTypeLimit} người.`;
         } else if (Number(v.maxUsage || 0) > 0 && Number(v.usedCount || 0) >= Number(v.maxUsage)) {
           voucherError = 'Mã giảm giá đã hết lượt sử dụng.';
+        } else if (v.code.toUpperCase() === 'VIPGOLD' || (v.requiredTier && String(v.requiredTier).toLowerCase() !== 'standard' && String(v.requiredTier).toLowerCase() !== 'all')) {
+          const curUser = this.getUser ? this.getUser() : null;
+          if (!curUser || !curUser.name) {
+            voucherError = 'Bạn chưa đủ điều kiện. Vui lòng đăng nhập tài khoản thành viên Vàng / Kim Cương để dùng mã này.';
+          } else {
+            const rawTier = String(curUser.tier || curUser.customer_tier || 'standard').toLowerCase();
+            const isQualified = rawTier.includes('vàng') || rawTier.includes('gold') || rawTier.includes('kim cương') || rawTier.includes('diamond') || rawTier.includes('vip') || rawTier === 'admin' || rawTier === 'manager';
+            if (!isQualified) {
+              voucherError = 'Bạn chưa đủ điều kiện. Mã này chỉ dành riêng cho hội viên hạng Vàng và Kim Cương.';
+            } else if (subtotal < (v.minOrder || 0)) {
+              voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
+            } else {
+              appliedVoucher = v;
+              if (v.type === 'percent') {
+                discountAmount = Math.round((subtotal * v.value) / 100);
+              } else {
+                discountAmount = Math.min(v.value, subtotal);
+              }
+            }
+          }
         } else if (subtotal < (v.minOrder || 0)) {
           voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
         } else {

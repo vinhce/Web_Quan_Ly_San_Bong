@@ -12,19 +12,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mAvatar = document.getElementById('member-avatar');
   const mTier = document.getElementById('member-tier-badge');
   const pLabel = document.getElementById('points-label');
+  const btnLogout = document.getElementById('btn-history-logout');
+  const btnLogin = document.getElementById('btn-history-login');
 
   if (!user || !user.name) {
     if (mName) mName.textContent = 'Khách vãng lai';
     if (mPhone) {
       const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=history') : '/login?redirect=history';
-      mPhone.innerHTML = '<a href="' + loginUrl + '" class="text-xs font-bold text-[#16A34A] hover:underline">👉 Đăng nhập để xem lịch sử & tích điểm</a>';
+      mPhone.innerHTML = '<a href="' + loginUrl + '" class="text-xs font-bold text-[#16A34A] hover:underline">👉 Đăng nhập để tích điểm</a>';
     }
     if (mAvatar) mAvatar.textContent = '👤';
     if (mTier) {
       mTier.textContent = 'Chưa đăng nhập';
       mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold';
     }
-    if (pLabel) pLabel.textContent = '0 / 2.000 điểm';
+    if (pLabel) pLabel.textContent = 'Dành cho Hội viên';
+    if (btnLogout) btnLogout.classList.add('hidden');
+    if (btnLogin) btnLogin.classList.remove('hidden');
   } else {
     if (mName) mName.textContent = user.name;
     if (mPhone) mPhone.textContent = user.phone || 'Chưa cập nhật SĐT';
@@ -34,6 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold';
     }
     if (pLabel) pLabel.textContent = `${user.points || 0} / 2.000 điểm`;
+    if (btnLogout) btnLogout.classList.remove('hidden');
+    if (btnLogin) btnLogin.classList.add('hidden');
   }
 
   renderHistoryPolicyBox(db);
@@ -130,37 +136,42 @@ function renderHistory() {
   const user = db.getUser();
   const all = db.getAllBookings();
 
-  let userBookings = [];
-  if (user && user.phone) {
-    userBookings = all.filter(b => b.phone === user.phone || b.customerName === user.name);
-  } else {
-    const rawLatest = sessionStorage.getItem('sb_latest_booking');
-    if (rawLatest) {
-      try {
-        const lb = JSON.parse(rawLatest);
-        if (lb && lb.code) userBookings = [lb];
-      } catch (e) {}
-    }
-  }
-
+  const isGuest = (!user || !user.name);
   const searchInput = document.getElementById('history-search-input');
   const searchVal = (searchInput ? searchInput.value : '').trim().toLowerCase();
   const cleanSearchPhone = searchVal.replace(/[\s\.\-]+/g, '');
-  if (searchVal) {
-    userBookings = all.filter(b => {
-      const code = (b.code || '').toLowerCase();
-      const phone = (b.phone || '').replace(/[\s\.\-]+/g, '');
-      const name = (b.customerName || '').toLowerCase();
-      return code.includes(searchVal) || (cleanSearchPhone.length >= 3 && phone.includes(cleanSearchPhone)) || name.includes(searchVal);
-    });
+
+  let userBookings = [];
+  if (!isGuest) {
+    if (user.phone) {
+      userBookings = all.filter(b => b.phone === user.phone || b.customerName === user.name);
+    }
+    if (searchVal) {
+      userBookings = userBookings.filter(b => {
+        const code = (b.code || '').toLowerCase();
+        const phone = (b.phone || '').replace(/[\s\.\-]+/g, '');
+        const name = (b.customerName || '').toLowerCase();
+        return code.includes(searchVal) || (cleanSearchPhone.length >= 3 && phone.includes(cleanSearchPhone)) || name.includes(searchVal);
+      });
+    }
+  } else {
+    // Khách vãng lai: Không tự động hiện lịch sử
+    // Chỉ hiển thị đơn khi khách nhập chính xác Mã đơn hoặc SĐT hợp lệ để tra cứu
+    if (searchVal && (cleanSearchPhone.length >= 9 || searchVal.length >= 6)) {
+      userBookings = all.filter(b => {
+        const code = (b.code || '').toLowerCase();
+        const phone = (b.phone || '').replace(/[\s\.\-]+/g, '');
+        return (code === searchVal || (cleanSearchPhone.length >= 9 && phone.endsWith(cleanSearchPhone.slice(-9))));
+      });
+    }
   }
 
   const totBadge = document.getElementById('total-badge');
-  if (totBadge) totBadge.textContent = userBookings.length;
+  if (totBadge) totBadge.textContent = (isGuest && !searchVal) ? '0' : userBookings.length;
 
   let list = userBookings.filter(b => {
     if (currentFilter === 'all') return true;
-    if (currentFilter === 'upcoming') return b.status === 'Đã xác nhận' || b.status === 'Chờ thanh toán' || b.status === 'Đang đá';
+    if (currentFilter === 'upcoming') return b.status === 'Đã xác nhận' || b.status === 'Chờ thanh toán' || b.status === 'Đang đá' || b.status === 'Chờ duyệt cọc';
     if (currentFilter === 'completed') return b.status === 'Hoàn thành';
     if (currentFilter === 'cancelled') return b.status === 'Đã hủy';
     return true;
@@ -168,7 +179,17 @@ function renderHistory() {
 
   const container = document.getElementById('history-container');
   const empty = document.getElementById('no-history-state');
+  const guestState = document.getElementById('guest-state');
   if (!container) return;
+
+  if (isGuest && !searchVal) {
+    container.innerHTML = '';
+    if (empty) empty.classList.add('hidden');
+    if (guestState) guestState.classList.remove('hidden');
+    return;
+  }
+
+  if (guestState) guestState.classList.add('hidden');
 
   if (list.length === 0) {
     container.innerHTML = '';
