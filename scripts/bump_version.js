@@ -8,6 +8,7 @@ const files = [
   'html/fields.html',
   'html/history.html',
   'html/login.html',
+  'html/matchmaking.html',
   'html/success.html',
   'portal-admin/index.php',
   'portal-admin/index.html'

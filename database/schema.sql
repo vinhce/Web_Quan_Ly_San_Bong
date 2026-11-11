@@ -16,12 +16,19 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password_hash` VARCHAR(255) NOT NULL,
     `role` ENUM('user', 'staff', 'manager', 'admin') NOT NULL DEFAULT 'user',
     `status` ENUM('active', 'locked') NOT NULL DEFAULT 'active',
+    `points` INT NOT NULL DEFAULT 0,
+    `customer_tier` VARCHAR(30) NOT NULL DEFAULT 'standard',
+    `totp_secret` VARCHAR(64) NULL DEFAULT NULL,
+    `totp_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+    `privacy_consent_at` DATETIME NULL DEFAULT NULL,
     `failed_attempts` INT NOT NULL DEFAULT 0,
     `lock_until` DATETIME NULL DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_users_role` (`role`),
-    INDEX `idx_users_email` (`email`)
+    INDEX `idx_users_email` (`email`),
+    INDEX `idx_users_tier` (`customer_tier`),
+    INDEX `idx_users_phone` (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. Bảng Danh mục Sân bóng (Pitches)
@@ -75,6 +82,13 @@ CREATE TABLE IF NOT EXISTS `vouchers` (
     `discount_type` ENUM('percent', 'fixed') NOT NULL DEFAULT 'percent',
     `discount_value` INT NOT NULL DEFAULT 0,
     `min_order` INT NOT NULL DEFAULT 0,
+    `max_usage` INT NOT NULL DEFAULT 100,
+    `used_count` INT NOT NULL DEFAULT 0,
+    `max_per_user` INT NOT NULL DEFAULT 1,
+    `valid_from` DATE NULL DEFAULT NULL,
+    `valid_to` DATE NULL DEFAULT NULL,
+    `pitch_type_limit` INT NULL DEFAULT NULL,
+    `required_tier` VARCHAR(50) NULL DEFAULT NULL,
     `is_active` TINYINT(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -92,6 +106,8 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     `slot_time` VARCHAR(50) NOT NULL,
     `services_json` TEXT NULL,
     `voucher_code` VARCHAR(30) NULL DEFAULT NULL,
+    `original_price` INT NOT NULL DEFAULT 0,
+    `discount_amount` INT NOT NULL DEFAULT 0,
     `total_price` INT NOT NULL DEFAULT 0,
     `deposit_amount` INT NOT NULL DEFAULT 0,
     `paid_amount` INT NOT NULL DEFAULT 0,
@@ -103,6 +119,12 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     `refund_amount` INT NOT NULL DEFAULT 0,
     `weeks_count` INT NOT NULL DEFAULT 1,
     `booking_mode` VARCHAR(20) NOT NULL DEFAULT 'single',
+    `recurring_schedule_id` INT NULL DEFAULT NULL,
+    `points_used` INT NOT NULL DEFAULT 0,
+    `redeemed_bottles` INT NOT NULL DEFAULT 0,
+    `points_awarded` TINYINT(1) NOT NULL DEFAULT 0,
+    `gift_deducted` TINYINT(1) NOT NULL DEFAULT 0,
+    `privacy_consent_at` DATETIME NULL DEFAULT NULL,
     `note` TEXT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `expires_at` DATETIME NULL DEFAULT NULL,
@@ -113,7 +135,9 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     INDEX `idx_bookings_user` (`user_id`),
     INDEX `idx_bookings_date` (`booking_date`),
     INDEX `idx_bookings_phone` (`phone`),
-    INDEX `idx_bookings_expires` (`expires_at`)
+    INDEX `idx_bookings_expires` (`expires_at`),
+    INDEX `idx_bookings_recurring` (`recurring_schedule_id`),
+    INDEX `idx_bookings_user_points` (`user_id`, `points_awarded`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. Bảng Cài đặt hệ thống (Settings)
@@ -291,14 +315,14 @@ VALUES
 ON DUPLICATE KEY UPDATE `name`=`name`;
 
 -- 5. Mã giảm giá
-INSERT INTO `vouchers` (`code`, `description`, `discount_type`, `discount_value`, `min_order`, `is_active`)
+INSERT INTO `vouchers` (`code`, `description`, `discount_type`, `discount_value`, `min_order`, `max_usage`, `used_count`, `max_per_user`, `required_tier`, `is_active`)
 VALUES
-('WELCOME10', 'Giảm 10% tổng đơn cho khách hàng mới', 'percent', 10, 0, 1),
-('GIAM50K', 'Giảm ngay 50.000đ cho đơn đặt sân từ 500.000đ', 'fixed', 50000, 500000, 1),
-('VIPGOLD', 'Giảm 15% cho thành viên Vàng & Kim Cương', 'percent', 15, 300000, 1),
-('DATTHANG15', 'Giảm 15% ưu đãi hợp đồng đặt sân theo tháng', 'percent', 15, 800000, 1),
-('SINHVIEN30K', 'Giảm 30.000đ trợ giá học sinh - sinh viên', 'fixed', 30000, 200000, 1),
-('CUOITUAN100K', 'Giảm 100.000đ cho đơn đặt sân 11 người / Giải đấu', 'fixed', 100000, 900000, 1)
+('WELCOME10', 'Giảm 10% tổng đơn cho khách hàng mới', 'percent', 10, 0, 100, 0, 1, NULL, 1),
+('GIAM50K', 'Giảm ngay 50.000đ cho đơn đặt sân từ 500.000đ', 'fixed', 50000, 500000, 100, 0, 1, NULL, 1),
+('VIPGOLD', 'Giảm 15% cho thành viên Vàng & Kim Cương', 'percent', 15, 300000, 100, 0, 1, 'vip,regular', 1),
+('DATTHANG15', 'Giảm 15% ưu đãi hợp đồng đặt sân theo tháng', 'percent', 15, 800000, 100, 0, 1, NULL, 1),
+('SINHVIEN30K', 'Giảm 30.000đ trợ giá học sinh - sinh viên', 'fixed', 30000, 200000, 100, 0, 1, NULL, 1),
+('CUOITUAN100K', 'Giảm 100.000đ cho đơn đặt sân 11 người / Giải đấu', 'fixed', 100000, 900000, 100, 0, 1, NULL, 1)
 ON DUPLICATE KEY UPDATE `description`=`description`;
 
 -- 6. Cài đặt hệ thống mặc định
@@ -329,3 +353,207 @@ UPDATE `extra_services` SET `track_inventory` = 1, `stock_qty` = 80, `min_stock_
 UPDATE `pitches` SET `weekend_price` = 380000 WHERE `type` = 5 AND `weekend_price` = 0;
 UPDATE `pitches` SET `weekend_price` = 700000 WHERE `type` = 7 AND `weekend_price` = 0;
 UPDATE `pitches` SET `weekend_price` = 1400000 WHERE `type` = 11 AND `weekend_price` = 0;
+
+-- ===============================================================
+-- 13. GIAI ĐOẠN 5: CRM, LỊCH LẶP, WAITLIST, GIỜ VÀNG, GHÉP KÈO
+-- ===============================================================
+
+CREATE TABLE IF NOT EXISTS `customer_crm` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `phone` VARCHAR(20) NOT NULL UNIQUE,
+    `full_name` VARCHAR(100) NULL,
+    `customer_tier` ENUM('standard', 'regular', 'vip', 'warning_noshow') NOT NULL DEFAULT 'standard',
+    `admin_note` TEXT NULL,
+    `is_blacklisted` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_crm_phone` (`phone`),
+    INDEX `idx_crm_tier` (`customer_tier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `recurring_schedules` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `schedule_code` VARCHAR(40) NOT NULL UNIQUE,
+    `customer_name` VARCHAR(100) NOT NULL,
+    `phone` VARCHAR(20) NOT NULL,
+    `user_id` INT NULL DEFAULT NULL,
+    `pitch_id` VARCHAR(20) NOT NULL,
+    `slot_id` VARCHAR(10) NOT NULL,
+    `day_of_week` TINYINT NOT NULL COMMENT '1=Thứ 2, 2=Thứ 3, ..., 6=Thứ 7, 7=Chủ Nhật',
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `weeks_count` INT NOT NULL DEFAULT 4,
+    `is_open_ended` TINYINT(1) NOT NULL DEFAULT 0,
+    `price_per_match` INT NOT NULL DEFAULT 0,
+    `deposit_per_match` INT NOT NULL DEFAULT 0,
+    `status` ENUM('active', 'paused', 'completed', 'cancelled') NOT NULL DEFAULT 'active',
+    `note` TEXT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_recurring_pitch` FOREIGN KEY (`pitch_id`) REFERENCES `pitches`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_recurring_slot` FOREIGN KEY (`slot_id`) REFERENCES `time_slots`(`id`) ON DELETE CASCADE,
+    INDEX `idx_recurring_day` (`day_of_week`, `slot_id`),
+    INDEX `idx_recurring_phone` (`phone`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `waitlist` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `pitch_id` VARCHAR(20) NOT NULL,
+    `booking_date` DATE NOT NULL,
+    `slot_id` VARCHAR(10) NOT NULL,
+    `customer_name` VARCHAR(100) NOT NULL,
+    `phone` VARCHAR(20) NOT NULL,
+    `user_id` INT NULL DEFAULT NULL,
+    `status` ENUM('waiting', 'notified', 'converted', 'cancelled') NOT NULL DEFAULT 'waiting',
+    `notified_at` DATETIME NULL DEFAULT NULL,
+    `note` VARCHAR(255) NULL,
+    `converted_booking_code` VARCHAR(40) NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_waitlist_pitch` FOREIGN KEY (`pitch_id`) REFERENCES `pitches`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_waitlist_slot` FOREIGN KEY (`slot_id`) REFERENCES `time_slots`(`id`) ON DELETE CASCADE,
+    INDEX `idx_waitlist_lookup` (`pitch_id`, `booking_date`, `slot_id`),
+    INDEX `idx_waitlist_phone` (`phone`),
+    INDEX `idx_waitlist_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `golden_hour_rules` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `rule_name` VARCHAR(100) NOT NULL,
+    `pitch_type` INT NULL DEFAULT NULL,
+    `day_of_week` TINYINT NULL DEFAULT NULL,
+    `slot_id` VARCHAR(10) NULL DEFAULT NULL,
+    `price_adjustment_type` ENUM('fixed', 'percent_discount', 'percent_surcharge') NOT NULL DEFAULT 'fixed',
+    `adjustment_value` INT NOT NULL DEFAULT 0,
+    `description` VARCHAR(255) NULL,
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_golden_lookup` (`pitch_type`, `day_of_week`, `slot_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `matchmaking_posts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `post_code` VARCHAR(40) NOT NULL UNIQUE,
+    `user_id` INT NULL DEFAULT NULL,
+    `team_name` VARCHAR(100) NOT NULL,
+    `captain_name` VARCHAR(100) NOT NULL,
+    `phone` VARCHAR(20) NOT NULL,
+    `match_date` DATE NOT NULL,
+    `slot_id` VARCHAR(10) NULL DEFAULT NULL,
+    `slot_time` VARCHAR(50) NOT NULL,
+    `pitch_id` VARCHAR(20) NULL DEFAULT NULL,
+    `pitch_type` INT NOT NULL DEFAULT 7,
+    `skill_level` ENUM('beginner', 'intermediate', 'advanced', 'all') NOT NULL DEFAULT 'intermediate',
+    `fee_mode` ENUM('split_50_50', 'loser_pays', 'negotiable') NOT NULL DEFAULT 'split_50_50',
+    `status` ENUM('pending', 'open', 'matched', 'closed', 'rejected') NOT NULL DEFAULT 'open',
+    `opponent_team` VARCHAR(100) NULL DEFAULT NULL,
+    `opponent_captain` VARCHAR(100) NULL DEFAULT NULL,
+    `opponent_phone` VARCHAR(20) NULL DEFAULT NULL,
+    `booking_code` VARCHAR(40) NULL DEFAULT NULL,
+    `note` TEXT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_match_date` (`match_date`),
+    INDEX `idx_match_status` (`status`),
+    INDEX `idx_match_type` (`pitch_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===============================================================
+-- 14. GIAI ĐOẠN 6: VẬN HÀNH & THÔNG BÁO (NOTIFICATIONS, MAINTENANCE, EXPENSES)
+-- ===============================================================
+
+CREATE TABLE IF NOT EXISTS `notification_logs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `booking_id` INT NULL DEFAULT NULL,
+    `booking_code` VARCHAR(40) NULL DEFAULT NULL,
+    `recipient` VARCHAR(100) NOT NULL,
+    `channel` ENUM('telegram', 'zalo', 'sms', 'system') NOT NULL DEFAULT 'system',
+    `event_type` VARCHAR(50) NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `content` TEXT NOT NULL,
+    `status` ENUM('sent', 'failed', 'pending') NOT NULL DEFAULT 'sent',
+    `response_payload` TEXT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_notif_booking` (`booking_code`),
+    INDEX `idx_notif_channel` (`channel`),
+    INDEX `idx_notif_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pitch_maintenance` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `pitch_id` VARCHAR(20) NOT NULL,
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `start_time` VARCHAR(10) NOT NULL DEFAULT '05:30',
+    `end_time` VARCHAR(10) NOT NULL DEFAULT '23:00',
+    `reason` VARCHAR(255) NOT NULL,
+    `status` ENUM('scheduled', 'in_progress', 'completed', 'cancelled') NOT NULL DEFAULT 'scheduled',
+    `created_by` INT NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_maintenance_pitch` FOREIGN KEY (`pitch_id`) REFERENCES `pitches`(`id`) ON DELETE CASCADE,
+    INDEX `idx_maint_dates` (`pitch_id`, `start_date`, `end_date`),
+    INDEX `idx_maint_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `expenses` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `expense_code` VARCHAR(40) NOT NULL UNIQUE,
+    `category` VARCHAR(50) NOT NULL,
+    `category_name` VARCHAR(100) NOT NULL,
+    `amount` INT NOT NULL DEFAULT 0,
+    `expense_date` DATE NOT NULL,
+    `payer_name` VARCHAR(100) NOT NULL DEFAULT 'Ban Quản Trị Sân',
+    `staff_id` INT NULL DEFAULT NULL,
+    `receipt_note` TEXT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_expenses_date` (`expense_date`),
+    INDEX `idx_expenses_cat` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===============================================================
+-- 15. GIAI ĐOẠN 7: ĐÁNH GIÁ VÀ NHẬN XÉT (REVIEWS)
+-- ===============================================================
+
+CREATE TABLE IF NOT EXISTS `reviews` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `booking_code` VARCHAR(40) NOT NULL UNIQUE,
+    `pitch_id` VARCHAR(20) NOT NULL,
+    `customer_name` VARCHAR(100) NOT NULL,
+    `phone` VARCHAR(20) NOT NULL,
+    `rating` TINYINT NOT NULL COMMENT '1 đến 5 sao',
+    `comment` TEXT NULL,
+    `staff_reply` TEXT NULL,
+    `reply_by` INT NULL DEFAULT NULL,
+    `reply_at` DATETIME NULL DEFAULT NULL,
+    `status` ENUM('published', 'hidden') NOT NULL DEFAULT 'published',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_reviews_pitch` FOREIGN KEY (`pitch_id`) REFERENCES `pitches`(`id`) ON DELETE CASCADE,
+    INDEX `idx_reviews_pitch` (`pitch_id`, `status`),
+    INDEX `idx_reviews_rating` (`rating`),
+    INDEX `idx_reviews_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
+('waitlist_hold_minutes', '15'),
+('matchmaking_enabled', '1'),
+('matchmaking_require_approval', '0'),
+('reminder_enabled', '1'),
+('reminder_hours_before', '2'),
+('customer_notify_enabled', '0'),
+('customer_notify_webhook', ''),
+('booking_confirm_template', 'Sân Bóng Pro xác nhận đơn {code}: Sân {pitch_name}, ngày {date} khung giờ {slot_time}. Tổng: {total_price}đ (Cọc: {deposit_amount}đ).'),
+('reminder_template', 'Nhắc lịch đá bóng: Đội bạn có ca lúc {slot_time} hôm nay ({date}) tại {pitch_name}. Mã vé: {code}. Vui lòng đến trước 15 phút!'),
+('telegram_notify_enabled', '0'),
+('telegram_bot_token', ''),
+('telegram_chat_id', ''),
+('tg_event_new_booking', '1'),
+('tg_event_cancel', '1'),
+('tg_event_shift_diff', '1'),
+('tg_event_unmatched_tx', '1'),
+('tg_event_low_stock', '1'),
+('tg_event_waitlist', '1'),
+('tg_event_matchmaking', '1'),
+('tg_event_review', '1'),
+('security_totp_required_roles', 'admin,manager'),
+('loyalty_points_per_10k', '1'),
+('loyalty_bottle_cost_points', '50'),
+('privacy_policy_version', '1.0');
+

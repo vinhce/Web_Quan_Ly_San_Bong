@@ -1,5 +1,6 @@
 
 let currentPitches = [];
+let selectedFilterDate = '';
 
 function initFieldsPage() {
   const app = window.SanBongApp;
@@ -11,6 +12,7 @@ function initFieldsPage() {
 
   const urlParams = new URLSearchParams(window.location.search);
   const typeParam = urlParams.get('type');
+  selectedFilterDate = urlParams.get('date') || '';
   if (typeParam && typeParam !== 'all') {
     const radio = document.querySelector(`input[name="filter-type"][value="${typeParam}"]`);
     if (radio) radio.checked = true;
@@ -18,6 +20,16 @@ function initFieldsPage() {
 
   renderPitches();
   setupEventListeners();
+
+  if (!window._fieldsDataSyncedBound) {
+    window._fieldsDataSyncedBound = true;
+    window.addEventListener('sb-data-synced', () => {
+      if (db?.getPitches) {
+        currentPitches = db.getPitches();
+        renderPitches();
+      }
+    });
+  }
 
   if (app?.SanBongAPI?.getPitches) {
     app.SanBongAPI.getPitches()
@@ -71,19 +83,25 @@ function renderPitches() {
   }
 
   const app = window.SanBongApp;
+  const esc = (s) => (app?.escapeHTML ? app.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
+  const buildBookingHref = (pitchId) => `/booking?pitchId=${encodeURIComponent(pitchId)}${selectedFilterDate ? '&date=' + encodeURIComponent(selectedFilterDate) : ''}`;
 
   grid.innerHTML = list.map(p => {
-    const isMaint = p.status === 'Bảo trì';
+    const safeId = esc(p.id);
+    const isMaint = p.status === 'Bảo trì' || Boolean(p.inMaintenance);
+    const ratingText = Number(p.reviewCount || 0) > 0
+      ? `${Number(p.rating || 5).toFixed(1)} (${Number(p.reviewCount)})`
+      : '5.0 (Mới)';
     return `
       <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
-        <div class="relative cursor-pointer overflow-hidden" onclick="openPitchDetail('${p.id}')">
+        <div class="relative cursor-pointer overflow-hidden" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">
           ${app?.renderPitchSVG ? app.renderPitchSVG(p.variant || 'standard', 'h-48') : ''}
           <div class="absolute top-3 left-3 flex gap-1.5">
-            <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${p.typeName}</span>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${esc(p.typeName)}</span>
             ${p.id === 'P11-ALL' ? '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DBEAFE] text-[#2563EB] shadow-sm">Ghép 7-A + 7-B</span>' : ''}
           </div>
           <div class="absolute top-3 right-3">
-            ${app?.statusPill ? app.statusPill(p.status) : `<span>${p.status}</span>`}
+            ${app?.statusPill ? app.statusPill(p.status) : `<span>${esc(p.status)}</span>`}
           </div>
           <div class="absolute bottom-3 left-3">
             <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isMaint ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#DCFCE7] text-[#16A34A]'} shadow-sm">
@@ -95,20 +113,20 @@ function renderPitches() {
         <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <h3 class="font-heading font-bold text-lg text-[#0F172A] cursor-pointer hover:text-[#16A34A]" onclick="openPitchDetail('${p.id}')">${p.name}</h3>
+              <h3 class="font-heading font-bold text-lg text-[#0F172A] cursor-pointer hover:text-[#16A34A]" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">${esc(p.name)}</h3>
               <div class="flex items-center gap-1 text-xs font-bold text-[#0F172A]">
-                <span class="text-[#F59E0B]">★</span> 4.9 (126)
+                <span class="text-[#F59E0B]">★</span> ${esc(ratingText)}
               </div>
             </div>
-            <div class="text-xs text-[#64748B] mb-2">${p.size} · ${p.grass}</div>
+            <div class="text-xs text-[#64748B] mb-2">${esc(p.size)} · ${esc(p.grass)}</div>
             <div class="flex items-baseline gap-2">
-              <span class="text-base font-extrabold text-[#16A34A]">${app?.formatVND ? app.formatVND(p.basePrice) : p.basePrice + 'đ'}/h</span>
-              <span class="text-xs text-[#94A3B8]">Giờ cao điểm: ${app?.formatVND ? app.formatVND(p.peakPrice) : p.peakPrice + 'đ'}/h</span>
+              <span class="text-base font-extrabold text-[#16A34A]">${app?.formatVND ? app.formatVND(p.basePrice) : esc(p.basePrice) + 'đ'}/h</span>
+              <span class="text-xs text-[#94A3B8]">Giờ cao điểm: ${app?.formatVND ? app.formatVND(p.peakPrice) : esc(p.peakPrice) + 'đ'}/h</span>
             </div>
           </div>
 
           <div class="pt-3 border-t border-[#F1F5F9] flex items-center gap-3">
-            <button onclick="openPitchDetail('${p.id}')" class="btn-base btn-secondary flex-1 text-xs">
+            <button type="button" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" class="btn-base btn-secondary flex-1 text-xs">
               Xem chi tiết sân
             </button>
             ${isMaint ? `
@@ -116,7 +134,7 @@ function renderPitches() {
                 Đang bảo trì
               </button>
             ` : `
-              <a href="/booking?pitchId=${p.id}" class="btn-base btn-primary flex-1 text-xs text-center">
+              <a href="${buildBookingHref(p.id)}" class="btn-base btn-primary flex-1 text-xs text-center">
                 Đặt sân này
               </a>
             `}
@@ -180,17 +198,19 @@ function openPitchDetail(pitchId) {
   if (!modal || !content) return;
 
   const app = window.SanBongApp;
-  const isMaint = pitch.status === 'Bảo trì';
+  const esc = (s) => (app?.escapeHTML ? app.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
+  const isMaint = pitch.status === 'Bảo trì' || Boolean(pitch.inMaintenance);
+  const bookingHref = `/booking?pitchId=${encodeURIComponent(pitch.id)}${selectedFilterDate ? '&date=' + encodeURIComponent(selectedFilterDate) : ''}`;
 
   content.innerHTML = `
     <div class="flex items-start justify-between">
       <div>
         <div class="flex items-center gap-2 mb-1">
-          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A]">${pitch.typeName}</span>
-          ${app?.statusPill ? app.statusPill(pitch.status) : `<span>${pitch.status}</span>`}
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A]">${esc(pitch.typeName)}</span>
+          ${app?.statusPill ? app.statusPill(pitch.status) : `<span>${esc(pitch.status)}</span>`}
         </div>
-        <h2 class="font-heading font-extrabold text-2xl text-[#0F172A]">${pitch.name}</h2>
-        <div class="text-xs text-[#64748B] mt-0.5">${pitch.size} · ${pitch.description || pitch.grass}</div>
+        <h2 class="font-heading font-extrabold text-2xl text-[#0F172A]">${esc(pitch.name)}</h2>
+        <div class="text-xs text-[#64748B] mt-0.5">${esc(pitch.size)} · ${esc(pitch.description || pitch.grass)}</div>
       </div>
       <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold">✕</button>
     </div>
@@ -202,13 +222,13 @@ function openPitchDetail(pitchId) {
     <div class="grid grid-cols-2 gap-4">
       <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div class="text-xs text-[#64748B]">Mặt cỏ thi đấu</div>
-        <div class="text-xs font-bold text-[#0F172A] mt-1">${pitch.grass}</div>
+        <div class="text-xs font-bold text-[#0F172A] mt-1">${esc(pitch.grass)}</div>
       </div>
       <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
         <div class="text-xs font-bold text-[#16A34A] mt-1">
-          Thường: ${app?.formatVND ? app.formatVND(pitch.basePrice) : pitch.basePrice}/h<br>
-          Giờ cao điểm (17:30-21:00): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : pitch.peakPrice}/h
+          Thường: ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/h<br>
+          Giờ cao điểm (17:30-21:00): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : esc(pitch.peakPrice)}/h
         </div>
       </div>
     </div>
@@ -219,7 +239,7 @@ function openPitchDetail(pitchId) {
         ${(pitch.amenities || []).map(a => `
           <div class="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-2">
             <span class="w-4 h-4 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center font-bold text-[10px]">✓</span>
-            <span class="text-[#334155] font-medium">${a}</span>
+            <span class="text-[#334155] font-medium">${esc(a)}</span>
           </div>
         `).join('')}
       </div>
@@ -230,7 +250,7 @@ function openPitchDetail(pitchId) {
       ${isMaint ? `
         <button class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
       ` : `
-        <a href="/booking?pitchId=${pitch.id}" class="btn-base btn-primary text-xs">
+        <a href="${bookingHref}" class="btn-base btn-primary text-xs">
           Tiến hành chọn giờ & Đặt sân ngay
         </a>
       `}

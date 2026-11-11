@@ -7,25 +7,16 @@ $isCli = (php_sapi_name() === 'cli' || PHP_SAPI === 'cli');
 if (!$isCli) {
     loadEnv();
     $cronSecret = trim($_ENV['CRON_SECRET'] ?? getenv('CRON_SECRET') ?: '');
-    $remoteIp   = $_SERVER['REMOTE_ADDR'] ?? '';
-    $isLocalIp  = in_array($remoteIp, ['127.0.0.1', '::1'], true);
-    $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? $_GET['secret'] ?? ''));
+    $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? ''));
 
-    $authorized = false;
-    if ($cronSecret !== '') {
-        if ($provided !== '' && hash_equals($cronSecret, $provided)) {
-            $authorized = true;
-        }
-    } elseif ($isLocalIp) {
-        $authorized = true;
-    }
+    $authorized = ($cronSecret !== '' && $provided !== '' && hash_equals($cronSecret, $provided));
 
     if (!$authorized) {
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'success'  => false,
-            'message'  => 'Forbidden: Cron endpoint only allows CLI, localhost, or valid CRON_SECRET.',
+            'message'  => 'Forbidden: Cron endpoint only allows CLI or valid X-Cron-Secret header.',
             'ref_code' => 'ERR_FORBIDDEN'
         ], JSON_UNESCAPED_UNICODE);
         exit;

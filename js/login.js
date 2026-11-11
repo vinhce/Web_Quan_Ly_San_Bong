@@ -1,4 +1,36 @@
 
+let pending2FaUser = null;
+let pending2FaToken = null;
+let loginTurnstileToken = '';
+
+function initLoginTurnstile(siteKey) {
+  const wrap = document.getElementById('login-turnstile-wrap');
+  if (!wrap || !siteKey || wrap.dataset.rendered) return;
+  wrap.dataset.rendered = 'true';
+  const renderWidget = () => {
+    if (window.turnstile && typeof window.turnstile.render === 'function') {
+      try {
+        window.turnstile.render('#login-turnstile-wrap', {
+          sitekey: siteKey,
+          theme: 'light',
+          callback: function (t) { loginTurnstileToken = t; },
+          'expired-callback': function () { loginTurnstileToken = ''; }
+        });
+      } catch (e) {}
+    }
+  };
+  if (window.turnstile) {
+    renderWidget();
+  } else {
+    const s = document.createElement('script');
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    s.async = true;
+    s.defer = true;
+    s.onload = renderWidget;
+    document.head.appendChild(s);
+  }
+}
+
 function setAuthMessage(msg, type = 'error') {
   const box = document.getElementById('auth-alert-box');
   if (!box) {
@@ -61,6 +93,35 @@ document.addEventListener('DOMContentLoaded', () => {
     bg.innerHTML = window.SanBongApp.renderPitchSVG('bright', 'h-full');
   }
 
+  // Khởi tạo Turnstile nếu có sitekey
+  if (window.TURNSTILE_SITE_KEY) {
+    initLoginTurnstile(window.TURNSTILE_SITE_KEY);
+  } else {
+    fetch('../api/auth.php?action=me', { credentials: 'same-origin', cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.turnstile_site_key) {
+          window.TURNSTILE_SITE_KEY = d.turnstile_site_key;
+          initLoginTurnstile(d.turnstile_site_key);
+        }
+        if (d && d.csrf_token && window.SanBongApp?.setCsrfToken) {
+          window.SanBongApp.setCsrfToken(d.csrf_token);
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Legal modal buttons
+  document.getElementById('btn-show-terms-login')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.SanBongUI?.showTermsModal) window.SanBongUI.showTermsModal();
+  });
+  document.getElementById('btn-show-privacy-login')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.SanBongUI?.showPrivacyPolicyModal) window.SanBongUI.showPrivacyPolicyModal();
+  });
+
+  // Login form submit
   document.getElementById('login-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearFieldErrors();
@@ -70,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('login-password');
     const username = usernameInput?.value.trim();
     const password = passwordInput?.value;
-    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const submitBtn = document.getElementById('login-submit-btn');
 
     if (!username) {
       setAuthMessage('Vui lòng nhập số điện thoại hoặc email đăng nhập.', 'error');
@@ -90,15 +151,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
+      if (window.SanBongApp?.ensureCsrfToken) {
+        await window.SanBongApp.ensureCsrfToken('../');
+      }
+      const headers = window.SanBongApp?.getAuthFetchHeaders
+        ? window.SanBongApp.getAuthFetchHeaders()
+        : { 'Content-Type': 'application/json' };
+
       const response = await fetch('../api/auth.php?action=login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
+        headers,
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          username,
+          password,
+          turnstile_token: loginTurnstileToken || ''
+        })
       });
 
+      const tokenHeader = response.headers ? response.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(tokenHeader);
+      }
       const res = await response.json();
+      if (res?.csrf_token && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(res.csrf_token);
+      }
+
+      if (response.ok && res.require_2fa) {
+        pending2FaUser = res.user || { username };
+        pending2FaToken = res.temp_token || '';
+        const box2Fa = document.getElementById('login-2fa-box');
+        if (box2Fa) box2Fa.classList.remove('hidden');
+        if (submitBtn) submitBtn.classList.add('hidden');
+        const codeInput = document.getElementById('login-2fa-code');
+        if (codeInput) {
+          codeInput.value = '';
+          codeInput.focus();
+        }
+        setAuthMessage('🔐 Tài khoản bảo vệ 2FA: Vui lòng nhập mã 6 số từ Google Authenticator.', 'success');
+        return;
+      }
 
       if (response.ok && res.success) {
         setAuthMessage('✓ Đăng nhập thành công! Đang chuyển hướng...', 'success');
@@ -117,11 +210,23 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (redirectParam) {
-            if (redirectParam === 'portal-admin' && !isPortalRole) {
+            const ALLOWED_REDIRECT_BASES = new Set([
+              'fields', 'booking', 'checkout', 'success', 'history',
+              'field-detail', 'matchmaking', 'portal-admin', 'portal-admin/'
+            ]);
+            const rawRedir = String(redirectParam).trim();
+            const isSafeRelative = !/^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|\/\/)/.test(rawRedir) && !rawRedir.includes('\\') && !rawRedir.includes('..');
+            const stripped = rawRedir.replace(/^\/+/, '').replace(/^html\//, '').replace(/\.html(?=$|[?#])/, '');
+            const baseRoute = stripped.split(/[?#]/)[0];
+            if (!isSafeRelative || !ALLOWED_REDIRECT_BASES.has(baseRoute)) {
               window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
               return;
             }
-            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(redirectParam) : redirectParam;
+            if ((baseRoute === 'portal-admin' || baseRoute === 'portal-admin/') && !isPortalRole) {
+              window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
+              return;
+            }
+            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(stripped) : '/history';
             return;
           }
 
@@ -143,6 +248,69 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Verify 2FA submit
+  document.getElementById('login-2fa-submit')?.addEventListener('click', async () => {
+    const codeInput = document.getElementById('login-2fa-code');
+    const code = codeInput ? codeInput.value.trim() : '';
+    if (!code || code.length !== 6) {
+      setAuthMessage('Vui lòng nhập đủ 6 chữ số mã xác thực 2FA.', 'error');
+      if (codeInput) codeInput.focus();
+      return;
+    }
+    const btn = document.getElementById('login-2fa-submit');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Đang kiểm tra OTP...';
+    }
+    try {
+      if (window.SanBongApp?.ensureCsrfToken) await window.SanBongApp.ensureCsrfToken('../');
+      const headers = window.SanBongApp?.getAuthFetchHeaders ? window.SanBongApp.getAuthFetchHeaders() : { 'Content-Type': 'application/json' };
+      const res = await fetch('../api/auth.php?action=verify_2fa', {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          code: code,
+          temp_token: pending2FaToken,
+          user_id: pending2FaUser?.id
+        })
+      });
+      const json = await res.json();
+      if (json?.csrf_token && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(json.csrf_token);
+      }
+      if (res.ok && json.success) {
+        setAuthMessage('✓ Xác thực 2FA thành công! Đang chuyển hướng...', 'success');
+        sessionStorage.setItem('sb_current_user', JSON.stringify(json.user || pending2FaUser));
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectParam = urlParams.get('redirect');
+        setTimeout(() => {
+          const u = json.user || pending2FaUser;
+          const isPortal = Boolean(u && ['admin', 'manager', 'staff'].includes(u.role));
+          if (isPortal && (redirectParam === 'portal-admin' || !redirectParam)) {
+            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('portal-admin/') : '/portal-admin/';
+            return;
+          }
+          if (redirectParam) {
+            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(redirectParam) : redirectParam;
+            return;
+          }
+          window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
+        }, 500);
+      } else {
+        setAuthMessage(json.message || 'Mã xác thực 2FA không chính xác hoặc đã hết hạn.', 'error');
+      }
+    } catch (err) {
+      setAuthMessage('Lỗi kết nối máy chủ xác thực 2FA.', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Xác thực OTP & Đăng nhập';
+      }
+    }
+  });
+
+  // Register form submit
   document.getElementById('register-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearFieldErrors();
@@ -151,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullName = document.getElementById('reg-name')?.value.trim();
     const phone = document.getElementById('reg-phone')?.value.trim();
     const password = document.getElementById('reg-password')?.value;
+    const consent = document.getElementById('reg-privacy-consent')?.checked;
     const submitBtn = e.target.querySelector('button[type="submit"]');
 
     if (!fullName) {
@@ -177,27 +346,49 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (!consent) {
+      setAuthMessage('Vui lòng tích chọn đồng ý với Điều khoản và Chính sách bảo vệ dữ liệu theo Nghị định 13/2023/NĐ-CP.', 'error');
+      const consentEl = document.getElementById('reg-privacy-consent');
+      if (consentEl) consentEl.focus();
+      return;
+    }
+
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = '⏳ Đang khởi tạo tài khoản...';
     }
 
     try {
+      if (window.SanBongApp?.ensureCsrfToken) {
+        await window.SanBongApp.ensureCsrfToken('../');
+      }
+      const headers = window.SanBongApp?.getAuthFetchHeaders
+        ? window.SanBongApp.getAuthFetchHeaders()
+        : { 'Content-Type': 'application/json' };
+
       const response = await fetch('../api/auth.php?action=register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
+        credentials: 'same-origin',
         body: JSON.stringify({
           username: phone.replace(/\s+/g, ''),
           email: `${phone.replace(/\s+/g, '')}@sanbongpro.vn`,
           phone: phone,
           full_name: fullName,
-          password: password
+          password: password,
+          privacy_consent: true,
+          turnstile_token: loginTurnstileToken || ''
         })
       });
 
+      const tokenHeader = response.headers ? response.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(tokenHeader);
+      }
       const res = await response.json();
+      if (res?.csrf_token && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(res.csrf_token);
+      }
 
       if (response.ok && res.success) {
         setAuthMessage('✓ Tạo tài khoản hội viên thành công! Đang chuyển hướng...', 'success');

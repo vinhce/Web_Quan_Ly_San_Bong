@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v31">
+  <link rel="stylesheet" href="../css/style.css?v=20261112_v33">
 </head>
 <body class="min-h-screen flex flex-col justify-between antialiased">
 
@@ -85,7 +85,24 @@
             <input type="password" id="login-password" autocomplete="current-password" class="input-field" placeholder="••••••••••">
           </div>
 
-          <button type="submit" class="btn-base btn-primary w-full text-sm font-bold shadow-md">
+          <div id="login-turnstile-wrap" class="my-2"></div>
+
+          <div id="login-2fa-box" class="hidden p-4 rounded-xl bg-emerald-50 border border-emerald-300 space-y-3">
+            <div class="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+              <span>🔐</span>
+              <span>Tài khoản đã kích hoạt 2FA (TOTP)</span>
+            </div>
+            <p class="text-xs text-emerald-700">Vui lòng mở ứng dụng Google Authenticator hoặc ứng dụng OTP trên điện thoại và nhập mã 6 số xác thực:</p>
+            <div>
+              <label class="block text-xs font-bold text-[#475569] mb-1">Mã xác thực 6 số</label>
+              <input type="text" id="login-2fa-code" maxlength="6" inputmode="numeric" placeholder="000000" class="input-field text-center font-mono font-bold tracking-widest text-lg">
+            </div>
+            <button type="button" id="login-2fa-submit" class="btn-base btn-primary w-full text-xs font-bold shadow">
+              Xác thực OTP &amp; Đăng nhập
+            </button>
+          </div>
+
+          <button type="submit" id="login-submit-btn" class="btn-base btn-primary w-full text-sm font-bold shadow-md">
             Đăng nhập tài khoản
           </button>
         </form>
@@ -104,8 +121,8 @@
             <input type="password" id="reg-password" placeholder="••••••••••" class="input-field">
           </div>
           <label class="flex items-start gap-2 text-xs text-[#64748B] cursor-pointer">
-            <input type="checkbox" checked class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A] mt-0.5">
-            <span>Tôi đồng ý với Điều khoản sử dụng và Quy chế sân</span>
+            <input type="checkbox" id="reg-privacy-consent" class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A] mt-0.5">
+            <span>Tôi đồng ý với <button type="button" id="btn-show-terms-login" class="text-[#16A34A] font-semibold underline bg-transparent border-none p-0">Điều khoản sử dụng</button> và đồng ý cho phép xử lý dữ liệu cá nhân theo <button type="button" id="btn-show-privacy-login" class="text-[#16A34A] font-semibold underline bg-transparent border-none p-0">Nghị định 13/2023/NĐ-CP</button></span>
           </label>
           <button type="submit" class="btn-base btn-primary w-full text-sm font-bold shadow-md">
             Tạo tài khoản hội viên
@@ -120,9 +137,9 @@
     © 2026 Sân Bóng Pro · Hệ thống quản lý đặt sân bóng đá tự động
   </footer>
 
-  <script src="/js/data.js?v=20261110_v31"></script>
-  <script src="/js/app.js?v=20261110_v31"></script>
-  <script src="/js/api.js?v=20261110_v31"></script>
-  <script src="/js/login.js?v=20261110_v31"></script>
+  <script src="/js/data.js?v=20261112_v33"></script>
+  <script src="/js/app.js?v=20261112_v33"></script>
+  <script src="/js/api.js?v=20261112_v33"></script>
+  <script src="/js/login.js?v=20261112_v33"></script>
 </body>
 </html>

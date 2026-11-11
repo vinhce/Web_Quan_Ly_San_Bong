@@ -25,7 +25,9 @@
               </div>
 
               <!-- Hộp cảnh báo No-Show / Công nợ ngay dưới ô SĐT -->
-              <div id="walkin-noshow-warning" class="hidden p-3 rounded-xl bg-red-50 border-2 border-red-300 text-xs text-red-800 font-bold leading-relaxed"></div>
+              <div id="walkin-noshow-warning" class="hidden p-3 rounded-xl bg-red-50 border-2 border-red-300 text-xs text-red-800 font-bold leading-relaxed">
+                <div id="walkin-noshow-warning-text"></div>
+              </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -163,7 +165,7 @@
                   <input type="text" id="pos-sale-note" placeholder="VD: Khách Sân 7-A mua lẻ 5 chai nước, hoặc nhập mã đơn #ASFS..." class="input-field w-full h-9 text-xs bg-white">
                 </div>
                 <div class="sm:col-span-4">
-                  <button type="submit" onclick="handleCounterServiceSale(event)" class="btn-base btn-primary w-full h-9 text-xs font-extrabold cursor-pointer shadow-sm">
+                  <button type="submit" class="btn-base btn-primary w-full h-9 text-xs font-extrabold cursor-pointer shadow-sm">
                     💰 Bán &amp; Trừ kho ngay
                   </button>
                 </div>
@@ -228,7 +230,7 @@
                 <label class="block font-bold text-[#0F172A] mb-1">Ghi chú bàn giao ca trực (tiền lẻ, sự cố, gửi lại đồ...)</label>
                 <input type="text" id="shift-close-note" placeholder="VD: Đã đếm đủ tiền mặt bàn giao cho ca sau / Chủ sân..." class="input-field w-full bg-white">
               </div>
-              <div class="flex items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
                 <span class="text-[11px] text-[#64748B]">Bấm chốt ca để khóa sổ doanh thu ca hiện tại</span>
                 <button type="button" id="btn-close-shift" onclick="handleCloseShift()" class="btn-base bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2.5 shrink-0 cursor-pointer shadow-sm">
                   🔒 Chốt ca bàn giao

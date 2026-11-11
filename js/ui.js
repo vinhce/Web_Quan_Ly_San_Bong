@@ -7,15 +7,31 @@
   const Icons = (window.SanBongHelpers && window.SanBongHelpers.Icons) ? window.SanBongHelpers.Icons : {};
 
 function handleLogout() {
-    const doLogout = () => {
+    const doLogout = async () => {
+      try {
+        const headers = window.SanBongHelpers?.getAuthFetchHeaders
+          ? window.SanBongHelpers.getAuthFetchHeaders()
+          : { 'Content-Type': 'application/json' };
+        if (!headers['X-CSRF-Token'] && sessionStorage.getItem('sb_current_user')) {
+          const meRes = await fetch(getRelativePath('api/auth.php?action=me'), { cache: 'no-store' });
+          const meJson = await meRes.json().catch(() => null);
+          if (meJson?.csrf_token) {
+            headers['X-CSRF-Token'] = meJson.csrf_token;
+          }
+        }
+        await fetch(getRelativePath('api/auth.php?action=logout'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({})
+        });
+      } catch (e) {}
+
       sessionStorage.removeItem('sb_current_user');
+      if (window.SanBongHelpers?.clearCsrfToken) window.SanBongHelpers.clearCsrfToken();
       try {
         localStorage.removeItem('sb_user_v1');
       } catch (e) {}
-      fetch(getRelativePath('api/auth.php?action=logout'), { method: 'POST' })
-        .finally(() => {
-          window.location.href = getRelativePath('');
-        });
+      window.location.href = getRelativePath('');
     };
 
     if (showModal) {
@@ -28,7 +44,7 @@ function handleLogout() {
         onConfirm: doLogout
       });
     } else {
-      if (confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?')) doLogout();
+      doLogout();
     }
   }
 
@@ -38,10 +54,16 @@ function handleLogout() {
       currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
     } catch(e) {}
 
+    const sysCfg = (window.SanBongDB && typeof window.SanBongDB.getSystemConfig === 'function')
+      ? window.SanBongDB.getSystemConfig()
+      : null;
+    const showMatchmaking = !sysCfg || sysCfg.matchmakingEnabled !== false;
+
     const navItems = [
       { label: 'Trang chủ', href: getRelativePath('') },
       { label: 'Danh sách sân', href: getRelativePath('fields') },
       { label: 'Đặt sân nhanh', href: getRelativePath('booking') },
+      ...(showMatchmaking ? [{ label: 'Tìm đối / Ghép kèo', href: getRelativePath('matchmaking') }] : []),
       { label: 'Lịch sử & Hội viên', href: getRelativePath('history') }
     ];
 
@@ -62,7 +84,7 @@ function handleLogout() {
         name: currentUser.full_name,
         avatar: currentUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
         tier: isAdmin ? 'Quản trị viên' : (isManager ? 'Quản lý sân' : (isStaff ? 'Nhân viên trực sân' : (currentUser.tier || 'Hội viên'))),
-        points: isAdmin ? 9999 : ((isManager || isStaff) ? 0 : (currentUser.points || 0))
+        points: Number(currentUser.points) || 0
       };
       const userSubline = (isStaff || isManager) ? escapeHTML(user.tier) : `${escapeHTML(user.tier)} • ${user.points}đ`;
 
@@ -206,8 +228,8 @@ function handleLogout() {
       <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6 border-t border-[#1E293B] flex flex-col sm:flex-row items-center justify-between text-[12px] text-[#64748B] gap-4">
         <div>© 2026 Sân Bóng Pro. Bản quyền hệ thống đặt sân hiện đại.</div>
         <div class="flex items-center gap-6">
-          <a href="#" class="hover:text-white">Điều khoản sử dụng</a>
-          <a href="#" class="hover:text-white">Chính sách bảo mật</a>
+          <button type="button" id="footer-btn-terms" class="hover:text-white transition-colors cursor-pointer text-left bg-transparent border-none p-0 text-[12px] text-[#94A3B8]">Điều khoản sử dụng</button>
+          <button type="button" id="footer-btn-privacy" class="hover:text-white transition-colors cursor-pointer text-left bg-transparent border-none p-0 text-[12px] text-[#94A3B8]">Chính sách bảo mật (NĐ 13/2023)</button>
         </div>
       </div>
 
@@ -345,9 +367,119 @@ function handleLogout() {
     }
   }
 
-  window.alert = function (msg) {
-    showToast(String(msg), 'warning');
-  };
+  function showPrivacyPolicyModal() {
+    showModal({
+      title: '🛡️ CHÍNH SÁCH BẢO VỆ DỮ LIỆU CÁ NHÂN (Nghị định 13/2023/NĐ-CP)',
+      message: `1. Mục đích thu thập & xử lý dữ liệu:
+Hệ thống thu thập Họ tên, Số điện thoại, Email và thông tin giao dịch nhằm:
+• Xác thực lệnh đặt sân, phát hành vé điện tử QR check-in vào sân.
+• Liên hệ xác nhận lịch thi đấu, hỗ trợ dời lịch hoặc xử lý hoàn cọc.
+• Tích lũy điểm hội viên và nâng hạng thành viên thân thiết.
+• Phòng chống gian lận đặt ảo và bảo vệ an ninh trật tự khu sân.
+
+2. Bên kiểm soát & Bên xử lý dữ liệu:
+• Hệ thống Sân Bóng Pro (Số 18 Đường Lê Đức Thọ, P. Mỹ Đình, Q. Nam Từ Liêm, TP. Hà Nội).
+• Hotline liên hệ hỗ trợ: 0352 313 548.
+
+3. Thời gian lưu trữ dữ liệu cá nhân:
+Dữ liệu cá nhân được lưu trữ an toàn trong suốt thời gian người dùng duy trì tài khoản hoặc tối đa 24 tháng kể từ ngày giao dịch gần nhất, trừ khi pháp luật có quy định khác.
+
+4. Quyền của chủ thể dữ liệu (Quý khách hàng):
+Theo Điều 9 Nghị định 13/2023/NĐ-CP, Quý khách có đầy đủ quyền:
+• Được biết, đồng ý hoặc không đồng ý xử lý dữ liệu cá nhân.
+• Truy cập, chỉnh sửa hoặc yêu cầu cập nhật thông tin cá nhân.
+• Yêu cầu xóa dữ liệu cá nhân hoặc rút lại sự đồng ý đã cung cấp.
+• Khiếu nại, tố cáo hoặc phản ánh khi phát hiện vi phạm bảo mật dữ liệu.
+Mọi yêu cầu thực hiện quyền vui lòng liên hệ Hotline: 0352 313 548 để được giải quyết trong vòng 72 giờ.
+
+5. Cam kết an toàn & bảo mật:
+Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS, cơ chế phòng chống truy cập trái phép và cam kết TUYỆT ĐỐI không chia sẻ hoặc mua bán thông tin cho bên thứ ba vì mục đích thương mại.`,
+      type: 'info',
+      confirmText: 'Tôi đã hiểu & đồng ý'
+    });
+  }
+
+  function showTermsModal() {
+    showModal({
+      title: '📋 ĐIỀU KHOẢN SỬ DỤNG DỊCH VỤ SÂN BÓNG PRO',
+      message: `1. Quy định đặt sân & Giữ chỗ:
+• Khách hàng thực hiện đặt chỗ trực tuyến qua website. Sau khi tạo lệnh, hệ thống áp dụng thời gian giữ chỗ (mặc định 15 phút) để khách thanh toán tiền cọc.
+• Hết thời gian giữ chỗ nếu chưa nhận được tiền cọc, hệ thống sẽ tự động hủy đơn và nhả slot cho các đội bóng khác.
+
+2. Chính sách cọc & Hoàn tiền:
+• Tỷ lệ đặt cọc: Áp dụng từ 30% đến 100% tổng giá trị khung giờ tùy chính sách.
+• Hủy trước 24 giờ so với giờ bắt đầu: Hoàn 100% tiền cọc.
+• Hủy trước 4 giờ đến 24 giờ: Hỗ trợ dời lịch thi đấu hoặc hoàn cọc theo chính sách ưu đãi.
+• Hủy dưới 4 giờ hoặc vắng mặt (No-Show): Không hỗ trợ hoàn cọc nhằm bù đắp chi phí vận hành và giữ sân.
+
+3. Quy định trang thiết bị & An toàn:
+• Cầu thủ sử dụng giày thi đấu chuyên dụng cho sân cỏ nhân tạo (giày đinh dăm TF hoặc đế bệt IC). Nghiêm cấm giày đinh sắt SG gây rách mặt cỏ.
+• Giữ gìn vệ sinh chung, không mang chất dễ cháy nổ, đồ thủy tinh hoặc chất cấm vào khu vực sân cỏ.
+• Tôn trọng đối thủ, trọng tài và thi đấu trên tinh thần thể thao văn minh, fair-play.`,
+      type: 'info',
+      confirmText: 'Đã hiểu'
+    });
+  }
+
+  async function syncAuthMe() {
+    try {
+      const res = await fetch(getRelativePath('api/auth.php?action=me'), { credentials: 'same-origin', cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+          window.SanBongHelpers.setCsrfToken(data.csrf_token);
+        }
+        if (data && data.turnstile_site_key) {
+          window.TURNSTILE_SITE_KEY = data.turnstile_site_key;
+        }
+        if (data && data.authenticated && data.user) {
+          const current = JSON.parse(sessionStorage.getItem('sb_current_user') || '{}');
+          const updated = Object.assign({}, current, data.user);
+          sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
+          // If navbar is already rendered, update points / tier if changed
+          const navPlaceholder = document.getElementById('app-navbar');
+          if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
+            const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
+            navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
+          }
+        } else if (data && data.authenticated === false) {
+          if (sessionStorage.getItem('sb_current_user')) {
+            sessionStorage.removeItem('sb_current_user');
+            const navPlaceholder = document.getElementById('app-navbar');
+            if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
+              const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
+              navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Event delegation for footer buttons & legal links
+  document.addEventListener('click', function (e) {
+    const target = e.target;
+    if (!target) return;
+    if (target.id === 'footer-btn-privacy' || target.closest('#footer-btn-privacy')) {
+      e.preventDefault();
+      showPrivacyPolicyModal();
+      return;
+    }
+    if (target.id === 'footer-btn-terms' || target.closest('#footer-btn-terms')) {
+      e.preventDefault();
+      showTermsModal();
+      return;
+    }
+  });
+
+  // Sync auth on load
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', syncAuthMe);
+    } else {
+      syncAuthMe();
+    }
+  }
 
   window.alert = function (msg) {
     showToast(String(msg), 'warning');
@@ -358,7 +490,10 @@ function handleLogout() {
     renderFooter,
     handleLogout,
     showToast,
-    showModal
+    showModal,
+    showPrivacyPolicyModal,
+    showTermsModal,
+    syncAuthMe
   };
 
   window.showToast = showToast;

@@ -74,6 +74,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  const esc = (s) => (window.SanBongApp?.escapeHTML ? window.SanBongApp.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
+
   const amenitiesList = document.getElementById('detail-amenities-list');
   if (amenitiesList) {
     const amenities = pitch.amenities || [
@@ -87,12 +89,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     amenitiesList.innerHTML = amenities.map(a => `
       <div class="flex items-center gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div class="w-6 h-6 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center shrink-0 text-xs font-bold">✓</div>
-        <span class="font-medium text-[#0F172A]">${a}</span>
+        <span class="font-medium text-[#0F172A]">${esc(a)}</span>
       </div>
     `).join('');
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
   const scheduleDateInput = document.getElementById('detail-schedule-date');
   const widgetDateInput = document.getElementById('widget-date');
   const widgetSlotSelect = document.getElementById('widget-slot');
@@ -106,55 +108,117 @@ document.addEventListener('DOMContentLoaded', async () => {
     widgetDateInput.min = today;
   }
 
-  function renderSlotsForDate(selectedDate) {
+  const bookedCacheByDate = {};
+  let latestRenderToken = 0;
+
+  function applySlotsRender(selectedDate, serverInfo) {
     const slotsGrid = document.getElementById('detail-slots-grid');
     if (!slotsGrid || !window.SanBongApp?.SanBongDB) return;
 
-    const slotsWithStatus = window.SanBongApp.SanBongDB.getSlots(pitch.id, selectedDate);
+    const rawSlots = window.SanBongApp.SanBongDB.getSlots(pitch.id, selectedDate);
+    const bookedSet = new Set((serverInfo?.bookedIds || []).map(x => String(x)));
+    const maintWins = Array.isArray(serverInfo?.maintenanceWindows) ? serverInfo.maintenanceWindows : [];
+
+    const slotsWithStatus = rawSlots.map(s => {
+      if (s.status === 'Bảo trì') return s;
+      const sStart = String(s.startTime || s.time.split('-')[0] || '').trim();
+      const sEnd = String(s.endTime || s.time.split('-')[1] || '').trim();
+      const hitMaint = maintWins.find(mw => {
+        const mwStart = String(mw.start_time || '').slice(0, 5);
+        const mwEnd = String(mw.end_time || '').slice(0, 5);
+        return (!mwStart && !mwEnd) || (sStart < mwEnd && sEnd > mwStart);
+      });
+      if (hitMaint) {
+        return { ...s, status: 'Bảo trì', maintenanceReason: hitMaint.reason || 'Bảo trì định kỳ' };
+      }
+      if (bookedSet.has(String(s.id))) {
+        return { ...s, status: 'Đã đặt' };
+      }
+      return s;
+    });
+
     slotsGrid.innerHTML = slotsWithStatus.map(s => {
       let bgCls = 'bg-white border-[#E2E8F0] hover:border-[#16A34A] text-[#0F172A] cursor-pointer';
       let tagCls = 'bg-[#DCFCE7] text-[#16A34A]';
-      if (s.status === 'Đã xác nhận' || s.status === 'Đang đá' || s.status === 'Giữ chỗ') {
+      const isAvail = s.status === 'Trống';
+      if (s.status === 'Đã xác nhận' || s.status === 'Đang đá' || s.status === 'Giữ chỗ' || s.status === 'Đã đặt') {
         bgCls = 'bg-[#F1F5F9] border-[#E2E8F0] text-[#94A3B8] cursor-not-allowed opacity-75';
         tagCls = 'bg-[#E2E8F0] text-[#64748B]';
       } else if (s.status === 'Bảo trì') {
         bgCls = 'hatch-slate border-[#CBD5E1] text-[#94A3B8] cursor-not-allowed';
         tagCls = 'bg-[#CBD5E1] text-[#475569]';
       }
+      const calc = window.SanBongApp.SanBongDB.calculatePrice(pitch.id, selectedDate, s.id, [], '', 1);
+      const displayPrice = calc ? calc.netPitchPrice : (s.isPeak ? pitch.peakPrice : pitch.basePrice);
 
       return `
-        <div onclick="selectSlotFromGrid('${s.id}')" class="p-3 rounded-xl border ${bgCls} transition-all text-center flex flex-col justify-between">
-          <div class="font-bold text-xs sm:text-sm">${s.time}</div>
+        <div ${isAvail ? `data-slot-id="${esc(s.id)}" onclick="selectSlotFromGrid(this.getAttribute('data-slot-id'))"` : ''} class="p-3 rounded-xl border ${bgCls} transition-all text-center flex flex-col justify-between">
+          <div class="font-bold text-xs sm:text-sm">${esc(s.time)}</div>
           <div class="mt-1 flex items-center justify-center">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${tagCls}">${s.status}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${tagCls}">${esc(s.status)}</span>
           </div>
           <div class="mt-1.5 text-[11px] font-semibold ${s.isPeak ? 'text-[#16A34A]' : 'text-[#64748B]'}">
-            ${window.SanBongApp.formatVND(s.isPeak ? pitch.peakPrice : pitch.basePrice)}
+            ${window.SanBongApp.formatVND(displayPrice)}
           </div>
         </div>
       `;
     }).join('');
 
     if (widgetSlotSelect) {
+      const prevVal = widgetSlotSelect.value;
       widgetSlotSelect.innerHTML = slotsWithStatus.map(s => {
         const isDis = s.status !== 'Trống';
-        return `<option value="${s.id}" ${isDis ? 'disabled' : ''}>
-          ${s.time} · ${s.status} (${window.SanBongApp.formatVND(s.isPeak ? pitch.peakPrice : pitch.basePrice)})
+        const calc = window.SanBongApp.SanBongDB.calculatePrice(pitch.id, selectedDate, s.id, [], '', 1);
+        const displayPrice = calc ? calc.netPitchPrice : (s.isPeak ? pitch.peakPrice : pitch.basePrice);
+        return `<option value="${esc(s.id)}" ${isDis ? 'disabled' : ''}>
+          ${esc(s.time)} · ${esc(s.status)} (${window.SanBongApp.formatVND(displayPrice)})
         </option>`;
       }).join('');
+      if (prevVal && [...widgetSlotSelect.options].some(o => o.value === prevVal && !o.disabled)) {
+        widgetSlotSelect.value = prevVal;
+      } else {
+        const firstEnabled = [...widgetSlotSelect.options].find(o => !o.disabled);
+        if (firstEnabled) widgetSlotSelect.value = firstEnabled.value;
+      }
       updateWidgetPrice();
+    }
+  }
+
+  async function renderSlotsForDate(selectedDate) {
+    const token = ++latestRenderToken;
+    applySlotsRender(selectedDate, bookedCacheByDate[selectedDate] || null);
+    if (bookedCacheByDate[selectedDate]) return;
+
+    try {
+      const url = window.SanBongApp?.getRelativePath
+        ? window.SanBongApp.getRelativePath(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitch.id)}&date=${encodeURIComponent(selectedDate)}`)
+        : `/api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitch.id)}&date=${encodeURIComponent(selectedDate)}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        bookedCacheByDate[selectedDate] = {
+          bookedIds: Array.isArray(json.data) ? json.data : [],
+          maintenanceWindows: Array.isArray(json.maintenanceWindows) ? json.maintenanceWindows : []
+        };
+        if (token === latestRenderToken) {
+          applySlotsRender(selectedDate, bookedCacheByDate[selectedDate]);
+        }
+      }
+    } catch (err) {
+      console.warn('Không thể tải khung giờ đã đặt của sân:', err.message);
     }
   }
 
   function updateWidgetPrice() {
     if (!widgetSlotSelect || !window.SanBongApp?.SanBongDB) return;
     const slotId = widgetSlotSelect.value;
+    const selDate = widgetDateInput ? widgetDateInput.value : today;
+    const calc = window.SanBongApp.SanBongDB.calculatePrice(pitch.id, selDate, slotId, [], '', 1);
     const slots = window.SanBongApp.SanBongDB.getTimeSlots();
     const slot = slots.find(s => s.id === slotId) || slots[0];
-    const isPeak = slot ? slot.isPeak : false;
-    const price = isPeak ? pitch.peakPrice : pitch.basePrice;
-    const deposit = Math.round(price * 0.3);
-    const remain = price - deposit;
+    const price = calc ? calc.netPitchPrice : (slot?.isPeak ? pitch.peakPrice : pitch.basePrice);
+    const deposit = calc ? calc.depositAmount : Math.round(price * 0.3);
+    const remain = calc ? calc.remainingAmount : (price - deposit);
 
     const estPrice = document.getElementById('widget-est-price');
     const estDep = document.getElementById('widget-est-deposit');
@@ -201,4 +265,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   renderSlotsForDate(today);
+  loadFieldReviews(pitch.id);
 });
+
+async function loadFieldReviews(pitchId) {
+  const avgEl = document.getElementById('field-avg-rating');
+  const countEl = document.getElementById('field-total-reviews');
+  const listEl = document.getElementById('field-reviews-list');
+  if (!listEl) return;
+
+  const esc = (s) => (window.SanBongHelpers ? window.SanBongHelpers.escapeHTML(s) : String(s || ''));
+  const getRel = (p) => (window.SanBongHelpers ? window.SanBongHelpers.getRelativePath(p) : '/' + p);
+
+  try {
+    const res = await fetch(getRel('api/reviews.php?pitch_id=' + encodeURIComponent(pitchId)));
+    const json = await res.json();
+    if (!json.success || !json.data) throw new Error('Lỗi tải đánh giá');
+
+    const { reviews, stats } = json.data;
+    if (avgEl) avgEl.textContent = `★ ${stats.avg_rating || 5.0}`;
+    if (countEl) countEl.textContent = stats.total_reviews > 0 ? `(${stats.total_reviews} lượt đánh giá thực tế)` : '(Chưa có đánh giá nào - 5.0★ mặc định)';
+    const heroRatingEl = document.getElementById('detail-hero-rating');
+    if (heroRatingEl) {
+      heroRatingEl.innerHTML = Number(stats.total_reviews || 0) > 0
+        ? `<span class="text-[#F59E0B]">★</span> ${Number(stats.avg_rating || 5).toFixed(1)} (${Number(stats.total_reviews)} lượt đánh giá)`
+        : `<span class="text-[#F59E0B]">★</span> 5.0 (Mới)`;
+    }
+
+    if (!reviews || reviews.length === 0) {
+      listEl.innerHTML = `<div class="p-4 rounded-xl bg-[#F8FAFC] border border-dashed border-[#CBD5E1] text-xs text-[#64748B] text-center">Chưa có đánh giá nào cho sân này. Hãy là đội bóng đầu tiên để lại nhận xét sau trận đấu!</div>`;
+      return;
+    }
+
+    listEl.innerHTML = reviews.map(r => {
+      const stars = '★'.repeat(r.rating || 5) + '☆'.repeat(5 - (r.rating || 5));
+      return `
+        <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-bold text-xs text-[#0F172A]">${esc(r.customer_name)}</span>
+              <span class="text-[11px] text-[#94A3B8] ml-2">${esc((r.created_at || '').slice(0, 10))}</span>
+            </div>
+            <span class="text-xs text-[#F59E0B] tracking-widest">${stars}</span>
+          </div>
+          <p class="text-xs text-[#475569] leading-relaxed">${esc(r.comment || 'Khách hài lòng với chất lượng sân.')}</p>
+          ${r.staff_reply ? `
+            <div class="mt-2 p-2.5 rounded-lg bg-green-50 border border-green-100 text-xs text-green-800">
+              <strong class="font-bold">Phản hồi từ Sân Bóng Pro:</strong> ${esc(r.staff_reply)}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    listEl.innerHTML = `<div class="text-xs text-[#64748B] py-4 text-center">Chưa có nhận xét nào.</div>`;
+  }
+}

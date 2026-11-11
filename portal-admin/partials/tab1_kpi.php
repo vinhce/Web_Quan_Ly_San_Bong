@@ -6,31 +6,28 @@
           <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
           <div id="kpi-card-revenue" class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Doanh thu hôm nay</div>
-            <div id="kpi-revenue-value" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">4.350.000đ</div>
-            <div class="mt-2 text-xs font-semibold text-[#16A34A] flex items-center gap-1">
-              <span>↑ 12%</span>
-              <span class="text-[#64748B] font-normal">so với hôm qua</span>
-            </div>
+            <div id="kpi-revenue-value" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">0đ</div>
+            <div id="kpi-revenue-sub" class="mt-2 text-xs text-[#64748B]">Dữ liệu thực hôm nay</div>
           </div>
           <?php endif; ?>
           <div class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Tổng lượt đặt hôm nay</div>
-            <div id="kpi-bookings-count" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">11 lượt</div>
+            <div id="kpi-bookings-count" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">0 lượt</div>
             <div id="kpi-bookings-pending" class="mt-2 text-xs font-semibold text-[#D97706]">
-              2 đơn đang giữ chỗ VietQR
+              Đang đồng bộ...
             </div>
           </div>
           <div class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Tỷ lệ lấp đầy sân</div>
-            <div class="font-heading font-extrabold text-2xl text-[#16A34A] mt-1">68%</div>
+            <div id="kpi-occupancy-value" class="font-heading font-extrabold text-2xl text-[#16A34A] mt-1">0%</div>
             <div class="w-full h-2 rounded-full bg-[#E2E8F0] mt-2 overflow-hidden">
-              <div class="w-[68%] h-full bg-[#16A34A]"></div>
+              <div id="kpi-occupancy-bar" class="h-full bg-[#16A34A] transition-all duration-300" style="width: 0%"></div>
             </div>
           </div>
           <div class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Trạng thái sân hiện tại</div>
-            <div id="kpi-pitches-ready" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">8/9 Sân sẵn sàng</div>
-            <div id="kpi-pitches-sub" class="mt-2 text-xs text-[#64748B]">1 đang đá · 1 bảo trì mặt cỏ</div>
+            <div id="kpi-pitches-ready" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">0/0 Sân sẵn sàng</div>
+            <div id="kpi-pitches-sub" class="mt-2 text-xs text-[#64748B]">---</div>
           </div>
         </div>
 
@@ -38,55 +35,25 @@
         <!-- Charts Row -->
         <div id="overview-charts-row" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div class="lg:col-span-8 ui-card p-5">
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 class="font-heading font-bold text-base text-[#0F172A]">Doanh thu 7 ngày gần nhất</h3>
-              <span class="text-xs text-[#16A34A] font-bold">Tổng tuần: 28.600.000đ</span>
+              <span id="overview-weekly-total" class="text-xs text-[#16A34A] font-bold">Tổng tuần: 0đ</span>
             </div>
             <!-- SVG Vector Chart Line -->
-            <svg viewBox="0 0 680 180" class="w-full h-44">
-              <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#16A34A" stop-opacity="0.35"/>
-                  <stop offset="100%" stop-color="#16A34A" stop-opacity="0.0"/>
-                </linearGradient>
-              </defs>
-              <line x1="0" y1="40" x2="680" y2="40" stroke="#E2E8F0" stroke-dasharray="4"/>
-              <line x1="0" y1="90" x2="680" y2="90" stroke="#E2E8F0" stroke-dasharray="4"/>
-              <line x1="0" y1="140" x2="680" y2="140" stroke="#E2E8F0" stroke-dasharray="4"/>
-              <path d="M0,130 Q90,105 180,85 T360,70 T480,45 T600,60 L680,25 L680,180 L0,180 Z" fill="url(#chartGrad)"/>
-              <path d="M0,130 Q90,105 180,85 T360,70 T480,45 T600,60 L680,25" fill="none" stroke="#16A34A" stroke-width="3"/>
-              <circle cx="480" cy="45" r="5" fill="#16A34A"/>
-              <circle cx="680" cy="25" r="5" fill="#16A34A"/>
-            </svg>
-            <div class="flex justify-between text-xs text-[#64748B] pt-2 border-t border-[#E2E8F0]">
-              <span>T7</span><span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span class="font-bold text-[#16A34A]">Hôm nay</span>
-            </div>
+            <svg id="overview-weekly-svg" viewBox="0 0 680 180" class="w-full h-44"></svg>
+            <div id="overview-weekly-labels" class="flex justify-between text-xs text-[#64748B] pt-2 border-t border-[#E2E8F0]"></div>
           </div>
 
           <div class="lg:col-span-4 ui-card p-5 flex flex-col justify-between">
             <h3 class="font-heading font-bold text-base text-[#0F172A] mb-3">Tỷ trọng doanh thu các sân</h3>
-            <div class="space-y-2 text-xs">
-              <div class="flex justify-between"><span>Sân 7-A (Trung tâm)</span><b class="text-[#16A34A]">32%</b></div>
-              <div class="w-full h-2 rounded bg-slate-100"><div class="w-[32%] h-full bg-[#16A34A] rounded"></div></div>
-              <div class="flex justify-between pt-1"><span>Sân 7-B</span><b>22%</b></div>
-              <div class="w-full h-2 rounded bg-slate-100"><div class="w-[22%] h-full bg-[#22C55E] rounded"></div></div>
-              <div class="flex justify-between pt-1"><span>Sân 5-A</span><b>18%</b></div>
-              <div class="w-full h-2 rounded bg-slate-100"><div class="w-[18%] h-full bg-[#2563EB] rounded"></div></div>
-              <div class="flex justify-between pt-1"><span>Sân 11 (Ghép)</span><b>16%</b></div>
-              <div class="w-full h-2 rounded bg-slate-100"><div class="w-[16%] h-full bg-[#0F172A] rounded"></div></div>
-              <div class="flex justify-between pt-1"><span>Sân 5-B</span><b>12%</b></div>
-              <div class="w-full h-2 rounded bg-slate-100"><div class="w-[12%] h-full bg-[#F59E0B] rounded"></div></div>
-            </div>
-            <div class="text-[11px] text-[#64748B] mt-4 pt-3 border-t border-[#E2E8F0]">
-              * Sân 7-C hiện đang bảo trì nên tỷ trọng 0% trong tuần này.
-            </div>
+            <div id="overview-pitch-shares" class="space-y-2.5 text-xs flex-1"></div>
           </div>
         </div>
         <?php endif; ?>
 
         <!-- Ca đá sắp diễn ra trong ngày -->
         <div class="ui-card p-5 space-y-3">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Lịch thi đấu hôm nay cần theo dõi</h3>
             <span class="text-xs text-[#16A34A] font-bold">Giờ cao điểm 17:30 - 21:00</span>
           </div>

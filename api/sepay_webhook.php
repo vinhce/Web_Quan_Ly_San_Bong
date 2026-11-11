@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/security_helper.php';
 require_once __DIR__ . '/sepay_helper.php';
+require_once __DIR__ . '/notification_helper.php';
 
 $pdo = getDBConnection(false);
 
@@ -33,7 +34,7 @@ $authHeader = $_SERVER['HTTP_AUTHORIZATION']
     ?? $headers['authorization']
     ?? '';
 
-$maskedAuthHeader = !empty($authHeader) ? substr($authHeader, 0, 10) . '****' : '';
+$maskedAuthHeader = !empty($authHeader) ? '[MASKED_AUTH_HEADER]' : '';
 
 loadEnv();
 $expectedKey   = trim($_ENV['SEPAY_WEBHOOK_KEY'] ?? getenv('SEPAY_WEBHOOK_KEY') ?: '');
@@ -53,9 +54,6 @@ if (preg_match('/^(?:Apikey|Bearer)\s+(.+)$/i', trim($authHeader), $authMatches)
     $providedKey = trim($authMatches[1]);
 } else {
     $providedKey = trim($authHeader);
-}
-if (empty($providedKey)) {
-    $providedKey = trim($_GET['token'] ?? $_GET['api_key'] ?? $_GET['key'] ?? '');
 }
 
 $isAuthorizedWebhook = false;
@@ -79,7 +77,10 @@ if (!$hmacFailed && !$isAuthorizedWebhook && !empty($providedKey)) {
     }
 }
 
-if (!$hmacFailed && !$isAuthorizedWebhook && !empty($foundCode) && $transferAmount > 0) {
+$allowCrosscheck = (getenv('SEPAY_ALLOW_API_CROSSCHECK') === 'true' || ($_ENV['SEPAY_ALLOW_API_CROSSCHECK'] ?? '') === 'true');
+$matchedRealTx = null;
+
+if (!$hmacFailed && !$isAuthorizedWebhook && !empty($foundCode) && $transferAmount > 0 && $allowCrosscheck) {
     $sepayCheck = fetch_sepay_transactions(20);
     if (!empty($sepayCheck['success']) && !empty($sepayCheck['transactions'])) {
         $cleanFound = str_replace(['-', ' '], '', $foundCode);
@@ -89,6 +90,7 @@ if (!$hmacFailed && !$isAuthorizedWebhook && !empty($foundCode) && $transferAmou
             $txAmount = (int)($tx['amount_in'] ?? $tx['transferAmount'] ?? 0);
             if ((strpos($txContent, $foundCode) !== false || strpos($txClean, $cleanFound) !== false) && $txAmount === $transferAmount) {
                 $isAuthorizedWebhook = true;
+                $matchedRealTx = $tx;
                 break;
             }
         }
@@ -147,6 +149,16 @@ if ($transferAmount <= 0) {
 }
 
 $sepayTxId = trim((string)($payload['id'] ?? $payload['transaction_id'] ?? $payload['tx_id'] ?? ''));
+if ($matchedRealTx) {
+    $realTxId = trim((string)($matchedRealTx['id'] ?? $matchedRealTx['transaction_id'] ?? ''));
+    if ($realTxId !== '') {
+        $sepayTxId = $realTxId;
+    }
+    $realRef = trim((string)($matchedRealTx['reference_number'] ?? $matchedRealTx['referenceCode'] ?? ''));
+    if ($realRef !== '') {
+        $referenceCode = $realRef;
+    }
+}
 $txDateRaw = trim((string)($payload['transactionDate'] ?? $payload['transaction_date'] ?? date('Y-m-d H:i:s')));
 $txDateTs  = strtotime($txDateRaw);
 $txDateDb  = $txDateTs ? date('Y-m-d H:i:s', $txDateTs) : date('Y-m-d H:i:s');
@@ -154,7 +166,9 @@ $txFingerprint = hash(
     'sha256',
     $sepayTxId !== ''
         ? "ID:{$sepayTxId}"
-        : "REF:{$referenceCode}|AMT:{$transferAmount}|CNT:{$content}|DT:{$txDateRaw}"
+        : ($referenceCode !== ''
+            ? "REF:{$referenceCode}|AMT:{$transferAmount}"
+            : "AMT:{$transferAmount}|CNT:{$content}|DT:{$txDateDb}")
 );
 
 $recordPaidLedger = function (string $code, int $amount, int $expected, string $ref, string $cnt): void {
@@ -255,14 +269,21 @@ try {
             in_array($pStatus, ['Đã hủy', 'Đã hoàn cọc 100%', 'Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%'], true)
         );
 
-        if ($isCancelledOrClosed) {
+        $isExpiredHold = !empty($booking['expires_at'])
+            && strtotime((string)$booking['expires_at']) <= time()
+            && ($pStatus === 'Chờ duyệt cọc' || $bStatus === 'Chờ duyệt cọc')
+            && $alreadyPaid <= 0;
+
+        if ($isCancelledOrClosed || $isExpiredHold) {
             $matchStatus    = 'unmatched';
             $matchedCode    = null;
             $expectedAmount = 0;
             $discrepancy    = $transferAmount;
-            $mismatchReason = 'Khách chuyển khoản cho đơn đã bị hủy/quá hạn — cần đối soát hoàn tiền';
+            $mismatchReason = $isExpiredHold
+                ? 'Đơn đã hết hạn giữ chỗ — cần Admin kiểm tra đối soát/hoàn tiền'
+                : 'Khách chuyển khoản cho đơn đã bị hủy/quá hạn — cần đối soát hoàn tiền';
             $auditAction    = 'WEBHOOK_UNMATCHED';
-            $newAuditVal    = "Nhận " . number_format($transferAmount) . "đ cho đơn đã hủy/quá hạn #{$bCode}";
+            $newAuditVal    = "Nhận " . number_format($transferAmount) . ($isExpiredHold ? "đ cho đơn hết hạn giữ chỗ #{$bCode}" : "đ cho đơn đã hủy/quá hạn #{$bCode}");
         } elseif (!in_array($pStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)) {
             $expectedAmount  = $targetDep;
             $remainingNeeded = max(0, $targetDep - $alreadyPaid);
@@ -292,6 +313,7 @@ try {
                 $auditAction    = 'WEBHOOK_MATCH';
                 $newAuditVal    = "Khớp đủ cọc " . number_format($newTotalPaid) . "đ ({$newPayStatus})";
                 $recordPaidLedger($bCode, $newTotalPaid, $targetDep, $referenceCode, $content);
+                award_booking_loyalty_points($pdo, $booking);
             } else {
                 $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
                 $newRem       = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 0 : max(0, $totalPrice - $newTotalPaid);
@@ -305,6 +327,7 @@ try {
                 $auditAction    = 'WEBHOOK_OVERPAID';
                 $newAuditVal    = "Nhận " . number_format($newTotalPaid) . "đ ({$newPayStatus}) - {$mismatchReason}";
                 $recordPaidLedger($bCode, $newTotalPaid, $targetDep, $referenceCode, $content);
+                award_booking_loyalty_points($pdo, $booking);
             }
         } elseif ($pStatus === 'Đã cọc 30%') {
             $paidBase     = max($alreadyPaid, $targetDep);
@@ -323,6 +346,7 @@ try {
                 $resolvedAt     = date('Y-m-d H:i:s');
                 $auditAction    = 'WEBHOOK_MATCH';
                 $newAuditVal    = "Khớp đủ phần còn lại " . number_format($transferAmount) . "đ (Đã thanh toán 100%)";
+                award_booking_loyalty_points($pdo, $booking);
             } elseif ($expectedRem > 0 && $transferAmount < $expectedRem) {
                 $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
                 $updB->execute([$newTotalPaid, $newTotalPaid, (int)$booking['id']]);
@@ -346,6 +370,7 @@ try {
             } else {
                 $updB = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã thanh toán 100%', payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = 0 WHERE id = ?");
                 $updB->execute([$newTotalPaid, (int)$booking['id']]);
+                award_booking_loyalty_points($pdo, $booking);
 
                 $matchStatus    = 'overpaid';
                 $matchedCode    = $bCode;
@@ -400,6 +425,54 @@ try {
         $newAuditVal,
         ['id' => null, 'full_name' => 'SePay Webhook', 'role' => 'system']
     );
+
+    // Gửi Telegram & Thông báo khách khi biến động số dư VietQR
+    $escCode = tg_escape($matchedCode ?? '');
+    $escContent = tg_escape($content);
+    $escReason = tg_escape($mismatchReason ?: $content);
+    $escStatus = tg_escape($matchStatus);
+    if ($matchStatus === 'matched') {
+        $tgMsg = "💰 <b>TIỀN VỀ TÀI KHOẢN (VIETQR KHỚP ĐƠN)</b>\n"
+               . "• Đơn: <code>{$escCode}</code>\n"
+               . "• Số tiền: <b>+" . number_format($transferAmount) . " đ</b>\n"
+               . "• Nội dung: <i>{$escContent}</i>\n"
+               . "• Trạng thái: <b>{$escStatus}</b>";
+        send_telegram_notification($tgMsg, 'new_booking', $pdo);
+
+        if ($booking) {
+            send_customer_notification($pdo, 'booking_confirm', [
+                'booking_id'       => (int)$booking['id'],
+                'booking_code'     => $matchedCode,
+                'code'             => $matchedCode,
+                'customer_name'    => (string)($booking['customer_name'] ?? ''),
+                'phone'            => (string)($booking['phone'] ?? ''),
+                'pitch_name'       => (string)($booking['pitch_id'] ?? ''),
+                'date'             => date('d/m/Y', strtotime((string)($booking['booking_date'] ?? date('Y-m-d')))),
+                'slot_time'        => (string)($booking['slot_time'] ?? ''),
+                'total_price'      => (int)($booking['total_price'] ?? 0),
+                'deposit_amount'   => (int)($booking['deposit_amount'] ?? 0),
+                'remaining_amount' => (int)($booking['remaining_amount'] ?? 0)
+            ]);
+        }
+    } elseif ($matchStatus === 'overpaid') {
+        $tgMsg = "⚠️ <b>VIETQR CHUYỂN THỪA TIỀN</b>\n"
+               . "• Đơn: <code>{$escCode}</code>\n"
+               . "• Số tiền: <b>+" . number_format($transferAmount) . " đ</b>\n"
+               . "• Ghi chú: <i>" . $escReason . "</i>";
+        send_telegram_notification($tgMsg, 'unmatched_tx', $pdo);
+    } elseif ($matchStatus === 'underpaid') {
+        $tgMsg = "⚠️ <b>VIETQR CHUYỂN THIẾU TIỀN</b>\n"
+               . "• Đơn: <code>{$escCode}</code>\n"
+               . "• Đã nhận: <b>+" . number_format($transferAmount) . " đ</b> (Còn thiếu: " . number_format(abs($discrepancy)) . " đ)\n"
+               . "• Nội dung: <i>{$escContent}</i>";
+        send_telegram_notification($tgMsg, 'unmatched_tx', $pdo);
+    } else {
+        $tgMsg = "🚨 <b>GIAO DỊCH VIETQR CHƯA KHỚP ĐƠN</b>\n"
+               . "• Số tiền: <b>+" . number_format($transferAmount) . " đ</b>\n"
+               . "• Nội dung CK: <i>{$escContent}</i>\n"
+               . "• Lý do: <i>" . tg_escape($mismatchReason ?: 'Không xác định') . "</i>";
+        send_telegram_notification($tgMsg, 'unmatched_tx', $pdo);
+    }
 
     error_log("[SEPAY WEBHOOK] status={$matchStatus} | code={$foundCode} | amount={$transferAmount}");
 

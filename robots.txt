@@ -1,9 +1,10 @@
 User-agent: *
-Disallow: /portal-admin/
 Disallow: /api/
 Disallow: /config/
 Disallow: /database/
 Disallow: /logs/
 Disallow: /scripts/
 Disallow: /backups/
+Disallow: /cron/
+Disallow: /docs/
 Allow: /

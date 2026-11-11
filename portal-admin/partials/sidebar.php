@@ -1,15 +1,18 @@
-  <aside class="w-64 bg-white border-r border-[#E2E8F0] flex flex-col justify-between shrink-0 select-none z-30">
+  <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-[#E2E8F0] flex flex-col justify-between shrink-0 select-none transform -translate-x-full md:translate-x-0 md:static transition-transform duration-200 overflow-y-auto">
     <div class="p-4">
       
-      <a href="/" class="flex items-center gap-3 px-2 py-2 mb-6 group">
-        <div class="w-9 h-9 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>
-        </div>
-        <div>
-          <div class="font-heading font-extrabold text-base text-[#0F172A] leading-tight">Sân Bóng Pro</div>
-          <div class="text-[11px] text-[#16A34A] font-semibold">Trang Quản Trị Hệ Thống</div>
-        </div>
-      </a>
+      <div class="flex items-center justify-between gap-2 px-2 py-2 mb-6">
+        <a href="/" class="flex items-center gap-3 group min-w-0">
+          <div class="w-9 h-9 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>
+          </div>
+          <div class="min-w-0">
+            <div class="font-heading font-extrabold text-base text-[#0F172A] leading-tight truncate">Sân Bóng Pro</div>
+            <div class="text-[11px] text-[#16A34A] font-semibold truncate">Trang Quản Trị Hệ Thống</div>
+          </div>
+        </a>
+        <button type="button" onclick="closeAdminMobileDrawer()" class="md:hidden w-9 h-9 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] hover:bg-slate-100 text-[#475569] font-bold text-sm flex items-center justify-center shrink-0 cursor-pointer" aria-label="Đóng menu">✕</button>
+      </div>
 
       
       <nav class="space-y-1">

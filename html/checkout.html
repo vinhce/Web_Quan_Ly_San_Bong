@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v31">
+  <link rel="stylesheet" href="../css/style.css?v=20261112_v33">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -45,7 +45,7 @@
             <span>Thời gian giữ chỗ còn lại:</span>
             <span id="countdown-timer" class="text-base font-extrabold font-mono text-[#B45309]">10:00</span>
           </div>
-          <span class="text-xs hidden sm:inline font-normal">Hết giờ mã đặt sân tự động nhả</span>
+          <span class="text-xs hidden sm:inline font-normal">Hết giờ mã đặt sân tự động nhả (<span id="hold-minutes-label">15 phút</span>)</span>
         </div>
 
         <div class="ui-card p-6 space-y-6 border-slate-200">
@@ -219,7 +219,7 @@
               <span id="co-total-amount" class="font-bold text-base text-[#0F172A]">1.020.000đ</span>
             </div>
             <div class="p-3.5 rounded-xl bg-[#DCFCE7] text-[#16A34A] flex justify-between items-center font-bold">
-              <span>Số tiền cọc cần chuyển (30%):</span>
+              <span>Số tiền cọc cần chuyển (<span id="co-deposit-pct">30</span>%):</span>
               <span id="co-deposit-amount" class="text-xl font-extrabold">306.000đ</span>
             </div>
                         <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-[#92400E] space-y-1 mt-2">
@@ -243,9 +243,9 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="/js/data.js?v=20261110_v31"></script>
-  <script src="/js/app.js?v=20261110_v31"></script>
-  <script src="/js/api.js?v=20261110_v31"></script>
-  <script src="/js/checkout.js?v=20261110_v31"></script>
+  <script src="/js/data.js?v=20261112_v33"></script>
+  <script src="/js/app.js?v=20261112_v33"></script>
+  <script src="/js/api.js?v=20261112_v33"></script>
+  <script src="/js/checkout.js?v=20261112_v33"></script>
 </body>
 </html>

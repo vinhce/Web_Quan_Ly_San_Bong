@@ -1,4 +1,8 @@
 <?php
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit('Forbidden: CLI only');
+}
 $_GET['all'] = 1;
 require_once __DIR__ . '/config/database.php';
 $pdo = getDBConnection(false);

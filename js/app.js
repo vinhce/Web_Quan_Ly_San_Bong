@@ -35,6 +35,99 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return dateStr;
   }
 
+  function getLocalTodayISO() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  let _csrfMemoryToken = '';
+
+  function getCsrfToken() {
+    if (_csrfMemoryToken) return _csrfMemoryToken;
+    try {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta && meta.content) {
+        _csrfMemoryToken = meta.content.trim();
+        return _csrfMemoryToken;
+      }
+      const st = (sessionStorage.getItem('sb_csrf_token') || '').trim();
+      if (st) {
+        _csrfMemoryToken = st;
+        return _csrfMemoryToken;
+      }
+      return '';
+    } catch (e) {
+      return _csrfMemoryToken || '';
+    }
+  }
+
+  function setCsrfToken(token) {
+    if (!token || typeof token !== 'string') return;
+    const clean = token.trim();
+    if (!clean) return;
+    _csrfMemoryToken = clean;
+    try {
+      sessionStorage.setItem('sb_csrf_token', clean);
+      let meta = document.querySelector('meta[name="csrf-token"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'csrf-token';
+        document.head && document.head.appendChild(meta);
+      }
+      meta.content = clean;
+    } catch (e) {}
+  }
+
+  function clearCsrfToken() {
+    _csrfMemoryToken = '';
+    try {
+      sessionStorage.removeItem('sb_csrf_token');
+    } catch (e) {}
+  }
+
+  async function ensureCsrfToken(apiBase) {
+    const current = getCsrfToken();
+    if (current) return current;
+    try {
+      const base = apiBase !== undefined ? apiBase : (getAppBase() ? getAppBase() + '/' : '');
+      const url = `${base}api/auth.php?action=me`;
+      const res = await fetch(url, { credentials: 'same-origin' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.csrf_token) {
+          setCsrfToken(json.csrf_token);
+          return json.csrf_token;
+        }
+      }
+    } catch (e) {}
+    return getCsrfToken();
+  }
+
+  function getAuthFetchHeaders(extra = {}) {
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+    const token = getCsrfToken();
+    if (token) {
+      headers['X-CSRF-Token'] = token;
+    }
+    return headers;
+  }
+
+  async function secureFetch(url, options = {}) {
+    await ensureCsrfToken();
+    const opts = Object.assign({}, options);
+    opts.headers = getAuthFetchHeaders(opts.headers);
+    if (!opts.credentials) opts.credentials = 'same-origin';
+    const res = await fetch(url, opts);
+    const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+    if (tokenHeader) {
+      setCsrfToken(tokenHeader);
+    }
+    return res;
+  }
+
   function getAppBase() {
     const pathname = (window.location && typeof window.location.pathname === 'string')
       ? window.location.pathname.replace(/\\/g, '/')
@@ -45,10 +138,22 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
   function getRelativePath(target) {
     const base = getAppBase();
+    const fallback = base ? `${base}/` : '/';
     if (!target || target === 'index.html' || target === '/' || target === '') {
-      return base ? `${base}/` : '/';
+      return fallback;
     }
-    const cleanTarget = String(target).replace(/^\.\.\//, '').replace(/^html\//, '').replace(/^\//, '').replace(/\.html$/, '');
+    const raw = String(target).trim();
+    if (/^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|\/\/)/.test(raw) || raw.includes('\\') || raw.includes('..')) {
+      return fallback;
+    }
+    const cleanTarget = raw
+      .replace(/^\.\.\//, '')
+      .replace(/^html\//, '')
+      .replace(/^\/+/, '')
+      .replace(/\.html(?=$|[?#])/, '');
+    if (!/^[a-zA-Z0-9_\-\/\.]+(?:\?[a-zA-Z0-9_=&%\-\.]*)?(?:#[a-zA-Z0-9_\-]*)?$/.test(cleanTarget)) {
+      return fallback;
+    }
     if (cleanTarget === 'portal-admin' || cleanTarget === 'portal-admin/') {
       return base ? `${base}/portal-admin/` : '/portal-admin/';
     }
@@ -153,12 +258,23 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(displayLabel)}</span>`;
   }
 
-  function getVietQRUrl(bankCode, accountNo, amount, memo) {
+  function getVietQRUrl(bankCode, accountNo, amount, memo, accountName) {
     const safeBank = encodeURIComponent(bankCode || 'VCB');
     const safeAcc = encodeURIComponent(accountNo || '0123456789');
     const safeAmount = encodeURIComponent(amount || 0);
     const safeMemo = encodeURIComponent(memo || 'DAT SAN BONG');
-    return `https://img.vietqr.io/image/${safeBank}-${safeAcc}-compact2.png?amount=${safeAmount}&addInfo=${safeMemo}&accountName=NGUYEN%20QUANG%20VINH`;
+    let holder = accountName;
+    if (!holder) {
+      try {
+        const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+        if (db && typeof db.getBankInfo === 'function') {
+          const bInfo = db.getBankInfo();
+          if (bInfo && bInfo.accountName) holder = bInfo.accountName;
+        }
+      } catch (e) {}
+    }
+    const safeName = encodeURIComponent(holder || 'CHU SAN BONG');
+    return `https://img.vietqr.io/image/${safeBank}-${safeAcc}-compact2.png?amount=${safeAmount}&addInfo=${safeMemo}&accountName=${safeName}`;
   }
 
   function renderQRCodeSVG(data, size = 160) {
@@ -181,7 +297,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       }
     }
     const enc = encodeURIComponent(content);
-    return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}" alt="QR ${enc}" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://quickchart.io/qr?size=${size}&text=${enc}'">`;
+    return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}" alt="QR ${enc}" class="w-full h-full object-contain rounded-lg">`;
   }
 
   function playScanBeep(success = true) {
@@ -325,6 +441,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     escapeHTML,
     formatVND,
     formatDateVN,
+    getLocalTodayISO,
+    getCsrfToken,
+    setCsrfToken,
+    clearCsrfToken,
+    ensureCsrfToken,
+    secureFetch,
+    getAuthFetchHeaders,
     getAppBase,
     getRelativePath,
     Icons,
@@ -339,6 +462,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   window.escapeHTML = escapeHTML;
   window.formatVND = formatVND;
   window.formatDateVN = formatDateVN;
+  window.getLocalTodayISO = getLocalTodayISO;
+  window.getCsrfToken = getCsrfToken;
+  window.setCsrfToken = setCsrfToken;
+  window.ensureCsrfToken = ensureCsrfToken;
+  window.secureFetch = secureFetch;
+  window.getAuthFetchHeaders = getAuthFetchHeaders;
   window.getRelativePath = getRelativePath;
 
 })();
@@ -370,6 +499,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     TIME_SLOTS: 'sb_slots_v1',
     SERVICES: 'sb_services_v1',
     VOUCHERS: 'sb_vouchers_v1',
+    GOLDEN_HOURS: 'sb_golden_hours_v1',
+    MAINTENANCE: 'sb_maintenance_v1',
     USER: 'sb_user_v1',
     BANK: 'sb_bank_v1',
     BOOKINGS: 'sb_bookings_v1',
@@ -385,9 +516,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     hotline: '0352 313 548',
     openHours: '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
     holdMinutes: 15,
+    waitlistHoldMinutes: 15,
     refundFullHours: 24,
     refundPartialHours: 4,
-    autoCancelEnabled: true
+    autoCancelEnabled: true,
+    matchmakingEnabled: true,
+    matchmakingRequireApproval: false
   };
 
   const SanBongDB = {
@@ -682,6 +816,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         const res = await fetch(getRelativePath('api/pitches.php?all=1'));
         if (!res.ok) return;
         const jsonRes = await res.json();
+        if (jsonRes?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+          window.SanBongHelpers.setCsrfToken(jsonRes.csrf_token);
+        }
         if (jsonRes && jsonRes.success && jsonRes.data) {
           const d = jsonRes.data;
           if (Array.isArray(d.pitches) && d.pitches.length > 0) {
@@ -693,8 +830,14 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           if (Array.isArray(d.extraServices) && d.extraServices.length > 0) {
             localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(d.extraServices));
           }
-          if (Array.isArray(d.vouchers) && d.vouchers.length > 0) {
+          if (Array.isArray(d.vouchers)) {
             localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(d.vouchers));
+          }
+          if (Array.isArray(d.goldenHourRules)) {
+            localStorage.setItem(STORAGE_KEYS.GOLDEN_HOURS, JSON.stringify(d.goldenHourRules));
+          }
+          if (Array.isArray(d.maintenanceSchedules)) {
+            localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(d.maintenanceSchedules));
           }
           if (d.bankInfo && typeof d.bankInfo === 'object') {
             const b = {
@@ -709,14 +852,20 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           if (d.settings && typeof d.settings === 'object') {
             const prevCfg = this.getSystemConfig ? this.getSystemConfig() : DEFAULT_SYSTEM_CONFIG;
             const autoRaw = d.settings.autoCancelEnabled ?? d.settings.auto_cancel_enabled;
+            const mmEnabledRaw = d.settings.matchmakingEnabled ?? d.settings.matchmaking_enabled;
+            const mmApprovalRaw = d.settings.matchmakingRequireApproval ?? d.settings.matchmaking_require_approval;
             const cfg = {
               depositRate: Number(d.settings.depositRate ?? d.settings.deposit_rate ?? prevCfg.depositRate ?? DEFAULT_SYSTEM_CONFIG.depositRate),
               hotline: d.settings.hotline || prevCfg.hotline || DEFAULT_SYSTEM_CONFIG.hotline,
               openHours: d.settings.openHours || d.settings.open_hours || prevCfg.openHours || DEFAULT_SYSTEM_CONFIG.openHours,
               holdMinutes: Number(d.settings.holdMinutes ?? d.settings.hold_minutes ?? prevCfg.holdMinutes ?? DEFAULT_SYSTEM_CONFIG.holdMinutes),
+              waitlistHoldMinutes: Number(d.settings.waitlistHoldMinutes ?? d.settings.waitlist_hold_minutes ?? prevCfg.waitlistHoldMinutes ?? DEFAULT_SYSTEM_CONFIG.waitlistHoldMinutes),
               refundFullHours: Number(d.settings.refundFullHours ?? d.settings.refund_full_hours ?? prevCfg.refundFullHours ?? DEFAULT_SYSTEM_CONFIG.refundFullHours),
               refundPartialHours: Number(d.settings.refundPartialHours ?? d.settings.refund_partial_hours ?? prevCfg.refundPartialHours ?? DEFAULT_SYSTEM_CONFIG.refundPartialHours),
-              autoCancelEnabled: autoRaw === undefined ? (prevCfg.autoCancelEnabled ?? DEFAULT_SYSTEM_CONFIG.autoCancelEnabled) : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true')
+              autoCancelEnabled: autoRaw === undefined ? (prevCfg.autoCancelEnabled ?? DEFAULT_SYSTEM_CONFIG.autoCancelEnabled) : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true'),
+              matchmakingEnabled: mmEnabledRaw === undefined ? (prevCfg.matchmakingEnabled ?? true) : (mmEnabledRaw === true || mmEnabledRaw === 1 || mmEnabledRaw === '1' || mmEnabledRaw === 'true'),
+              matchmakingRequireApproval: mmApprovalRaw === undefined ? (prevCfg.matchmakingRequireApproval ?? false) : (mmApprovalRaw === true || mmApprovalRaw === 1 || mmApprovalRaw === '1' || mmApprovalRaw === 'true'),
+              pricingTable: d.settings.pricingTable || prevCfg.pricingTable || null
             };
             localStorage.setItem('sb_system_config', JSON.stringify(cfg));
           }
@@ -729,18 +878,66 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       try {
         const cfg = JSON.parse(localStorage.getItem('sb_system_config') || '{}');
         const autoRaw = cfg.autoCancelEnabled ?? cfg.auto_cancel_enabled;
+        const mmEnabledRaw = cfg.matchmakingEnabled ?? cfg.matchmaking_enabled;
+        const mmApprovalRaw = cfg.matchmakingRequireApproval ?? cfg.matchmaking_require_approval;
         return {
           depositRate: Number(cfg.depositRate ?? cfg.deposit_rate ?? DEFAULT_SYSTEM_CONFIG.depositRate) || 30,
           hotline: cfg.hotline || DEFAULT_SYSTEM_CONFIG.hotline,
           openHours: cfg.openHours || cfg.open_hours || DEFAULT_SYSTEM_CONFIG.openHours,
           holdMinutes: Math.max(5, Math.min(120, Number(cfg.holdMinutes ?? cfg.hold_minutes ?? DEFAULT_SYSTEM_CONFIG.holdMinutes) || 15)),
+          waitlistHoldMinutes: Math.max(5, Math.min(120, Number(cfg.waitlistHoldMinutes ?? cfg.waitlist_hold_minutes ?? DEFAULT_SYSTEM_CONFIG.waitlistHoldMinutes) || 15)),
           refundFullHours: Math.max(1, Math.min(168, Number(cfg.refundFullHours ?? cfg.refund_full_hours ?? DEFAULT_SYSTEM_CONFIG.refundFullHours) || 24)),
           refundPartialHours: Math.max(0, Math.min(48, Number(cfg.refundPartialHours ?? cfg.refund_partial_hours ?? DEFAULT_SYSTEM_CONFIG.refundPartialHours) ?? 4)),
-          autoCancelEnabled: autoRaw === undefined ? DEFAULT_SYSTEM_CONFIG.autoCancelEnabled : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true')
+          autoCancelEnabled: autoRaw === undefined ? DEFAULT_SYSTEM_CONFIG.autoCancelEnabled : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true'),
+          matchmakingEnabled: mmEnabledRaw === undefined ? true : (mmEnabledRaw === true || mmEnabledRaw === 1 || mmEnabledRaw === '1' || mmEnabledRaw === 'true'),
+          matchmakingRequireApproval: mmApprovalRaw === undefined ? false : (mmApprovalRaw === true || mmApprovalRaw === 1 || mmApprovalRaw === '1' || mmApprovalRaw === 'true'),
+          pricingTable: cfg.pricingTable || null
         };
       } catch (e) {
         return Object.assign({}, DEFAULT_SYSTEM_CONFIG);
       }
+    },
+
+    getGoldenHourRules() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEYS.GOLDEN_HOURS) || '[]') || [];
+      } catch (e) {
+        return [];
+      }
+    },
+
+    getMaintenanceSchedules() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEYS.MAINTENANCE) || '[]') || [];
+      } catch (e) {
+        return [];
+      }
+    },
+
+    findMaintenanceForSlot(pitchId, dateStr, slotTime = '') {
+      const list = this.getMaintenanceSchedules();
+      if (!Array.isArray(list) || !list.length || !pitchId || !dateStr) return null;
+      const d = String(dateStr).slice(0, 10);
+      const parseMin = (hhmm) => {
+        const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})$/);
+        return m ? (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) : null;
+      };
+      const slotMatch = String(slotTime || '').match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+      const sStart = slotMatch ? parseMin(slotMatch[1]) : null;
+      const sEnd = slotMatch ? parseMin(slotMatch[2]) : null;
+      for (const m of list) {
+        if (m.pitchId !== pitchId && m.pitch_id !== pitchId) continue;
+        const st = String(m.status || 'scheduled');
+        if (st !== 'scheduled' && st !== 'in_progress') continue;
+        const mStartDate = String(m.startDate || m.start_date || '');
+        const mEndDate = String(m.endDate || m.end_date || '');
+        if (!mStartDate || !mEndDate || d < mStartDate || d > mEndDate) continue;
+        if (sStart === null || sEnd === null) return m;
+        const mStart = parseMin(m.startTime || m.start_time || '05:30') ?? (5 * 60 + 30);
+        const mEnd = parseMin(m.endTime || m.end_time || '23:00') ?? (23 * 60);
+        if (mEnd <= mStart || (sStart < mEnd && mStart < sEnd)) return m;
+      }
+      return null;
     },
 
     getPitches() {
@@ -822,6 +1019,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         type: v.type === 'fixed' ? 'fixed' : 'percent',
         value: Math.max(0, Number(v.value) || 0),
         minOrder: Math.max(0, Number(v.minOrder) || 0),
+        maxUsage: Math.max(0, Number(v.maxUsage ?? v.max_usage ?? 100)),
+        usedCount: Math.max(0, Number(v.usedCount ?? v.used_count ?? (existingIdx >= 0 ? list[existingIdx].usedCount : 0) ?? 0)),
+        validFrom: v.validFrom ?? v.valid_from ?? null,
+        validTo: v.validTo ?? v.valid_to ?? null,
+        pitchTypeLimit: (v.pitchTypeLimit ?? v.pitch_type_limit) ? Number(v.pitchTypeLimit ?? v.pitch_type_limit) : null,
         isActive: v.isActive !== undefined ? Boolean(v.isActive) : prevActive
       };
       if (existingIdx >= 0) {
@@ -879,7 +1081,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
               : (sessionUser.role === 'manager'
                 ? 'Quản lý sân'
                 : (sessionUser.role === 'staff' ? 'Nhân viên trực sân' : (sessionUser.tier || 'Hội viên'))),
-            points: sessionUser.role === 'admin' ? 9999 : ((sessionUser.role === 'manager' || sessionUser.role === 'staff') ? 0 : (sessionUser.points || 0)),
+            points: Number(sessionUser.points) || 0,
             avatar: sessionUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
             totalBookings: 0,
             favoritePitch: ''
@@ -928,7 +1130,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
       return slots.map(slot => {
         if (isPitchMaintenance) {
-          return { ...slot, status: 'Bảo trì', booking: null };
+          return { ...slot, status: 'Bảo trì', booking: null, maintenanceReason: pitch?.maintenanceReason || 'Sân đang bảo trì' };
+        }
+        const mWin = this.findMaintenanceForSlot ? this.findMaintenanceForSlot(pitchId, dateStr, slot.time) : null;
+        if (mWin) {
+          return { ...slot, status: 'Bảo trì', booking: null, maintenanceReason: mWin.reason || 'Bảo trì định kỳ' };
         }
 
         const match = bookings.find(b => b.slotId === slot.id || b.slotTime === slot.time);
@@ -954,24 +1160,26 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       const isPeak = slot ? slot.isPeak : false;
 
       let isWeekend = false;
+      let dayIso = 1;
       if (dateStr) {
         const dObj = new Date(String(dateStr).split(' ')[0] + 'T00:00:00');
         if (!isNaN(dObj.getTime())) {
           const day = dObj.getDay();
           isWeekend = (day === 0 || day === 6);
+          dayIso = day === 0 ? 7 : day;
         }
       }
 
       let hourlyRate = isPeak ? Number(pitch.peakPrice || pitch.basePrice || 0) : Number(pitch.basePrice || 0);
       if (isWeekend && Number(pitch.weekendPrice) > 0) {
-        hourlyRate = Math.max(hourlyRate, Number(pitch.weekendPrice));
+        hourlyRate = isPeak ? Math.max(Number(pitch.peakPrice || 0), Number(pitch.weekendPrice)) : Number(pitch.weekendPrice);
       }
 
       let singlePitchPrice = hourlyRate;
       if (slot && slot.duration && slot.duration > 1) {
         singlePitchPrice = Math.round(singlePitchPrice * slot.duration);
       }
-      const pitchPrice = singlePitchPrice * weeks;
+      const rawPitchTotal = singlePitchPrice * weeks;
 
       let singleServiceTotal = 0;
       const allServices = this.getServices();
@@ -996,8 +1204,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       }
 
       const serviceTotal = singleServiceTotal * weeks;
-      const subtotal = pitchPrice + serviceTotal;
-
       const packagePromotion = this.getPackagePromotion(weeks);
       let monthlyDiscountRate = packagePromotion ? packagePromotion.discountRate : 0;
       if (!monthlyDiscountRate) {
@@ -1005,27 +1211,85 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         else if (weeks >= 8) monthlyDiscountRate = 0.10;
         else if (weeks >= 4) monthlyDiscountRate = 0.05;
       }
-      const monthlyDiscountAmount = Math.round(subtotal * monthlyDiscountRate);
 
-      const afterMonthlySubtotal = Math.max(0, subtotal - monthlyDiscountAmount);
+      const pitchPriceBeforeRule = Math.round(rawPitchTotal * (1 - monthlyDiscountRate));
+      const monthlyDiscountAmount = Math.max(0, rawPitchTotal - pitchPriceBeforeRule);
 
-      let discountAmount = 0;
-      let appliedVoucher = null;
-      if (voucherCode) {
-        const v = this.getVouchers().find(vc => vc.code.toUpperCase() === voucherCode.trim().toUpperCase() && vc.isActive !== false);
-        if (v && subtotal >= (v.minOrder || 0)) {
-          appliedVoucher = v;
-          if (v.type === 'percent') {
-            discountAmount = Math.round((afterMonthlySubtotal * v.value) / 100);
-          } else {
-            discountAmount = v.value;
+      // Quy tắc giá giờ vàng / thấp điểm (giống resolve_golden_hour_adjustment ở server)
+      let netPitchPrice = pitchPriceBeforeRule;
+      let goldenHourRule = null;
+      let goldenHourDelta = 0;
+      const ghRules = this.getGoldenHourRules ? this.getGoldenHourRules() : [];
+      if (Array.isArray(ghRules) && ghRules.length > 0 && pitchPriceBeforeRule > 0) {
+        const pitchType = Number(pitch.type || 7);
+        const sId = slot ? slot.id : String(slotIdOrTime || '');
+        const matchingRules = ghRules.filter(r => {
+          const rType = r.pitchType ?? r.pitch_type ?? null;
+          const rDay = r.dayOfWeek ?? r.day_of_week ?? null;
+          const rSlot = r.slotId ?? r.slot_id ?? null;
+          if (rType !== null && rType !== '' && Number(rType) !== pitchType) return false;
+          if (rDay !== null && rDay !== '' && Number(rDay) !== dayIso) return false;
+          if (rSlot !== null && rSlot !== '' && String(rSlot) !== String(sId)) return false;
+          return true;
+        }).map(r => {
+          const rType = r.pitchType ?? r.pitch_type ?? null;
+          const rDay = r.dayOfWeek ?? r.day_of_week ?? null;
+          const rSlot = r.slotId ?? r.slot_id ?? null;
+          const score = (rType !== null && rType !== '' ? 1 : 0) + (rDay !== null && rDay !== '' ? 2 : 0) + (rSlot !== null && rSlot !== '' ? 4 : 0);
+          return { r, score };
+        }).sort((a, b) => (b.score - a.score) || (Number(b.r.id || 0) - Number(a.r.id || 0)));
+
+        if (matchingRules.length > 0) {
+          const best = matchingRules[0].r;
+          const adjType = best.priceAdjustmentType || best.price_adjustment_type || 'fixed';
+          const adjVal = Number(best.adjustmentValue ?? best.adjustment_value ?? 0);
+          if (adjType === 'fixed') {
+            netPitchPrice = Math.max(50000, pitchPriceBeforeRule + adjVal);
+          } else if (adjType === 'percent_discount') {
+            const pct = Math.max(0, Math.min(90, adjVal));
+            netPitchPrice = Math.max(50000, Math.round(pitchPriceBeforeRule * (1 - pct / 100)));
+          } else if (adjType === 'percent_surcharge') {
+            const pct = Math.max(0, Math.min(200, adjVal));
+            netPitchPrice = Math.round(pitchPriceBeforeRule * (1 + pct / 100));
           }
-          if (discountAmount > afterMonthlySubtotal) discountAmount = afterMonthlySubtotal;
+          goldenHourDelta = netPitchPrice - pitchPriceBeforeRule;
+          goldenHourRule = best;
         }
       }
 
-      const totalDiscount = monthlyDiscountAmount + discountAmount;
-      const totalPrice = Math.max(0, subtotal - totalDiscount);
+      const pitchPrice = rawPitchTotal;
+      const subtotal = netPitchPrice + serviceTotal;
+
+      let discountAmount = 0;
+      let appliedVoucher = null;
+      let voucherError = '';
+      if (voucherCode) {
+        const todayLocal = window.SanBongHelpers?.getLocalTodayISO
+          ? window.SanBongHelpers.getLocalTodayISO()
+          : new Date().toISOString().split('T')[0];
+        const v = this.getVouchers().find(vc => vc.code.toUpperCase() === voucherCode.trim().toUpperCase() && vc.isActive !== false);
+        if (!v) {
+          voucherError = 'Mã giảm giá không tồn tại hoặc đã ngừng áp dụng.';
+        } else if ((v.validFrom && todayLocal < v.validFrom) || (v.validTo && todayLocal > v.validTo)) {
+          voucherError = 'Mã giảm giá chưa đến ngày áp dụng hoặc đã hết hạn.';
+        } else if (v.pitchTypeLimit && Number(v.pitchTypeLimit) !== Number(pitch.type)) {
+          voucherError = `Mã giảm giá này chỉ áp dụng riêng cho Sân ${v.pitchTypeLimit} người.`;
+        } else if (Number(v.maxUsage || 0) > 0 && Number(v.usedCount || 0) >= Number(v.maxUsage)) {
+          voucherError = 'Mã giảm giá đã hết lượt sử dụng.';
+        } else if (subtotal < (v.minOrder || 0)) {
+          voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
+        } else {
+          appliedVoucher = v;
+          if (v.type === 'percent') {
+            discountAmount = Math.round((subtotal * v.value) / 100);
+          } else {
+            discountAmount = Math.min(v.value, subtotal);
+          }
+        }
+      }
+
+      const totalDiscount = monthlyDiscountAmount + discountAmount + Math.max(0, -goldenHourDelta);
+      const totalPrice = Math.max(0, subtotal - discountAmount);
       const sysCfg = this.getSystemConfig ? this.getSystemConfig() : { depositRate: 30 };
       const depositRate = Math.max(10, Math.min(100, Number(sysCfg.depositRate) || 30)) / 100;
       const depositAmount = Math.round(totalPrice * depositRate);
@@ -1033,18 +1297,23 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
       return {
         pitchPrice,
+        netPitchPrice,
         singlePitchPrice,
         isPeak,
         isWeekend,
+        goldenHourRule,
+        goldenHourDelta,
         serviceTotal,
         singleServiceTotal,
         appliedServices,
-        subtotal,
+        subtotal: rawPitchTotal + serviceTotal,
+        netSubtotal: subtotal,
         weeksCount: weeks,
         packagePromotion,
         monthlyDiscountRate,
         monthlyDiscountAmount,
         voucherCode: appliedVoucher ? appliedVoucher.code : '',
+        voucherError,
         discountAmount,
         totalDiscount,
         totalPrice,
@@ -1406,7 +1675,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       }
     },
 
-    recordCounterSale({ serviceId, quantity, payMethod, note }) {
+    recordCounterSale({ serviceId, quantity, payMethod, paymentMethod, note }) {
+      const resolvedPayMethod = payMethod || paymentMethod || 'Tiền mặt tại quầy';
       const list = this.getServices();
       const srv = list.find(s => String(s.id).toUpperCase() === String(serviceId).toUpperCase());
       if (!srv) return null;
@@ -1428,7 +1698,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         quantity: qty,
         unitPrice: srv.price,
         totalAmount,
-        payMethod: payMethod || 'Tiền mặt tại quầy',
+        payMethod: resolvedPayMethod,
         note: note || '',
         createdAt: timestamp,
         staffName: user ? user.name : 'Nhân viên trực sân'
@@ -1825,15 +2095,31 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const Icons = (window.SanBongHelpers && window.SanBongHelpers.Icons) ? window.SanBongHelpers.Icons : {};
 
 function handleLogout() {
-    const doLogout = () => {
+    const doLogout = async () => {
+      try {
+        const headers = window.SanBongHelpers?.getAuthFetchHeaders
+          ? window.SanBongHelpers.getAuthFetchHeaders()
+          : { 'Content-Type': 'application/json' };
+        if (!headers['X-CSRF-Token'] && sessionStorage.getItem('sb_current_user')) {
+          const meRes = await fetch(getRelativePath('api/auth.php?action=me'), { cache: 'no-store' });
+          const meJson = await meRes.json().catch(() => null);
+          if (meJson?.csrf_token) {
+            headers['X-CSRF-Token'] = meJson.csrf_token;
+          }
+        }
+        await fetch(getRelativePath('api/auth.php?action=logout'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({})
+        });
+      } catch (e) {}
+
       sessionStorage.removeItem('sb_current_user');
+      if (window.SanBongHelpers?.clearCsrfToken) window.SanBongHelpers.clearCsrfToken();
       try {
         localStorage.removeItem('sb_user_v1');
       } catch (e) {}
-      fetch(getRelativePath('api/auth.php?action=logout'), { method: 'POST' })
-        .finally(() => {
-          window.location.href = getRelativePath('');
-        });
+      window.location.href = getRelativePath('');
     };
 
     if (showModal) {
@@ -1846,7 +2132,7 @@ function handleLogout() {
         onConfirm: doLogout
       });
     } else {
-      if (confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?')) doLogout();
+      doLogout();
     }
   }
 
@@ -1856,10 +2142,16 @@ function handleLogout() {
       currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
     } catch(e) {}
 
+    const sysCfg = (window.SanBongDB && typeof window.SanBongDB.getSystemConfig === 'function')
+      ? window.SanBongDB.getSystemConfig()
+      : null;
+    const showMatchmaking = !sysCfg || sysCfg.matchmakingEnabled !== false;
+
     const navItems = [
       { label: 'Trang chủ', href: getRelativePath('') },
       { label: 'Danh sách sân', href: getRelativePath('fields') },
       { label: 'Đặt sân nhanh', href: getRelativePath('booking') },
+      ...(showMatchmaking ? [{ label: 'Tìm đối / Ghép kèo', href: getRelativePath('matchmaking') }] : []),
       { label: 'Lịch sử & Hội viên', href: getRelativePath('history') }
     ];
 
@@ -1880,7 +2172,7 @@ function handleLogout() {
         name: currentUser.full_name,
         avatar: currentUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
         tier: isAdmin ? 'Quản trị viên' : (isManager ? 'Quản lý sân' : (isStaff ? 'Nhân viên trực sân' : (currentUser.tier || 'Hội viên'))),
-        points: isAdmin ? 9999 : ((isManager || isStaff) ? 0 : (currentUser.points || 0))
+        points: Number(currentUser.points) || 0
       };
       const userSubline = (isStaff || isManager) ? escapeHTML(user.tier) : `${escapeHTML(user.tier)} • ${user.points}đ`;
 
@@ -2024,8 +2316,8 @@ function handleLogout() {
       <div class="max-w-7xl mx-auto px-4 md:px-8 pt-6 border-t border-[#1E293B] flex flex-col sm:flex-row items-center justify-between text-[12px] text-[#64748B] gap-4">
         <div>© 2026 Sân Bóng Pro. Bản quyền hệ thống đặt sân hiện đại.</div>
         <div class="flex items-center gap-6">
-          <a href="#" class="hover:text-white">Điều khoản sử dụng</a>
-          <a href="#" class="hover:text-white">Chính sách bảo mật</a>
+          <button type="button" id="footer-btn-terms" class="hover:text-white transition-colors cursor-pointer text-left bg-transparent border-none p-0 text-[12px] text-[#94A3B8]">Điều khoản sử dụng</button>
+          <button type="button" id="footer-btn-privacy" class="hover:text-white transition-colors cursor-pointer text-left bg-transparent border-none p-0 text-[12px] text-[#94A3B8]">Chính sách bảo mật (NĐ 13/2023)</button>
         </div>
       </div>
 
@@ -2163,9 +2455,119 @@ function handleLogout() {
     }
   }
 
-  window.alert = function (msg) {
-    showToast(String(msg), 'warning');
-  };
+  function showPrivacyPolicyModal() {
+    showModal({
+      title: '🛡️ CHÍNH SÁCH BẢO VỆ DỮ LIỆU CÁ NHÂN (Nghị định 13/2023/NĐ-CP)',
+      message: `1. Mục đích thu thập & xử lý dữ liệu:
+Hệ thống thu thập Họ tên, Số điện thoại, Email và thông tin giao dịch nhằm:
+• Xác thực lệnh đặt sân, phát hành vé điện tử QR check-in vào sân.
+• Liên hệ xác nhận lịch thi đấu, hỗ trợ dời lịch hoặc xử lý hoàn cọc.
+• Tích lũy điểm hội viên và nâng hạng thành viên thân thiết.
+• Phòng chống gian lận đặt ảo và bảo vệ an ninh trật tự khu sân.
+
+2. Bên kiểm soát & Bên xử lý dữ liệu:
+• Hệ thống Sân Bóng Pro (Số 18 Đường Lê Đức Thọ, P. Mỹ Đình, Q. Nam Từ Liêm, TP. Hà Nội).
+• Hotline liên hệ hỗ trợ: 0352 313 548.
+
+3. Thời gian lưu trữ dữ liệu cá nhân:
+Dữ liệu cá nhân được lưu trữ an toàn trong suốt thời gian người dùng duy trì tài khoản hoặc tối đa 24 tháng kể từ ngày giao dịch gần nhất, trừ khi pháp luật có quy định khác.
+
+4. Quyền của chủ thể dữ liệu (Quý khách hàng):
+Theo Điều 9 Nghị định 13/2023/NĐ-CP, Quý khách có đầy đủ quyền:
+• Được biết, đồng ý hoặc không đồng ý xử lý dữ liệu cá nhân.
+• Truy cập, chỉnh sửa hoặc yêu cầu cập nhật thông tin cá nhân.
+• Yêu cầu xóa dữ liệu cá nhân hoặc rút lại sự đồng ý đã cung cấp.
+• Khiếu nại, tố cáo hoặc phản ánh khi phát hiện vi phạm bảo mật dữ liệu.
+Mọi yêu cầu thực hiện quyền vui lòng liên hệ Hotline: 0352 313 548 để được giải quyết trong vòng 72 giờ.
+
+5. Cam kết an toàn & bảo mật:
+Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS, cơ chế phòng chống truy cập trái phép và cam kết TUYỆT ĐỐI không chia sẻ hoặc mua bán thông tin cho bên thứ ba vì mục đích thương mại.`,
+      type: 'info',
+      confirmText: 'Tôi đã hiểu & đồng ý'
+    });
+  }
+
+  function showTermsModal() {
+    showModal({
+      title: '📋 ĐIỀU KHOẢN SỬ DỤNG DỊCH VỤ SÂN BÓNG PRO',
+      message: `1. Quy định đặt sân & Giữ chỗ:
+• Khách hàng thực hiện đặt chỗ trực tuyến qua website. Sau khi tạo lệnh, hệ thống áp dụng thời gian giữ chỗ (mặc định 15 phút) để khách thanh toán tiền cọc.
+• Hết thời gian giữ chỗ nếu chưa nhận được tiền cọc, hệ thống sẽ tự động hủy đơn và nhả slot cho các đội bóng khác.
+
+2. Chính sách cọc & Hoàn tiền:
+• Tỷ lệ đặt cọc: Áp dụng từ 30% đến 100% tổng giá trị khung giờ tùy chính sách.
+• Hủy trước 24 giờ so với giờ bắt đầu: Hoàn 100% tiền cọc.
+• Hủy trước 4 giờ đến 24 giờ: Hỗ trợ dời lịch thi đấu hoặc hoàn cọc theo chính sách ưu đãi.
+• Hủy dưới 4 giờ hoặc vắng mặt (No-Show): Không hỗ trợ hoàn cọc nhằm bù đắp chi phí vận hành và giữ sân.
+
+3. Quy định trang thiết bị & An toàn:
+• Cầu thủ sử dụng giày thi đấu chuyên dụng cho sân cỏ nhân tạo (giày đinh dăm TF hoặc đế bệt IC). Nghiêm cấm giày đinh sắt SG gây rách mặt cỏ.
+• Giữ gìn vệ sinh chung, không mang chất dễ cháy nổ, đồ thủy tinh hoặc chất cấm vào khu vực sân cỏ.
+• Tôn trọng đối thủ, trọng tài và thi đấu trên tinh thần thể thao văn minh, fair-play.`,
+      type: 'info',
+      confirmText: 'Đã hiểu'
+    });
+  }
+
+  async function syncAuthMe() {
+    try {
+      const res = await fetch(getRelativePath('api/auth.php?action=me'), { credentials: 'same-origin', cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+          window.SanBongHelpers.setCsrfToken(data.csrf_token);
+        }
+        if (data && data.turnstile_site_key) {
+          window.TURNSTILE_SITE_KEY = data.turnstile_site_key;
+        }
+        if (data && data.authenticated && data.user) {
+          const current = JSON.parse(sessionStorage.getItem('sb_current_user') || '{}');
+          const updated = Object.assign({}, current, data.user);
+          sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
+          // If navbar is already rendered, update points / tier if changed
+          const navPlaceholder = document.getElementById('app-navbar');
+          if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
+            const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
+            navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
+          }
+        } else if (data && data.authenticated === false) {
+          if (sessionStorage.getItem('sb_current_user')) {
+            sessionStorage.removeItem('sb_current_user');
+            const navPlaceholder = document.getElementById('app-navbar');
+            if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
+              const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
+              navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Event delegation for footer buttons & legal links
+  document.addEventListener('click', function (e) {
+    const target = e.target;
+    if (!target) return;
+    if (target.id === 'footer-btn-privacy' || target.closest('#footer-btn-privacy')) {
+      e.preventDefault();
+      showPrivacyPolicyModal();
+      return;
+    }
+    if (target.id === 'footer-btn-terms' || target.closest('#footer-btn-terms')) {
+      e.preventDefault();
+      showTermsModal();
+      return;
+    }
+  });
+
+  // Sync auth on load
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', syncAuthMe);
+    } else {
+      syncAuthMe();
+    }
+  }
 
   window.alert = function (msg) {
     showToast(String(msg), 'warning');
@@ -2176,7 +2578,10 @@ function handleLogout() {
     renderFooter,
     handleLogout,
     showToast,
-    showModal
+    showModal,
+    showPrivacyPolicyModal,
+    showTermsModal,
+    syncAuthMe
   };
 
   window.showToast = showToast;
@@ -2196,6 +2601,15 @@ function handleLogout() {
     escapeHTML: helpers.escapeHTML || (s => s),
     formatVND: helpers.formatVND || (n => Number(n).toLocaleString('vi-VN') + 'đ'),
     formatDateVN: helpers.formatDateVN || (d => d),
+    getLocalTodayISO: helpers.getLocalTodayISO || (() => {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }),
+    getCsrfToken: helpers.getCsrfToken || (() => ''),
+    setCsrfToken: helpers.setCsrfToken || (() => {}),
+    ensureCsrfToken: helpers.ensureCsrfToken || (() => Promise.resolve('')),
+    secureFetch: helpers.secureFetch || fetch,
+    getAuthFetchHeaders: helpers.getAuthFetchHeaders || ((extra) => Object.assign({ 'Content-Type': 'application/json' }, extra || {})),
     getRelativePath: helpers.getRelativePath || (p => p),
     Icons: helpers.Icons || {},
     renderPitchSVG: helpers.renderPitchSVG || (() => ''),
@@ -2212,11 +2626,7 @@ function handleLogout() {
     showModal: ui.showModal || ((cfg) => { if (confirm(cfg.message || cfg.title)) cfg.onConfirm && cfg.onConfirm(); })
   };
 
-  function initAppShell() {
-    if (window.SanBongDB && typeof window.SanBongDB.init === 'function') {
-      window.SanBongDB.init();
-    }
-
+  function renderShellNavbar() {
     const currentUI = window.SanBongUI || ui;
     const navPlaceholder = document.getElementById('app-navbar');
     if (navPlaceholder && currentUI.renderNavbar) {
@@ -2225,10 +2635,24 @@ function handleLogout() {
         ? currentUI.renderNavbar(activePage)
         : currentUI.renderNavbar();
     }
+  }
 
+  function initAppShell() {
+    if (window.SanBongDB && typeof window.SanBongDB.init === 'function') {
+      window.SanBongDB.init();
+    }
+
+    renderShellNavbar();
+
+    const currentUI = window.SanBongUI || ui;
     const footerPlaceholder = document.getElementById('app-footer');
     if (footerPlaceholder && currentUI.renderFooter) {
       footerPlaceholder.innerHTML = currentUI.renderFooter();
+    }
+
+    if (!window._sbNavSyncBound && typeof window.addEventListener === 'function') {
+      window._sbNavSyncBound = true;
+      window.addEventListener('sb-data-synced', renderShellNavbar);
     }
   }
 

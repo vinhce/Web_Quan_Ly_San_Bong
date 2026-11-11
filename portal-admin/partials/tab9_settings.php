@@ -71,6 +71,132 @@
                 </div>
               </div>
 
+              <!-- Cấu hình Ghép kèo & Waitlist -->
+              <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-3">
+                <div class="font-heading font-bold text-xs text-[#0F172A] flex items-center justify-between gap-2">
+                  <span>🤝 Cấu hình Ghép kèo &amp; Waitlist</span>
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Stage 5</span>
+                </div>
+                <div class="space-y-2.5">
+                  <div>
+                    <label for="cfg-waitlist-hold-minutes" class="block font-bold text-[#475569] mb-1">Thời gian ưu tiên giữ chỗ Waitlist (phút)</label>
+                    <input type="number" id="cfg-waitlist-hold-minutes" min="5" max="120" value="15" class="input-field w-full font-bold text-[#0F172A] bg-white">
+                  </div>
+                  <label class="flex items-center gap-2 text-xs font-semibold text-[#0F172A] cursor-pointer select-none">
+                    <input type="checkbox" id="cfg-matchmaking-enabled" checked class="w-4 h-4 rounded text-[#16A34A]">
+                    <span>Bật tính năng Tìm đối / Ghép kèo cộng đồng</span>
+                  </label>
+                  <label class="flex items-center gap-2 text-xs font-semibold text-[#0F172A] cursor-pointer select-none">
+                    <input type="checkbox" id="cfg-matchmaking-require-approval" class="w-4 h-4 rounded text-[#16A34A]">
+                    <span>Yêu cầu Quản trị viên duyệt tin tìm đối trước khi hiển thị</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- 6.1 Nhắc lịch & Thông báo Khách (Zalo / SMS Webhook) -->
+              <div class="p-3.5 rounded-xl bg-sky-50/70 border border-sky-200 space-y-3">
+                <div class="font-heading font-bold text-xs text-[#0F172A] flex items-center justify-between gap-2">
+                  <span>🔔 6.1 Nhắc lịch &amp; Thông báo Khách (Zalo / SMS Webhook)</span>
+                </div>
+                <div class="space-y-2.5">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                    <label class="flex items-center gap-2 text-xs font-semibold text-[#0F172A] cursor-pointer select-none pb-1">
+                      <input type="checkbox" id="cfg-reminder-enabled" class="w-4 h-4 rounded text-[#16A34A]">
+                      <span>Bật nhắc lịch tự động trước giờ đá</span>
+                    </label>
+                    <div>
+                      <label for="cfg-reminder-hours-before" class="block font-bold text-[#475569] mb-1">Nhắc trước giờ đá (giờ)</label>
+                      <input type="number" id="cfg-reminder-hours-before" min="1" max="24" value="2" class="input-field w-full font-bold bg-white">
+                    </div>
+                  </div>
+                  <label class="flex items-center gap-2 text-xs font-semibold text-[#0F172A] cursor-pointer select-none">
+                    <input type="checkbox" id="cfg-customer-notify-enabled" class="w-4 h-4 rounded text-[#16A34A]">
+                    <span>Kích hoạt gửi Webhook thông báo Zalo / SMS tới khách hàng</span>
+                  </label>
+                  <div>
+                    <label for="cfg-customer-notify-webhook" class="block font-bold text-[#475569] mb-1">URL Webhook Zalo / SMS</label>
+                    <input type="url" id="cfg-customer-notify-webhook" placeholder="https://webhook.example.com/notify" class="input-field w-full font-mono text-xs bg-white">
+                  </div>
+                  <div>
+                    <label for="cfg-booking-confirm-template" class="block font-bold text-[#475569] mb-1">Mẫu tin xác nhận đặt sân</label>
+                    <textarea id="cfg-booking-confirm-template" rows="3" placeholder="Xin chào {customer_name}, đơn {code} tại {pitch_name} lúc {slot_time} ngày {date} đã được xác nhận." class="input-field w-full h-auto py-2 text-xs bg-white"></textarea>
+                  </div>
+                  <div>
+                    <label for="cfg-reminder-template" class="block font-bold text-[#475569] mb-1">Mẫu tin nhắc lịch trước trận</label>
+                    <textarea id="cfg-reminder-template" rows="3" placeholder="Nhắc lịch: Trận đấu {code} tại {pitch_name} sẽ diễn ra lúc {slot_time} hôm nay." class="input-field w-full h-auto py-2 text-xs bg-white"></textarea>
+                  </div>
+                  <div class="flex justify-end">
+                    <button type="button" id="btn-run-reminders-now" onclick="runMatchRemindersNow()" class="btn-sm bg-sky-600 hover:bg-sky-700 text-white font-bold cursor-pointer">🔔 Gửi nhắc lịch trước trận ngay</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 6.2 Telegram Bot Cảnh Báo Chủ Sân -->
+              <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-3">
+                <div class="font-heading font-bold text-xs text-[#0F172A] flex flex-wrap items-center justify-between gap-2">
+                  <span>🤖 6.2 Telegram Bot Cảnh Báo Chủ Sân</span>
+                  <span id="tg-token-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Chưa cấu hình</span>
+                </div>
+                <div class="space-y-2.5">
+                  <label class="flex items-center gap-2 text-xs font-semibold text-[#0F172A] cursor-pointer select-none">
+                    <input type="checkbox" id="cfg-tg-notify-enabled" class="w-4 h-4 rounded text-[#16A34A]">
+                    <span>Bật gửi cảnh báo vận hành về Telegram Chủ sân</span>
+                  </label>
+                  <div>
+                    <label for="cfg-tg-bot-token" class="block font-bold text-[#475569] mb-1">Telegram Bot Token</label>
+                    <input type="password" id="cfg-tg-bot-token" autocomplete="new-password" placeholder="Nhập Bot Token mới nếu muốn thay đổi..." class="input-field w-full font-mono text-xs bg-white">
+                  </div>
+                  <label class="flex items-center gap-2 text-xs font-semibold text-[#DC2626] cursor-pointer select-none">
+                    <input type="checkbox" id="cfg-tg-clear-token" class="w-4 h-4 rounded text-[#DC2626]">
+                    <span>Xóa Bot Token đã lưu</span>
+                  </label>
+                  <div>
+                    <label for="cfg-tg-chat-id" class="block font-bold text-[#475569] mb-1">Telegram Chat ID</label>
+                    <input type="text" id="cfg-tg-chat-id" placeholder="VD: -1001234567890 hoặc 123456789" class="input-field w-full font-mono text-xs bg-white">
+                  </div>
+                  <div>
+                    <div class="font-bold text-[#475569] mb-1.5">Sự kiện gửi cảnh báo Telegram:</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-new_booking" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Đơn đặt sân mới</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-cancel" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Hủy đơn / No-Show</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-shift_diff" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Chốt ca lệch tiền mặt</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-unmatched_tx" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Giao dịch VietQR chưa khớp</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-low_stock" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Tồn kho nước/đồ sắp hết</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-waitlist" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Khách đăng ký Waitlist</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-matchmaking" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Tin tìm đối / Ghép kèo</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="cfg-tg-ev-review" class="w-4 h-4 rounded text-[#16A34A]">
+                        <span>Đánh giá sau trận mới</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="flex justify-end pt-1">
+                    <button type="button" id="btn-test-telegram" onclick="testTelegramConnection()" class="btn-sm bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer">📨 Gửi tin thử Telegram</button>
+                  </div>
+                </div>
+              </div>
+
               <div class="pt-4 border-t border-[#E2E8F0] flex flex-wrap items-center justify-end gap-2">
                 <button type="button" id="btn-run-auto-cancel-now" onclick="runAutoReleaseNow()" class="btn-base bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold cursor-pointer">⚡ Quét nhả đơn quá hạn ngay</button>
                 <button type="button" onclick="loadAdminSettings()" class="btn-base btn-secondary text-xs">Khôi phục</button>
@@ -190,6 +316,30 @@
                 <option value="PITCH_STATUS">PITCH_STATUS (Đổi trạng thái sân)</option>
                 <option value="SERVICE_UPSERT">SERVICE_UPSERT (Thêm/Sửa dịch vụ kho)</option>
                 <option value="SERVICE_DELETE">SERVICE_DELETE (Ngừng kinh doanh dịch vụ)</option>
+                <option value="VOUCHER_SAVE">VOUCHER_SAVE (Thêm/Sửa mã Voucher)</option>
+                <option value="VOUCHER_TOGGLE">VOUCHER_TOGGLE (Bật/Tắt mã Voucher)</option>
+                <option value="VOUCHER_DELETE">VOUCHER_DELETE (Xóa mã Voucher)</option>
+                <option value="CRM_UPDATE">CRM_UPDATE (Cập nhật hồ sơ CRM khách)</option>
+                <option value="RECURRING_CREATE">RECURRING_CREATE (Tạo lịch cố định tuần)</option>
+                <option value="RECURRING_CANCEL">RECURRING_CANCEL (Hủy lịch cố định)</option>
+                <option value="RECURRING_SKIP_DATE">RECURRING_SKIP_DATE (Bỏ qua 1 buổi lịch lặp)</option>
+                <option value="RUN_RECURRING_GEN">RUN_RECURRING_GEN (Sinh lịch lặp 4 tuần)</option>
+                <option value="WAITLIST_ASSIGN">WAITLIST_ASSIGN (Gán sân cho Waitlist)</option>
+                <option value="WAITLIST_NOTIFIED">WAITLIST_NOTIFIED (Báo sân trống Waitlist)</option>
+                <option value="WAITLIST_CANCEL">WAITLIST_CANCEL (Hủy yêu cầu Waitlist)</option>
+                <option value="GOLDEN_HOUR_SAVE">GOLDEN_HOUR_SAVE (Lưu quy tắc giờ vàng)</option>
+                <option value="GOLDEN_HOUR_DELETE">GOLDEN_HOUR_DELETE (Xóa quy tắc giờ vàng)</option>
+                <option value="MAINTENANCE_ADD">MAINTENANCE_ADD (Thêm lịch bảo trì sân)</option>
+                <option value="MAINTENANCE_UPDATE">MAINTENANCE_UPDATE (Cập nhật lịch bảo trì)</option>
+                <option value="EXPENSE_ADD">EXPENSE_ADD (Ghi nhận khoản chi vận hành)</option>
+                <option value="EXPENSE_DELETE">EXPENSE_DELETE (Xóa khoản chi vận hành)</option>
+                <option value="MATCHMAKING_MODERATE">MATCHMAKING_MODERATE (Kiểm duyệt tin tìm đối)</option>
+                <option value="REVIEW_REPLY">REVIEW_REPLY (Phản hồi đánh giá khách)</option>
+                <option value="REVIEW_STATUS">REVIEW_STATUS (Ẩn/Hiện đánh giá khách)</option>
+                <option value="TELEGRAM_TEST">TELEGRAM_TEST (Gửi tin thử Telegram)</option>
+                <option value="RUN_REMINDERS">RUN_REMINDERS (Chạy nhắc lịch trước trận)</option>
+                <option value="DB_BACKUP">DB_BACKUP (Tạo bản sao lưu CSDL)</option>
+                <option value="DB_BACKUP_DOWNLOAD">DB_BACKUP_DOWNLOAD (Tải về bản sao lưu CSDL)</option>
               </select>
               <input type="date" id="audit-filter-date" onchange="loadAuditLogs()" class="h-9 px-2.5 rounded-lg border border-[#CBD5E1] bg-white font-semibold text-[#0F172A]">
               <input type="text" id="audit-filter-search" oninput="loadAuditLogs()" placeholder="Tìm mã đơn / đối tượng..." class="h-9 px-3 rounded-lg border border-[#CBD5E1] bg-white text-xs text-[#0F172A] placeholder-[#94A3B8] w-44">
@@ -218,6 +368,182 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- 6.1 Nhật Ký Gửi Thông Báo Khách & Telegram -->
+        <div id="admin-notification-logs-card" class="ui-card p-6 space-y-4">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center text-lg shrink-0">📨</div>
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="font-heading font-extrabold text-lg text-[#0F172A]">6.1 Nhật Ký Gửi Thông Báo Khách &amp; Telegram</h3>
+                  <span id="notif-sent-count" class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">0 Đã gửi</span>
+                  <span id="notif-failed-count" class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[11px] font-bold">0 Thất bại</span>
+                </div>
+                <p class="text-xs text-[#64748B] mt-0.5">Theo dõi lịch sử gửi tin nhắc lịch trận đấu, xác nhận đặt sân và cảnh báo Telegram chủ sân</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <select id="notif-filter-channel" onchange="loadNotificationLogs()" class="h-9 px-2.5 rounded-lg border border-[#CBD5E1] bg-white font-semibold text-[#0F172A]">
+                <option value="all">Tất cả kênh</option>
+                <option value="telegram">Telegram</option>
+                <option value="zalo">Zalo Webhook</option>
+                <option value="sms">SMS Webhook</option>
+                <option value="system">Hệ thống</option>
+              </select>
+              <select id="notif-filter-status" onchange="loadNotificationLogs()" class="h-9 px-2.5 rounded-lg border border-[#CBD5E1] bg-white font-semibold text-[#0F172A]">
+                <option value="all">Tất cả trạng thái</option>
+                <option value="sent">Đã gửi (sent)</option>
+                <option value="failed">Thất bại (failed)</option>
+                <option value="pending">Đang chờ (pending)</option>
+              </select>
+              <input type="text" id="notif-filter-search" oninput="loadNotificationLogs()" placeholder="Tìm mã đơn / SĐT / tiêu đề..." class="h-9 px-3 rounded-lg border border-[#CBD5E1] bg-white text-xs text-[#0F172A] placeholder-[#94A3B8] w-full sm:w-48">
+              <button type="button" onclick="loadNotificationLogs()" class="h-9 px-3 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold flex items-center gap-1 cursor-pointer">🔄 Làm mới</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
+            <table class="w-full text-left text-xs min-w-[880px]">
+              <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
+                <tr>
+                  <th class="py-3 px-3">Thời gian</th>
+                  <th class="py-3 px-3">Kênh / Sự kiện</th>
+                  <th class="py-3 px-3">Mã đơn / Người nhận</th>
+                  <th class="py-3 px-3">Tiêu đề &amp; Nội dung</th>
+                  <th class="py-3 px-3">Trạng thái</th>
+                  <th class="py-3 px-3">Phản hồi</th>
+                </tr>
+              </thead>
+              <tbody id="admin-notif-logs-tbody" class="divide-y divide-[#E2E8F0]">
+                <tr><td colspan="6" class="py-6 text-center text-[#64748B]">Đang tải nhật ký gửi thông báo...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Card: Xác thực 2 lớp (2FA TOTP) cho Quản trị viên -->
+        <div id="admin-2fa-card" class="ui-card p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center text-lg shrink-0">🔐</div>
+              <div>
+                <h3 class="font-heading font-extrabold text-lg text-[#0F172A]">Xác thực 2 lớp (2FA TOTP) cho Quản trị viên</h3>
+                <p class="text-xs text-[#64748B] mt-0.5">Bảo vệ tài khoản quản trị bằng mã OTP thời gian thực từ Google Authenticator hoặc Microsoft Authenticator</p>
+              </div>
+            </div>
+            <div id="admin-2fa-status-pill" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+              Đang kiểm tra...
+            </div>
+          </div>
+
+          <!-- Trạng thái chưa kích hoạt -->
+          <div id="admin-2fa-setup-section" class="space-y-4">
+            <p class="text-xs text-[#475569] leading-relaxed">
+              Kích hoạt 2FA sẽ yêu cầu nhập mã OTP 6 số từ điện thoại mỗi khi đăng nhập vào hệ thống quản lý.
+            </p>
+            <div class="flex items-center gap-3">
+              <button type="button" id="btn-init-2fa" onclick="init2FaSetup()" class="btn-sm btn-primary font-bold cursor-pointer">
+                📱 Thiết lập 2FA ngay
+              </button>
+            </div>
+
+            <!-- Khối hiển thị mã QR khi bấm Thiết lập -->
+            <div id="admin-2fa-qr-box" class="hidden p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4 max-w-lg">
+              <div class="font-bold text-xs text-[#0F172A]">Bước 1: Quét mã QR bằng ứng dụng Authenticator</div>
+              <div class="flex flex-col sm:flex-row items-center gap-4">
+                <div id="admin-2fa-qr-mount" class="w-40 h-40 bg-white p-2 rounded-xl border border-slate-200 flex items-center justify-center shrink-0"></div>
+                <div class="space-y-2 text-xs">
+                  <div class="text-[#64748B]">Hoặc nhập khóa dự phòng thủ công:</div>
+                  <div id="admin-2fa-secret-text" class="p-2 rounded bg-white border font-mono font-bold text-emerald-700 select-all break-all"></div>
+                </div>
+              </div>
+              <div class="font-bold text-xs text-[#0F172A] pt-2 border-t border-slate-200">Bước 2: Nhập mã 6 số từ ứng dụng để kích hoạt</div>
+              <div class="flex items-center gap-2">
+                <input type="text" id="admin-2fa-confirm-otp" maxlength="6" inputmode="numeric" placeholder="000000" class="input-field w-36 text-center font-mono font-bold text-base">
+                <button type="button" id="btn-confirm-2fa" onclick="confirm2FaSetup()" class="btn-sm btn-primary font-bold cursor-pointer">
+                  Kích hoạt 2FA
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trạng thái đã kích hoạt -->
+          <div id="admin-2fa-active-section" class="hidden space-y-4">
+            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-900 space-y-2">
+              <div class="font-bold text-sm flex items-center gap-2">
+                <span>✓</span>
+                <span>Tài khoản của bạn đã được bảo vệ bằng Xác thực 2 lớp (TOTP).</span>
+              </div>
+              <p class="text-emerald-800">Mỗi lần đăng nhập, bạn cần nhập mã 6 số từ Google Authenticator hoặc ứng dụng OTP tương thích.</p>
+            </div>
+            <div class="pt-2">
+              <button type="button" id="btn-toggle-disable-2fa" onclick="toggleDisable2FaForm()" class="btn-sm bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100 font-bold cursor-pointer">
+                Tắt bảo vệ 2FA
+              </button>
+            </div>
+
+            <!-- Khối xác nhận tắt 2FA -->
+            <div id="admin-2fa-disable-box" class="hidden p-4 rounded-xl bg-rose-50/60 border border-rose-200 space-y-3 max-w-md">
+              <div class="font-bold text-xs text-rose-800">Xác thực để tắt 2FA:</div>
+              <div>
+                <label class="block text-xs font-bold text-[#475569] mb-1">Mật khẩu hiện tại</label>
+                <input type="password" id="admin-2fa-disable-pw" placeholder="Nhập mật khẩu" class="input-field w-full bg-white">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#475569] mb-1">Mã OTP 6 số hiện tại</label>
+                <input type="text" id="admin-2fa-disable-otp" maxlength="6" inputmode="numeric" placeholder="000000" class="input-field w-full font-mono font-bold text-center bg-white">
+              </div>
+              <div class="flex items-center gap-2 pt-1">
+                <button type="button" onclick="submitDisable2Fa()" class="btn-sm bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer">
+                  Xác nhận hủy 2FA
+                </button>
+                <button type="button" onclick="toggleDisable2FaForm(false)" class="btn-sm btn-secondary cursor-pointer">
+                  Hủy bỏ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6.5 Sao Lưu & Khôi Phục Cơ Sở Dữ Liệu -->
+        <div id="admin-backups-card" class="ui-card p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-lg shrink-0">💾</div>
+              <div>
+                <h3 class="font-heading font-extrabold text-lg text-[#0F172A]">6.5 Sao Lưu &amp; Khôi Phục Cơ Sở Dữ Liệu</h3>
+                <p class="text-xs text-[#64748B] mt-0.5">Tạo bản sao lưu nén định dạng .sql.gz an toàn và tải về lưu trữ ngoại tuyến định kỳ</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" id="btn-backup-now" onclick="backupDatabaseNow()" class="btn-sm btn-primary font-bold cursor-pointer">💾 Tạo bản sao lưu ngay</button>
+              <button type="button" onclick="loadBackupsList()" class="btn-sm btn-secondary font-bold cursor-pointer">🔄 Làm mới</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
+            <table class="w-full text-left text-xs min-w-[620px]">
+              <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
+                <tr>
+                  <th class="py-3 px-4">Tên file sao lưu</th>
+                  <th class="py-3 px-4">Dung lượng</th>
+                  <th class="py-3 px-4">Thời gian tạo</th>
+                  <th class="py-3 px-4 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="admin-backups-tbody" class="divide-y divide-[#E2E8F0]">
+                <tr><td colspan="4" class="py-6 text-center text-[#64748B]">Đang tải danh sách bản sao lưu...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900 text-slate-200 text-xs space-y-1.5">
+            <div class="font-bold text-emerald-400">🛠️ Hướng dẫn khôi phục nhanh qua CLI (Laragon / VPS Linux):</div>
+            <p class="text-[11px] text-slate-300">Giải nén file <code class="text-amber-300">.sql.gz</code> bằng <code class="text-amber-300">gunzip</code> và nạp lại bằng <code class="text-amber-300">mysql</code>:</p>
+            <pre class="p-2.5 rounded-lg bg-slate-950 text-emerald-300 font-mono text-[11px] overflow-x-auto">gunzip -c backups/backup_sanbong_YYYYMMDD_HHMMSS.sql.gz | mysql -u root -p quan_ly_san_bong</pre>
           </div>
         </div>
 

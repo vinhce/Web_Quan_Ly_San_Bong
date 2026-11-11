@@ -26,6 +26,99 @@
     return dateStr;
   }
 
+  function getLocalTodayISO() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  let _csrfMemoryToken = '';
+
+  function getCsrfToken() {
+    if (_csrfMemoryToken) return _csrfMemoryToken;
+    try {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta && meta.content) {
+        _csrfMemoryToken = meta.content.trim();
+        return _csrfMemoryToken;
+      }
+      const st = (sessionStorage.getItem('sb_csrf_token') || '').trim();
+      if (st) {
+        _csrfMemoryToken = st;
+        return _csrfMemoryToken;
+      }
+      return '';
+    } catch (e) {
+      return _csrfMemoryToken || '';
+    }
+  }
+
+  function setCsrfToken(token) {
+    if (!token || typeof token !== 'string') return;
+    const clean = token.trim();
+    if (!clean) return;
+    _csrfMemoryToken = clean;
+    try {
+      sessionStorage.setItem('sb_csrf_token', clean);
+      let meta = document.querySelector('meta[name="csrf-token"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'csrf-token';
+        document.head && document.head.appendChild(meta);
+      }
+      meta.content = clean;
+    } catch (e) {}
+  }
+
+  function clearCsrfToken() {
+    _csrfMemoryToken = '';
+    try {
+      sessionStorage.removeItem('sb_csrf_token');
+    } catch (e) {}
+  }
+
+  async function ensureCsrfToken(apiBase) {
+    const current = getCsrfToken();
+    if (current) return current;
+    try {
+      const base = apiBase !== undefined ? apiBase : (getAppBase() ? getAppBase() + '/' : '');
+      const url = `${base}api/auth.php?action=me`;
+      const res = await fetch(url, { credentials: 'same-origin' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.csrf_token) {
+          setCsrfToken(json.csrf_token);
+          return json.csrf_token;
+        }
+      }
+    } catch (e) {}
+    return getCsrfToken();
+  }
+
+  function getAuthFetchHeaders(extra = {}) {
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+    const token = getCsrfToken();
+    if (token) {
+      headers['X-CSRF-Token'] = token;
+    }
+    return headers;
+  }
+
+  async function secureFetch(url, options = {}) {
+    await ensureCsrfToken();
+    const opts = Object.assign({}, options);
+    opts.headers = getAuthFetchHeaders(opts.headers);
+    if (!opts.credentials) opts.credentials = 'same-origin';
+    const res = await fetch(url, opts);
+    const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+    if (tokenHeader) {
+      setCsrfToken(tokenHeader);
+    }
+    return res;
+  }
+
   function getAppBase() {
     const pathname = (window.location && typeof window.location.pathname === 'string')
       ? window.location.pathname.replace(/\\/g, '/')
@@ -36,10 +129,22 @@
 
   function getRelativePath(target) {
     const base = getAppBase();
+    const fallback = base ? `${base}/` : '/';
     if (!target || target === 'index.html' || target === '/' || target === '') {
-      return base ? `${base}/` : '/';
+      return fallback;
     }
-    const cleanTarget = String(target).replace(/^\.\.\//, '').replace(/^html\//, '').replace(/^\//, '').replace(/\.html$/, '');
+    const raw = String(target).trim();
+    if (/^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|\/\/)/.test(raw) || raw.includes('\\') || raw.includes('..')) {
+      return fallback;
+    }
+    const cleanTarget = raw
+      .replace(/^\.\.\//, '')
+      .replace(/^html\//, '')
+      .replace(/^\/+/, '')
+      .replace(/\.html(?=$|[?#])/, '');
+    if (!/^[a-zA-Z0-9_\-\/\.]+(?:\?[a-zA-Z0-9_=&%\-\.]*)?(?:#[a-zA-Z0-9_\-]*)?$/.test(cleanTarget)) {
+      return fallback;
+    }
     if (cleanTarget === 'portal-admin' || cleanTarget === 'portal-admin/') {
       return base ? `${base}/portal-admin/` : '/portal-admin/';
     }
@@ -144,12 +249,23 @@
     return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(displayLabel)}</span>`;
   }
 
-  function getVietQRUrl(bankCode, accountNo, amount, memo) {
+  function getVietQRUrl(bankCode, accountNo, amount, memo, accountName) {
     const safeBank = encodeURIComponent(bankCode || 'VCB');
     const safeAcc = encodeURIComponent(accountNo || '0123456789');
     const safeAmount = encodeURIComponent(amount || 0);
     const safeMemo = encodeURIComponent(memo || 'DAT SAN BONG');
-    return `https://img.vietqr.io/image/${safeBank}-${safeAcc}-compact2.png?amount=${safeAmount}&addInfo=${safeMemo}&accountName=NGUYEN%20QUANG%20VINH`;
+    let holder = accountName;
+    if (!holder) {
+      try {
+        const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+        if (db && typeof db.getBankInfo === 'function') {
+          const bInfo = db.getBankInfo();
+          if (bInfo && bInfo.accountName) holder = bInfo.accountName;
+        }
+      } catch (e) {}
+    }
+    const safeName = encodeURIComponent(holder || 'CHU SAN BONG');
+    return `https://img.vietqr.io/image/${safeBank}-${safeAcc}-compact2.png?amount=${safeAmount}&addInfo=${safeMemo}&accountName=${safeName}`;
   }
 
   function renderQRCodeSVG(data, size = 160) {
@@ -172,7 +288,7 @@
       }
     }
     const enc = encodeURIComponent(content);
-    return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}" alt="QR ${enc}" class="w-full h-full object-contain rounded-lg" onerror="this.src='https://quickchart.io/qr?size=${size}&text=${enc}'">`;
+    return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}" alt="QR ${enc}" class="w-full h-full object-contain rounded-lg">`;
   }
 
   function playScanBeep(success = true) {
@@ -316,6 +432,13 @@
     escapeHTML,
     formatVND,
     formatDateVN,
+    getLocalTodayISO,
+    getCsrfToken,
+    setCsrfToken,
+    clearCsrfToken,
+    ensureCsrfToken,
+    secureFetch,
+    getAuthFetchHeaders,
     getAppBase,
     getRelativePath,
     Icons,
@@ -330,6 +453,12 @@
   window.escapeHTML = escapeHTML;
   window.formatVND = formatVND;
   window.formatDateVN = formatDateVN;
+  window.getLocalTodayISO = getLocalTodayISO;
+  window.getCsrfToken = getCsrfToken;
+  window.setCsrfToken = setCsrfToken;
+  window.ensureCsrfToken = ensureCsrfToken;
+  window.secureFetch = secureFetch;
+  window.getAuthFetchHeaders = getAuthFetchHeaders;
   window.getRelativePath = getRelativePath;
 
 })();

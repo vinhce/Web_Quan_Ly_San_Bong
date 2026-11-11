@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v31">
+  <link rel="stylesheet" href="../css/style.css?v=20261112_v33">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -267,6 +267,10 @@
               <span class="text-[#64748B]">Tiền sân:</span>
               <span id="summary-pitch-price" class="font-bold">0đ</span>
             </div>
+            <div id="summary-golden-hour-row" class="hidden flex justify-between text-xs">
+              <span id="summary-golden-hour-label" class="text-[#64748B]">Điều chỉnh khung giờ:</span>
+              <span id="summary-golden-hour-delta" class="font-bold">0đ</span>
+            </div>
             <div class="flex justify-between">
               <span class="text-[#64748B]">Dịch vụ cộng thêm:</span>
               <span id="summary-services-price" class="font-bold">0đ</span>
@@ -289,7 +293,7 @@
 
             <div class="p-4 rounded-xl bg-[#DCFCE7] border border-[#BBF7D0] flex items-center justify-between">
               <div>
-                <div class="text-xs font-bold text-[#16A34A] uppercase tracking-wider">Tiền cọc giữ sân (30%)</div>
+                <div class="text-xs font-bold text-[#16A34A] uppercase tracking-wider">Tiền cọc giữ sân (<span id="summary-deposit-rate-pct">30</span>%)</div>
                 <div class="text-[11px] text-[#15803D]">Chuyển khoản ngân hàng 24/7</div>
               </div>
               <div id="summary-deposit-price" class="font-heading font-extrabold text-xl text-[#16A34A]">
@@ -304,9 +308,11 @@
           </div>
 
           <label class="flex items-start gap-2.5 text-xs text-[#475569] cursor-pointer pt-2">
-            <input type="checkbox" id="policy-agree" checked class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A] mt-0.5">
-            <span>Tôi đồng ý với chính sách cọc & cam kết nhận sân: Sân bóng được giữ tối đa 15 phút sau giờ bắt đầu ca đá; quá 15 phút không đến check-in sẽ bị hủy do khách chưa đến, tịch thu cọc 30% và nhả sân trống.</span>
+            <input type="checkbox" id="policy-agree" class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A] mt-0.5">
+            <span>Tôi đồng ý với chính sách cọc (giữ chỗ tối đa 15 phút, quá hạn hủy do vắng mặt &amp; tịch thu cọc 30%) và <strong class="text-[#0F172A]">đồng ý cho phép xử lý dữ liệu cá nhân (Họ tên, SĐT)</strong> theo Nghị định 13/2023/NĐ-CP phục vụ việc đặt sân &amp; nhận vé.</span>
           </label>
+
+          <div id="booking-turnstile-wrap" class="my-2"></div>
 
           <button type="button" id="proceed-checkout-btn" class="btn-base btn-primary w-full text-base font-bold shadow-lg">
             Tiến hành chuyển khoản cọc →
@@ -319,9 +325,9 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="/js/data.js?v=20261110_v31"></script>
-  <script src="/js/app.js?v=20261110_v31"></script>
-  <script src="/js/api.js?v=20261110_v31"></script>
-  <script src="/js/booking.js?v=20261110_v31"></script>
+  <script src="/js/data.js?v=20261112_v33"></script>
+  <script src="/js/app.js?v=20261112_v33"></script>
+  <script src="/js/api.js?v=20261112_v33"></script>
+  <script src="/js/booking.js?v=20261112_v33"></script>
 </body>
 </html>

@@ -1,13 +1,19 @@
 <?php
 
 require_once __DIR__ . '/security_helper.php';
+require_once __DIR__ . '/notification_helper.php';
 
 function get_sepay_config() {
     loadEnv();
+    $env = strtolower(trim((string)(getenv('SEPAY_ENV') ?: 'sandbox')));
+    $defaultBaseUrl = in_array($env, ['production', 'prod', 'live'], true)
+        ? 'https://userapi.sepay.vn'
+        : 'https://userapi-sandbox.sepay.vn';
+    $baseUrl = trim((string)(getenv('SEPAY_BASE_URL') ?: ''));
     return [
-        'env'           => getenv('SEPAY_ENV') ?: 'sandbox',
+        'env'           => $env,
         'api_token'     => getenv('SEPAY_API_TOKEN') ?: '',
-        'base_url'      => getenv('SEPAY_BASE_URL') ?: 'https://userapi-sandbox.sepay.vn',
+        'base_url'      => $baseUrl !== '' ? $baseUrl : $defaultBaseUrl,
         'bank_code'     => getenv('SEPAY_BANK_CODE') ?: 'MB',
         'account_number'=> getenv('SEPAY_ACCOUNT_NUMBER') ?: '0352313548',
         'account_name'  => getenv('SEPAY_ACCOUNT_NAME') ?: 'NGUYEN QUANG VINH'
@@ -41,7 +47,7 @@ function fetch_sepay_transactions($limit = 20) {
     ]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 3);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_configure_ssl_tls($ch);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err = curl_error($ch);
@@ -93,6 +99,14 @@ function get_expected_deposit_amount($pdo, $bookingCode) {
 
 function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
     $expectedAmount = (int)$expectedAmount;
+    if ($expectedAmount <= 0) {
+        return [
+            'success'        => false,
+            'paid'           => false,
+            'payment_status' => 'Chờ thanh toán',
+            'message'        => 'Số tiền cọc kỳ vọng không hợp lệ hoặc không xác định được'
+        ];
+    }
     $cleanCode = str_replace(['-', ' '], '', strtoupper($bookingCode));
 
     $ledgerFile = __DIR__ . '/sepay_paid_orders.json';
@@ -101,7 +115,7 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
         if (is_array($paidOrders) && isset($paidOrders[$cleanCode])) {
             $entry = $paidOrders[$cleanCode];
             $entryAmt = (int)($entry['amount'] ?? 0);
-            if ($entryAmt > 0 && ($expectedAmount <= 0 || $entryAmt >= $expectedAmount)) {
+            if ($entryAmt > 0 && $entryAmt >= $expectedAmount) {
                 return [
                     'success'        => true,
                     'paid'           => true,
@@ -120,7 +134,9 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
             $cleanContent = str_replace(['-', ' ', '.', ':'], '', $content);
             $amountIn = (int)($tx['amount_in'] ?? $tx['transferAmount'] ?? 0);
 
-            if ((strpos($content, $bookingCode) !== false || strpos($cleanContent, $cleanCode) !== false) && ($expectedAmount <= 0 || $amountIn >= $expectedAmount)) {
+            $isMatch = preg_match('/(?:^|[^A-Z0-9])' . preg_quote(strtoupper((string)$bookingCode), '/') . '(?:$|[^A-Z0-9])/i', $content)
+                || preg_match('/(?:^|[^A-Z0-9])' . preg_quote($cleanCode, '/') . '(?:$|[^A-Z0-9])/i', $cleanContent);
+            if ($isMatch && $amountIn >= $expectedAmount) {
                 return [
                     'success'        => true,
                     'paid'           => true,
@@ -149,12 +165,31 @@ function verify_sepay_payment_for_booking($pdo, $bookingCode, $expectedAmount = 
     if ($expectedAmount <= 0) {
         $expectedAmount = get_expected_deposit_amount($pdo, $bookingCode);
     }
+    if ($expectedAmount <= 0) {
+        return [
+            'success'        => false,
+            'paid'           => false,
+            'payment_status' => 'Chờ thanh toán',
+            'message'        => 'Số tiền cọc kỳ vọng không hợp lệ hoặc không xác định được'
+        ];
+    }
     $result = verify_sepay_payment($bookingCode, $expectedAmount);
     if (!empty($result['paid']) && $pdo) {
         try {
-            $updateStmt = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã cọc 30%', payment_method = 'VietQR SePay (Tự động)' WHERE code = ? AND payment_status = 'Chờ duyệt cọc'");
-            $updateStmt->execute([$bookingCode]);
+            $pdo->beginTransaction();
+            $bStmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? FOR UPDATE");
+            $bStmt->execute([$bookingCode]);
+            $bRow = $bStmt->fetch();
+            if ($bRow && $bRow['payment_status'] === 'Chờ duyệt cọc') {
+                $updateStmt = $pdo->prepare("UPDATE bookings SET status = 'Đã xác nhận', payment_status = 'Đã cọc 30%', payment_method = 'VietQR SePay (Tự động)' WHERE id = ?");
+                $updateStmt->execute([(int)$bRow['id']]);
+                award_booking_loyalty_points($pdo, $bRow);
+            }
+            $pdo->commit();
         } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log("[SEPAY UPDATE BOOKING ERROR] " . $e->getMessage());
         }
     }

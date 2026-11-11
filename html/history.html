@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v31">
+  <link rel="stylesheet" href="../css/style.css?v=20261112_v33">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -56,9 +56,9 @@
             <a href="/fields" class="px-3.5 py-2.5 rounded-lg text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] block">
               Đặt sân mới
             </a>
-            <a href="/login" class="px-3.5 py-2.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] block font-semibold">
+            <button type="button" onclick="window.SanBongApp && window.SanBongApp.handleLogout && window.SanBongApp.handleLogout()" class="w-full text-left px-3.5 py-2.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] block font-semibold">
               Đăng xuất tài khoản
-            </a>
+            </button>
           </div>
         </div>
 
@@ -121,9 +121,9 @@
 
       <div class="text-center p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
         <div id="modal-qr-mount" class="w-40 h-40 mx-auto flex items-center justify-center bg-white rounded-xl"></div>
-        <div id="modal-code" class="font-mono font-extrabold text-base text-[#0F172A]">ASFS260042</div>
-        <div id="modal-pitch" class="text-sm font-bold text-[#16A34A]">Sân 7 - Sân A (Trung tâm)</div>
-        <div id="modal-time" class="text-xs text-[#64748B]">Thứ Sáu, 06/11/2026 · 18:30 - 20:00</div>
+        <div id="modal-code" class="font-mono font-extrabold text-base text-[#0F172A]">---</div>
+        <div id="modal-pitch" class="text-sm font-bold text-[#16A34A]">---</div>
+        <div id="modal-time" class="text-xs text-[#64748B]">---</div>
       </div>
 
       <div class="text-xs text-[#64748B] text-center">
@@ -143,9 +143,9 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="/js/data.js?v=20261110_v31"></script>
-  <script src="/js/app.js?v=20261110_v31"></script>
-  <script src="/js/api.js?v=20261110_v31"></script>
-  <script src="/js/history.js?v=20261110_v31"></script>
+  <script src="/js/data.js?v=20261112_v33"></script>
+  <script src="/js/app.js?v=20261112_v33"></script>
+  <script src="/js/api.js?v=20261112_v33"></script>
+  <script src="/js/history.js?v=20261112_v33"></script>
 </body>
 </html>

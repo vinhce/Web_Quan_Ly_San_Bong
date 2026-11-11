@@ -1,4 +1,5 @@
 <?php
+@header_remove('X-Powered-By');
 require_once __DIR__ . '/../api/security_helper.php';
 secure_session_start();
 
@@ -16,6 +17,7 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="<?php echo htmlspecialchars(generate_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
   <title>Bảng Điều Khiển Quản Trị – Sân Bóng Pro Admin</title>
   <!-- Favicon / Tab Icon -->
   <!-- Favicon / Tab Icon -->
@@ -38,7 +40,7 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v31">
+  <link rel="stylesheet" href="../css/style.css?v=20261112_v33">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -54,17 +56,18 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
 
   <!-- LEFT ADMIN SIDEBAR (Frame 11-19 Unified Shell) -->
   <!-- 1. LEFT ADMIN SIDEBAR -->
+  <div id="admin-sidebar-backdrop" onclick="closeAdminMobileDrawer()" class="hidden fixed inset-0 bg-slate-900/50 z-30 md:hidden"></div>
   <?php include __DIR__ . '/partials/sidebar.php'; ?>
 
   <!-- RIGHT CONTENT WORKSPACE -->
-  <div class="flex-1 flex flex-col h-screen overflow-hidden">
+  <div class="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
 
     <!-- Top Admin Header Bar -->
     <!-- 2. TOPBAR HEADER -->
     <?php include __DIR__ . '/partials/header.php'; ?>
 
     <!-- TAB CONTENTS (Dynamic 9 Modules) -->
-    <main class="flex-1 overflow-y-auto p-6 bg-[#F8FAFC]">
+    <main class="flex-1 overflow-y-auto p-3 sm:p-6 bg-[#F8FAFC]">
 
       <!-- ========================================== -->
       <!-- 3. DYNAMIC 9 TAB MODULES -->
@@ -183,8 +186,8 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <select id="inline-inplay-select" onchange="openInPlayModal(this.value)" class="h-9 px-3 rounded-lg bg-slate-800 border border-slate-600 text-white text-xs font-bold min-w-[240px]"></select>
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <select id="inline-inplay-select" onchange="openInPlayModal(this.value)" class="h-9 px-3 rounded-lg bg-slate-800 border border-slate-600 text-white text-xs font-bold w-full sm:w-auto sm:min-w-[240px]"></select>
           <button type="button" onclick="handleInlineCheckinCurrent()" id="inline-checkin-btn" class="h-9 px-3 rounded-lg bg-[#16A34A] hover:bg-emerald-500 text-white text-xs font-bold hidden items-center gap-1 cursor-pointer">✓ Check-in Nhận Sân</button>
           <button type="button" onclick="restoreCurrentCancelledBooking()" id="inline-restore-btn" class="hidden h-9 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold cursor-pointer">🔄 Khôi phục ca</button>
           <button type="button" onclick="closeInPlayModal()" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-sm flex items-center justify-center cursor-pointer transition-colors" title="Đóng cửa sổ">✕</button>
@@ -406,12 +409,37 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
     </div>
   </div>
 
+  <!-- MODAL 4: ASYNC CUSTOM DIALOG (CONFIRM / PROMPT) -->
+  <div id="admin-custom-dialog-modal" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-title" class="hidden fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden my-auto">
+      <div class="px-5 py-3.5 bg-[#0F172A] text-white flex items-center justify-between gap-2">
+        <h3 id="admin-dialog-title" class="font-heading font-extrabold text-sm">Xác nhận thao tác</h3>
+      </div>
+      <div class="p-5 space-y-4 text-xs">
+        <p id="admin-dialog-message" class="text-[#334155] leading-relaxed whitespace-pre-line font-medium"></p>
+        <div id="admin-dialog-input-wrap" class="hidden space-y-1.5">
+          <label for="admin-dialog-input" class="block text-[11px] font-bold text-[#475569]">Thông tin bổ sung</label>
+          <input type="text" id="admin-dialog-input" placeholder="Nhập nội dung..." class="input-field w-full text-xs font-semibold text-[#0F172A]">
+        </div>
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+          <button type="button" id="admin-dialog-cancel" class="btn-sm btn-secondary cursor-pointer">Hủy</button>
+          <button type="button" id="admin-dialog-confirm" class="btn-sm btn-primary font-bold cursor-pointer">Xác nhận</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261110_v31"></script>
-  <script src="/js/app.js?v=20261110_v31"></script>
-  <script src="/js/api.js?v=20261110_v31"></script>
-  <script src="/js/vendor/jsqr.min.js?v=20261110_v31"></script>
-  <script src="/js/admin.js?v=20261110_v31"></script>
+  <script src="/js/data.js?v=20261112_v33"></script>
+  <script src="/js/app.js?v=20261112_v33"></script>
+  <script src="/js/api.js?v=20261112_v33"></script>
+  <script src="/js/vendor/jsqr.min.js?v=20261112_v33"></script>
+  <script src="/js/admin.js?v=20261112_v33"></script>
+  <script src="/js/admin_ops.js?v=20261112_v33"></script>
+  <script src="/js/admin_crm.js?v=20261112_v33"></script>
+  <script src="/js/admin_finance.js?v=20261112_v33"></script>
+  <script src="/js/admin_inplay.js?v=20261112_v33"></script>
+  <script src="/js/admin_catalog.js?v=20261112_v33"></script>
 </body>
 </html>
 

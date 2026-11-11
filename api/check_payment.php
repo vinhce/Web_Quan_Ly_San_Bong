@@ -72,16 +72,41 @@ try {
 
     $expectedAmount = $booking ? (int)$booking['deposit_amount'] : get_expected_deposit_amount($pdo, $code);
 
-    $result = verify_sepay_payment($code, $expectedAmount);
+    $result = ['paid' => false, 'message' => 'Chưa nhận được giao dịch chuyển khoản'];
+    if ($expectedAmount > 0) {
+        try {
+            $result = verify_sepay_payment($code, $expectedAmount);
+        } catch (Throwable $sEx) {
+            error_log("[SEPAY VERIFY WARN] " . $sEx->getMessage());
+            $result = ['paid' => false, 'message' => 'Hệ thống SePay đang bận, vui lòng thử lại sau'];
+        }
+    }
     $receivedAmount = (int)($result['transaction']['amount'] ?? 0);
 
-    if (!empty($result['paid']) && ($expectedAmount <= 0 || $receivedAmount >= $expectedAmount)) {
+    if (!empty($result['paid']) && $expectedAmount > 0 && $receivedAmount >= $expectedAmount) {
         $newPaid = $booking ? max((int)($booking['paid_amount'] ?? 0), $receivedAmount > 0 ? $receivedAmount : $expectedAmount) : $receivedAmount;
         if ($pdo && $booking) {
-            $newPayStatus = ((int)$booking['total_price'] > 0 && $newPaid >= (int)$booking['total_price']) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
-            $updateStmt = $pdo->prepare("UPDATE bookings SET status = IF(status='Chờ duyệt cọc', 'Đã xác nhận', status), payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
-            $updateStmt->execute([$newPayStatus, $newPaid, $newPaid, $booking['id']]);
-            $result['payment_status'] = $newPayStatus;
+            try {
+                $pdo->beginTransaction();
+                $lockStmt = $pdo->prepare("SELECT id, user_id, code, status, payment_status, total_price, deposit_amount, paid_amount FROM bookings WHERE id = ? FOR UPDATE");
+                $lockStmt->execute([(int)$booking['id']]);
+                $freshBooking = $lockStmt->fetch();
+                if ($freshBooking) {
+                    $bTotalPrice = (int)($freshBooking['total_price'] ?? 0);
+                    $newPayStatus = ($bTotalPrice > 0 && $newPaid >= $bTotalPrice) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
+                    $newStatus = ($freshBooking['status'] === 'Chờ duyệt cọc') ? 'Đã xác nhận' : $freshBooking['status'];
+                    $updateStmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
+                    $updateStmt->execute([$newStatus, $newPayStatus, $newPaid, $newPaid, (int)$freshBooking['id']]);
+                    award_booking_loyalty_points($pdo, $freshBooking);
+                }
+                $pdo->commit();
+                $result['payment_status'] = $newPayStatus ?? 'Đã cọc 30%';
+            } catch (Throwable $updEx) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                error_log("[CHECK PAYMENT UPDATE WARN] " . $updEx->getMessage());
+            }
         }
         $result['code'] = $booking['code'] ?? $code;
         $result['paidAmount'] = $newPaid;
@@ -105,7 +130,7 @@ try {
         'expectedAmount' => $expectedAmount,
         'message'        => $defaultMsg
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("[CHECK PAYMENT ERROR] " . $e->getMessage());
     json_response([
         'success'  => false,

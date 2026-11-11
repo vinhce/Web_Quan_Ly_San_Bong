@@ -8,10 +8,22 @@ window.SanBongApp.SanBongAPI = {
       const response = await fetch(apiUrl);
       if (response.ok) {
         const jsonRes = await response.json();
+        if (jsonRes?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+          window.SanBongHelpers.setCsrfToken(jsonRes.csrf_token);
+        }
         if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
           if (window.SanBongApp?.SanBongDB?.syncFromServer) {
             try {
               localStorage.setItem('sb_pitches_v2', JSON.stringify(jsonRes.data.pitches));
+              if (Array.isArray(jsonRes.data.vouchers)) {
+                localStorage.setItem('sb_vouchers_v1', JSON.stringify(jsonRes.data.vouchers));
+              }
+              if (Array.isArray(jsonRes.data.goldenHourRules)) {
+                localStorage.setItem('sb_golden_hours_v1', JSON.stringify(jsonRes.data.goldenHourRules));
+              }
+              if (Array.isArray(jsonRes.data.maintenanceSchedules)) {
+                localStorage.setItem('sb_maintenance_v1', JSON.stringify(jsonRes.data.maintenanceSchedules));
+              }
               if (jsonRes.data.bankInfo) {
                 const b = Object.assign({}, jsonRes.data.bankInfo, {
                   accountNo: jsonRes.data.bankInfo.accountNo || jsonRes.data.bankInfo.accountNumber || '',
@@ -29,6 +41,8 @@ window.SanBongApp.SanBongAPI = {
             timeSlots: jsonRes.data.timeSlots || window.SanBongApp.SanBongDB?.getTimeSlots() || [],
             extraServices: jsonRes.data.extraServices || window.SanBongApp.SanBongDB?.getServices?.() || [],
             vouchers: jsonRes.data.vouchers || window.SanBongApp.SanBongDB?.getVouchers() || [],
+            goldenHourRules: jsonRes.data.goldenHourRules || window.SanBongApp.SanBongDB?.getGoldenHourRules?.() || [],
+            maintenanceSchedules: jsonRes.data.maintenanceSchedules || window.SanBongApp.SanBongDB?.getMaintenanceSchedules?.() || [],
             bankInfo: jsonRes.data.bankInfo || window.SanBongApp.SanBongDB?.getBankInfo() || {},
             settings: jsonRes.data.settings || window.SanBongApp.SanBongDB?.getSystemConfig?.() || {}
           };
@@ -120,15 +134,27 @@ window.SanBongApp.SanBongAPI = {
 
   async postBooking(bookingPayload) {
     try {
+      if (window.SanBongApp?.ensureCsrfToken) {
+        await window.SanBongApp.ensureCsrfToken();
+      }
       const apiUrl = window.SanBongApp.getRelativePath('api/bookings.php');
+      const headers = window.SanBongApp?.getAuthFetchHeaders
+        ? window.SanBongApp.getAuthFetchHeaders()
+        : { 'Content-Type': 'application/json' };
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
+        credentials: 'same-origin',
         body: JSON.stringify(bookingPayload)
       });
+      const tokenHeader = response.headers ? response.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader && window.SanBongHelpers?.setCsrfToken) {
+        window.SanBongHelpers.setCsrfToken(tokenHeader);
+      }
       const result = await response.json();
+      if (result?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+        window.SanBongHelpers.setCsrfToken(result.csrf_token);
+      }
       if (response.ok && result && result.success !== false) {
         return { success: true, status: response.status, data: result.data || result, message: result.message || '' };
       }

@@ -26,6 +26,9 @@ ServerSignature Off
     # Chặn truy cập trực tiếp các file .json, .log trong api/ và logs/
     RewriteRule ^(api|logs)/.*\.(json|log)$ - [F,L]
 
+    # Chặn truy cập trực tiếp vào các thư mục nội bộ & partials (áp dụng trước mọi Clean URL rewrite)
+    RewriteRule ^(config|database|logs|scripts|backups|cron|portal-admin/partials|docs)(/|$) - [NC,F,L]
+
     # Route /portal-admin/ và /portal-admin/index.html qua cổng kiểm tra session PHP
     RewriteRule ^portal-admin/?$ portal-admin/index.php [L,QSA]
     RewriteRule ^portal-admin/index\.html$ portal-admin/index.php [L,QSA]
@@ -38,21 +41,18 @@ ServerSignature Off
     RewriteRule ^(html/)?admin(\.html)?/?$ /portal-admin/ [R=301,L]
 
     # 3.3. Loại bỏ đuôi .html và thư mục html/ trên URL -> Chuyển hướng 301 sang Clean URLs
-    RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /(?:html/)?(fields|booking|checkout|success|history|login|field-detail)\.html(\?[^\ ]*)?\ HTTP/ [NC]
-    RewriteRule ^(html/)?(fields|booking|checkout|success|history|login|field-detail)\.html$ /$2 [R=301,L]
+    RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /(?:html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking)\.html(\?[^\ ]*)?\ HTTP/ [NC]
+    RewriteRule ^(html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking)\.html$ /$2 [R=301,L]
 
     # 3.4. Rewrite nội bộ phục vụ file từ thư mục html/ cho Clean URLs
-    RewriteRule ^(fields|booking|checkout|success|history|login|field-detail)/?$ html/$1.html [L,QSA]
+    RewriteRule ^(fields|booking|checkout|success|history|login|field-detail|matchmaking)/?$ html/$1.html [L,QSA]
 </IfModule>
 
 # 4. Chặn tuyệt đối truy cập các tệp tin & thư mục nhạy cảm
-<FilesMatch "^(\.env|\.git|\.agents|.*\.sql|.*\.bak|.*\.log|.*\.tmp|.*\.md|composer\.(json|lock)|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json)$">
+<FilesMatch "^(\.env|\.git|\.agents|.*\.sql(\.gz)?|.*\.bak|.*\.log|.*\.tmp|.*\.md|composer\.(json|lock)|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json|test_pitches\.php)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
-
-# Chặn truy cập trực tiếp vào thư mục config, database, logs, scripts, backups, portal-admin/partials, docs
-RedirectMatch 403 ^/(config|database|logs|scripts|backups|portal-admin/partials|docs)/.*$
 
 # Giới hạn kích thước body request tối đa 10MB chống DoS payload (Mục 3.2)
 LimitRequestBody 10485760
@@ -71,11 +71,11 @@ LimitRequestBody 10485760
     # Chính sách Referrer bảo vệ rò rỉ URL nhạy cảm
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
-    # Chống truy cập thiết bị ngoại vi không mong muốn
-    Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+    # Chống truy cập thiết bị ngoại vi không mong muốn (cho phép camera tại chính domain để quét QR Admin)
+    Header always set Permissions-Policy "geolocation=(), camera=(self), microphone=()"
 
-    # Content Security Policy (CSP) cho phép CDN Tailwind, Lucide, Fonts, VietQR API, SePay API
-    Header always set Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.open-meteo.com https://api.vietqr.io data: blob:; img-src 'self' data: https: blob:; connect-src 'self' https://api.open-meteo.com https://api.vietqr.io https://userapi-sandbox.sepay.vn;"
+    # Content Security Policy (CSP) cho phép CDN Tailwind, Lucide, Fonts, VietQR API, SePay API, Turnstile
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://api.sepay.vn https://userapi.sepay.vn https://userapi-sandbox.sepay.vn https://api.telegram.org https://api.open-meteo.com https://api.vietqr.io; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self';"
 
     # Chống lưu cache cũ trên HTML, PHP và API động
     <FilesMatch "\.(html|htm|php|json)$">

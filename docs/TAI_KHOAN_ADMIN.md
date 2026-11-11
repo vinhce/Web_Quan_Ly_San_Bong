@@ -21,7 +21,7 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 
 ### 2.1. Tài khoản Quản trị viên: `admin`
 - **Username:** `admin` (hoặc email: `admin@sanbongpro.vn`)
-- **Mật khẩu:** `admin123`
+- **Mật khẩu:** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
 - **Vai trò:** `admin` (Toàn quyền quản trị hệ thống)
 
 ### 2.2. Tài khoản Quản trị viên: `vxyen0801`
@@ -30,7 +30,7 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 | :--- | :--- | :--- |
 | **Tên đăng nhập (SĐT / Username)** | `vxyen0801` | Có thể nhập `vxyen0801` vào ô *Số điện thoại / Email* |
 | **Email quản trị** | `vxyen0801@sanbongpro.vn` | Cũng có thể dùng để đăng nhập |
-| **Mật khẩu** | `********` *(Mật khẩu riêng quản trị)* | Đã băm một chiều bằng thuật toán **Argon2id** (`PASSWORD_ARGON2ID`), không lưu plaintext trong CSDL |
+| **Mật khẩu** | `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` | Đã băm một chiều bằng thuật toán **Argon2id** (`PASSWORD_ARGON2ID`), không lưu plaintext trong CSDL |
 | **Vai trò (Role)** | `admin` | Toàn quyền quản trị hệ thống |
 | **Hạng hiển thị** | `Quản trị viên` | Tự động mở nút **⚡ Quản trị Portal** trên thanh điều hướng |
 
@@ -39,7 +39,7 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 ### 2.3. Tài khoản Nhân viên trực sân: `nhanvien` (Mẫu)
 - **Username:** `nhanvien` (hoặc email: `nhanvien@sanbongpro.vn`)
 - **Số điện thoại:** `0352000111`
-- **Mật khẩu:** `staff123` (Đã băm bằng Argon2id)
+- **Mật khẩu:** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
 - **Vai trò (Role):** `staff` (Nhân viên vận hành trực sân, bị giới hạn phân hệ tài chính & cấu hình)
 - **Hạng hiển thị:** `Nhân viên trực sân` (Hiển thị nút **🏟️ Cổng Trực Sân** trên thanh điều hướng)
 

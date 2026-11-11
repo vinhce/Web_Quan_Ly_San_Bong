@@ -177,6 +177,29 @@
                 <input type="text" id="admin-voucher-desc" required placeholder="Mô tả chương trình khuyến mãi" class="input-field h-9 text-xs">
               </div>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label for="admin-voucher-max-usage" class="block text-[11px] font-bold text-[#475569] mb-1">Số lượt dùng tối đa (0 = không giới hạn)</label>
+                <input type="number" id="admin-voucher-max-usage" value="100" min="0" class="input-field h-9 text-xs font-bold">
+              </div>
+              <div>
+                <label for="admin-voucher-valid-from" class="block text-[11px] font-bold text-[#475569] mb-1">Hiệu lực từ ngày</label>
+                <input type="date" id="admin-voucher-valid-from" class="input-field h-9 text-xs font-semibold">
+              </div>
+              <div>
+                <label for="admin-voucher-valid-to" class="block text-[11px] font-bold text-[#475569] mb-1">Hiệu lực đến ngày</label>
+                <input type="date" id="admin-voucher-valid-to" class="input-field h-9 text-xs font-semibold">
+              </div>
+              <div>
+                <label for="admin-voucher-pitch-limit" class="block text-[11px] font-bold text-[#475569] mb-1">Giới hạn loại sân áp dụng</label>
+                <select id="admin-voucher-pitch-limit" class="input-field h-9 text-xs font-semibold">
+                  <option value="">Tất cả loại sân</option>
+                  <option value="5">Chỉ Sân 5 người</option>
+                  <option value="7">Chỉ Sân 7 người</option>
+                  <option value="11">Chỉ Sân 11 người</option>
+                </select>
+              </div>
+            </div>
             <div class="flex items-center justify-end gap-2 pt-1">
               <button type="button" id="admin-voucher-cancel-btn" onclick="cancelEditVoucher()" class="hidden btn-sm btn-secondary font-bold">Hủy sửa</button>
               <button type="submit" id="admin-voucher-submit-btn" class="btn-base btn-primary text-xs font-bold px-4 py-2">+ Thêm mã Voucher</button>
@@ -184,19 +207,112 @@
           </form>
 
           <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
+            <table class="w-full text-left text-xs border-collapse min-w-[780px]">
               <thead>
                 <tr class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
                   <th class="py-3 px-4">Mã Voucher</th>
                   <th class="py-3 px-4">Loại & Mức giảm</th>
                   <th class="py-3 px-4">Đơn tối thiểu</th>
                   <th class="py-3 px-4">Mô tả chương trình</th>
+                  <th class="py-3 px-4">Giới hạn &amp; Hạn dùng</th>
                   <th class="py-3 px-4">Trạng thái</th>
                   <th class="py-3 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody id="admin-vouchers-tbody" class="divide-y divide-[#E2E8F0] font-medium">
                 <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 5.4 Bảng Quy Tắc Giá Giờ Vàng / Thấp Điểm -->
+        <div id="golden-hour-card" class="ui-card p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3">
+            <div>
+              <h3 class="font-heading font-bold text-lg text-[#0F172A]">⚡ 5.4 Bảng Quy Tắc Giá Giờ Vàng / Thấp Điểm</h3>
+              <p class="text-xs text-[#64748B]">Tự động áp dụng giảm giá giờ thấp điểm hoặc phụ thu giờ cao điểm theo loại sân, thứ và khung giờ</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">Giá động thông minh</span>
+          </div>
+
+          <form id="admin-golden-hour-form" onsubmit="saveGoldenHourRule(event)" class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3 text-xs">
+            <input type="hidden" id="gh-rule-id">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label for="gh-rule-name" class="block text-[11px] font-bold text-[#475569] mb-1">Tên quy tắc *</label>
+                <input type="text" id="gh-rule-name" required placeholder="VD: Giảm trưa nắng, Giờ vàng T6..." class="input-field h-9 text-xs font-semibold bg-white">
+              </div>
+              <div>
+                <label for="gh-pitch-type" class="block text-[11px] font-bold text-[#475569] mb-1">Loại sân áp dụng</label>
+                <select id="gh-pitch-type" class="input-field h-9 text-xs font-semibold bg-white">
+                  <option value="">Tất cả loại sân</option>
+                  <option value="5">Sân 5 người</option>
+                  <option value="7">Sân 7 người</option>
+                  <option value="11">Sân 11 người</option>
+                </select>
+              </div>
+              <div>
+                <label for="gh-day-of-week" class="block text-[11px] font-bold text-[#475569] mb-1">Thứ trong tuần</label>
+                <select id="gh-day-of-week" class="input-field h-9 text-xs font-semibold bg-white">
+                  <option value="">Tất cả các ngày</option>
+                  <option value="1">Thứ 2</option>
+                  <option value="2">Thứ 3</option>
+                  <option value="3">Thứ 4</option>
+                  <option value="4">Thứ 5</option>
+                  <option value="5">Thứ 6</option>
+                  <option value="6">Thứ 7</option>
+                  <option value="7">Chủ Nhật</option>
+                </select>
+              </div>
+              <div>
+                <label for="gh-slot-id" class="block text-[11px] font-bold text-[#475569] mb-1">Khung giờ áp dụng</label>
+                <select id="gh-slot-id" class="input-field h-9 text-xs font-semibold bg-white">
+                  <option value="">Tất cả khung giờ</option>
+                </select>
+              </div>
+              <div>
+                <label for="gh-adj-type" class="block text-[11px] font-bold text-[#475569] mb-1">Kiểu điều chỉnh giá *</label>
+                <select id="gh-adj-type" required class="input-field h-9 text-xs font-bold bg-white">
+                  <option value="fixed">Đặt giá cố định (VNĐ)</option>
+                  <option value="percent_discount">Giảm giá theo %</option>
+                  <option value="percent_surcharge">Phụ thu theo %</option>
+                </select>
+              </div>
+              <div>
+                <label for="gh-adj-value" class="block text-[11px] font-bold text-[#475569] mb-1">Giá trị điều chỉnh *</label>
+                <input type="number" id="gh-adj-value" required min="0" placeholder="VD: 15 (15%) hoặc 220000" class="input-field h-9 text-xs font-bold text-[#16A34A] bg-white">
+              </div>
+              <div class="sm:col-span-2">
+                <label for="gh-description" class="block text-[11px] font-bold text-[#475569] mb-1">Mô tả quy tắc</label>
+                <input type="text" id="gh-description" placeholder="VD: Khuyến khích đặt sân khung giờ 14:00 - 17:00 ngày thường" class="input-field h-9 text-xs bg-white">
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <label class="flex items-center gap-2 text-xs font-semibold text-[#0F172A] cursor-pointer select-none">
+                <input type="checkbox" id="gh-is-active" checked class="w-4 h-4 rounded text-[#16A34A]">
+                <span>Kích hoạt quy tắc này</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <button type="button" id="gh-cancel-btn" onclick="cancelEditGoldenHour()" class="hidden btn-sm btn-secondary font-bold cursor-pointer">Hủy sửa</button>
+                <button type="submit" id="gh-submit-btn" class="btn-sm btn-primary font-bold cursor-pointer">+ Thêm quy tắc giờ vàng</button>
+              </div>
+            </div>
+          </form>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse min-w-[720px]">
+              <thead>
+                <tr class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
+                  <th class="py-3 px-4">Tên quy tắc</th>
+                  <th class="py-3 px-4">Điều kiện áp dụng</th>
+                  <th class="py-3 px-4">Điều chỉnh giá</th>
+                  <th class="py-3 px-4">Trạng thái</th>
+                  <th class="py-3 px-4 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="admin-golden-hours-tbody" class="divide-y divide-[#E2E8F0] font-medium">
+                <tr><td colspan="5" class="py-5 text-center text-[#94A3B8]">Đang tải quy tắc giá giờ vàng...</td></tr>
               </tbody>
             </table>
           </div>

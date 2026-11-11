@@ -1,7 +1,8 @@
 
 let currentFilter = 'all';
+let reviewedMap = {};
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
@@ -38,7 +39,40 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHistoryPolicyBox(db);
   window.addEventListener('sb-data-synced', () => renderHistoryPolicyBox(db));
   renderHistory();
+
+  const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+  if (user && user.name) {
+    try {
+      const res = await fetch(getRel('api/bookings.php'), { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && Array.isArray(json.data)) {
+          localStorage.setItem('sb_bookings_v1', JSON.stringify(json.data));
+          renderHistory();
+        }
+      }
+    } catch (e) {}
+  }
+
+  await syncReviewedMap(db);
 });
+
+async function syncReviewedMap(db) {
+  try {
+    const all = db.getAllBookings();
+    const codes = [...new Set(all.map(b => b.code).filter(Boolean))].slice(0, 50);
+    if (codes.length === 0) return;
+    const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+    const res = await fetch(getRel('api/reviews.php?booking_codes=' + encodeURIComponent(codes.join(','))), { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.success && json.data?.reviewed) {
+        reviewedMap = json.data.reviewed;
+        renderHistory();
+      }
+    }
+  } catch (e) {}
+}
 
 function renderHistoryPolicyBox(db) {
   const cfg = db && typeof db.getSystemConfig === 'function'
@@ -144,53 +178,65 @@ function renderHistory() {
     if (empty) empty.classList.add('hidden');
   }
 
+  const esc = (s) => (window.SanBongApp?.escapeHTML ? window.SanBongApp.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
+
   container.innerHTML = list.map(b => {
     const isConfirmed = b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc';
     const isCompleted = b.status === 'Hoàn thành';
+    const safeCode = esc(b.code);
+    const safePitch = esc(b.pitchName || b.pitchId);
+    const revInfo = reviewedMap[b.code];
     const monthlyTag = (b.weeksCount && b.weeksCount > 1)
-      ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">📅 Gói ${b.weeksCount} tuần</span>`
+      ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">📅 Gói ${Number(b.weeksCount)} tuần</span>`
       : '';
     const overtimeTag = (b.overtimeMinutes && b.overtimeMinutes > 0)
-      ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">⏱️ +${b.overtimeMinutes}p thêm giờ</span>`
+      ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">⏱️ +${Number(b.overtimeMinutes)}p thêm giờ</span>`
       : '';
+
+    const reviewBtnHtml = revInfo
+      ? `<span class="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">✓ Đã đánh giá (★ ${Number(revInfo.rating || 5)})</span>`
+      : (b.status !== 'Đã hủy' && b.status !== 'Khách chưa đến'
+        ? `<button type="button" data-action="review" data-code="${safeCode}" data-pitch="${safePitch}" class="btn-base bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-bold">⭐ Đánh giá sân</button>`
+        : '');
 
     return `
       <div class="ui-card p-5 space-y-4 hover:shadow-md transition-shadow">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E2E8F0] gap-2">
           <div class="flex flex-wrap items-center gap-2.5">
-            <span class="font-mono font-bold text-sm px-2.5 py-0.5 rounded bg-slate-100 text-[#0F172A]">${b.code}</span>
+            <span class="font-mono font-bold text-sm px-2.5 py-0.5 rounded bg-slate-100 text-[#0F172A]">${safeCode}</span>
             ${window.SanBongApp.statusPill(b.status)}
-            ${b.paymentStatus ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold">${b.paymentStatus}</span>` : ''}
+            ${b.paymentStatus ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold">${esc(b.paymentStatus)}</span>` : ''}
             ${monthlyTag}
             ${overtimeTag}
           </div>
-          <div class="text-xs text-[#64748B]">Tạo lúc: ${b.createdAt || 'Hôm nay'}</div>
+          <div class="text-xs text-[#64748B]">Tạo lúc: ${esc(b.createdAt || 'Hôm nay')}</div>
         </div>
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 class="font-heading font-extrabold text-lg text-[#0F172A]">${b.pitchName}</h3>
+            <h3 class="font-heading font-extrabold text-lg text-[#0F172A]">${safePitch}</h3>
             <div class="text-sm font-semibold text-[#16A34A] mt-0.5">
-              ${window.SanBongApp.formatDateVN(b.date)} · ${b.slotTime}
+              ${window.SanBongApp.formatDateVN(b.date)} · ${esc(b.slotTime)}
             </div>
             <div class="text-xs text-[#64748B] mt-1">
               Tổng tiền: <b class="text-[#0F172A]">${window.SanBongApp.formatVND(b.totalPrice)}</b>
               (Đã cọc: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(b.depositAmount)}</span> · Còn lại: <b class="${b.remainingAmount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(b.remainingAmount)}</b>)
             </div>
-            ${b.note ? `<div class="text-[11px] text-slate-500 mt-1 italic">${b.note}</div>` : ''}
+            ${b.note ? `<div class="text-[11px] text-slate-500 mt-1 italic">${esc(b.note)}</div>` : ''}
           </div>
 
           <div class="flex items-center gap-2 flex-wrap">
-            <button onclick="viewQRCode('${b.code}')" class="btn-base btn-secondary text-xs font-bold">
+            <button type="button" data-action="view-qr" data-code="${safeCode}" class="btn-base btn-secondary text-xs font-bold">
               📷 Xem vé QR & Hóa đơn
             </button>
+            ${reviewBtnHtml}
             ${isConfirmed ? `
-              <button onclick="cancelBooking('${b.code}')" class="btn-base btn-danger-outline text-xs font-bold">
+              <button type="button" data-action="cancel-booking" data-code="${safeCode}" class="btn-base btn-danger-outline text-xs font-bold">
                 🛑 Hủy trước hạn & Hoàn cọc
               </button>
             ` : ''}
             ${isCompleted ? `
-              <a href="/booking?pitchId=${b.pitchId}" class="btn-base btn-primary text-xs font-bold">
+              <a href="/booking?pitchId=${encodeURIComponent(b.pitchId)}" class="btn-base btn-primary text-xs font-bold">
                 Đặt lại ca này
               </a>
             ` : ''}
@@ -211,9 +257,10 @@ function viewQRCode(bookingCode) {
   const mPitch = document.getElementById('modal-pitch');
   if (mPitch) mPitch.textContent = b.pitchName;
   const mTime = document.getElementById('modal-time');
+  const esc = window.SanBongApp?.escapeHTML || (s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
   if (mTime) {
     const rem = window.SanBongApp.formatVND(b.remainingAmount || 0);
-    mTime.innerHTML = `${window.SanBongApp.formatDateVN(b.date)} · ${b.slotTime}<br><span class="text-[11px] font-bold text-[#0F172A]">Tổng: ${window.SanBongApp.formatVND(b.totalPrice)} · Đã cọc: ${window.SanBongApp.formatVND(b.depositAmount)} · Còn lại: <span class="text-[#DC2626]">${rem}</span></span>`;
+    mTime.innerHTML = `${esc(window.SanBongApp.formatDateVN(b.date))} · ${esc(b.slotTime)}<br><span class="text-[11px] font-bold text-[#0F172A]">Tổng: ${window.SanBongApp.formatVND(b.totalPrice)} · Đã cọc: ${window.SanBongApp.formatVND(b.depositAmount)} · Còn lại: <span class="text-[#DC2626]">${rem}</span></span>`;
   }
 
   const qrMount = document.getElementById('modal-qr-mount');
@@ -281,16 +328,30 @@ function cancelBooking(bookingCode) {
     let refundAmount = null;
 
     try {
+      if (window.SanBongApp?.ensureCsrfToken) {
+        await window.SanBongApp.ensureCsrfToken('../');
+      }
+      const headers = window.SanBongApp?.getAuthFetchHeaders
+        ? window.SanBongApp.getAuthFetchHeaders()
+        : { 'Content-Type': 'application/json' };
       const res = await fetch('../api/bookings.php?action=early_cancel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'same-origin',
         body: JSON.stringify({
           code: bookingCode,
           policy: expectedPolicy,
           reason: 'Khách hàng chủ động hủy lịch trước thời hạn'
         })
       });
+      const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(tokenHeader);
+      }
       const json = await res.json().catch(() => null);
+      if (json?.csrf_token && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(json.csrf_token);
+      }
       if (res.ok && json && json.success) {
         serverHandled = true;
         const d = json.data || {};
@@ -343,3 +404,137 @@ function cancelBooking(bookingCode) {
     if (confirm(`Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\n• ${timeDesc}\n• Chính sách dự kiến: ${policyDesc}`)) doCancel();
   }
 }
+
+window.openReviewModal = function(bookingCode, pitchName) {
+  let existing = document.getElementById('customer-review-modal');
+  if (existing) existing.remove();
+
+  const esc = (s) => (window.SanBongApp?.escapeHTML ? window.SanBongApp.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
+  const overlay = document.createElement('div');
+  overlay.id = 'customer-review-modal';
+  overlay.className = 'fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 p-6 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-heading font-bold text-lg text-[#0F172A]">Đánh Giá Chất Lượng Sân</h3>
+          <div class="text-xs text-[#64748B] mt-0.5">${esc(pitchName)} (Mã vé: ${esc(bookingCode)})</div>
+        </div>
+        <button id="close-review-modal-btn" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-[#475569] mb-2">Chọn số sao hài lòng:</label>
+          <div id="star-selector" class="flex items-center gap-2 text-3xl cursor-pointer select-none">
+            <span data-star="1" class="text-[#F59E0B]">★</span>
+            <span data-star="2" class="text-[#F59E0B]">★</span>
+            <span data-star="3" class="text-[#F59E0B]">★</span>
+            <span data-star="4" class="text-[#F59E0B]">★</span>
+            <span data-star="5" class="text-[#F59E0B]">★</span>
+          </div>
+          <input type="hidden" id="review-rating-val" value="5">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-[#475569] mb-1">Nhận xét chi tiết về mặt cỏ, đèn, dịch vụ:</label>
+          <textarea id="review-comment-input" rows="3" placeholder="VD: Mặt cỏ êm, đèn sáng rõ, nhân viên nhiệt tình..." class="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-[#16A34A]"></textarea>
+        </div>
+      </div>
+      <div class="pt-2 flex justify-end gap-2">
+        <button id="cancel-review-modal-btn" class="px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
+        <button id="submit-review-modal-btn" class="btn-base btn-primary px-5 py-2 text-xs font-bold shadow">Gửi Đánh Giá</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const stars = overlay.querySelectorAll('#star-selector span');
+  const ratingInput = overlay.querySelector('#review-rating-val');
+
+  stars.forEach(s => {
+    s.addEventListener('click', () => {
+      const val = parseInt(s.dataset.star, 10);
+      ratingInput.value = val;
+      stars.forEach(st => {
+        const stVal = parseInt(st.dataset.star, 10);
+        st.className = stVal <= val ? 'text-[#F59E0B]' : 'text-slate-300';
+      });
+    });
+  });
+
+  const closeFn = () => overlay.remove();
+  overlay.querySelector('#close-review-modal-btn').addEventListener('click', closeFn);
+  overlay.querySelector('#cancel-review-modal-btn').addEventListener('click', closeFn);
+
+  const submitBtn = overlay.querySelector('#submit-review-modal-btn');
+  submitBtn.addEventListener('click', async () => {
+    const rating = parseInt(ratingInput.value, 10) || 5;
+    const comment = overlay.querySelector('#review-comment-input').value.trim();
+    const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+    const headers = window.SanBongApp?.getAuthFetchHeaders
+      ? window.SanBongApp.getAuthFetchHeaders()
+      : { 'Content-Type': 'application/json' };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Đang gửi...';
+    try {
+      if (window.SanBongApp?.ensureCsrfToken) {
+        await window.SanBongApp.ensureCsrfToken();
+      }
+      const headers = window.SanBongApp?.getAuthFetchHeaders
+        ? window.SanBongApp.getAuthFetchHeaders()
+        : { 'Content-Type': 'application/json' };
+
+      const res = await fetch(getRel('api/reviews.php'), {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          action: 'submit_review',
+          booking_code: bookingCode,
+          rating: rating,
+          comment: comment
+        })
+      });
+      const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(tokenHeader);
+      }
+      const json = await res.json();
+      if (json?.csrf_token && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(json.csrf_token);
+      }
+      if (json.success) {
+        reviewedMap[bookingCode] = { rating, comment };
+        renderHistory();
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast(json.message, 'success');
+        }
+        closeFn();
+      } else {
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast(json.message || 'Không thể gửi đánh giá.', 'error');
+        }
+      }
+    } catch (err) {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast('Lỗi kết nối máy chủ.', 'error');
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Gửi Đánh Giá';
+    }
+  });
+};
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  if (action === 'view-qr') {
+    viewQRCode(btn.getAttribute('data-code'));
+  } else if (action === 'review') {
+    openReviewModal(btn.getAttribute('data-code'), btn.getAttribute('data-pitch'));
+  } else if (action === 'cancel-booking') {
+    cancelBooking(btn.getAttribute('data-code'));
+  }
+});

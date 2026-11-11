@@ -66,24 +66,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (mainEl) mainEl.style.visibility = 'visible';
 
   if (!booking) {
-    booking = {
-      code: checkCode,
-      customerName: 'Trần Minh Hoàng',
-      phone: '0352313548',
-      pitchName: 'Sân 7 - Sân A (Trung tâm)',
-      date: new Date().toISOString().split('T')[0],
-      slotTime: '18:30 - 20:00',
-      totalPrice: 891000,
-      depositAmount: 267300,
-      remainingAmount: 623700,
-      paymentStatus: 'Đã cọc 30%',
-      services: [{ name: 'Nước suối', quantity: 4 }, { name: 'Thuê áo bib', quantity: 2 }]
-    };
-  } else {
-    booking.status = 'Đã xác nhận';
-    booking.paymentStatus = 'Đã cọc 30%';
-    db.updateBookingStatus(booking.code, 'Đã xác nhận', 'Đã cọc 30%');
+    try {
+      const bRes = await fetch(`${apiBase}api/bookings.php?code=${encodeURIComponent(checkCode)}`, { cache: 'no-store' });
+      if (bRes.ok) {
+        const bJson = await bRes.json();
+        const bData = bJson?.data || null;
+        if (bJson?.success && bData) {
+          booking = {
+            code: bData.code || checkCode,
+            customerName: bData.customerName || bData.customer_name || 'Khách hàng',
+            phone: bData.phone || '',
+            pitchName: bData.pitchName || bData.pitch_name || bData.pitchId || bData.pitch_id || 'Sân bóng',
+            date: bData.date || bData.booking_date || (window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0]),
+            slotTime: bData.slotTime || bData.slot_time || '',
+            totalPrice: Number(bData.totalPrice ?? bData.total_price ?? 0),
+            depositAmount: Number(bData.depositAmount ?? bData.deposit_amount ?? 0),
+            remainingAmount: Number(bData.remainingAmount ?? bData.remaining_amount ?? 0),
+            paymentStatus: bData.paymentStatus || bData.payment_status || 'Đã cọc 30%',
+            status: bData.status || 'Đã xác nhận',
+            services: Array.isArray(bData.services) ? bData.services : [],
+            weeksCount: Number(bData.weeksCount ?? bData.weeks_count ?? 1),
+            note: bData.note || ''
+          };
+        }
+      }
+    } catch (e) {}
   }
+
+  if (!booking) {
+    const historyUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
+    window.location.replace(historyUrl);
+    return;
+  }
+
+  booking.status = booking.status && booking.status !== 'Chờ duyệt cọc' ? booking.status : 'Đã xác nhận';
+  if (!booking.paymentStatus || booking.paymentStatus === 'Chờ cọc 30%') {
+    booking.paymentStatus = 'Đã cọc 30%';
+  }
+  db.updateBookingStatus(booking.code, booking.status, booking.paymentStatus);
 
   const codeEl = document.getElementById('ticket-booking-code');
   if (codeEl) codeEl.textContent = booking.code;
@@ -111,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const remEl = document.getElementById('ticket-remaining-amt');
   if (remEl) remEl.textContent = window.SanBongApp.formatVND(booking.remainingAmount);
   const custEl = document.getElementById('ticket-cust-info');
-  if (custEl) custEl.textContent = `${booking.customerName} (${booking.phone || '0352 313 548'})`;
+  if (custEl) custEl.textContent = `${booking.customerName || 'Khách hàng'} (${booking.phone || '---'})`;
 
   const srvEl = document.getElementById('ticket-services-desc');
   if (srvEl) {
@@ -128,7 +148,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pointsNoteEl = document.getElementById('ticket-points-used-note');
   if (pointsNoteEl) {
     if (booking.redeemedBottles && booking.redeemedBottles > 0) {
-      pointsNoteEl.innerHTML = `Đã đổi nước: <strong class="text-[#DC2626]">-${booking.pointsUsed || (booking.redeemedBottles * 100)} điểm</strong> (${booking.redeemedBottles} chai Aquafina)`;
+      const bottles = Number(booking.redeemedBottles || 0);
+      const ptsUsed = Number(booking.pointsUsed || bottles * 100);
+      pointsNoteEl.innerHTML = `Đã đổi nước: <strong class="text-[#DC2626]">-${ptsUsed} điểm</strong> (${bottles} chai Aquafina)`;
     } else {
       pointsNoteEl.textContent = 'Đã đổi nước: 0 điểm (0 chai)';
     }
@@ -154,7 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const user = db.getUser ? db.getUser() : {};
-  const currentBalance = booking.newPointsBalance !== undefined ? booking.newPointsBalance : (user.points || 820);
+  const currentBalance = booking.newPointsBalance !== undefined ? booking.newPointsBalance : (user?.points ?? 0);
   const balanceEl = document.getElementById('ticket-points-balance');
   if (balanceEl) {
     balanceEl.textContent = `${currentBalance} điểm`;
