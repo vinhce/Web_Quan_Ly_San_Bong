@@ -23,25 +23,26 @@
 ## Tính Năng Nổi Bật
 
 ### 1. Dành cho Khách hàng (Customer Experience)
-- **Xem & Tìm sân trực quan:** Phân loại sân 5, sân 7, sân 11 người chuẩn FIFA; hiển thị tình trạng mặt cỏ, kích thước và bảng giá theo giờ thường / giờ vàng / cuối tuần.
+- **Xem & Tìm sân trực quan:** Quản lý danh mục 17 sân bóng (5, 7, 11 người) chuẩn FIFA; hiển thị tình trạng mặt cỏ, kích thước và bảng giá theo giờ thường / giờ cao điểm / cuối tuần.
 - **Dự báo thời tiết sân bóng:** Tích hợp Open-Meteo API lấy dữ liệu nhiệt độ, thời tiết thực tế tại khu vực sân theo thời gian thực.
-- **Ma trận đặt slot giờ thông minh:** Hiển thị trực quan các slot (Trống, Đang đá, Đã đặt, Đang bảo trì), kiểm tra trùng giờ an toàn trong MySQL transaction phía server.
+- **Ma trận đặt slot giờ & Gói tháng:** 18 khung giờ (05:30–23:00), hiển thị trực quan trạng thái (Trống, Đang đá, Đã đặt, Đang bảo trì), kiểm tra trùng giờ an toàn trong MySQL transaction; hỗ trợ gói cố định 1/2/3 tháng (giảm 5%–15% kèm quà tài trợ mỗi trận).
 - **Thanh toán VietQR tự động qua SePay:** Sinh mã VietQR động theo chuẩn ngân hàng (`ASFF` Sân 5, `ASFS` Sân 7, `ASFE` Sân 11), nhận webhook tự động đối soát và xử lý giao dịch lệch tiền.
 - **Vé điện tử, QR Check-in & Đánh giá sau trận:** Phát hành vé check-in ngay sau khi cọc, in vé PDF, chỉ đường Google Maps và gửi đánh giá 1–5 sao kèm góp ý (1 lần/đơn).
 - **Hệ thống hội viên, Voucher & Danh sách chờ:** Quản lý lịch sử đặt sân, tích điểm atomic trên server, phân hạng thành viên, áp dụng mã giảm giá và đăng ký chờ slot trống.
 - **Ghép kèo / Tìm đối (`/matchmaking`):** Đăng tin tìm đối giao hữu theo khung giờ/trình độ, có kiểm duyệt từ quản trị viên.
-- **Tiện ích bổ trợ:** Widget Hotline/Zalo nổi trên mọi trang và xác nhận đồng thuận dữ liệu cá nhân theo Nghị định 13/2023.
+- **Tiện ích & An toàn:** Widget Hotline/Zalo nổi, Cloudflare Turnstile chống bot (tùy chọn) và xác nhận đồng thuận dữ liệu cá nhân theo Nghị định 13/2023.
 
 ### 2. Phân hệ Quản trị Vận hành (Portal Admin · RBAC 3 cấp: `staff` / `manager` / `admin`)
-- **Tab 1 - Tổng quan KPI:** Doanh thu thực từ DB, tỷ lệ lấp đầy sân, số ca đá theo dõi (ẩn dữ liệu doanh thu nhạy cảm đối với tài khoản `staff`).
-- **Tab 2 - Lịch đặt sân Timeline Gantt:** Bộ chọn ngày linh hoạt + biểu đồ thời gian 05:30–23:00; điều hành ca tại chỗ, danh sách chờ (Waitlist), lịch cố định hàng tuần (Recurring) và kiểm duyệt tin tìm đối.
-- **Tab 3 - Đặt sân nhanh tại quầy, Kho nước & Chốt ca:** Đặt tại quầy khóa slot trùng phía server (hỗ trợ Gói 3 tháng), quản lý kho nước/dịch vụ kèm cảnh báo sắp hết hàng, chốt ca & bàn giao tiền mặt cuối ca.
-- **Tab 4 - Quản lý sân bóng, Bảo trì & Đánh giá:** Thêm/sửa/ẩn sân, lên lịch bảo trì định kỳ (cảnh báo đơn trùng), theo dõi điểm đánh giá trung bình và phản hồi góp ý.
-- **Tab 5 - Bảng giá, Voucher & Giờ vàng:** Cấu hình khung giá thường/cao điểm/cuối tuần lưu DB, quản lý mã khuyến mãi và quy tắc giá giờ vàng/thấp điểm.
+Giao diện điều khiển responsive (hỗ trợ Drawer trên Mobile & Desktop), kiểm soát quyền truy cập tại `portal-admin/index.php`:
+- **Tab 1 - Tổng quan & Đang chơi:** KPI doanh thu thực từ DB, tỷ lệ lấp đầy sân, lọc nhanh trạng thái ca đá và quét QR Check-in bằng Camera trực tiếp / tải ảnh (`jsQR`) hoặc súng quét (ẩn doanh thu nhạy cảm đối với `staff`).
+- **Tab 2 - Lịch đặt sân Timeline:** Bộ chọn ngày linh hoạt + biểu đồ Gantt 05:30–23:00; điều hành ca tại chỗ (đá bù giờ, đổi sân, gọi nước), danh sách chờ (Waitlist), lịch cố định hàng tuần (Recurring) và kiểm duyệt tin tìm đối.
+- **Tab 3 - Đặt sân tại quầy, Kho nước & Chốt ca:** Đặt tại quầy khóa slot trùng phía server (hỗ trợ gói tháng), quản lý kho nước/dịch vụ kèm cảnh báo sắp hết hàng, chốt ca & đối soát tiền mặt bàn giao cuối ca.
+- **Tab 4 - Quản lý sân bóng, Bảo trì & Đánh giá:** Thêm/sửa/ẩn sân với giá riêng từng sân, lên lịch bảo trì định kỳ (cảnh báo đơn trùng), theo dõi điểm đánh giá và phản hồi góp ý.
+- **Tab 5 - Bảng giá & Voucher (`admin`):** Cấu hình khung giá thường/cao điểm/cuối tuần lưu DB, chính sách gói tháng, quản lý mã khuyến mãi và quy tắc giờ vàng/thấp điểm.
 - **Tab 6 - Khách & Hội viên CRM:** Hồ sơ khách hàng theo SĐT, nhãn VIP/Khách quen/Hay bùng sân (≥2 No-Show), bộ lọc công nợ chưa thu và lịch sử chi tiêu.
-- **Tab 7 - Duyệt cọc VietQR & Đối soát Webhook:** Hàng chờ biên lai chuyển khoản + đối soát giao dịch SePay chưa khớp / chuyển thiếu hoặc thừa tiền.
-- **Tab 8 - Báo cáo doanh thu & Sổ chi:** Lọc `Từ ngày – Đến ngày`, bóc tách tiền cọc / thu 70% / tiền mặt / VietQR / dịch vụ, quản lý chi phí vận hành, lãi ròng và xuất Excel CSV (UTF-8 BOM).
-- **Tab 9 - Cài đặt, Nhân sự, Audit Log & Sao lưu:** Cấu hình VietQR, chính sách giữ chỗ/hoàn cọc, quản lý tài khoản nhân sự, bật 2FA TOTP, Audit Log chống thất thoát, nhật ký thông báo (Zalo/SMS & Telegram) và sao lưu/khôi phục CSDL.
+- **Tab 7 - Duyệt cọc VietQR & Đối soát Webhook (`manager`, `admin`):** Hàng chờ biên lai chuyển khoản + đối soát giao dịch SePay chưa khớp / chuyển thiếu hoặc thừa tiền.
+- **Tab 8 - Báo cáo doanh thu & Sổ chi (`manager`, `admin`):** Lọc `Từ ngày – Đến ngày`, bóc tách tiền cọc / thu 70% / tiền mặt / VietQR / dịch vụ, quản lý chi phí vận hành, lãi ròng và xuất Excel CSV (UTF-8 BOM).
+- **Tab 9 - Cài đặt hệ thống (`admin`):** Cấu hình VietQR, chính sách giữ chỗ/hoàn cọc, quản lý tài khoản nhân sự, bật 2FA TOTP (RFC 6238), Audit Log append-only, nhật ký thông báo (Zalo/SMS & Telegram) và sao lưu/khôi phục CSDL.
 
 ---
 
@@ -50,9 +51,10 @@
 ```text
 Web_Quan_Ly_San_Bong/
 ├── index.html                        # Trang chủ: Tìm kiếm nhanh, sân nổi bật, voucher, thời tiết
+├── favicon.svg, favicon.ico          # Bộ biểu tượng nhận diện Sân Bóng Pro
 ├── .htaccess                         # Clean URLs, ép HTTPS 301, chặn file nhạy cảm, CSP & Security Headers
 ├── .env.example                      # Mẫu biến môi trường an toàn (DB, SePay, Turnstile, Cron, Telegram, Backup)
-├── robots.txt                        # Chỉ dẫn công cụ tìm kiếm, chặn bot quét API và Admin
+├── robots.txt                        # Chỉ dẫn công cụ tìm kiếm, chặn bot quét API và thư mục nội bộ
 ├── css/                              # Thư mục giao diện tách module
 │   ├── base.css                      # Reset style, font chữ Plus Jakarta Sans & Inter
 │   ├── components.css                # Style UI Card, Button, Input, Modal, Badge
@@ -62,10 +64,12 @@ Web_Quan_Ly_San_Bong/
 │   └── style.css                     # Tiện ích CSS bổ sung toàn cục
 ├── js/                               # Mã nguồn JavaScript ES6
 │   ├── vendor/qrcode.min.js          # Thư viện tạo mã QR Check-in / 2FA offline
+│   ├── vendor/jsqr.min.js            # Thư viện giải mã QR từ Camera trực tiếp & ảnh tải lên
+│   ├── data.js                       # Dữ liệu khởi tạo mặc định (sân bóng, khung giờ, dịch vụ)
 │   ├── helpers.js                    # Hàm tiện ích (định dạng tiền, escapeHTML, icon, CSRF helper)
 │   ├── db.js                         # Bộ điều khiển dữ liệu SanBongDB & cache đồng bộ API
 │   ├── ui.js                         # Thành phần UI dùng chung (Navbar, Footer, Toast, Modal, Consent)
-│   ├── app.js                        # Gói Bundle hợp nhất từ vendor + helpers + db + ui
+│   ├── app.js                        # Gói Bundle hợp nhất từ vendor/qrcode + helpers + db + ui
 │   ├── api.js                        # Lớp gọi API bất đồng bộ (Fetch API, Open-Meteo, VietQR, SePay)
 │   ├── index.js, fields.js, field-detail.js, booking.js, checkout.js, success.js, history.js, login.js
 │   ├── matchmaking.js                # Logic trang ghép kèo / tìm đối (/matchmaking)
@@ -78,10 +82,11 @@ Web_Quan_Ly_San_Bong/
 │   ├── success.html                  # /success: Vé điện tử QR Check-in & đánh giá sau trận
 │   ├── history.html                  # /history: Tra cứu lịch sử ca đá, đổi điểm & đánh giá sân
 │   ├── matchmaking.html              # /matchmaking: Đăng tin ghép kèo / tìm đối
-│   └── login.html                    # /login: Đăng nhập (hỗ trợ 2FA TOTP) & Đăng ký tài khoản
+│   ├── login.html                    # /login: Đăng nhập (hỗ trợ 2FA TOTP) & Đăng ký tài khoản
+│   └── admin.html                    # Điều hướng an toàn về /portal-admin/
 ├── portal-admin/                     # Phân hệ Quản trị viên (/portal-admin)
-│   ├── index.php                     # Cổng kiểm tra phiên RBAC (admin/manager/staff) & trạng thái DB
-│   ├── index.html                    # Khung điều khiển trung tâm
+│   ├── index.php                     # Cổng kiểm tra phiên RBAC (admin/manager/staff), CSRF & layout responsive
+│   ├── index.html                    # Bản shell dự phòng (được .htaccess rewrite về index.php)
 │   └── partials/                     # Module quản trị: header, sidebar, tab1_kpi..tab9_settings
 ├── api/                              # Backend API RESTful chuẩn mực (PDO + CSRF + RBAC + Audit)
 │   ├── security_helper.php           # Rate limit, Session 2h, CSRF, Sanitization, RBAC, 2FA TOTP
@@ -101,31 +106,41 @@ Web_Quan_Ly_San_Bong/
 ├── config/
 │   ├── .htaccess                     # Chặn mọi truy cập HTTP trực tiếp vào config/
 │   └── database.php                  # Đọc .env (ưu tiên ngoài webroot), kết nối PDO MySQL & auto-migration kiểm chuẩn
-├── cron/                             # Tác vụ tự động định kỳ (chạy CLI hoặc HTTP có X-CRON-SECRET)
+├── cron/                             # Tác vụ tự động định kỳ (chạy CLI hoặc HTTP có X-CRON-SECRET + file lock)
 │   ├── .htaccess                     # Chặn truy cập web thông thường vào thư mục cron/
 │   ├── auto_release_expired.php      # Tự động nhả đơn quá hạn giữ chỗ chưa cọc
 │   ├── auto_generate_recurring.php   # Tự động sinh lịch cố định hàng tuần trước 4 tuần
 │   ├── auto_remind_bookings.php      # Nhắc lịch khách trước giờ đá 2–3 giờ
-│   └── backup_database.php           # Sao lưu mysqldump nén .sql.gz và xoay vòng bản lưu
+│   └── backup_database.php           # Sao lưu mysqldump nén .sql.gz, bảo vệ thư mục backups/ và xoay vòng bản lưu
 ├── database/
 │   ├── .htaccess                     # Chặn truy cập web vào thư mục SQL
-│   ├── schema.sql                    # Kịch bản khởi tạo CSDL MySQL ban đầu
-│   └── migrations/                   # Migration an toàn 001..008 (Stage 1–7, Hardening & Hotfix)
+│   ├── schema.sql                    # Kịch bản khởi tạo CSDL MySQL (quan_ly_san_bong)
+│   └── migrations/                   # 8 bản migration an toàn 001..008 (Stage 1–7, Hardening & Hotfix bookings.status)
+├── docs/                             # Tài liệu vận hành nội bộ (bị chặn HTTP qua .htaccess)
 ├── tests/
 │   └── security_hardening_test.php   # Bộ kiểm thử an ninh & cú pháp toàn bộ PHP/JS (RFC 6238, XSS, API, Lint)
-└── scripts/                          # Công cụ build bundle & kiểm thử
+└── scripts/                          # Công cụ build bundle, đồng bộ & kiểm thử
     ├── build_app_bundle.js           # Biên dịch tự động js/app.js từ các module con
-    ├── bump_version.js               # Đánh phiên bản Cache-Busting cho HTML/Portal
-    ├── security_penetration_test.php # Bộ kiểm thử thâm nhập nội bộ (SQLi, IDOR, RBAC)
+    ├── bump_version.js               # Đánh phiên bản Cache-Busting (?v=...) cho toàn bộ HTML & Portal Admin
+    ├── sync_pitches_to_data_js.js    # Đồng bộ danh sách sân sang js/data.js
+    ├── security_penetration_test.php # Bộ kiểm thử thâm nhập nội bộ (Rate Limit, SQLi, IDOR, RBAC)
     └── run_production_pentest.js     # Script kiểm thử tự động trên môi trường Production
 ```
+
+---
+
+## Kiến Trúc Bảo Mật & Công Nghệ
+
+- **Backend & CSDL:** PHP 8.1+ (PDO Prepared Statements chống SQLi, MySQL Transaction + Row Lock chống đặt trùng slot) + MySQL/MariaDB (`quan_ly_san_bong`).
+- **Xác thực & Kiểm soát truy cập:** Mật khẩu hash **Argon2id**, Rate Limit đăng nhập `5 lần / 15 phút`, Session tối đa 2 giờ (`HttpOnly`, `SameSite`, đổi Session ID khi login), RBAC 3 cấp quản trị, 2FA **TOTP (RFC 6238)** và CSRF Token (`X-CSRF-Token`).
+- **Bảo vệ hạ tầng & Webhook:** `.htaccess` ép HTTPS 301, Security Headers (`HSTS`, `CSP`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Permissions-Policy: camera=(self)`), chặn truy cập trực tiếp `api/*.json`, `logs/`, `config/`, `cron/`, `database/`, `docs/`, `backups/`; SePay Webhook kiểm tra Secret/HMAC và chống xử lý trùng (idempotent).
 
 ---
 
 ## Hướng Dẫn Cài Đặt & Triển Khai
 
 ### 1. Triển khai Cục bộ (Local Development)
-Yêu cầu: Laragon / XAMPP với PHP 8.1+ và MySQL.
+Yêu cầu: Laragon / XAMPP với PHP 8.1+ (bật `pdo_mysql`, `curl`, `openssl`), MySQL 5.7+/8.0+ và Node.js (nếu build bundle JS).
 1. Clone dự án vào thư mục webroot:
    ```bash
    cd C:/laragon/www
@@ -136,10 +151,12 @@ Yêu cầu: Laragon / XAMPP với PHP 8.1+ và MySQL.
    ```bash
    cp .env.example .env
    ```
-3. Cập nhật thông tin kết nối CSDL, `CRON_SECRET`, khóa SePay (`SEPAY_ENV=production` / `SEPAY_BASE_URL=https://userapi.sepay.vn` khi chạy thật) và token Telegram/Zalo (nếu bật) vào `.env`.
-4. Nhập schema ban đầu và các migration trong `database/migrations/` vào MySQL:
+3. Cập nhật thông tin kết nối CSDL (`DB_NAME=quan_ly_san_bong`), `CRON_SECRET`, khóa SePay và token Telegram/Zalo (nếu bật) vào `.env`:
+   - **Môi trường test:** `SEPAY_ENV=sandbox` và `SEPAY_BASE_URL=https://userapi-sandbox.sepay.vn`.
+   - **Môi trường thu tiền thật:** đổi sang `SEPAY_ENV=production`, `SEPAY_BASE_URL=https://userapi.sepay.vn` kèm bộ API Token & Webhook Key Live.
+4. Nhập schema ban đầu (`database/schema.sql` tự tạo DB `quan_ly_san_bong`); nếu nâng cấp từ CSDL cũ, chạy lần lượt các file trong `database/migrations/001..008` (hệ thống cũng tự kiểm tra bổ sung schema qua `ensureSchemaInitialized()`):
    ```bash
-   mysql -u root -p sanbongpro < database/schema.sql
+   mysql -u root -p < database/schema.sql
    ```
 5. Cài đặt Cron Job định kỳ trên Hosting (khuyên dùng CLI hoặc kèm header `X-CRON-SECRET`):
    - `*/2 * * * *` → `php /path/to/cron/auto_release_expired.php`
@@ -149,28 +166,35 @@ Yêu cầu: Laragon / XAMPP với PHP 8.1+ và MySQL.
 6. Mở trình duyệt và truy cập: `http://localhost/Quan_Ly_San_Bong/`
 
 ### 2. Tài khoản Đăng nhập Hệ thống
-| Vai trò | Tên đăng nhập (Username) | Mật khẩu mặc định | Quyền hạn |
+| Vai trò | Tên đăng nhập (Username) | Mật khẩu | Quyền hạn |
 | :--- | :--- | :--- | :--- |
-| **Quản Trị Viên (Admin)** | `vxyen0801` | *Đã mã hóa Argon2id* | Toàn quyền quản trị vận hành (`/portal-admin/`) |
-| **Khách Hàng (User)** | `0352313548` (hoặc `user`) | *Đã mã hóa Argon2id* | Đặt sân, xem lịch sử đơn, tích lũy điểm thưởng |
+| **Chủ sân (Admin)** | `vxyen0801`, `admin` | *Đã mã hóa Argon2id* | Toàn quyền quản trị hệ thống (`/portal-admin/`) |
+| **Quản lý sân (Manager)** | `quanly` | *Đã mã hóa Argon2id* | Vận hành sân, kho, chốt ca, duyệt cọc VietQR & báo cáo |
+| **Nhân viên trực (Staff)** | `nhanvien` | *Đã mã hóa Argon2id* | Tổng quan ca đá, timeline, đặt tại quầy & khách hàng |
+| **Khách hàng (User)** | `0352313548` (hoặc `user`) | *Đã mã hóa Argon2id* | Đặt sân, xem lịch sử đơn, tích lũy điểm thưởng |
+
+> Tài liệu chi tiết danh sách tài khoản mẫu được lưu trong `docs/DANH_SACH_TAI_KHOAN.md` (chỉ đọc nội bộ, đã khóa truy cập HTTP).
 
 ---
 
 ## Kiểm Thử & Nghiệm Thu Hệ Thống
 
-Trước khi xuất bản hoặc triển khai các bản cập nhật mới, chạy bộ công cụ kiểm thử tự động:
+Trước khi xuất bản hoặc triển khai các bản cập nhật mới, chạy bộ công cụ build và kiểm thử tự động:
 
 ```bash
 # 1. Biên dịch lại gói bundle frontend sau khi sửa js/helpers.js, js/db.js hoặc js/ui.js:
 node scripts/build_app_bundle.js
 
-# 2. Kiểm thử an ninh, 2FA, XSS, cấu hình & cú pháp toàn bộ file PHP/JS:
+# 2. (Tuỳ chọn) Cập nhật tham số Cache-Busting (?v=...) trên HTML & Portal Admin:
+node scripts/bump_version.js 20261112_v33
+
+# 3. Kiểm thử an ninh, 2FA, XSS, cấu hình & cú pháp toàn bộ file PHP/JS:
 php tests/security_hardening_test.php
 
-# 3. Kiểm thử thâm nhập nội bộ (Rate Limit, SQLi, IDOR, RBAC):
+# 4. Kiểm thử thâm nhập nội bộ (Rate Limit, SQLi, IDOR, RBAC):
 php scripts/security_penetration_test.php
 
-# 4. Kiểm thử bảo mật trực tiếp trên máy chủ Production:
+# 5. Kiểm thử bảo mật trực tiếp trên máy chủ Production:
 node scripts/run_production_pentest.js
 ```
 
