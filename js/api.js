@@ -9,12 +9,28 @@ window.SanBongApp.SanBongAPI = {
       if (response.ok) {
         const jsonRes = await response.json();
         if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
+          if (window.SanBongApp?.SanBongDB?.syncFromServer) {
+            try {
+              localStorage.setItem('sb_pitches_v2', JSON.stringify(jsonRes.data.pitches));
+              if (jsonRes.data.bankInfo) {
+                const b = Object.assign({}, jsonRes.data.bankInfo, {
+                  accountNo: jsonRes.data.bankInfo.accountNo || jsonRes.data.bankInfo.accountNumber || '',
+                  accountNumber: jsonRes.data.bankInfo.accountNumber || jsonRes.data.bankInfo.accountNo || ''
+                });
+                localStorage.setItem('sb_bank_v1', JSON.stringify(b));
+              }
+              if (jsonRes.data.settings) {
+                localStorage.setItem('sb_system_config', JSON.stringify(jsonRes.data.settings));
+              }
+            } catch (e) {}
+          }
           return {
             pitches: jsonRes.data.pitches,
             timeSlots: jsonRes.data.timeSlots || window.SanBongApp.SanBongDB?.getTimeSlots() || [],
             extraServices: jsonRes.data.extraServices || window.SanBongApp.SanBongDB?.getServices?.() || [],
             vouchers: jsonRes.data.vouchers || window.SanBongApp.SanBongDB?.getVouchers() || [],
-            bankInfo: window.SanBongApp.SanBongDB?.getBankInfo() || {}
+            bankInfo: jsonRes.data.bankInfo || window.SanBongApp.SanBongDB?.getBankInfo() || {},
+            settings: jsonRes.data.settings || window.SanBongApp.SanBongDB?.getSystemConfig?.() || {}
           };
         }
       }
@@ -112,10 +128,16 @@ window.SanBongApp.SanBongAPI = {
         },
         body: JSON.stringify(bookingPayload)
       });
-      if (response.ok) {
-        const result = await response.json();
-        return { success: true, data: result.data || result };
+      const result = await response.json();
+      if (response.ok && result && result.success !== false) {
+        return { success: true, status: response.status, data: result.data || result, message: result.message || '' };
       }
+      return {
+        success: false,
+        status: response.status,
+        ref_code: result?.ref_code || '',
+        message: result?.message || 'Không thể tạo đơn đặt sân trên máy chủ.'
+      };
     } catch (e) {
     }
 

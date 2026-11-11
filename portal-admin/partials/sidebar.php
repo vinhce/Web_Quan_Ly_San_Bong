@@ -34,16 +34,19 @@
           <span>4. Quản lý sân bóng</span>
         </button>
 
+        <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
         <button onclick="switchAdminTab('pricing')" id="nav-pricing" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
           <span>5. Bảng giá & Voucher</span>
         </button>
+        <?php endif; ?>
 
         <button onclick="switchAdminTab('customers')" id="nav-customers" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span>6. Khách & Hội viên</span>
         </button>
 
+        <?php if (!isset($isManagerOrAdmin) || $isManagerOrAdmin): ?>
         <button onclick="switchAdminTab('payments')" id="nav-payments" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
           <span class="flex-1 text-left">7. Duyệt cọc VietQR</span>
@@ -54,11 +57,14 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
           <span>8. Báo cáo doanh thu</span>
         </button>
+        <?php endif; ?>
 
+        <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
         <button onclick="switchAdminTab('settings')" id="nav-settings" class="w-full h-10 px-3 rounded-lg flex items-center gap-3 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>9. Cài đặt hệ thống</span>
         </button>
+        <?php endif; ?>
       </nav>
     </div>
 
@@ -71,7 +77,15 @@
           </div>
           <div class="min-w-0 flex-1">
             <div id="admin-name" class="text-xs font-bold text-[#0F172A] truncate" title="Quản Trị Viên">Quản Trị Viên</div>
-            <div class="text-[10px] text-[#64748B] truncate">Chủ sân · <span class="text-[#16A34A] font-semibold">Toàn quyền</span></div>
+            <div id="sidebar-role-badge" class="text-[10px] text-[#64748B] truncate">
+              <?php if (!isset($portalRole) || $portalRole === 'admin'): ?>
+                Chủ sân · <span class="text-[#16A34A] font-semibold">Toàn quyền</span>
+              <?php elseif ($portalRole === 'manager'): ?>
+                Quản lý sân · <span class="text-[#7C3AED] font-semibold">Báo cáo, Kho &amp; Ca</span>
+              <?php else: ?>
+                Nhân viên trực · <span class="text-[#2563EB] font-semibold">Vận hành sân</span>
+              <?php endif; ?>
+            </div>
           </div>
         </div>
         <div class="flex items-center gap-1.5 pt-2 border-t border-[#E2E8F0]">

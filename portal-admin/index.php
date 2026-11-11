@@ -2,10 +2,14 @@
 require_once __DIR__ . '/../api/security_helper.php';
 secure_session_start();
 
-if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
+$refreshedUser = refresh_session_user();
+if (!empty($refreshedUser['_locked']) || empty($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
     header('Location: /login?redirect=portal-admin', true, 302);
     exit;
 }
+$portalRole = $_SESSION['user']['role'] ?? 'staff';
+$isOwnerAdmin = ($portalRole === 'admin');
+$isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -18,12 +22,12 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
-  <!-- Pre-render RBAC Gate: Chặn tức thì mọi truy cập không phải Admin -->
+  <!-- Pre-render RBAC Gate: Chặn tức thì mọi truy cập không phải Admin, Manager hoặc Staff -->
   <script>
     (function() {
       try {
         var user = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-        if (!user || user.role !== 'admin') {
+        if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'staff')) {
           document.documentElement.style.display = 'none';
           window.location.replace('/login?redirect=portal-admin');
         }
@@ -34,7 +38,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261110_v30">
+  <link rel="stylesheet" href="../css/style.css?v=20261110_v31">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -65,15 +69,26 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
       <!-- ========================================== -->
       <!-- 3. DYNAMIC 9 TAB MODULES -->
       <?php
+        $origIsOwnerAdmin = $isOwnerAdmin;
+        $isOwnerAdmin = $isManagerOrAdmin;
         include __DIR__ . '/partials/tab1_kpi.php';
+        $isOwnerAdmin = $origIsOwnerAdmin;
         include __DIR__ . '/partials/tab2_timeline.php';
         include __DIR__ . '/partials/tab3_quick_booking.php';
+        $isOwnerAdmin = $isManagerOrAdmin;
         include __DIR__ . '/partials/tab4_pitches.php';
-        include __DIR__ . '/partials/tab5_pricing.php';
+        $isOwnerAdmin = $origIsOwnerAdmin;
+        if ($isOwnerAdmin) {
+            include __DIR__ . '/partials/tab5_pricing.php';
+        }
         include __DIR__ . '/partials/tab6_customers.php';
-        include __DIR__ . '/partials/tab7_deposits.php';
-        include __DIR__ . '/partials/tab8_reports.php';
-        include __DIR__ . '/partials/tab9_settings.php';
+        if ($isManagerOrAdmin) {
+            include __DIR__ . '/partials/tab7_deposits.php';
+            include __DIR__ . '/partials/tab8_reports.php';
+        }
+        if ($isOwnerAdmin) {
+            include __DIR__ . '/partials/tab9_settings.php';
+        }
       ?>
     </main>
   </div>
@@ -289,6 +304,7 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label class="block text-[11px] font-bold text-red-800 mb-1">Chính sách xử lý tiền cọc</label>
+                  <div id="inplay-cancel-policy-hint" class="hidden text-[11px] font-semibold rounded-lg px-2.5 py-1.5 mb-1.5 border"></div>
                   <select id="inplay-cancel-policy" class="input-field h-9 text-xs font-semibold bg-white">
                     <option value="refund_100">Hoàn cọc 100% (Báo trước hạn / Mưa lớn)</option>
                     <option value="reserve">Bảo lưu cọc sang buổi khác</option>
@@ -391,11 +407,11 @@ if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261110_v30"></script>
-  <script src="/js/app.js?v=20261110_v30"></script>
-  <script src="/js/api.js?v=20261110_v30"></script>
-  <script src="/js/vendor/jsqr.min.js?v=20261110_v30"></script>
-  <script src="/js/admin.js?v=20261110_v30"></script>
+  <script src="/js/data.js?v=20261110_v31"></script>
+  <script src="/js/app.js?v=20261110_v31"></script>
+  <script src="/js/api.js?v=20261110_v31"></script>
+  <script src="/js/vendor/jsqr.min.js?v=20261110_v31"></script>
+  <script src="/js/admin.js?v=20261110_v31"></script>
 </body>
 </html>
 

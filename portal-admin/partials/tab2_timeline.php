@@ -2,9 +2,13 @@
       <!-- ========================================== -->
       <div id="tab-content-timeline" class="space-y-4 hidden">
         <div class="ui-card p-4 flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-2">
-            <span class="font-heading font-bold text-sm text-[#0F172A]">Lịch ma trận sân hôm nay:</span>
-            <span class="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">Thứ Sáu, 06/11/2026</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-heading font-bold text-sm text-[#0F172A]">Lịch ma trận sân:</span>
+            <button type="button" onclick="changeTimelineDate(-1)" class="px-2.5 py-1 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-bold text-[#334155] cursor-pointer">◀ Hôm qua</button>
+            <button type="button" onclick="changeTimelineDate(0)" class="px-2.5 py-1 rounded-lg border border-[#16A34A] bg-[#DCFCE7]/60 hover:bg-[#DCFCE7] text-xs font-bold text-[#15803D] cursor-pointer">Hôm nay</button>
+            <button type="button" onclick="changeTimelineDate(1)" class="px-2.5 py-1 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-bold text-[#334155] cursor-pointer">Ngày mai ▶</button>
+            <input type="date" id="timeline-date-picker" onchange="setTimelineDate(this.value)" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] bg-white text-xs font-bold text-[#0F172A]">
+            <span id="timeline-date-label" class="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold"></span>
           </div>
           <!-- Legend Status Pills -->
           <div class="flex items-center gap-2 text-xs flex-wrap">

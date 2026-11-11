@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `phone` VARCHAR(20) NOT NULL,
     `full_name` VARCHAR(100) NOT NULL,
     `password_hash` VARCHAR(255) NOT NULL,
-    `role` ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+    `role` ENUM('user', 'staff', 'manager', 'admin') NOT NULL DEFAULT 'user',
     `status` ENUM('active', 'locked') NOT NULL DEFAULT 'active',
     `failed_attempts` INT NOT NULL DEFAULT 0,
     `lock_until` DATETIME NULL DEFAULT NULL,
@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS `pitches` (
     `grass` VARCHAR(255) NOT NULL,
     `base_price` INT NOT NULL DEFAULT 0,
     `peak_price` INT NOT NULL DEFAULT 0,
-    `status` ENUM('Hoạt động', 'Bảo trì') NOT NULL DEFAULT 'Hoạt động',
+    `weekend_price` INT NOT NULL DEFAULT 0,
+    `status` VARCHAR(30) NOT NULL DEFAULT 'Hoạt động',
     `amenities_json` TEXT NULL,
     `variant` VARCHAR(50) NOT NULL DEFAULT 'standard',
     `description` TEXT NULL,
@@ -60,7 +61,11 @@ CREATE TABLE IF NOT EXISTS `extra_services` (
     `name` VARCHAR(150) NOT NULL,
     `price` INT NOT NULL DEFAULT 0,
     `unit` VARCHAR(30) NOT NULL,
-    `icon` VARCHAR(30) NOT NULL DEFAULT 'droplet'
+    `icon` VARCHAR(30) NOT NULL DEFAULT 'droplet',
+    `stock_qty` INT NOT NULL DEFAULT 100,
+    `min_stock_warning` INT NOT NULL DEFAULT 10,
+    `track_inventory` TINYINT(1) NOT NULL DEFAULT 1,
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. Bảng Mã giảm giá (Vouchers)
@@ -89,19 +94,117 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     `voucher_code` VARCHAR(30) NULL DEFAULT NULL,
     `total_price` INT NOT NULL DEFAULT 0,
     `deposit_amount` INT NOT NULL DEFAULT 0,
+    `paid_amount` INT NOT NULL DEFAULT 0,
     `remaining_amount` INT NOT NULL DEFAULT 0,
     `status` VARCHAR(50) NOT NULL DEFAULT 'Đã xác nhận',
-    `payment_status` ENUM('Chờ duyệt cọc', 'Đã cọc 30%', 'Đã thanh toán đủ', 'Tịch thu cọc 30%', 'Đã hủy') NOT NULL DEFAULT 'Chờ duyệt cọc',
+    `payment_status` VARCHAR(50) NOT NULL DEFAULT 'Chờ duyệt cọc',
     `payment_method` VARCHAR(50) NOT NULL DEFAULT 'VietQR Chuyển khoản',
+    `cancel_policy_applied` VARCHAR(50) NULL DEFAULT NULL,
+    `refund_amount` INT NOT NULL DEFAULT 0,
+    `weeks_count` INT NOT NULL DEFAULT 1,
+    `booking_mode` VARCHAR(20) NOT NULL DEFAULT 'single',
     `note` TEXT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `expires_at` DATETIME NULL DEFAULT NULL,
     CONSTRAINT `fk_bookings_pitch` FOREIGN KEY (`pitch_id`) REFERENCES `pitches`(`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_bookings_slot` FOREIGN KEY (`slot_id`) REFERENCES `time_slots`(`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_bookings_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_pitch_date_slot` (`pitch_id`, `booking_date`, `slot_id`),
     INDEX `idx_bookings_user` (`user_id`),
     INDEX `idx_bookings_date` (`booking_date`),
-    INDEX `idx_bookings_phone` (`phone`)
+    INDEX `idx_bookings_phone` (`phone`),
+    INDEX `idx_bookings_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 8. Bảng Cài đặt hệ thống (Settings)
+CREATE TABLE IF NOT EXISTS `settings` (
+    `setting_key` VARCHAR(100) PRIMARY KEY,
+    `setting_value` TEXT NOT NULL,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. Bảng Nhật ký thao tác (Audit Logs - Chỉ thêm, không xóa/sửa)
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NULL DEFAULT NULL,
+    `actor_name` VARCHAR(100) NULL DEFAULT NULL,
+    `actor_role` VARCHAR(20) NULL DEFAULT NULL,
+    `action` VARCHAR(80) NOT NULL,
+    `booking_id` VARCHAR(40) NULL DEFAULT NULL,
+    `old_value` TEXT NULL DEFAULT NULL,
+    `new_value` TEXT NULL DEFAULT NULL,
+    `ip` VARCHAR(45) NOT NULL DEFAULT '127.0.0.1',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_audit_user` (`user_id`),
+    INDEX `idx_audit_action` (`action`),
+    INDEX `idx_audit_booking` (`booking_id`),
+    INDEX `idx_audit_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 10. Bảng Chốt ca & Giao ca (Shifts)
+CREATE TABLE IF NOT EXISTS `shifts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `staff_id` INT NOT NULL,
+    `staff_name` VARCHAR(100) NOT NULL DEFAULT '',
+    `start_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `end_time` DATETIME NULL DEFAULT NULL,
+    `cash_total` INT NOT NULL DEFAULT 0,
+    `transfer_total` INT NOT NULL DEFAULT 0,
+    `actual_cash_received` INT NULL DEFAULT NULL,
+    `discrepancy_amount` INT NULL DEFAULT NULL,
+    `note` TEXT NULL DEFAULT NULL,
+    `admin_note` TEXT NULL DEFAULT NULL,
+    `status` ENUM('open', 'closed', 'confirmed') NOT NULL DEFAULT 'open',
+    `confirmed_by` INT NULL DEFAULT NULL,
+    `confirmed_at` DATETIME NULL DEFAULT NULL,
+    INDEX `idx_shifts_staff` (`staff_id`),
+    INDEX `idx_shifts_status` (`status`),
+    INDEX `idx_shifts_start` (`start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 11. Bảng Lịch sử bán lẻ nước & dịch vụ tại quầy (Service Sales)
+CREATE TABLE IF NOT EXISTS `service_sales` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `service_id` VARCHAR(30) NOT NULL,
+    `service_name` VARCHAR(150) NOT NULL,
+    `quantity` INT NOT NULL DEFAULT 1,
+    `unit_price` INT NOT NULL DEFAULT 0,
+    `total_amount` INT NOT NULL DEFAULT 0,
+    `payment_method` VARCHAR(50) NOT NULL DEFAULT 'Tiền mặt tại quầy',
+    `booking_code` VARCHAR(40) NULL DEFAULT NULL,
+    `staff_id` INT NULL DEFAULT NULL,
+    `note` VARCHAR(255) NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_srv_sales_created` (`created_at`),
+    INDEX `idx_srv_sales_staff` (`staff_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. Bảng Đối soát giao dịch ngân hàng (Bank Transactions - SePay VietQR Webhook)
+CREATE TABLE IF NOT EXISTS `bank_transactions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `sepay_tx_id` VARCHAR(80) NULL DEFAULT NULL,
+    `tx_fingerprint` VARCHAR(64) NOT NULL,
+    `gateway` VARCHAR(50) NOT NULL DEFAULT 'SePay',
+    `reference_code` VARCHAR(100) NULL DEFAULT NULL,
+    `transaction_content` TEXT NOT NULL,
+    `detected_booking_code` VARCHAR(40) NULL DEFAULT NULL,
+    `matched_booking_code` VARCHAR(40) NULL DEFAULT NULL,
+    `transfer_amount` INT NOT NULL DEFAULT 0,
+    `expected_amount` INT NOT NULL DEFAULT 0,
+    `discrepancy_amount` INT NOT NULL DEFAULT 0,
+    `match_status` ENUM('matched', 'underpaid', 'overpaid', 'unmatched', 'resolved', 'ignored') NOT NULL DEFAULT 'unmatched',
+    `mismatch_reason` VARCHAR(255) NULL DEFAULT NULL,
+    `raw_payload` LONGTEXT NULL DEFAULT NULL,
+    `resolved_by` INT NULL DEFAULT NULL,
+    `resolved_note` VARCHAR(255) NULL DEFAULT NULL,
+    `transaction_date` DATETIME NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `resolved_at` DATETIME NULL DEFAULT NULL,
+    UNIQUE KEY `uniq_sepay_tx_id` (`sepay_tx_id`),
+    UNIQUE KEY `uniq_tx_fingerprint` (`tx_fingerprint`),
+    INDEX `idx_bank_tx_status` (`match_status`),
+    INDEX `idx_bank_tx_code` (`detected_booking_code`),
+    INDEX `idx_bank_tx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7. Bảng Rate Limiting (Chống Brute Force, DoS nhẹ)
@@ -126,6 +229,11 @@ VALUES
 (2, 'user', 'khachhang@sanbongpro.vn', '0352313548', 'Trần Minh Hoàng', '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4', 'user', 'active'),
 (3, 'vxyen0801', 'vxyen0801@sanbongpro.vn', '0352313548', 'Quản Trị Viên (vxyen0801)', '$argon2id$v=19$m=65536,t=4,p=1$UThRTGkvdndJYXdBVHBDUg$bvWQoJidWljt12fhtDaAYPay1LhfDvc1B2+5jPEkPE4', 'admin', 'active')
 ON DUPLICATE KEY UPDATE `password_hash`=VALUES(`password_hash`), `role`=VALUES(`role`), `status`=VALUES(`status`);
+
+INSERT IGNORE INTO `users` (`id`, `username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
+VALUES
+(4, 'nhanvien', 'nhanvien@sanbongpro.vn', '0352000111', 'Nhân Viên Trực Sân Ca 1', '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI', 'staff', 'active'),
+(5, 'quanly', 'quanly@sanbongpro.vn', '0352000222', 'Nguyễn Hoàng Minh (Quản Lý Sân)', '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI', 'manager', 'active');
 
 -- 2. Dữ liệu Sân bóng
 INSERT INTO `pitches` (`id`, `name`, `type`, `type_name`, `size`, `grass`, `base_price`, `peak_price`, `status`, `amenities_json`, `variant`, `description`)
@@ -192,3 +300,32 @@ VALUES
 ('SINHVIEN30K', 'Giảm 30.000đ trợ giá học sinh - sinh viên', 'fixed', 30000, 200000, 1),
 ('CUOITUAN100K', 'Giảm 100.000đ cho đơn đặt sân 11 người / Giải đấu', 'fixed', 100000, 900000, 1)
 ON DUPLICATE KEY UPDATE `description`=`description`;
+
+-- 6. Cài đặt hệ thống mặc định
+INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
+('deposit_rate', '30'),
+('bank_name', 'MBBank'),
+('bank_code', 'MB'),
+('bank_account', '0352313548'),
+('bank_holder', 'NGUYEN QUANG VINH'),
+('hotline', '0352 313 548'),
+('open_hours', '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)'),
+('price_p5_base', '250000'),
+('price_p5_peak', '350000'),
+('price_p5_weekend', '380000'),
+('price_p7_base', '450000'),
+('price_p7_peak', '650000'),
+('price_p7_weekend', '700000'),
+('price_p11_base', '900000'),
+('price_p11_peak', '1200000'),
+('price_p11_weekend', '1400000'),
+('hold_minutes', '15'),
+('refund_full_hours', '24'),
+('refund_partial_hours', '4'),
+('auto_cancel_enabled', '1');
+
+UPDATE `extra_services` SET `track_inventory` = 0 WHERE `id` = 'SRV-REF';
+UPDATE `extra_services` SET `track_inventory` = 1, `stock_qty` = 80, `min_stock_warning` = 10 WHERE `id` IN ('SRV-WATER', 'SRV-WATER-BOTTLE', 'SRV-BIB', 'SRV-BALL');
+UPDATE `pitches` SET `weekend_price` = 380000 WHERE `type` = 5 AND `weekend_price` = 0;
+UPDATE `pitches` SET `weekend_price` = 700000 WHERE `type` = 7 AND `weekend_price` = 0;
+UPDATE `pitches` SET `weekend_price` = 1400000 WHERE `type` = 11 AND `weekend_price` = 0;

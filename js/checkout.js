@@ -4,6 +4,8 @@ let generatedBookingCode = '';
 let sepayPollTimer = null;
 let isPaymentAlreadyConfirmed = false;
 let redeemedBottles = 0;
+let activeHoldMinutes = 15;
+let countdownTimer = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
@@ -51,7 +53,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     prefix = 'ASFE';
   }
 
-  const HOLD_DURATION_MS = 10 * 60 * 1000;
+  const sysCfg = db.getSystemConfig ? db.getSystemConfig() : { holdMinutes: 15 };
+  activeHoldMinutes = Math.max(5, Math.min(120, Number(sysCfg.holdMinutes) || 15));
+  const HOLD_DURATION_MS = activeHoldMinutes * 60 * 1000;
+  const holdLabel = document.getElementById('hold-minutes-label');
+  if (holdLabel) holdLabel.textContent = `${activeHoldMinutes} phút`;
+
   if (currentDraft.code && new RegExp('^' + prefix + '[0-9]{6,8}$', 'i').test(currentDraft.code)) {
     generatedBookingCode = currentDraft.code.toUpperCase();
   } else {
@@ -72,6 +79,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderCheckoutDetails();
   setupLoyaltyWaterRedemption();
+
+  window.addEventListener('sb-data-synced', () => {
+    const syncedCfg = db.getSystemConfig ? db.getSystemConfig() : null;
+    if (syncedCfg && syncedCfg.holdMinutes) {
+      activeHoldMinutes = Math.max(5, Math.min(120, Number(syncedCfg.holdMinutes) || 15));
+      const holdLabelEl = document.getElementById('hold-minutes-label');
+      if (holdLabelEl) holdLabelEl.textContent = `${activeHoldMinutes} phút`;
+    }
+    renderCheckoutDetails();
+  });
+
   const initialRemaining = Math.max(0, Math.ceil((Number(currentDraft.expiresAt) - Date.now()) / 1000));
   startCountdown(initialRemaining);
 
@@ -112,11 +130,38 @@ async function createInitialBookingRecord() {
 
   if (window.SanBongApp?.SanBongAPI) {
     try {
-      await window.SanBongApp.SanBongAPI.postBooking({
+      const apiRes = await window.SanBongApp.SanBongAPI.postBooking({
         code: generatedBookingCode,
         booking: newBooking,
         timestamp: new Date().toISOString()
       });
+      if (apiRes && apiRes.success && apiRes.data) {
+        const srvHoldMins = Number(apiRes.data.holdMinutes ?? apiRes.data.hold_minutes ?? 0);
+        const srvExpiresAt = apiRes.data.expiresAt ?? apiRes.data.expires_at ?? null;
+        if (srvHoldMins > 0) {
+          activeHoldMinutes = Math.max(5, Math.min(120, srvHoldMins));
+          const holdLabelEl = document.getElementById('hold-minutes-label');
+          if (holdLabelEl) holdLabelEl.textContent = `${activeHoldMinutes} phút`;
+        }
+        let targetExpireMs = 0;
+        if (srvExpiresAt) {
+          const parsed = typeof srvExpiresAt === 'number'
+            ? (srvExpiresAt < 1e12 ? srvExpiresAt * 1000 : srvExpiresAt)
+            : Date.parse(String(srvExpiresAt).replace(' ', 'T'));
+          if (!isNaN(parsed) && parsed > Date.now()) {
+            targetExpireMs = parsed;
+          }
+        } else if (srvHoldMins > 0) {
+          targetExpireMs = Date.now() + activeHoldMinutes * 60 * 1000;
+        }
+        if (targetExpireMs > 0 && currentDraft) {
+          currentDraft.expiresAt = targetExpireMs;
+          sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
+          localStorage.setItem('sb_hold_expire_' + generatedBookingCode, String(targetExpireMs));
+          const newRemaining = Math.max(0, Math.ceil((targetExpireMs - Date.now()) / 1000));
+          startCountdown(newRemaining);
+        }
+      }
     } catch (e) {}
   }
 }
@@ -152,7 +197,8 @@ function renderCheckoutDetails() {
   const bName = document.getElementById('bank-name');
   if (bName) bName.textContent = bank.bankName || 'Ngân hàng Quân Đội (MBBank)';
   const bAcc = document.getElementById('bank-account');
-  if (bAcc) bAcc.textContent = bank.accountNumber || '0352313548';
+  const accNum = bank.accountNumber || bank.accountNo || '0352313548';
+  if (bAcc) bAcc.textContent = accNum;
   const bOwner = document.getElementById('bank-owner');
   if (bOwner) bOwner.textContent = bank.accountName || 'NGUYEN QUANG VINH';
   const bAmt = document.getElementById('bank-amount');
@@ -162,7 +208,7 @@ function renderCheckoutDetails() {
   const qrLoading = document.getElementById('sepay-qr-loading');
   if (qrImg) {
     const sepayBank = bank.bankCode || 'MB';
-    const sepayAcc = bank.accountNumber || '0352313548';
+    const sepayAcc = accNum;
     const sepayAmt = calc.depositAmount || 0;
     const sepayDes = generatedBookingCode;
     const qrUrl = `https://qr.sepay.vn/img?bank=${encodeURIComponent(sepayBank)}&acc=${encodeURIComponent(sepayAcc)}&template=compact&amount=${sepayAmt}&des=${encodeURIComponent(sepayDes)}`;
@@ -280,6 +326,10 @@ function handleSePayPaymentSuccess(result) {
 }
 
 function startCountdown(seconds) {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
   let remaining = seconds;
   const timerEl = document.getElementById('countdown-timer');
   if (!timerEl) return;
@@ -292,7 +342,7 @@ function startCountdown(seconds) {
 
   updateDisplay(remaining);
 
-  const interval = setInterval(() => {
+  countdownTimer = setInterval(() => {
     const holdKey = 'sb_hold_expire_' + generatedBookingCode;
     const expireTime = Number(currentDraft?.expiresAt || localStorage.getItem(holdKey) || 0);
     if (expireTime > 0) {
@@ -302,15 +352,16 @@ function startCountdown(seconds) {
     }
 
     if (remaining <= 0) {
-      clearInterval(interval);
+      clearInterval(countdownTimer);
+      countdownTimer = null;
       if (sepayPollTimer) clearInterval(sepayPollTimer);
       timerEl.textContent = '00:00';
       sessionStorage.removeItem('sb_booking_draft');
-  try {
-    localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
-  } catch (e) {}
+      try {
+        localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
+      } catch (e) {}
       localStorage.removeItem(holdKey);
-      if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Khung giờ giữ chỗ 10 phút đã hết hạn! Vui lòng thao tác lại.', 'error', 3500); }
+      if (window.SanBongApp?.showToast) { window.SanBongApp.showToast(`Khung giờ giữ chỗ ${activeHoldMinutes} phút đã hết hạn! Vui lòng thao tác lại.`, 'error', 3500); }
       window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking';
       return;
     }

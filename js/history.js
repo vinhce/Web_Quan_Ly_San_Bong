@@ -35,8 +35,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pLabel) pLabel.textContent = `${user.points || 0} / 2.000 điểm`;
   }
 
+  renderHistoryPolicyBox(db);
+  window.addEventListener('sb-data-synced', () => renderHistoryPolicyBox(db));
   renderHistory();
 });
+
+function renderHistoryPolicyBox(db) {
+  const cfg = db && typeof db.getSystemConfig === 'function'
+    ? db.getSystemConfig()
+    : { refundFullHours: 24, refundPartialHours: 4 };
+  const fullH = Math.max(1, Number(cfg.refundFullHours ?? 24));
+  const partH = Math.max(0, Number(cfg.refundPartialHours ?? 4));
+  const elFull = document.getElementById('history-policy-full');
+  const elPart = document.getElementById('history-policy-partial');
+  const elForf = document.getElementById('history-policy-forfeit');
+  if (elFull) {
+    elFull.innerHTML = `• Hủy trước <b class="text-[#0F172A]">${fullH} giờ</b> trở lên: Hoàn lại <b class="text-[#16A34A]">100% tiền cọc</b> về tài khoản ngân hàng.`;
+  }
+  if (elPart) {
+    elPart.innerHTML = `• Hủy trước từ <b class="text-[#0F172A]">${partH} giờ đến dưới ${fullH} giờ</b>: Hoàn <b class="text-[#D97706]">50% tiền cọc</b> (phạt 50% chi phí giữ chỗ).`;
+  }
+  if (elForf) {
+    elForf.innerHTML = `• Hủy sát giờ dưới <b class="text-[#0F172A]">${partH} giờ</b>: Không hoàn cọc theo quy định đảm bảo chi phí vận hành sân.`;
+  }
+}
+
+function computeHoursUntilKickoff(booking) {
+  if (!booking || !booking.date) return null;
+  const datePart = String(booking.date).trim().slice(0, 10);
+  let startTimeStr = '00:00';
+  if (booking.slotTime && String(booking.slotTime).includes('-')) {
+    startTimeStr = String(booking.slotTime).split('-')[0].trim();
+  } else if (booking.slotTime) {
+    startTimeStr = String(booking.slotTime).trim();
+  }
+  if (!/^\d{1,2}:\d{2}$/.test(startTimeStr)) return null;
+  const [hh, mm] = startTimeStr.split(':').map(n => String(parseInt(n, 10) || 0).padStart(2, '0'));
+  const kickoff = new Date(`${datePart}T${hh}:${mm}:00`);
+  if (isNaN(kickoff.getTime())) return null;
+  return (kickoff.getTime() - Date.now()) / (1000 * 60 * 60);
+}
 
 function filterHistory(filter) {
   currentFilter = filter;
@@ -200,39 +238,108 @@ function closeTicketModal() {
 }
 
 function cancelBooking(bookingCode) {
+  const db = window.SanBongApp?.SanBongDB;
+  const booking = db ? db.getAllBookings().find(item => item.code === bookingCode) : null;
+  const sysCfg = (db && typeof db.getSystemConfig === 'function')
+    ? db.getSystemConfig()
+    : { refundFullHours: 24, refundPartialHours: 4 };
+  const fullHours = Math.max(1, Number(sysCfg.refundFullHours ?? 24));
+  const partialHours = Math.max(0, Number(sysCfg.refundPartialHours ?? 4));
+
+  const hoursLeft = computeHoursUntilKickoff(booking);
+  let expectedPolicy = 'refund_100';
+  let expectedPayStatus = 'Đã hoàn cọc 100%';
+  let policyDesc = `Hoàn 100% tiền cọc (báo trước ≥ ${fullHours} giờ)`;
+  let timeDesc = 'Chưa xác định giờ đá';
+
+  if (hoursLeft !== null) {
+    if (hoursLeft >= fullHours) {
+      expectedPolicy = 'refund_100';
+      expectedPayStatus = 'Đã hoàn cọc 100%';
+      policyDesc = `Hoàn 100% tiền cọc (báo trước ≥ ${fullHours} giờ)`;
+    } else if (hoursLeft >= partialHours) {
+      expectedPolicy = 'forfeit_50';
+      expectedPayStatus = 'Phạt 50% cọc';
+      policyDesc = `Phạt 50% tiền cọc / Hoàn 50% (hủy trước ${partialHours}–${fullHours} giờ)`;
+    } else {
+      expectedPolicy = 'noshow_forfeit';
+      expectedPayStatus = 'Tịch thu cọc 30%';
+      policyDesc = `Không hoàn cọc / Tịch thu cọc (hủy sát giờ dưới ${partialHours} giờ)`;
+    }
+    timeDesc = hoursLeft >= 0
+      ? `Còn khoảng ${hoursLeft.toFixed(1)} giờ nữa đến giờ đá`
+      : `Đã qua giờ bắt đầu ca (${Math.abs(Math.round(hoursLeft * 60))} phút)`;
+  }
+
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
+
   const doCancel = async () => {
+    let serverHandled = false;
+    let finalPayStatus = expectedPayStatus;
+    let finalStatus = 'Đã hủy';
+    let serverMessage = '';
+    let refundAmount = null;
+
     try {
-      await fetch('../api/bookings.php?action=early_cancel', {
+      const res = await fetch('../api/bookings.php?action=early_cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: bookingCode,
-          policy: 'refund_100',
+          policy: expectedPolicy,
           reason: 'Khách hàng chủ động hủy lịch trước thời hạn'
         })
       });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json && json.success) {
+        serverHandled = true;
+        const d = json.data || {};
+        finalStatus = d.status || 'Đã hủy';
+        finalPayStatus = d.paymentStatus || d.payment_status || expectedPayStatus;
+        refundAmount = d.refundAmount ?? d.refund_amount ?? null;
+        serverMessage = json.message || '';
+      } else if (!res.ok && json && json.message) {
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast(json.message, 'error', 4000);
+        }
+        return;
+      }
     } catch (e) {}
 
-    const db = window.SanBongApp.SanBongDB;
-    if (db.cancelBookingEarly) {
-      db.cancelBookingEarly(bookingCode, 'refund_100', 'Khách hàng chủ động hủy lịch trước thời hạn');
-    } else {
-      db.updateBookingStatus(bookingCode, 'Đã hủy', 'Đã hoàn cọc 100%');
+    if (db) {
+      const all = db.getAllBookings();
+      const target = all.find(b => b.code === bookingCode);
+      if (target) {
+        target.status = finalStatus;
+        target.paymentStatus = finalPayStatus;
+        target.remainingAmount = 0;
+        target.note = (target.note ? target.note + ' | ' : '') + `[Hủy trước hạn - ${finalPayStatus}]`;
+        try { localStorage.setItem('sb_bookings_v1', JSON.stringify(all)); } catch (err) {}
+      } else if (db.cancelBookingEarly) {
+        db.cancelBookingEarly(bookingCode, expectedPolicy, 'Khách hàng chủ động hủy lịch trước thời hạn');
+      }
     }
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã hủy lịch đặt sân trước thời hạn thành công! Tiền cọc 100% đã được ghi nhận hoàn trả và nhả sân.', 'success', 4000);
+
+    if (window.SanBongApp?.showToast) {
+      let toastMsg = serverMessage || `✓ Đã hủy đơn ${bookingCode} (${finalPayStatus}) và nhả sân trống.`;
+      if (serverHandled && refundAmount !== null && refundAmount !== undefined && !toastMsg.includes('đ')) {
+        toastMsg += ` Số tiền hoàn: ${fmt(refundAmount)}.`;
+      }
+      window.SanBongApp.showToast(toastMsg, expectedPolicy === 'refund_100' ? 'success' : 'warning', 4500);
+    }
     renderHistory();
   };
 
   if (window.SanBongApp?.showModal) {
     window.SanBongApp.showModal({
-      title: '🛑 Xác nhận hủy lịch trước thời hạn',
-      message: `Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode} trước giờ bóng lăn?\n\n• Hệ thống sẽ hoàn 100% tiền cọc theo chính sách hủy trước hạn và giải phóng sân cho đội khác.`,
+      title: '🛑 Xác nhận hủy lịch đặt sân',
+      message: `Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\n\n• Thời gian: ${timeDesc}\n• Chính sách dự kiến: ${policyDesc}\n• Sân sẽ được giải phóng ngay lập tức cho đội khác.`,
       type: 'warning',
-      confirmText: 'Xác nhận hủy & Hoàn cọc',
+      confirmText: 'Xác nhận hủy lịch',
       cancelText: 'Giữ lịch đá',
       onConfirm: doCancel
     });
   } else {
-    if (confirm(`Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\nTiền cọc sẽ được hoàn lại tự động theo chính sách sân.`)) doCancel();
+    if (confirm(`Bạn có chắc chắn muốn hủy đơn đặt sân ${bookingCode}?\n• ${timeDesc}\n• Chính sách dự kiến: ${policyDesc}`)) doCancel();
   }
 }

@@ -17,6 +17,9 @@
           <div id="admin-search-results" class="hidden absolute right-0 top-11 w-96 max-h-96 overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 z-50 divide-y divide-slate-100 p-2"></div>
         </div>
         <button type="button" onclick="openQRScannerModal()" class="btn-sm bg-[#0F172A] hover:bg-slate-800 text-white font-bold flex items-center gap-1.5 shadow-sm"><span>📷</span> Quét QR Check-in</button>
+        <button type="button" onclick="switchAdminTab('quick-booking'); document.getElementById('shift-handover-card')?.scrollIntoView({behavior:'smooth'});" class="btn-sm bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center gap-1.5 shadow-sm cursor-pointer">
+          <span>🧾</span> Chốt ca / Giao ca
+        </button>
         <button onclick="switchAdminTab('quick-booking')" class="btn-sm btn-primary">
           + Đặt sân tại quầy
         </button>

@@ -108,7 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const redirectParam = urlParams.get('redirect');
 
         setTimeout(() => {
-          if (res.user && res.user.role === 'admin') {
+          const isPortalRole = Boolean(res.user && ['admin', 'manager', 'staff'].includes(res.user.role));
+          if (isPortalRole) {
             if (redirectParam === 'portal-admin' || !redirectParam) {
               window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('portal-admin/') : '/portal-admin/';
               return;
@@ -116,6 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (redirectParam) {
+            if (redirectParam === 'portal-admin' && !isPortalRole) {
+              window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
+              return;
+            }
             window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(redirectParam) : redirectParam;
             return;
           }

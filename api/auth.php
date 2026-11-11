@@ -22,6 +22,18 @@ if (empty($action) && isset($data['action'])) {
 
 if ($method === 'GET' && $action === 'me') {
     if (!empty($_SESSION['user_id'])) {
+        if ($pdo) {
+            $fresh = refresh_session_user($pdo);
+            if (is_array($fresh) && !empty($fresh['_locked'])) {
+                json_response([
+                    'success'   => true,
+                    'logged_in' => false,
+                    'locked'    => true,
+                    'message'   => 'Tài khoản của bạn đã bị Chủ sân tạm khóa. Vui lòng liên hệ Quản trị viên.',
+                    'user'      => null
+                ]);
+            }
+        }
         json_response([
             'success'   => true,
             'logged_in' => true,
@@ -110,6 +122,24 @@ if ($action === 'login') {
                 'full_name' => 'Quản Trị Viên',
                 'role'      => 'admin',
                 'hash'      => '$argon2id$v=19$m=65536,t=4,p=1$UThRTGkvdndJYXdBVHBDUg$bvWQoJidWljt12fhtDaAYPay1LhfDvc1B2+5jPEkPE4'
+            ],
+            'nhanvien' => [
+                'id'        => 4,
+                'username'  => 'nhanvien',
+                'email'     => 'nhanvien@sanbongpro.vn',
+                'phone'     => '0352000111',
+                'full_name' => 'Nhân Viên Trực Sân Ca 1',
+                'role'      => 'staff',
+                'hash'      => '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI'
+            ],
+            'quanly' => [
+                'id'        => 5,
+                'username'  => 'quanly',
+                'email'     => 'quanly@sanbongpro.vn',
+                'phone'     => '0352000222',
+                'full_name' => 'Nguyễn Hoàng Minh (Quản Lý Sân)',
+                'role'      => 'manager',
+                'hash'      => '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI'
             ]
         ];
 
@@ -132,7 +162,7 @@ if ($action === 'login') {
                 'success'  => true,
                 'message'  => 'Đăng nhập thành công!',
                 'user'     => $_SESSION['user'],
-                'redirect' => ($account['role'] === 'admin') ? 'portal-admin/' : 'history'
+                'redirect' => in_array($account['role'], ['admin', 'manager', 'staff'], true) ? 'portal-admin/' : 'history'
             ]);
         }
 
@@ -164,6 +194,14 @@ if ($action === 'login') {
         ], 429);
     }
 
+    if ($user && ($user['status'] ?? 'active') === 'locked') {
+        json_response([
+            'success'  => false,
+            'message'  => 'Tài khoản của bạn đã bị Chủ sân tạm khóa. Vui lòng liên hệ Quản trị viên.',
+            'ref_code' => 'ERR_ACCOUNT_LOCKED'
+        ], 403);
+    }
+
     $loginSuccess = false;
     if ($user && password_verify($password, $user['password_hash'])) {
         $loginSuccess = true;
@@ -191,7 +229,7 @@ if ($action === 'login') {
             'success' => true,
             'message' => 'Đăng nhập thành công!',
             'user'    => $_SESSION['user'],
-            'redirect' => ($user['role'] === 'admin') ? 'portal-admin/' : 'history'
+            'redirect' => in_array($user['role'] ?? 'user', ['admin', 'manager', 'staff'], true) ? 'portal-admin/' : 'history'
         ]);
     } else {
         

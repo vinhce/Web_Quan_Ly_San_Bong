@@ -16,27 +16,27 @@
               <tbody class="divide-y divide-[#E2E8F0] font-semibold">
                 <tr>
                   <td class="py-3 px-4 font-bold text-[#0F172A]">Sân 5 người</td>
-                  <td class="py-3 px-4"><input type="text" value="250.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
-                  <td class="py-3 px-4"><input type="text" value="350.000đ" class="input-field w-32 h-8 text-xs font-bold text-[#16A34A]"></td>
-                  <td class="py-3 px-4"><input type="text" value="380.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p5-base" value="250.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p5-peak" value="350.000đ" class="input-field w-32 h-8 text-xs font-bold text-[#16A34A]"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p5-weekend" value="380.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
                 </tr>
                 <tr>
                   <td class="py-3 px-4 font-bold text-[#0F172A]">Sân 7 người</td>
-                  <td class="py-3 px-4"><input type="text" value="450.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
-                  <td class="py-3 px-4"><input type="text" value="650.000đ" class="input-field w-32 h-8 text-xs font-bold text-[#16A34A]"></td>
-                  <td class="py-3 px-4"><input type="text" value="700.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p7-base" value="450.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p7-peak" value="650.000đ" class="input-field w-32 h-8 text-xs font-bold text-[#16A34A]"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p7-weekend" value="700.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
                 </tr>
                 <tr>
                   <td class="py-3 px-4 font-bold text-[#0F172A]">Sân 11 người</td>
-                  <td class="py-3 px-4"><input type="text" value="900.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
-                  <td class="py-3 px-4"><input type="text" value="1.200.000đ" class="input-field w-32 h-8 text-xs font-bold text-[#16A34A]"></td>
-                  <td class="py-3 px-4"><input type="text" value="1.400.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p11-base" value="900.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p11-peak" value="1.200.000đ" class="input-field w-32 h-8 text-xs font-bold text-[#16A34A]"></td>
+                  <td class="py-3 px-4"><input type="text" id="price-p11-weekend" value="1.400.000đ" class="input-field w-32 h-8 text-xs font-bold"></td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="pt-3 border-t border-[#E2E8F0] flex justify-end">
-            <button onclick="window.SanBongApp?.showToast('✓ Đã lưu cấu hình bảng giá mới thành công!', 'success')" class="btn-base btn-primary">Lưu bảng giá</button>
+            <button type="button" id="btn-save-pricing" onclick="savePricingTable()" class="btn-base btn-primary cursor-pointer">Lưu bảng giá</button>
           </div>
         </div>
 
@@ -203,9 +203,5 @@
         </div>
       </div>
       <!-- END PRICING & VOUCHER -->
-      <div class="hidden"><div><div>
-          </div>
-        </div>
-      </div>
 
       <!-- ========================================== -->

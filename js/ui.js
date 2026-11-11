@@ -47,16 +47,24 @@ function handleLogout() {
 
     if (currentUser && currentUser.role === 'admin') {
       navItems.push({ label: '🛡️ Quản trị Portal', href: getRelativePath('portal-admin/') });
+    } else if (currentUser && currentUser.role === 'manager') {
+      navItems.push({ label: '🛡️ Quản lý Sân', href: getRelativePath('portal-admin/') });
+    } else if (currentUser && currentUser.role === 'staff') {
+      navItems.push({ label: '🏟️ Cổng Trực Sân', href: getRelativePath('portal-admin/') });
     }
 
     let authSectionHtml = '';
     if (currentUser && currentUser.full_name) {
+      const isAdmin = currentUser.role === 'admin';
+      const isManager = currentUser.role === 'manager';
+      const isStaff = currentUser.role === 'staff';
       const user = {
         name: currentUser.full_name,
         avatar: currentUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
-        tier: currentUser.role === 'admin' ? 'Quản trị viên' : (currentUser.tier || 'Hội viên'),
-        points: currentUser.role === 'admin' ? 9999 : (currentUser.points || 0)
+        tier: isAdmin ? 'Quản trị viên' : (isManager ? 'Quản lý sân' : (isStaff ? 'Nhân viên trực sân' : (currentUser.tier || 'Hội viên'))),
+        points: isAdmin ? 9999 : ((isManager || isStaff) ? 0 : (currentUser.points || 0))
       };
+      const userSubline = (isStaff || isManager) ? escapeHTML(user.tier) : `${escapeHTML(user.tier)} • ${user.points}đ`;
 
       authSectionHtml = `
       <div class="flex items-center gap-3 sm:gap-4">
@@ -71,7 +79,7 @@ function handleLogout() {
             </div>
             <div class="hidden sm:block">
               <div class="text-[14px] font-semibold text-[#0F172A] leading-tight">${escapeHTML(user.name)}</div>
-              <div class="text-[11px] text-[#16A34A] font-medium">${escapeHTML(user.tier)} • ${user.points}đ</div>
+              <div class="text-[11px] text-[#16A34A] font-medium">${userSubline}</div>
             </div>
             <svg class="w-4 h-4 text-[#94A3B8] ml-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
           </button>
@@ -85,10 +93,16 @@ function handleLogout() {
             <a href="${getRelativePath('history')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] hover:text-[#16A34A]">
               <span>📋 Lịch sử đặt sân & Hội viên</span>
             </a>
-            ${currentUser.role === 'admin' ? `
+            ${isAdmin ? `
             <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#16A34A] hover:bg-[#DCFCE7]/50">
               <span>🛡️ Bảng điều khiển Quản trị</span>
-            </a>` : ''}
+            </a>` : (isManager ? `
+            <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#7C3AED] hover:bg-purple-50">
+              <span>🛡️ Quản lý Sân</span>
+            </a>` : (isStaff ? `
+            <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#2563EB] hover:bg-blue-50">
+              <span>🏟️ Cổng Trực Sân</span>
+            </a>` : ''))}
             <button onclick="window.SanBongApp.handleLogout()" class="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#DC2626] hover:bg-rose-50 border-t border-[#F1F5F9]">
               <span>🚪 Đăng xuất</span>
             </button>

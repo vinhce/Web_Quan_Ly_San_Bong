@@ -256,6 +256,16 @@ function initBookingPage() {
     if (phoneInput && !phoneInput.value && curUser.phone) phoneInput.value = curUser.phone;
   }
 
+  const custPhoneEl = document.getElementById('cust-phone');
+  if (custPhoneEl && !custPhoneEl._noShowBound) {
+    custPhoneEl._noShowBound = true;
+    const handleCheckPhone = () => checkBookingPhoneNoShow(custPhoneEl.value);
+    custPhoneEl.addEventListener('input', handleCheckPhone);
+    custPhoneEl.addEventListener('change', handleCheckPhone);
+    custPhoneEl.addEventListener('blur', handleCheckPhone);
+    if (custPhoneEl.value) handleCheckPhone();
+  }
+
   const pitchSelect = document.getElementById('booking-pitch-select');
   if (pitchSelect && !pitchSelect._bound) {
     pitchSelect._bound = true;
@@ -293,6 +303,18 @@ function initBookingPage() {
     checkoutBtn._bound = true;
     checkoutBtn.addEventListener('click', proceedToCheckout);
   }
+
+  if (!window._bookingSyncListenerBound) {
+    window._bookingSyncListenerBound = true;
+    window.addEventListener('sb-data-synced', () => {
+      renderPitchTypeSelector();
+      initPitchSelect();
+      renderSlots();
+      renderServices();
+      renderVoucherQuickList();
+      updateBillSummary();
+    });
+  }
 }
 
 if (document.readyState === 'loading') {
@@ -305,10 +327,21 @@ function renderPitchTypeSelector() {
   const container = document.getElementById('pitch-type-selector');
   if (!container) return;
 
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  const allPitches = (db ? db.getPitches() : []).filter(p => p.status !== 'Ẩn');
+  const getMinPriceLabel = (typeNum, fallbackNum) => {
+    const matching = allPitches.filter(p => Number(p.type) === typeNum && Number(p.basePrice) > 0);
+    const minVal = matching.length > 0
+      ? Math.min(...matching.map(p => Number(p.basePrice)))
+      : fallbackNum;
+    const fmt = window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(minVal) : (minVal.toLocaleString('vi-VN') + 'đ');
+    return `Từ ${fmt}/h`;
+  };
+
   const types = [
-    { type: 5, name: 'Sân 5 người', desc: 'Mini 5 vs 5 · 20m x 40m', price: 'Từ 250.000đ/h' },
-    { type: 7, name: 'Sân 7 người', desc: 'Chuẩn 7 vs 7 · 30m x 50m', price: 'Từ 280.000đ/h' },
-    { type: 11, name: 'Sân 11 người', desc: 'Chuẩn FIFA · 68m x 105m', price: 'Từ 800.000đ/h' }
+    { type: 5, name: 'Sân 5 người', desc: 'Mini 5 vs 5 · 20m x 40m', price: getMinPriceLabel(5, 250000) },
+    { type: 7, name: 'Sân 7 người', desc: 'Chuẩn 7 vs 7 · 30m x 50m', price: getMinPriceLabel(7, 280000) },
+    { type: 11, name: 'Sân 11 người', desc: 'Chuẩn FIFA · 68m x 105m', price: getMinPriceLabel(11, 800000) }
   ];
 
   container.innerHTML = types.map(t => {
@@ -339,7 +372,7 @@ window.selectPitchType = function(type) {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   if (!db) return;
 
-  const pitchesOfType = db.getPitches().filter(p => Number(p.type) === selectedPitchType);
+  const pitchesOfType = db.getPitches().filter(p => Number(p.type) === selectedPitchType && p.status !== 'Ẩn');
   const stillValid = pitchesOfType.some(p => p.id === selectedPitchId);
   if (!stillValid && pitchesOfType.length > 0) {
     const activeOne = pitchesOfType.find(p => p.status !== 'Bảo trì') || pitchesOfType[0];
@@ -355,7 +388,7 @@ function initPitchSelect() {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   if (!db) return;
 
-  const allPitches = db.getPitches();
+  const allPitches = db.getPitches().filter(p => p.status !== 'Ẩn');
   const pitches = allPitches.filter(p => Number(p.type) === selectedPitchType);
   const select = document.getElementById('booking-pitch-select');
   if (!select) return;
@@ -371,6 +404,60 @@ function initPitchSelect() {
     </option>
   `).join('');
 }
+
+let _bookingNoShowTimer = null;
+async function checkBookingPhoneNoShow(rawPhone) {
+  const warningEl = document.getElementById('booking-noshow-warning');
+  if (!warningEl) return;
+  const clean = String(rawPhone || '').replace(/\D+/g, '');
+  if (clean.length < 9) {
+    warningEl.classList.add('hidden');
+    warningEl.textContent = '';
+    return;
+  }
+
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  const localStats = db && typeof db.getPhoneNoShowAndDebt === 'function'
+    ? db.getPhoneNoShowAndDebt(clean)
+    : { noShowCount: 0, debtCount: 0, debtAmount: 0 };
+
+  let noShowCount = Number(localStats.noShowCount || 0);
+  let debtAmount = Number(localStats.debtAmount || 0);
+
+  if (_bookingNoShowTimer) clearTimeout(_bookingNoShowTimer);
+  _bookingNoShowTimer = setTimeout(async () => {
+    try {
+      const apiPath = window.SanBongHelpers?.getRelativePath
+        ? window.SanBongHelpers.getRelativePath(`api/bookings.php?action=check_phone_noshow&phone=${encodeURIComponent(clean)}`)
+        : `/api/bookings.php?action=check_phone_noshow&phone=${encodeURIComponent(clean)}`;
+      const res = await fetch(apiPath);
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.success && json.data) {
+          noShowCount = Math.max(noShowCount, Number(json.data.noShowCount ?? json.data.no_show_count ?? 0));
+          debtAmount = Math.max(debtAmount, Number(json.data.debtAmount ?? json.data.debt_amount ?? 0));
+        }
+      }
+    } catch (e) {}
+
+    if (noShowCount >= 2 || debtAmount > 0) {
+      const parts = [];
+      if (noShowCount >= 2) {
+        parts.push(`⚠️ CẢNH BÁO: SĐT này đã có ${noShowCount} lần đặt sân nhưng không đến (No-Show)! Bắt buộc thu cọc trước khi giữ sân.`);
+      }
+      if (debtAmount > 0) {
+        const fmtDebt = window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(debtAmount) : (debtAmount.toLocaleString('vi-VN') + 'đ');
+        parts.push(`💸 SĐT này hiện còn đơn nợ chưa thanh toán: ${fmtDebt}.`);
+      }
+      warningEl.textContent = parts.join(' ');
+      warningEl.classList.remove('hidden');
+    } else {
+      warningEl.classList.add('hidden');
+      warningEl.textContent = '';
+    }
+  }, 120);
+}
+window.checkBookingPhoneNoShow = checkBookingPhoneNoShow;
 
 function initDateStrip() {
   const strip = document.getElementById('quick-date-strip');
@@ -411,11 +498,48 @@ function selectQuickDate(iso) {
   updateBillSummary();
 }
 
-function renderSlots() {
+let serverBookedSlotsCache = {};
+
+async function fetchServerBookedSlots(pitchId, dateStr) {
+  if (!pitchId || !dateStr) return [];
+  const key = `${pitchId}__${dateStr}`;
+  try {
+    const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+    const url = getRel(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitchId)}&date=${encodeURIComponent(dateStr)}`);
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success && Array.isArray(json.data)) {
+        serverBookedSlotsCache[key] = json.data;
+        return json.data;
+      }
+    }
+  } catch (e) {}
+  return serverBookedSlotsCache[key] || [];
+}
+
+function renderSlots(skipServerFetch = false) {
   const db = window.SanBongApp.SanBongDB;
   const slotsWithStatus = db.getSlotsWithStatus(selectedPitchId, selectedDate);
   const container = document.getElementById('slots-container');
   if (!container) return;
+
+  const cacheKey = `${selectedPitchId}__${selectedDate}`;
+  const serverList = serverBookedSlotsCache[cacheKey] || [];
+  if (Array.isArray(serverList) && serverList.length > 0) {
+    slotsWithStatus.forEach(s => {
+      const foundSrv = serverList.find(b => (b.slotId || b.slot_id) === s.id || (b.slotTime || b.slot_time) === s.time);
+      if (foundSrv && s.status === 'Trống') {
+        s.status = foundSrv.status === 'Đang đá' ? 'Đang đá' : 'Đã đặt';
+      }
+    });
+  }
+
+  const curSelectedObj = slotsWithStatus.find(s => s.id === selectedSlotId);
+  if (curSelectedObj && (curSelectedObj.status === 'Đã đặt' || curSelectedObj.status === 'Khóa' || curSelectedObj.status === 'Đang đá')) {
+    const firstFree = slotsWithStatus.find(s => s.status === 'Trống');
+    selectedSlotId = firstFree ? firstFree.id : '';
+  }
 
   container.innerHTML = slotsWithStatus.map(s => {
     const isSelected = s.id === selectedSlotId;
@@ -454,6 +578,15 @@ function renderSlots() {
       badge.textContent = 'Chưa chọn giờ';
       badge.className = 'px-3 py-1 rounded-full bg-[#F1F5F9] text-xs font-bold text-[#64748B]';
     }
+  }
+
+  if (!skipServerFetch) {
+    fetchServerBookedSlots(selectedPitchId, selectedDate).then(list => {
+      if (Array.isArray(list) && list.length > 0) {
+        renderSlots(true);
+        updateBillSummary();
+      }
+    });
   }
 }
 

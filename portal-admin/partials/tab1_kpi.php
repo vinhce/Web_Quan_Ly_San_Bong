@@ -2,19 +2,21 @@
       <!-- ========================================== -->
       <div id="tab-content-overview" class="space-y-6">
         <!-- 4 KPI Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="ui-card p-5">
+        <div id="overview-kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 <?php echo (!isset($isOwnerAdmin) || $isOwnerAdmin) ? 'lg:grid-cols-4' : 'lg:grid-cols-3'; ?> gap-4">
+          <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
+          <div id="kpi-card-revenue" class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Doanh thu hôm nay</div>
-            <div class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">4.350.000đ</div>
+            <div id="kpi-revenue-value" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">4.350.000đ</div>
             <div class="mt-2 text-xs font-semibold text-[#16A34A] flex items-center gap-1">
               <span>↑ 12%</span>
               <span class="text-[#64748B] font-normal">so với hôm qua</span>
             </div>
           </div>
+          <?php endif; ?>
           <div class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Tổng lượt đặt hôm nay</div>
-            <div class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">11 lượt</div>
-            <div class="mt-2 text-xs font-semibold text-[#D97706]">
+            <div id="kpi-bookings-count" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">11 lượt</div>
+            <div id="kpi-bookings-pending" class="mt-2 text-xs font-semibold text-[#D97706]">
               2 đơn đang giữ chỗ VietQR
             </div>
           </div>
@@ -27,13 +29,14 @@
           </div>
           <div class="ui-card p-5">
             <div class="text-xs font-semibold text-[#64748B]">Trạng thái sân hiện tại</div>
-            <div class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">8/9 Sân sẵn sàng</div>
-            <div class="mt-2 text-xs text-[#64748B]">1 đang đá · 1 bảo trì mặt cỏ</div>
+            <div id="kpi-pitches-ready" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">8/9 Sân sẵn sàng</div>
+            <div id="kpi-pitches-sub" class="mt-2 text-xs text-[#64748B]">1 đang đá · 1 bảo trì mặt cỏ</div>
           </div>
         </div>
 
+        <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
         <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div id="overview-charts-row" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div class="lg:col-span-8 ui-card p-5">
             <div class="flex items-center justify-between mb-4">
               <h3 class="font-heading font-bold text-base text-[#0F172A]">Doanh thu 7 ngày gần nhất</h3>
@@ -79,6 +82,7 @@
             </div>
           </div>
         </div>
+        <?php endif; ?>
 
         <!-- Ca đá sắp diễn ra trong ngày -->
         <div class="ui-card p-5 space-y-3">
@@ -104,6 +108,7 @@
               <button type="button" onclick="filterOverviewBookings('playing')" id="ov-filter-playing" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⚽ Đang chơi</button>
               <button type="button" onclick="filterOverviewBookings('confirmed')" id="ov-filter-confirmed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⏳ Chờ Check-in</button>
               <button type="button" onclick="filterOverviewBookings('completed')" id="ov-filter-completed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">✓ Hoàn thành & Đã thu đủ</button>
+              <button type="button" onclick="filterOverviewBookings('debt')" id="ov-filter-debt" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#DC2626] hover:bg-rose-50">💸 Đơn đang nợ chưa thu</button>
               <button type="button" onclick="filterOverviewBookings('noshow')" id="ov-filter-noshow" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⚠️ Chưa đến / Đã hủy</button>
             </div>
             <button type="button" onclick="openQRScannerModal()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm">📷 Quét QR Check-in</button>
@@ -114,4 +119,4 @@
         </div>
       </div>
 
-      <!-- ========================================== -->
+      <!-- ========================================== -->

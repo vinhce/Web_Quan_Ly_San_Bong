@@ -36,6 +36,34 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 
 ---
 
+### 2.3. Tài khoản Nhân viên trực sân: `nhanvien` (Mẫu)
+- **Username:** `nhanvien` (hoặc email: `nhanvien@sanbongpro.vn`)
+- **Số điện thoại:** `0352000111`
+- **Mật khẩu:** `staff123` (Đã băm bằng Argon2id)
+- **Vai trò (Role):** `staff` (Nhân viên vận hành trực sân, bị giới hạn phân hệ tài chính & cấu hình)
+- **Hạng hiển thị:** `Nhân viên trực sân` (Hiển thị nút **🏟️ Cổng Trực Sân** trên thanh điều hướng)
+
+---
+
+## 2B. Bảng Phân Quyền 3 Cấp (`user` / `staff` / `admin`)
+
+| Chức năng / Phân hệ | `user` (Khách hàng) | `staff` (Nhân viên trực sân) | `admin` (Chủ sân) |
+| :--- | :---: | :---: | :---: |
+| Đặt sân online, xem vé QR & lịch sử cá nhân | ✅ | ✅ | ✅ |
+| Hủy lịch trước hạn đơn của chính mình (chống IDOR) | ✅ | ✅ *(Mọi đơn)* | ✅ *(Mọi đơn)* |
+| Truy cập `/portal-admin/` (Cổng vận hành) | ❌ *(Bị chặn)* | ✅ *(5 tab vận hành)* | ✅ *(Toàn bộ 9 tab)* |
+| Tab 1: Tổng quan ca đá, check-in, in hóa đơn | ❌ | ✅ *(Ẩn KPI Doanh thu & Biểu đồ)* | ✅ *(Đầy đủ KPI tài chính)* |
+| Tab 2: Lịch đặt sân Timeline Gantt & Điều hành ca | ❌ | ✅ | ✅ |
+| Tab 3: Đặt sân tại quầy (khách vãng lai) | ❌ | ✅ | ✅ |
+| Tab 4: Quản lý sân & Bật/Tắt bảo trì | ❌ | ✅ | ✅ |
+| Tab 5: Cấu hình Bảng giá & Mã Voucher | ❌ | ❌ *(403 Forbidden)* | ✅ |
+| Tab 6: Danh sách Khách hàng & Hội viên | ❌ | ✅ | ✅ |
+| Tab 7: Duyệt / Từ chối cọc VietQR | ❌ | ❌ *(403 Forbidden)* | ✅ |
+| Tab 8: Báo cáo thống kê doanh thu | ❌ | ❌ *(Ẩn)* | ✅ |
+| Tab 9: Cài đặt VietQR & Quản lý Nhân viên (`staff`) | ❌ | ❌ *(403 Forbidden)* | ✅ |
+
+---
+
 ## 3. Quy trình Đăng nhập & Vào Trang Admin
 
 1. Truy cập trang đăng nhập: `https://fxzioyr.id.vn/login` (hoặc truy cập thẳng `https://fxzioyr.id.vn/portal-admin/`).
@@ -51,8 +79,8 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 ## 4. Cơ chế Bảo mật Tài khoản Admin
 
 1. **Chặn truy cập trái phép từ phía Server (`portal-admin/index.php` & `api/admin.php`):**
-   - Mọi request vào `/portal-admin/` đều đi qua `portal-admin/index.php` để kiểm tra `$_SESSION['user']['role'] === 'admin'` trước khi trả HTML.
-   - Mọi thao tác dữ liệu (duyệt cọc, hủy đơn, bật/tắt bảo trì sân, đặt sân tại quầy) đều kiểm tra `require_admin()` + `verify_csrf_token()` tại `api/admin.php`.
+   - Mọi request vào `/portal-admin/` đều đi qua `portal-admin/index.php` để kiểm tra `$_SESSION['user']['role']` (`admin` hoặc `staff`) và kiểm tra trạng thái `status` từ CSDL (tài khoản `locked` bị hủy phiên tức thì).
+   - Các thao tác vận hành sân (`checkin`, `noshow_release`, `restore`, `toggle_pitch`, `manage_booking`) kiểm tra `require_staff_or_admin()`; các thao tác nhạy cảm (`update_payment`, `vouchers` POST, `staff_users`) bắt buộc `require_admin()` tại `api/admin.php`.
 2. **Chống dò mật khẩu (Rate Limiting):**
    - Nhập sai mật khẩu quá **5 lần trong 15 phút** (theo IP hoặc tài khoản) sẽ bị khóa tạm thời (`HTTP 429 Too Many Requests`).
 3. **Quản lý Phiên (Session Security):**
