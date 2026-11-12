@@ -166,3 +166,10 @@ INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
 ('waitlist_hold_minutes', '15'),
 ('matchmaking_enabled', '1'),
 ('matchmaking_require_approval', '0');
+
+-- 7. Kèo ghép đối mẫu mặc định
+INSERT IGNORE INTO `matchmaking_posts` (`post_code`, `team_name`, `captain_name`, `phone`, `match_date`, `slot_time`, `pitch_type`, `skill_level`, `fee_mode`, `status`, `note`) VALUES
+('KEO-261112-E46E5', 'FC Bách Khoa Anh Em', 'Nguyễn Tiến Dũng', '0983123567', CURDATE(), '18:00 - 19:30', 7, 'intermediate', 'split_50_50', 'open', 'Đội văn phòng đá vui vẻ, giao lưu nước uống, không va chạm mạnh.'),
+('KEO-261112-8CE41', 'FC Giao Lưu Thứ Năm', 'Lê Hoàng Nam', '0912345678', CURDATE(), '17:30 - 19:00', 7, 'beginner', 'split_50_50', 'open', 'Anh em cựu sinh viên thể dục nâng cao sức khỏe, kết thúc trận làm chầu bia.'),
+('KEO-261112-56524', 'FC Thanh Xuân United', 'Trần Quang Huy', '0978345321', DATE_ADD(CURDATE(), INTERVAL 1 DAY), '19:30 - 21:00', 5, 'advanced', 'split_50_50', 'open', 'Tìm đội khá cứng giao hữu trước giải đấu quận, trọng tài sân bắt chuẩn.'),
+('KEO-261112-0489B', 'FC Phủi Cầu Giấy', 'Vũ Đức Thịnh', '0904123890', DATE_ADD(CURDATE(), INTERVAL 1 DAY), '20:00 - 21:30', 5, 'all', 'loser_pays', 'open', 'Kèo giao hữu nhiệt huyết, thua trả toàn bộ tiền sân, có quay video trận đấu.');
