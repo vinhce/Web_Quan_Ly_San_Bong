@@ -53,11 +53,24 @@ function setAdminCsrfToken(token) {
 }
 window.setAdminCsrfToken = setAdminCsrfToken;
 
+function normalizeAdminApiUrl(url) {
+  if (!url) return url;
+  if (/^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|\/\/)/.test(url)) return url;
+  const pathname = (window.location && typeof window.location.pathname === 'string')
+    ? window.location.pathname.replace(/\\/g, '/')
+    : '';
+  const match = pathname.match(/^(.*?\/Quan_Ly_San_Bong)/i);
+  const root = match ? match[1] : '';
+  const clean = url.replace(/^\.\.\//, '').replace(/^\/+/, '');
+  return `${root}/${clean}`;
+}
+window.normalizeAdminApiUrl = normalizeAdminApiUrl;
+
 async function ensureAdminCsrfToken() {
   const current = getAdminCsrfToken();
   if (current) return current;
   try {
-    const res = await fetch('../api/auth.php?action=me', { credentials: 'same-origin', cache: 'no-store' });
+    const res = await fetch(normalizeAdminApiUrl('api/auth.php?action=me'), { credentials: 'same-origin', cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
       if (json && json.csrf_token) {
@@ -106,6 +119,7 @@ window.ensureAdminCsrfToken = ensureAdminCsrfToken;
 })();
 
 async function adminFetchJson(url, options = {}) {
+  url = normalizeAdminApiUrl(url);
   const opts = Object.assign({}, options);
   const method = String(opts.method || 'GET').toUpperCase();
   opts.method = method;
@@ -151,6 +165,7 @@ async function adminFetchJson(url, options = {}) {
       try {
         sessionStorage.removeItem('sb_current_user');
         sessionStorage.removeItem('sb_csrf_token');
+        localStorage.removeItem('sb_current_user');
       } catch (e) {}
       const msg401 = json?.message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
       if (window.SanBongApp?.showToast) {
@@ -470,6 +485,7 @@ async function handleAdminLogout() {
   try {
     sessionStorage.removeItem('sb_current_user');
     sessionStorage.removeItem('sb_csrf_token');
+    localStorage.removeItem('sb_current_user');
   } catch (e) {}
   window.location.replace('/login');
 }
@@ -509,6 +525,12 @@ function applyRolePermissions() {
   let storedUser = null;
   try {
     storedUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+    if (!storedUser) {
+      storedUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
+      if (storedUser) {
+        try { sessionStorage.setItem('sb_current_user', JSON.stringify(storedUser)); } catch (e) {}
+      }
+    }
   } catch (e) {}
   if (storedUser && storedUser.role) {
     currentPortalRole = storedUser.role;
@@ -606,6 +628,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let localUser = null;
   try {
     localUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+    if (!localUser) {
+      localUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
+      if (localUser) {
+        try { sessionStorage.setItem('sb_current_user', JSON.stringify(localUser)); } catch (e) {}
+      }
+    }
   } catch (e) {}
 
   if (!localUser || !['admin', 'manager', 'staff'].includes(localUser.role)) {
@@ -623,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAdminProfile(localUser);
   applyRolePermissions();
 
-  fetch('../api/auth.php?action=me', { cache: 'no-store' })
+  fetch(normalizeAdminApiUrl('api/auth.php?action=me'), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (data && data.csrf_token) {
@@ -633,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           sessionStorage.removeItem('sb_current_user');
           sessionStorage.removeItem('sb_csrf_token');
+          localStorage.removeItem('sb_current_user');
         } catch (e) {}
         document.documentElement.style.display = 'none';
         const msg = data && data.locked
@@ -645,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentPortalRole = data.user.role;
       try {
         sessionStorage.setItem('sb_current_user', JSON.stringify(data.user));
+        localStorage.setItem('sb_current_user', JSON.stringify(data.user));
       } catch (e) {}
       updateAdminProfile(data.user);
       applyRolePermissions();
@@ -680,6 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         sessionStorage.removeItem('sb_current_user');
         sessionStorage.removeItem('sb_csrf_token');
+        localStorage.removeItem('sb_current_user');
       } catch (e) {}
       document.documentElement.style.display = 'none';
       window.location.replace('/login?redirect=portal-admin');

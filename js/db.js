@@ -592,7 +592,13 @@
 
     getUser() {
       try {
-        const sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+        let sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+        if (!sessionUser) {
+          sessionUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
+          if (sessionUser) {
+            try { sessionStorage.setItem('sb_current_user', JSON.stringify(sessionUser)); } catch (e) {}
+          }
+        }
         if (sessionUser && sessionUser.full_name) {
           const customerTier = String(sessionUser.customer_tier || sessionUser.customerTier || sessionUser.tier || 'standard').trim().toLowerCase();
           const tierLabels = { standard: 'Hội viên', bronze: 'Hội viên Đồng', silver: 'Hội viên Bạc', regular: 'Khách thân thiết', gold: 'Hội viên Vàng', vip: 'Khách VIP', diamond: 'Hội viên Kim Cương' };
@@ -621,12 +627,20 @@
       }
     },
 
+    getCurrentUser() {
+      return this.getUser();
+    },
+
     updateUser(updates) {
       try {
-        const sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+        let sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+        if (!sessionUser) {
+          sessionUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
+        }
         if (sessionUser) {
           const updated = Object.assign({}, sessionUser, updates);
           sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
+          try { localStorage.setItem('sb_current_user', JSON.stringify(updated)); } catch (e) {}
           return updated;
         }
         return null;

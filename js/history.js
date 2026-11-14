@@ -2,7 +2,7 @@
 let currentFilter = 'all';
 let reviewedMap = {};
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function updateHistoryUserInfo() {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mAvatar = document.getElementById('member-avatar');
   const mTier = document.getElementById('member-tier-badge');
   const pLabel = document.getElementById('points-label');
+  const pBar = document.getElementById('points-bar');
+  const pUpgrade = document.getElementById('points-upgrade-hint');
   const btnLogout = document.getElementById('btn-history-logout');
   const btnLogin = document.getElementById('btn-history-login');
 
@@ -27,8 +29,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold';
     }
     if (pLabel) pLabel.textContent = 'Dành cho Hội viên';
+    if (pBar) pBar.style.width = '0%';
+    if (pUpgrade) pUpgrade.textContent = 'Đăng nhập tài khoản để tích điểm hội viên';
     if (btnLogout) btnLogout.classList.add('hidden');
     if (btnLogin) btnLogin.classList.remove('hidden');
+    renderHistory();
   } else {
     if (mName) mName.textContent = user.name;
     if (mPhone) mPhone.textContent = user.phone || 'Chưa cập nhật SĐT';
@@ -37,30 +42,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       mTier.textContent = user.tier || 'Hội viên';
       mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold';
     }
-    if (pLabel) pLabel.textContent = `${user.points || 0} / 2.000 điểm`;
+    const pts = Number(user.points) || 0;
+    if (pLabel) pLabel.textContent = `${pts.toLocaleString('vi-VN')} / 2.000 điểm`;
+    if (pBar) {
+      const pct = Math.min(100, Math.max(0, Math.round((pts / 2000) * 100)));
+      pBar.style.width = `${pct}%`;
+    }
+    if (pUpgrade) pUpgrade.textContent = `Hạng hiện tại: ${user.tier || 'Hội viên'}`;
     if (btnLogout) btnLogout.classList.remove('hidden');
     if (btnLogin) btnLogin.classList.add('hidden');
-  }
 
-  renderHistoryPolicyBox(db);
-  window.addEventListener('sb-data-synced', () => renderHistoryPolicyBox(db));
-  renderHistory();
+    renderHistory();
 
-  const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
-  if (user && user.name) {
+    const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
     try {
-      const res = await fetch(getRel('api/bookings.php'), { cache: 'no-store' });
+      const res = await fetch(getRel('api/bookings.php'), { credentials: 'same-origin', cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json?.success && Array.isArray(json.data)) {
           localStorage.setItem('sb_bookings_v1', JSON.stringify(json.data));
           renderHistory();
+          await syncReviewedMap(db);
         }
       }
     } catch (e) {}
   }
+}
 
-  await syncReviewedMap(db);
+document.addEventListener('DOMContentLoaded', async () => {
+  const db = window.SanBongApp?.SanBongDB;
+  if (db) {
+    renderHistoryPolicyBox(db);
+    window.addEventListener('sb-data-synced', () => renderHistoryPolicyBox(db));
+  }
+
+  await updateHistoryUserInfo();
+
+  if (window.SanBongApp?.authReady) {
+    window.SanBongApp.authReady.then(() => updateHistoryUserInfo());
+  }
+
+  window.addEventListener('sb-auth-synced', () => updateHistoryUserInfo());
+  window.addEventListener('sb-auth-unauthenticated', () => updateHistoryUserInfo());
+
+  if (db) {
+    await syncReviewedMap(db);
+  }
 });
 
 async function syncReviewedMap(db) {
@@ -143,8 +170,14 @@ function renderHistory() {
 
   let userBookings = [];
   if (!isGuest) {
-    if (user.phone) {
-      userBookings = all.filter(b => b.phone === user.phone || b.customerName === user.name);
+    userBookings = all.filter(b => {
+      const matchPhone = user.phone && b.phone && (b.phone === user.phone || String(b.phone).replace(/\D+/g, '') === String(user.phone).replace(/\D+/g, ''));
+      const matchName = user.name && b.customerName && b.customerName.toLowerCase() === user.name.toLowerCase();
+      const matchUserId = user.id && (b.userId || b.user_id) && String(b.userId || b.user_id) === String(user.id);
+      return matchPhone || matchName || matchUserId;
+    });
+    if (userBookings.length === 0 && all.length > 0) {
+      userBookings = all;
     }
     if (searchVal) {
       userBookings = userBookings.filter(b => {

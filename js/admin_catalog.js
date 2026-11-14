@@ -557,7 +557,7 @@ function saveLocalStaffUsers(list) {
   } catch (e) {}
 }
 
-async function loadStaffUsers() {
+async function loadStaffUsers(silent = true) {
   if (!isOwnerAdmin()) return;
 
   const r = await adminFetchJson('../api/admin.php?action=staff_users');
@@ -568,10 +568,9 @@ async function loadStaffUsers() {
     return;
   }
 
-  if (r.status === 0) {
-    cachedStaffUsers = getLocalStaffUsers();
-    renderStaffUsers(cachedStaffUsers);
-  } else if (window.SanBongApp?.showToast) {
+  cachedStaffUsers = getLocalStaffUsers();
+  renderStaffUsers(cachedStaffUsers);
+  if (!silent && window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(r.message || 'Không thể tải danh sách nhân sự!', 'error');
   }
 }

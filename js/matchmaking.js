@@ -185,9 +185,11 @@
     });
   }
 
-  function prefillUserInfo(nameId, phoneId) {
+  function prefillUserInfo(nameId, phoneId, specificUser) {
     try {
-      const user = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+      const user = specificUser
+        || JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || 'null')
+        || (window.SanBongApp?.SanBongDB?.getUser ? window.SanBongApp.SanBongDB.getUser() : null);
       if (user) {
         const nEl = document.getElementById(nameId);
         const pEl = document.getElementById(phoneId);
@@ -195,6 +197,17 @@
         if (pEl && !pEl.value) pEl.value = user.phone || '';
       }
     } catch (e) {}
+  }
+
+  window.addEventListener('sb-auth-synced', (e) => {
+    prefillUserInfo('post-captain-name', 'post-phone', e.detail);
+    prefillUserInfo('join-captain-name', 'join-phone', e.detail);
+  });
+  if (window.SanBongApp?.authReady) {
+    window.SanBongApp.authReady.then((u) => {
+      prefillUserInfo('post-captain-name', 'post-phone', u);
+      prefillUserInfo('join-captain-name', 'join-phone', u);
+    });
   }
 
   const ERROR_CLASSES = ['!border-red-500', '!ring-1', '!ring-red-500'];

@@ -2,7 +2,7 @@
     <div class="p-4">
       
       <div class="flex items-center justify-between gap-2 px-2 py-2 mb-6">
-        <a href="/" class="flex items-center gap-3 group min-w-0">
+        <a href="<?php echo (isset($basePath) && $basePath !== '' ? $basePath : ''); ?>/" class="flex items-center gap-3 group min-w-0">
           <div class="w-9 h-9 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md shrink-0">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>
           </div>
@@ -92,7 +92,7 @@
           </div>
         </div>
         <div class="flex items-center gap-1.5 pt-2 border-t border-[#E2E8F0]">
-          <a href="/" target="_blank" class="flex-1 h-7 px-2 rounded-lg bg-white border border-[#E2E8F0] hover:bg-[#F1F5F9] text-[11px] font-semibold text-[#16A34A] flex items-center justify-center gap-1 transition-colors" title="Xem trang chủ đặt sân">
+          <a href="<?php echo (isset($basePath) && $basePath !== '' ? $basePath : ''); ?>/" target="_blank" rel="noopener noreferrer" class="flex-1 h-7 px-2 rounded-lg bg-white border border-[#E2E8F0] hover:bg-[#F1F5F9] text-[11px] font-semibold text-[#16A34A] flex items-center justify-center gap-1 transition-colors" title="Xem trang chủ đặt sân">
             <span>Web</span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>

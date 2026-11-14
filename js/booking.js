@@ -291,12 +291,29 @@ function initBookingPage() {
   updateMonthlyPackage();
   updateBillSummary();
 
-  const curUser = window.SanBongApp?.SanBongDB?.getUser();
-  if (curUser && curUser.name) {
-    const nameInput = document.getElementById('cust-name');
-    const phoneInput = document.getElementById('cust-phone');
-    if (nameInput && !nameInput.value) nameInput.value = curUser.name;
-    if (phoneInput && !phoneInput.value && curUser.phone) phoneInput.value = curUser.phone;
+  function fillBookingUserInfo(u) {
+    const curUser = u || window.SanBongApp?.SanBongDB?.getUser();
+    if (curUser) {
+      const name = curUser.full_name || curUser.name || '';
+      const phone = curUser.phone || '';
+      const nameInput = document.getElementById('cust-name');
+      const phoneInput = document.getElementById('cust-phone');
+      if (nameInput && !nameInput.value && name) nameInput.value = name;
+      if (phoneInput && !phoneInput.value && phone) {
+        phoneInput.value = phone;
+        if (typeof checkBookingPhoneNoShow === 'function') {
+          checkBookingPhoneNoShow(phone);
+        }
+      }
+    }
+  }
+
+  fillBookingUserInfo();
+  window.addEventListener('sb-auth-synced', (e) => {
+    fillBookingUserInfo(e.detail);
+  });
+  if (window.SanBongApp?.authReady) {
+    window.SanBongApp.authReady.then(() => fillBookingUserInfo());
   }
 
   const custPhoneEl = document.getElementById('cust-phone');

@@ -49,6 +49,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
         var serverUser = <?php echo $currentUserJson; ?>;
         if (serverUser && serverUser.role && ['admin', 'manager', 'staff'].indexOf(serverUser.role) !== -1) {
           sessionStorage.setItem('sb_current_user', JSON.stringify(serverUser));
+          try { localStorage.setItem('sb_current_user', JSON.stringify(serverUser)); } catch (e) {}
           window.sb_current_user = serverUser;
         } else {
           var user = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
@@ -64,7 +65,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261112_v34">
+  <link rel="stylesheet" href="../css/style.css?v=20261115_v40">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -454,16 +455,16 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   </div>
 
   <!-- SCRIPTS -->
-  <script src="<?php echo $basePath; ?>/js/data.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/app.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/api.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261112_v34"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/data.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/app.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v40"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261115_v40"></script>
 </body>
 </html>
 

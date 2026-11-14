@@ -12,7 +12,7 @@ function handleLogout() {
         const headers = window.SanBongHelpers?.getAuthFetchHeaders
           ? window.SanBongHelpers.getAuthFetchHeaders()
           : { 'Content-Type': 'application/json' };
-        if (!headers['X-CSRF-Token'] && sessionStorage.getItem('sb_current_user')) {
+        if (!headers['X-CSRF-Token'] && (sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user'))) {
           const meRes = await fetch(getRelativePath('api/auth.php?action=me'), { cache: 'no-store' });
           const meJson = await meRes.json().catch(() => null);
           if (meJson?.csrf_token) {
@@ -27,10 +27,11 @@ function handleLogout() {
       } catch (e) {}
 
       sessionStorage.removeItem('sb_current_user');
-      if (window.SanBongHelpers?.clearCsrfToken) window.SanBongHelpers.clearCsrfToken();
       try {
+        localStorage.removeItem('sb_current_user');
         localStorage.removeItem('sb_user_v1');
       } catch (e) {}
+      if (window.SanBongHelpers?.clearCsrfToken) window.SanBongHelpers.clearCsrfToken();
       window.location.href = getRelativePath('');
     };
 
@@ -52,6 +53,12 @@ function handleLogout() {
     let currentUser = null;
     try {
       currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+      if (!currentUser) {
+        currentUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
+        if (currentUser) {
+          try { sessionStorage.setItem('sb_current_user', JSON.stringify(currentUser)); } catch (e) {}
+        }
+      }
     } catch(e) {}
 
     const sysCfg = (window.SanBongDB && typeof window.SanBongDB.getSystemConfig === 'function')
@@ -423,39 +430,59 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
     });
   }
 
+  let _authMePromise = null;
+
   async function syncAuthMe() {
-    try {
-      const res = await fetch(getRelativePath('api/auth.php?action=me'), { credentials: 'same-origin', cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.csrf_token && window.SanBongHelpers?.setCsrfToken) {
-          window.SanBongHelpers.setCsrfToken(data.csrf_token);
-        }
-        if (data && data.turnstile_site_key) {
-          window.TURNSTILE_SITE_KEY = data.turnstile_site_key;
-        }
-        if (data && data.authenticated && data.user) {
-          const current = JSON.parse(sessionStorage.getItem('sb_current_user') || '{}');
-          const updated = Object.assign({}, current, data.user);
-          sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
-          // If navbar is already rendered, update points / tier if changed
-          const navPlaceholder = document.getElementById('app-navbar');
-          if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
-            const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
-            navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
+    window.SanBongApp = window.SanBongApp || {};
+    _authMePromise = (async () => {
+      try {
+        const res = await fetch(getRelativePath('api/auth.php?action=me'), { credentials: 'same-origin', cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+            window.SanBongHelpers.setCsrfToken(data.csrf_token);
           }
-        } else if (data && data.authenticated === false) {
-          if (sessionStorage.getItem('sb_current_user')) {
-            sessionStorage.removeItem('sb_current_user');
+          if (data && data.turnstile_site_key) {
+            window.TURNSTILE_SITE_KEY = data.turnstile_site_key;
+          }
+          if (data && data.authenticated && data.user) {
+            const current = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || '{}');
+            const updated = Object.assign({}, current, data.user);
+            sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
+            try { localStorage.setItem('sb_current_user', JSON.stringify(updated)); } catch (e) {}
+            // If navbar is already rendered, update points / tier if changed
             const navPlaceholder = document.getElementById('app-navbar');
             if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
               const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
               navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
             }
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(new CustomEvent('sb-auth-synced', { detail: data.user }));
+            }
+            return data.user;
+          } else if (data && data.authenticated === false) {
+            const hadSession = sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user');
+            if (hadSession) {
+              sessionStorage.removeItem('sb_current_user');
+              try { localStorage.removeItem('sb_current_user'); } catch (e) {}
+              const navPlaceholder = document.getElementById('app-navbar');
+              if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
+                const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
+                navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
+              }
+            }
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(new CustomEvent('sb-auth-unauthenticated'));
+            }
+            return null;
           }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+      return null;
+    })();
+
+    window.SanBongApp.authReady = _authMePromise;
+    return _authMePromise;
   }
 
   // Event delegation for footer buttons & legal links
@@ -476,11 +503,8 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
 
   // Sync auth on load
   if (typeof window !== 'undefined') {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', syncAuthMe);
-    } else {
-      syncAuthMe();
-    }
+    window.SanBongApp = window.SanBongApp || {};
+    window.SanBongApp.authReady = syncAuthMe();
   }
 
   window.alert = function (msg) {
