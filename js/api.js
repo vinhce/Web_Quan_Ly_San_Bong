@@ -132,41 +132,62 @@ window.SanBongApp.SanBongAPI = {
     }
   },
 
-  async postBooking(bookingPayload) {
+  async requestJSON(path, payload) {
     try {
-      if (window.SanBongApp?.ensureCsrfToken) {
-        await window.SanBongApp.ensureCsrfToken();
+      const app = window.SanBongApp;
+      if (payload !== undefined && app.ensureCsrfToken) {
+        await app.ensureCsrfToken();
       }
-      const apiUrl = window.SanBongApp.getRelativePath('api/bookings.php');
-      const headers = window.SanBongApp?.getAuthFetchHeaders
-        ? window.SanBongApp.getAuthFetchHeaders()
-        : { 'Content-Type': 'application/json' };
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        credentials: 'same-origin',
-        body: JSON.stringify(bookingPayload)
+      const base = String(app.getAppBase?.() || '').replace(/\/+$/, '');
+      const apiUrl = app.getRelativePath ? app.getRelativePath(path) : `${base}/${path}`;
+      const options = { credentials: 'same-origin', cache: 'no-store' };
+      if (payload !== undefined) {
+        options.method = 'POST';
+        options.headers = app.getAuthFetchHeaders ? app.getAuthFetchHeaders() : { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(payload);
+      }
+      const response = await fetch(apiUrl, options);
+      const setToken = app.setCsrfToken || window.SanBongHelpers?.setCsrfToken;
+      const tokenHeader = response.headers?.get('X-CSRF-Token');
+      if (tokenHeader && setToken) setToken(tokenHeader);
+      const result = await response.json().catch(() => null);
+      if (result?.csrf_token && setToken) setToken(result.csrf_token);
+      if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.success !== 'boolean') {
+        return {
+          success: false,
+          status: response.status,
+          ref_code: 'ERR_INVALID_RESPONSE',
+          message: 'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại để kiểm tra trạng thái đơn.'
+        };
+      }
+      return Object.assign({}, result, {
+        success: response.ok && result.success === true,
+        status: response.status,
+        message: result.message || (response.ok && result.success === true ? '' : 'Không thể xử lý yêu cầu trên máy chủ.')
       });
-      const tokenHeader = response.headers ? response.headers.get('X-CSRF-Token') : null;
-      if (tokenHeader && window.SanBongHelpers?.setCsrfToken) {
-        window.SanBongHelpers.setCsrfToken(tokenHeader);
-      }
-      const result = await response.json();
-      if (result?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
-        window.SanBongHelpers.setCsrfToken(result.csrf_token);
-      }
-      if (response.ok && result && result.success !== false) {
-        return { success: true, status: response.status, data: result.data || result, message: result.message || '' };
-      }
+    } catch (e) {
       return {
         success: false,
-        status: response.status,
-        ref_code: result?.ref_code || '',
-        message: result?.message || 'Không thể tạo đơn đặt sân trên máy chủ.'
+        status: 0,
+        ref_code: 'ERR_NETWORK',
+        message: 'Không thể kết nối máy chủ. Vui lòng thử lại để kiểm tra trạng thái đơn.'
       };
-    } catch (e) {
     }
+  },
 
-    return { success: false, localOnly: true };
+  postBooking(bookingPayload) {
+    return this.requestJSON('api/bookings.php', bookingPayload);
+  },
+
+  getBooking(code) {
+    return this.requestJSON('api/bookings.php?code=' + encodeURIComponent(code));
+  },
+
+  updateBookingRedemption(code, redeemedBottles) {
+    return this.requestJSON('api/bookings.php?action=update_redemption', { code, redeemedBottles });
+  },
+
+  checkPayment(code) {
+    return this.requestJSON('api/check_payment.php?code=' + encodeURIComponent(code) + '&_t=' + Date.now());
   }
 };

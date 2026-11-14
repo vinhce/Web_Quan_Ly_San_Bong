@@ -4,9 +4,10 @@
 - **Backend:** PHP 8.1+ (Native PDO, strict types, transaction isolation, centralized error handling).
 - **Database:** MySQL 8.0+ / MariaDB 10.4+ (`utf8mb4_unicode_ci`), cơ chế auto-migration kiểm tra marker `/logs/.schema_v12_booking_status_ready`.
 - **Frontend:** HTML5 Clean URLs (Apache rewrite qua `.htaccess`), Tailwind CSS (CDN/Custom utility), Vanilla ES6 JavaScript (không dùng framework cồng kềnh, tối ưu hiệu năng).
+- **Data Visualization:** Inline SVG Vector Charts thuần (tự render SVG responsive, không phụ thuộc thư viện cồng kềnh như Chart.js).
 - **Asset Bundling:** Node.js script (`scripts/build_app_bundle.js`) đóng gói `js/vendor/qrcode.min.js` + `js/helpers.js` + `js/db.js` + `js/ui.js` thành `js/app.js`.
 - **Dịch vụ tích hợp bên ngoài (Third-party APIs):**
-  - Cổng thanh toán VietQR: SePay API v2 (`https://userapi.sepay.vn`) với webhook tự động đối soát.
+  - Cổng thanh toán VietQR: SePay API v2 (`https://userapi.sepay.vn`) với webhook tự động đối soát (chuẩn hóa toàn bộ cổng thanh toán, không dùng PayOS).
   - Dự báo thời tiết: Open-Meteo API (Free tier, không cần API key).
   - Thư viện đọc mã QR: `jsQR` (quét camera thời gian thực & giải mã ảnh).
   - Bảo vệ chống Bot: Cloudflare Turnstile (Tùy chọn cấu hình trong `.env`).
@@ -30,18 +31,24 @@ Quan_Ly_San_Bong/
 │   ├── notification_helper.php       # Dịch vụ gửi thông báo Zalo/SMS & cảnh báo Telegram
 │   ├── auth.php                      # Đăng nhập (Argon2id + 2FA), Đăng ký, Đăng xuất, Phiên
 │   ├── bookings.php                  # Đặt sân, kiểm tra trùng slot trong transaction, hủy & hoàn cọc
-│   ├── pitches.php                   # Danh mục sân, bảng giá giờ vàng, lịch bảo trì
-│   ├── sepay_webhook.php             # Xử lý webhook thanh toán VietQR tự động từ SePay
+│   ├── pitches.php                   # Danh mục 17 sân bóng, bảng giá giờ vàng, lịch bảo trì
+│   ├── check_payment.php             # Polling kiểm tra trạng thái thanh toán cọc VietQR
+│   ├── matchmaking.php               # Đăng tin & quản lý ghép kèo tìm đối giao lưu
+│   ├── reviews.php                   # Đánh giá sao, bình luận sân & phản hồi của quản lý/nhân viên
+│   ├── sepay_webhook.php             # Xử lý webhook thanh toán VietQR tự động từ SePay API v2
 │   ├── admin.php                     # Router quản trị trung tâm: điều hành ca, cài đặt, nhân sự
-│   ├── admin_ops.php                 # API vận hành: kho dịch vụ, chốt ca, lịch lặp, waitlist
+│   ├── admin_ops.php                 # Quản lý kho hàng & dịch vụ (nước uống, áo pitch), chốt ca, lịch lặp, waitlist
+│   ├── admin_finance.php             # Báo cáo tài chính, biểu đồ doanh thu, chỉ số KPI kinh doanh, sổ thu chi
 │   └── admin_crm.php                 # API CRM khách hàng, nợ chưa thu, lịch sử đặt sân
 │
 ├── config/                           # Cấu hình hệ thống
 │   └── database.php                  # Kết nối PDO Singleton, đọc biến môi trường, auto-migration
 │
 ├── cron/                             # Các tác vụ chạy nền định kỳ
-│   ├── check_overdue_bookings.php    # Quét đơn quá hạn cọc / đổi trạng thái "Khách chưa đến"
-│   └── auto_backup.php               # Tự động sao lưu CSDL nén gzip
+│   ├── auto_release_expired.php      # Quét tự động giải phóng các đơn đặt cọc quá hạn 10 phút
+│   ├── auto_generate_recurring.php   # Tự động sinh lịch đặt sân định kỳ / gói tháng
+│   ├── auto_remind_bookings.php      # Quét gửi nhắc lịch đá sắp tới cho khách hàng
+│   └── backup_database.php           # Tự động sao lưu toàn diện CSDL nén gzip
 │
 ├── css/                              # Thư mục stylesheet module hóa
 │   ├── base.css                      # Reset styles, typography
@@ -58,7 +65,7 @@ Quan_Ly_San_Bong/
 │   ├── app.js                        # File bundle được build tự động từ scripts/build_app_bundle.js
 │   ├── api.js                        # Lớp gọi Fetch API bất đồng bộ
 │   ├── booking.js, checkout.js, success.js, fields.js, field-detail.js, history.js, login.js
-│   └── admin.js, admin_ops.js, admin_inplay.js, admin_crm.js, admin_finance.js # Module Portal Admin
+│   └── admin.js, admin_ops.js, admin_inplay.js, admin_crm.js, admin_finance.js # Module Portal Admin (Inline SVG Charts)
 │
 ├── html/                             # View giao diện khách hàng (được .htaccess phục vụ Clean URL)
 │   ├── fields.html                   # /fields: Danh mục sân
@@ -74,9 +81,8 @@ Quan_Ly_San_Bong/
 │   ├── index.php                     # Cổng kiểm tra phiên RBAC, CSRF & nạp partials
 │   └── partials/                     # Các tab giao diện Tab 1 đến Tab 9
 │
-├── database/                         # Kịch bản CSDL & Migrations
-│   ├── schema.sql                    # Schema ban đầu
-│   └── migrations/                   # 001..008 migrations tiến hóa schema
+├── database/                         # Kịch bản CSDL
+│   └── schema.sql                    # Schema CSDL duy nhất và đầy đủ của toàn bộ hệ thống
 │
 ├── scripts/                          # Script hỗ trợ phát triển
 │   └── build_app_bundle.js           # Build bundle cho js/app.js
@@ -145,10 +151,14 @@ Trường hợp lỗi:
 ```
 
 ### Các Endpoint Chính:
-1. `POST /api/auth.php?action=login`: Xác thực tài khoản (hỗ trợ kèm mã `totp_code`).
-2. `POST /api/bookings.php?action=create`: Tạo đơn đặt cọc, khóa slot an toàn qua transaction.
-3. `POST /api/sepay_webhook.php`: Webhook nhận thông báo chuyển khoản SePay, xác thực chữ ký/cross-check và kích hoạt đơn.
-4. `GET /api/pitches.php`: Lấy danh sách sân, trạng thái slot theo ngày và bảng giá.
-5. `POST /api/admin.php`: Thao tác điều hành ca đá (nhận sân, bù giờ, đổi sân, thêm nước, hủy đơn).
-6. `POST /api/admin_ops.php`: Quản lý kho nước, chốt ca nhân viên, đăng ký waitlist.
-7. `GET /api/admin_crm.php`: Tra cứu thông tin hội viên, công nợ và lịch sử đơn.
+1. `POST /api/auth.php`: Xác thực tài khoản (hỗ trợ kèm mã `totp_code`), đăng ký, đăng xuất, kiểm tra session.
+2. `POST /api/bookings.php`: Đặt sân, tạo đơn đặt cọc, khóa slot an toàn qua transaction, tra cứu lịch sử và hủy/hoàn cọc.
+3. `GET /api/pitches.php`: Lấy danh sách 17 sân bóng, trạng thái slot theo ngày và bảng giá giờ vàng/cao điểm.
+4. `GET /api/check_payment.php`: Polling kiểm tra đối soát trạng thái thanh toán cọc VietQR.
+5. `POST /api/sepay_webhook.php`: Webhook nhận thông báo chuyển khoản SePay API v2, xác thực chữ ký/cross-check và kích hoạt đơn tự động.
+6. `POST /api/admin.php`: Router quản trị trung tâm: điều hành ca đá (nhận sân, bù giờ, đổi sân, hủy đơn), cấu hình và nhân sự.
+7. `POST /api/admin_ops.php`: Quản lý kho hàng & dịch vụ (bán nước giải khát, thuê áo pitch/bóng), chốt ca tiền mặt, đăng ký waitlist.
+8. `GET /api/admin_finance.php`: Báo cáo tài chính, biểu đồ doanh thu theo ngày/tháng, chỉ số KPI kinh doanh và sổ thu chi vận hành.
+9. `GET /api/admin_crm.php`: Tra cứu hồ sơ hội viên, điểm thưởng, quản lý công nợ và lịch sử đơn.
+10. `POST /api/matchmaking.php`: Đăng tin ghép kèo tìm đối giao lưu bóng đá và kiểm duyệt bài đăng.
+11. `POST /api/reviews.php`: Đánh giá sao, gửi bình luận và phản hồi đánh giá của quản lý/nhân viên.

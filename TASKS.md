@@ -47,8 +47,25 @@
 
 ---
 
-## GIAI ĐOẠN 5: VẬN HÀNH THỰC TẾ & TÍNH NĂNG TIẾP THEO (BACKLOG)
-- [ ] **Task 5.1:** Cập nhật biến môi trường SePay sang chế độ Live (`SEPAY_ENV=production`) ngay khi chủ sân kích hoạt key thật.
-- [ ] **Task 5.2:** Tích hợp gửi thông báo Zalo ZNS / SMS Brandname tự động tới số điện thoại khách khi cọc thành công.
-- [ ] **Task 5.3:** Cấu hình Service Worker PWA để hỗ trợ chế độ quét vé offline tại quầy khi mất mạng chập chờn.
-- [ ] **Task 5.4:** Xây dựng biểu đồ phân tích xu hướng giờ lấp đầy và dự báo doanh thu tuần/tháng bằng Chart.js.
+## GIAI ĐOẠN 5: TRIỂN KHAI LIVE HOSTING ONEPANEL (PRODUCTION DEPLOY)
+- [x] **Task 5.1:** Cấu hình VirtualHost Apache trên OnePanel, kích hoạt chứng chỉ SSL/HTTPS và thiết lập Clean URLs qua `.htaccess` (`https://fxzioyr.id.vn`).
+- [x] **Task 5.2:** Triển khai tự động và đồng bộ mã nguồn lên Web Hosting OnePanel qua OnePanel MCP Tool (`scripts/deploy_all_to_hosting.js`).
+- [x] **Task 5.3:** Cấu hình môi trường `.env` production, cấu hình kết nối CSDL MySQL và webhook đối soát SePay API v2.
+- [x] **Task 5.4:** Kiểm tra nghiệm thu trực tiếp trên Production Live: 18 endpoints HTTP 200, phân quyền RBAC chuyển hướng chuẩn xác, kiểm thử bảo mật live đạt tiêu chuẩn.
+
+---
+
+## GIAI ĐOẠN 6: KẾ HOẠCH XỬ LÝ BACKLOG & NÂNG CẤP HỆ THỐNG
+### 6.1. Kế Hoạch Xử Lý 6 Lỗi Mã Nguồn (SRC-01 đến SRC-06):
+- [x] **Task 6.1 (SRC-01 - Mức độ Cao):** Xác thực quyền sở hữu SĐT khi xem lịch sử và hủy đơn; phân quyền chặt chẽ theo `user_id`, tách riêng cơ chế tra cứu cho khách vãng lai (`api/auth.php`, `api/bookings.php`). [ĐÃ VÁ & QA PASS]
+- [x] **Task 6.2 (SRC-02 - Mức độ Cao):** Đảm bảo tính nguyên tử trong luồng hủy đơn (`early_cancel`); bọc toàn bộ thao tác hoàn điểm tích lũy, hoàn lượt voucher và cập nhật trạng thái đơn trong cùng một MySQL Transaction có `SELECT ... FOR UPDATE` (`api/bookings.php`). [ĐÃ VÁ & QA PASS]
+- [x] **Task 6.3 (SRC-03 - Mức độ Cao):** Sửa lỗi tính toán số tiền trong polling kiểm tra thanh toán; đọc lại `paid_amount` và trạng thái mới nhất từ DB sau khi đã khóa bản ghi `SELECT ... FOR UPDATE` trước khi cập nhật (`api/check_payment.php`). [ĐÃ VÁ & QA PASS]
+- [x] **Task 6.4 (SRC-04 - Mức độ Cao):** Thu hồi phiên đăng nhập khi tài khoản không còn tồn tại trong DB; nếu truy vấn user trả về rỗng trong `refresh_session_user()`, lập tức hủy session và từ chối xác thực (`api/security_helper.php`). [ĐÃ VÁ & QA PASS]
+- [x] **Task 6.5 (SRC-05 - Mức độ Thấp):** Chuẩn hóa biểu thức chính quy số điện thoại, sửa lỗi regex `/^(0[3|5|7|8|9])[0-9]{8}$/` loại bỏ ký tự `|` trong character class thành `/^(0[35789])[0-9]{8}$/` (`api/auth.php`). [ĐÃ VÁ & QA PASS]
+- [x] **Task 6.6 (SRC-06 - Mức độ Trung bình):** Xử lý an toàn khi mất kết nối DB ở nhánh đăng ký; trả lỗi HTTP 503 fail-closed thay vì tạo session giả định khi chưa INSERT thành công vào DB (`api/auth.php`). [ĐÃ VÁ & QA PASS]
+
+### 6.2. Nâng Cấp Vận Hành & Tính Năng Kế Tiếp:
+- [ ] **Task 6.7:** Cập nhật biến môi trường SePay sang chế độ Live (`SEPAY_ENV=production`, `SEPAY_ALLOW_API_CROSSCHECK=false`) khi chủ sân kích hoạt key thật.
+- [ ] **Task 6.8:** Tích hợp gửi thông báo Zalo ZNS / SMS Brandname tự động tới số điện thoại khách khi cọc thành công (`api/notification_helper.php`).
+- [ ] **Task 6.9:** Cấu hình Service Worker PWA để hỗ trợ chế độ quét vé offline tại quầy khi mất mạng chập chờn.
+- [ ] **Task 6.10:** Tối ưu biểu đồ phân tích xu hướng giờ lấp đầy và dự báo doanh thu tuần/tháng bằng Inline SVG Vector Charts thuần (thay thế Chart.js).

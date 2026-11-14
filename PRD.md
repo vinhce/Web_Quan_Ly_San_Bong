@@ -2,9 +2,9 @@
 
 ## 1. TỔNG QUAN & SỨ MỆNH
 - **Tên dự án:** Sân Bóng Pro (Web Quản Lý Sân Bóng)
-- **Tuyên ngôn sứ mệnh:** Nền tảng quản lý vận hành cụm sân bóng đá mini và đặt sân trực tuyến tự động 1 chạm, chuẩn hóa giao diện trực quan chuẩn FIFA, tích hợp đối soát cọc tự động qua VietQR/SePay và trung tâm điều hành ca đá thời gian thực.
+- **Tuyên ngôn sứ mệnh:** Nền tảng quản lý vận hành cụm sân bóng đá mini và đặt sân trực tuyến tự động 1 chạm, chuẩn hóa giao diện trực quan chuẩn FIFA, tích hợp đối soát cọc tự động qua VietQR (SePay API v2) và trung tâm điều hành ca đá thời gian thực.
 - **Đối tượng sử dụng (Target Users):**
-  1. *Khách đặt sân (Cầu thủ / Đội trưởng):* Đặt slot nhanh, giữ chỗ cọc 30% qua VietQR, nhận vé QR điện tử check-in, tra cứu lịch sử, tìm đối ghép kèo.
+  1. *Khách đặt sân (Cầu thủ / Đội trưởng):* Đặt slot nhanh, giữ chỗ cọc 30% qua VietQR (SePay API v2), nhận vé QR điện tử check-in, tra cứu lịch sử, tìm đối ghép kèo.
   2. *Nhân viên quầy / Thu ngân (Staff):* Quét vé QR check-in, bán nước/dịch vụ, chốt ca bàn giao tiền mặt, đặt sân tại quầy.
   3. *Quản lý vận hành (Manager):* Điều hành ca đá Gantt Timeline, kiểm duyệt ghép kèo, quản lý lịch bảo trì sân, duyệt cọc lệch tiền, kiểm tra kho nước.
   4. *Chủ sân (Admin):* Xem toàn bộ KPI doanh thu bóc tách, cấu hình giá giờ vàng/cao điểm, quản lý nhân sự, cấu hình hệ thống & đối soát ngân hàng.
@@ -26,7 +26,7 @@
 - [x] **Xem & Tìm sân trực quan:** Danh mục 17 sân bóng (5, 7, 11 người), phân loại sân, xem thông tin cỏ, đèn, kích thước, ảnh thực tế và bảng giá.
 - [x] **Tích hợp thời tiết thời gian thực:** Dự báo thời tiết tại cụm sân qua Open-Meteo API giúp khách chủ động chọn giờ đá phù hợp.
 - [x] **Ma trận đặt slot & Gói tháng:** Chọn ngày, xem 18 khung giờ (05:30–23:00) theo màu trạng thái; đặt gói cố định theo tháng giảm 5%–15%.
-- [x] **Thanh toán VietQR tự động (SePay):** Sinh mã QR chuyển khoản chuẩn ngân hàng có sẵn cú pháp (`ASFF`, `ASFS`, `ASFE`), webhook tự động xác nhận đơn trong <3 giây.
+- [x] **Thanh toán VietQR tự động qua SePay API v2:** Sinh mã QR chuyển khoản chuẩn ngân hàng có sẵn cú pháp (`ASFF`, `ASFS`, `ASFE`), webhook tự động xác nhận đơn trong <3 giây.
 - [x] **Vé điện tử & QR Check-in:** Sinh mã vé điện tử QR sau khi cọc, hỗ trợ in vé PDF, lưu ảnh vé và xem bản đồ chỉ đường.
 - [x] **CRM Khách hàng & Điểm thưởng:** Tích điểm tự động sau trận, nâng hạng thành viên (Bạc, Vàng, Kim Cương), áp dụng mã giảm giá (Voucher).
 - [x] **Ghép kèo / Cáp đối (`/matchmaking`):** Đăng tin tìm đối giao lưu theo trình độ/khung giờ, có kiểm duyệt từ admin.
@@ -40,7 +40,7 @@
 - [x] **Tab 4 - Quản lý sân & Bảo trì:** Thêm/sửa sân, bảng giá riêng, lên lịch bảo trì tự động chặn đặt sân trùng.
 - [x] **Tab 5 - Bảng giá & Voucher:** Cấu hình giá giờ thường/cao điểm/cuối tuần, chính sách gói tháng, quản lý mã voucher.
 - [x] **Tab 6 - CRM Khách hàng & Sổ nợ:** Hồ sơ khách theo SĐT, cảnh báo khách hay bùng cọc (≥2 lần), quản lý nợ chưa thu.
-- [x] **Tab 7 - Duyệt cọc & Đối soát SePay:** Hàng đợi đối soát giao dịch chuyển thiếu/thừa tiền, duyệt thủ công khi cần.
+- [x] **Tab 7 - Duyệt cọc & Đối soát SePay API v2:** Hàng đợi đối soát giao dịch chuyển thiếu/thừa tiền, duyệt thủ công khi cần.
 - [x] **Tab 8 - Báo cáo tài chính & Sổ chi:** Thống kê doanh thu, bóc tách tiền cọc/tiền mặt/VietQR/dịch vụ, sổ chi phí, xuất báo cáo CSV UTF-8.
 - [x] **Tab 9 - Cài đặt hệ thống & Bảo mật:** Cấu hình tài khoản, bảo mật 2FA TOTP (RFC 6238), Audit Log append-only, sao lưu CSDL tự động.
 
@@ -50,4 +50,4 @@
 - **App Native (iOS / Android):** Giai đoạn hiện tại tối ưu hóa Responsive Web App (Mobile-first từ 360px), chưa build app native bằng Flutter/React Native.
 - **Hệ thống điều khiển đèn thông minh IoT:** Chưa tích hợp phần cứng ngắt rơ-le điện sân tự động theo giờ đá.
 - **Camera AI Highlight / VAR:** Chưa tự động ghi hình và trích xuất video bàn thắng bằng camera AI.
-- **Cổng thanh toán thẻ quốc tế:** Chỉ tập trung chuẩn VietQR ngân hàng nội địa qua SePay, chưa tích hợp cổng Stripe/PayPal.
+- **Cổng thanh toán thẻ quốc tế & Cổng bên thứ ba khác (PayOS, Stripe, PayPal):** Hệ thống chỉ tập trung duy nhất chuẩn VietQR ngân hàng nội địa qua SePay API v2 (`https://userapi.sepay.vn`), không sử dụng PayOS hay cổng thanh toán thẻ quốc tế.

@@ -94,8 +94,8 @@ function handleLogout() {
           ${Icons.bell}
         </a>
 
-        <div class="relative group">
-          <button class="flex items-center gap-2 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0] text-left">
+        <div id="user-menu-container" class="relative group">
+          <button id="user-menu-btn" aria-expanded="false" class="flex items-center gap-2 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0] text-left">
             <div class="w-9 h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center">
               ${escapeHTML(user.avatar || 'VIP')}
             </div>
@@ -107,27 +107,29 @@ function handleLogout() {
           </button>
 
           <!-- Dropdown menu -->
-          <div class="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-[#E2E8F0] py-2 hidden group-hover:block z-50 transition-all">
-            <div class="px-4 py-2 border-b border-[#F1F5F9]">
-              <div class="text-xs font-bold text-[#0F172A] truncate">${escapeHTML(user.name)}</div>
-              <div class="text-[11px] text-[#64748B] truncate">${escapeHTML(currentUser.phone || currentUser.email || '')}</div>
+          <div id="user-dropdown-menu" class="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50 transition-all before:content-[''] before:absolute before:-top-3 before:left-0 before:right-0 before:h-3">
+            <div class="w-full bg-white rounded-xl shadow-xl border border-[#E2E8F0] py-2">
+              <div class="px-4 py-2 border-b border-[#F1F5F9]">
+                <div class="text-xs font-bold text-[#0F172A] truncate">${escapeHTML(user.name)}</div>
+                <div class="text-[11px] text-[#64748B] truncate">${escapeHTML(currentUser.phone || currentUser.email || '')}</div>
+              </div>
+              <a href="${getRelativePath('history')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] hover:text-[#16A34A]">
+                <span>📋 Lịch sử đặt sân & Hội viên</span>
+              </a>
+              ${isAdmin ? `
+              <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#16A34A] hover:bg-[#DCFCE7]/50">
+                <span>🛡️ Bảng điều khiển Quản trị</span>
+              </a>` : (isManager ? `
+              <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#7C3AED] hover:bg-purple-50">
+                <span>🛡️ Quản lý Sân</span>
+              </a>` : (isStaff ? `
+              <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#2563EB] hover:bg-blue-50">
+                <span>🏟️ Cổng Trực Sân</span>
+              </a>` : ''))}
+              <button onclick="window.SanBongApp.handleLogout()" class="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#DC2626] hover:bg-rose-50 border-t border-[#F1F5F9]">
+                <span>🚪 Đăng xuất</span>
+              </button>
             </div>
-            <a href="${getRelativePath('history')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] hover:text-[#16A34A]">
-              <span>📋 Lịch sử đặt sân & Hội viên</span>
-            </a>
-            ${isAdmin ? `
-            <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#16A34A] hover:bg-[#DCFCE7]/50">
-              <span>🛡️ Bảng điều khiển Quản trị</span>
-            </a>` : (isManager ? `
-            <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#7C3AED] hover:bg-purple-50">
-              <span>🛡️ Quản lý Sân</span>
-            </a>` : (isStaff ? `
-            <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#2563EB] hover:bg-blue-50">
-              <span>🏟️ Cổng Trực Sân</span>
-            </a>` : ''))}
-            <button onclick="window.SanBongApp.handleLogout()" class="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#DC2626] hover:bg-rose-50 border-t border-[#F1F5F9]">
-              <span>🚪 Đăng xuất</span>
-            </button>
           </div>
         </div>
       </div>`;

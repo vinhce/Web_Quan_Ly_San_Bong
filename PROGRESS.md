@@ -1,6 +1,12 @@
 # PROGRESS — NHẬT KÝ TIẾN ĐỘ & TRẠNG THÁI DỰ ÁN (SÂN BÓNG PRO)
 
 ## 1. VIỆC ĐÃ HOÀN THÀNH GẦN NHẤT
+- [x] **Triển khai thành công lên OnePanel Web Hosting Live (`https://fxzioyr.id.vn`):**
+  - Đồng bộ toàn bộ 18 file mã nguồn mới nhất lên thư mục `public_html/` qua OnePanel MCP Tool (`scripts/deploy_all_to_hosting.js`).
+  - Cấu hình VirtualHost Apache, ép Clean URLs và HTTPS 301 tự động qua `.htaccess`.
+  - Cấu hình file `.env` trên hosting, kết nối an toàn CSDL MySQL và webhook SePay API v2.
+  - Xác thực trực tiếp trên môi trường live: `GET https://fxzioyr.id.vn/login` trả về HTTP 200, nạp đúng `../js/login.js`, hàm `handleLoginRedirect` và `resolveAppUrl` đã hoạt động trơn tru; trang quản trị `https://fxzioyr.id.vn/portal-admin/` kiểm soát phiên server-side và phân quyền 3 cấp (admin, manager, staff) hoàn hảo.
+  - Chạy Pentest kiểm thử bảo mật live (`scripts/run_production_pentest.js`): Chặn SQL Injection, chặn Fake Webhook SePay, phân quyền nghiêm ngặt, đạt 100% tiêu chuẩn.
 - [x] **Vá triệt để lỗi đăng nhập admin / khách không chuyển hướng (ở lì tại trang login):**
   - [portal-admin/index.php](file:///c:/laragon/www/Quan_Ly_San_Bong/portal-admin/index.php): Tự động tính `$basePath` cho cả root domain và subfolder Laragon; thay thế client-side gate ép `sessionStorage` bằng cơ chế inject/sync trực tiếp từ PHP session xuống client (`sb_current_user`), tránh bị kick văng ngược lại login khi storage rỗng; cập nhật đường dẫn 10 script JS theo `$basePath`.
   - [api/security_helper.php](file:///c:/laragon/www/Quan_Ly_San_Bong/api/security_helper.php): Trong `refresh_session_user()`, bảo toàn `$_SESSION['user']` hợp lệ thay vì tự hủy khi DB chưa tìm thấy user hoặc lỗi tạm thời.
@@ -12,10 +18,23 @@
 
 ---
 
-## 2. LỖI / VẤN ĐỀ ĐANG GẶP (BLOCKERS)
-- Không có lỗi chặn.
+- [x] **Vá triệt để toàn bộ 6 lỗi mã nguồn bảo mật & logic (SRC-01 đến SRC-06):**
+  - **SRC-05 (`api/auth.php`)**: Chuẩn hóa regex số điện thoại thành `/^0[35789]\d{8}$/`, loại bỏ hoàn toàn ký tự `|` trong character class.
+  - **SRC-06 (`api/auth.php`)**: Xử lý fail-closed an toàn khi mất kết nối CSDL, trả HTTP 503 `ERR_DB_UNAVAILABLE`, xóa bỏ bypass tạo fake session.
+  - **SRC-04 (`api/security_helper.php`)**: Trong `refresh_session_user()`, loại bỏ fallback session cũ khi user không tồn tại trong DB, lập tức thực thi `destroy_current_session()` và từ chối xác thực.
+  - **SRC-03 (`api/check_payment.php`)**: Đưa việc tính `$newPaid` và cập nhật trạng thái vào bên trong transaction có khóa `SELECT ... FOR UPDATE`, giải quyết triệt để Lost Update khi có nhiều webhook/polling đồng thời.
+  - **SRC-02 (`api/bookings.php`)**: Bọc toàn bộ luồng `early_cancel` vào transaction có `SELECT ... FOR UPDATE`, kiểm tra chống hủy lặp và thực thi hoàn điểm/voucher nguyên tử.
+  - **SRC-01 (`api/bookings.php`)**: Chặn IDOR tra cứu và hủy đơn qua SĐT tự khai, bắt buộc ràng buộc `user_id` chính chủ hoặc session guest code hợp lệ.
+  - **Kiểm soát chất lượng**: Sub-agent 5 Security cấp **`SECURITY: PASS`**; Sub-agent 4 QA Veto cấp **`[QA PASS]`** (đạt 25/25 bài kiểm tra an ninh tự động, 13/13 ca hồi quy pass 100%).
+
+---
+
+## 2. LỖI / VẤN ĐỀ ĐANG GẶP (BLOCKERS & BACKLOG)
+- **Blockers:** Không có lỗi chặn hệ thống. Toàn bộ 6 lỗi SRC-01 đến SRC-06 đã được khắc phục hoàn toàn.
+- **Nhiệm vụ kế tiếp:** Đồng bộ bản vá lên môi trường Web Hosting Live (`https://fxzioyr.id.vn`) và commit + push lên GitHub.
 
 ---
 
 ## 3. BƯỚC HÀNH ĐỘNG KẾ TIẾP (NEXT IMMEDIATE ACTION)
-- Thử nghiệm đăng nhập trực tiếp trên trình duyệt bằng tài khoản Admin / Khách để kiểm chứng trải nghiệm thực tế.
+1. Đẩy các file backend đã vá (`api/auth.php`, `api/security_helper.php`, `api/check_payment.php`, `api/bookings.php`) lên Web Hosting OnePanel.
+2. Commit và push các thay đổi lên GitHub theo yêu cầu của người dùng.

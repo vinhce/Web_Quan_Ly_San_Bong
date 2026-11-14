@@ -23,6 +23,9 @@ $data = array_merge($_POST, $data);
 $action = $_GET['action'] ?? $data['action'] ?? '';
 if ($method === 'POST') {
     require_csrf_if_session_authenticated($data);
+    if ($pdo === null) {
+        json_error('Không thể kết nối cơ sở dữ liệu. Vui lòng thử lại sau.', 503, 'ERR_DB_UNAVAILABLE');
+    }
 }
 
 function map_booking_row(array $item): array {
@@ -55,6 +58,9 @@ function map_booking_row(array $item): array {
     $item['recurringScheduleId'] = !empty($item['recurring_schedule_id']) ? (int)$item['recurring_schedule_id'] : null;
     $item['expiresAt']           = $item['expires_at'] ?? $item['expiresAt'] ?? null;
     $item['createdAt']           = $item['created_at'] ?? $item['createdAt'] ?? '';
+    $item['pointsUsed']          = (int)($item['points_used'] ?? $item['pointsUsed'] ?? 0);
+    $item['redeemedBottles']      = (int)($item['redeemed_bottles'] ?? $item['redeemedBottles'] ?? 0);
+    $item['monthlyDates']        = booking_occurrence_dates($item);
     return $item;
 }
 
@@ -209,95 +215,134 @@ if ($method === 'POST' && $action === 'early_cancel') {
             'data'    => ['code' => $code, 'status' => 'Đã hủy', 'paymentStatus' => $payStatus]
         ]);
     }
-    $checkStmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1");
-    $checkStmt->execute([$code]);
-    $bookingRow = $checkStmt->fetch();
-    if (!$bookingRow) {
-        json_error('Không tìm thấy đơn đặt sân tương ứng.', 404, 'ERR_NOT_FOUND');
-    }
-    $isPortalActor = is_portal_operator($currentUser);
-    if (!$isPortalActor) {
-        $userPhone = preg_replace('/\s+/', '', (string)($currentUser['phone'] ?? ''));
-        $bookPhone = preg_replace('/\s+/', '', (string)($bookingRow['phone'] ?? ''));
-        $ownsById = !empty($bookingRow['user_id']) && ((int)$bookingRow['user_id'] === (int)$currentUser['id']);
-        $ownsByPhone = ($userPhone !== '' && $bookPhone !== '' && $userPhone === $bookPhone);
-        if (!$ownsById && !$ownsByPhone) {
-            json_error('Bạn không có quyền hủy đơn đặt sân của người khác.', 403, 'ERR_IDOR_BLOCKED');
+    try {
+        $pdo->beginTransaction();
+        $checkStmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+        $checkStmt->execute([$code]);
+        $bookingRow = $checkStmt->fetch();
+        if (!$bookingRow) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            json_error('Không tìm thấy đơn đặt sân tương ứng.', 404, 'ERR_NOT_FOUND');
         }
-    }
-    if (in_array((string)($bookingRow['status'] ?? ''), ['Đã hủy', 'Khách chưa đến', 'Hoàn thành', 'Đang đá'], true)) {
-        json_error('Trạng thái đơn hiện tại không thể thực hiện thao tác hủy này.', 400, 'ERR_INVALID_BOOKING_STATE');
-    }
-    if ((in_array($bookingRow['payment_status'] ?? '', ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true) || (int)($bookingRow['deposit_amount'] ?? 0) > 0 || (int)($bookingRow['paid_amount'] ?? 0) > 0) && $rawReason === '') {
-        json_error('Đơn đã thu tiền/đặt cọc bắt buộc phải nhập lý do hủy!', 400, 'ERR_CANCEL_REASON_REQUIRED');
-    }
 
-    $settings = get_system_settings_map($pdo);
-    $eval = evaluate_cancellation_policy($bookingRow, $settings);
-    $policyRecommended = $eval['policy'];
-    $hoursBeforeMatch  = $eval['hours_before_match'];
-    $paidBase          = $eval['paid_base'];
+        $isPortalActor = is_portal_operator($currentUser);
+        if (!$isPortalActor) {
+            $bookingUserId = !empty($bookingRow['user_id']) ? (int)$bookingRow['user_id'] : null;
+            $currentUserId = !empty($currentUser['id']) ? (int)$currentUser['id'] : null;
+            $sessionCodes = array_merge(
+                is_array($_SESSION['owned_booking_codes'] ?? null) ? $_SESSION['owned_booking_codes'] : [],
+                is_array($_SESSION['guest_bookings'] ?? null) ? $_SESSION['guest_bookings'] : []
+            );
 
-    $targetStatus = 'Đã hủy';
-    if (!$isManagerOrAdmin || $requestedPolicy === '' || $requestedPolicy === 'auto') {
-        $appliedPolicy = $eval['policy'];
-        $payStatus     = $eval['payment_status'];
-        $refundAmount  = $eval['refund_amount'];
-    } elseif ($requestedPolicy === 'noshow_forfeit') {
-        $targetStatus  = 'Khách chưa đến';
-        $appliedPolicy = 'noshow_forfeit';
-        $payStatus     = 'Tịch thu cọc 30%';
-        $refundAmount  = 0;
-    } elseif ($requestedPolicy === 'refund_100') {
-        $appliedPolicy = 'refund_100';
-        $payStatus     = 'Đã hoàn cọc 100%';
-        $refundAmount  = $paidBase;
-    } elseif ($requestedPolicy === 'reserve') {
-        $appliedPolicy = 'reserve';
-        $payStatus     = 'Bảo lưu cọc 30%';
-        $refundAmount  = 0;
-    } elseif ($requestedPolicy === 'forfeit_50') {
-        $appliedPolicy = 'forfeit_50';
-        $payStatus     = 'Phạt 50% cọc';
-        $refundAmount  = (int)round($paidBase * 0.5);
-    } elseif ($requestedPolicy === 'forfeit_100') {
-        $appliedPolicy = 'forfeit_100';
-        $payStatus     = 'Tịch thu cọc 30%';
-        $refundAmount  = 0;
-    } else {
-        $appliedPolicy = $eval['policy'];
-        $payStatus     = $eval['payment_status'];
-        $refundAmount  = $eval['refund_amount'];
-    }
+            $isOwnerUser = ($bookingUserId !== null && $currentUserId !== null && $bookingUserId === $currentUserId);
+            $isGuestOwner = ($bookingUserId === null && in_array((string)$bookingRow['code'], $sessionCodes, true));
 
-    // Nếu đơn chưa trả tiền (paid_amount == 0) mà hủy -> hoàn lượt voucher & điểm tích lũy
-    if ((int)($bookingRow['paid_amount'] ?? 0) === 0) {
-        if (!empty($bookingRow['voucher_code']) && db_table_has_column($pdo, 'vouchers', 'used_count')) {
-            try {
-                $pdo->prepare("UPDATE vouchers SET used_count = GREATEST(0, used_count - 1) WHERE code = ?")->execute([$bookingRow['voucher_code']]);
-            } catch (Throwable $ve) {}
+            if (!$isOwnerUser && !$isGuestOwner) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Bạn không có quyền hủy đơn đặt sân của người khác.', 403, 'ERR_IDOR_BLOCKED');
+            }
         }
-        $ptsUsed = (int)($bookingRow['points_used'] ?? 0);
-        $bUid = (int)($bookingRow['user_id'] ?? 0);
-        if ($ptsUsed > 0 && $bUid > 0 && db_table_has_column($pdo, 'users', 'points')) {
-            try {
-                $pdo->prepare("UPDATE users SET points = IFNULL(points, 0) + ? WHERE id = ?")->execute([$ptsUsed, $bUid]);
-            } catch (Throwable $pe) {}
+
+        $currentStatus = (string)($bookingRow['status'] ?? '');
+        if (in_array($currentStatus, ['Đã hủy', 'cancelled', 'canceled'], true)) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            json_error('Đơn đặt sân này đã được hủy trước đó.', 400, 'ERR_ALREADY_CANCELLED');
         }
+        if (in_array($currentStatus, ['Khách chưa đến', 'Hoàn thành', 'Đang đá'], true)) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            json_error('Trạng thái đơn hiện tại không thể thực hiện thao tác hủy này.', 400, 'ERR_INVALID_BOOKING_STATE');
+        }
+
+        if ((in_array($bookingRow['payment_status'] ?? '', ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true) || (int)($bookingRow['deposit_amount'] ?? 0) > 0 || (int)($bookingRow['paid_amount'] ?? 0) > 0) && $rawReason === '') {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            json_error('Đơn đã thu tiền/đặt cọc bắt buộc phải nhập lý do hủy!', 400, 'ERR_CANCEL_REASON_REQUIRED');
+        }
+
+        $settings = get_system_settings_map($pdo);
+        $eval = evaluate_cancellation_policy($bookingRow, $settings);
+        $policyRecommended = $eval['policy'];
+        $hoursBeforeMatch  = $eval['hours_before_match'];
+        $paidBase          = $eval['paid_base'];
+
+        $targetStatus = 'Đã hủy';
+        if (!$isManagerOrAdmin || $requestedPolicy === '' || $requestedPolicy === 'auto') {
+            $appliedPolicy = $eval['policy'];
+            $payStatus     = $eval['payment_status'];
+            $refundAmount  = $eval['refund_amount'];
+        } elseif ($requestedPolicy === 'noshow_forfeit') {
+            $targetStatus  = 'Khách chưa đến';
+            $appliedPolicy = 'noshow_forfeit';
+            $payStatus     = 'Tịch thu cọc 30%';
+            $refundAmount  = 0;
+        } elseif ($requestedPolicy === 'refund_100') {
+            $appliedPolicy = 'refund_100';
+            $payStatus     = 'Đã hoàn cọc 100%';
+            $refundAmount  = $paidBase;
+        } elseif ($requestedPolicy === 'reserve') {
+            $appliedPolicy = 'reserve';
+            $payStatus     = 'Bảo lưu cọc 30%';
+            $refundAmount  = 0;
+        } elseif ($requestedPolicy === 'forfeit_50') {
+            $appliedPolicy = 'forfeit_50';
+            $payStatus     = 'Phạt 50% cọc';
+            $refundAmount  = (int)round($paidBase * 0.5);
+        } elseif ($requestedPolicy === 'forfeit_100') {
+            $appliedPolicy = 'forfeit_100';
+            $payStatus     = 'Tịch thu cọc 30%';
+            $refundAmount  = 0;
+        } else {
+            $appliedPolicy = $eval['policy'];
+            $payStatus     = $eval['payment_status'];
+            $refundAmount  = $eval['refund_amount'];
+        }
+
+        // Nếu đơn chưa trả tiền (paid_amount == 0) mà hủy -> hoàn lượt voucher & điểm tích lũy
+        if ((int)($bookingRow['paid_amount'] ?? 0) === 0) {
+            if (!empty($bookingRow['voucher_code']) && db_table_has_column($pdo, 'vouchers', 'used_count')) {
+                try {
+                    $pdo->prepare("UPDATE vouchers SET used_count = GREATEST(0, used_count - 1) WHERE code = ?")->execute([$bookingRow['voucher_code']]);
+                } catch (Throwable $ve) {}
+            }
+            $ptsUsed = (int)($bookingRow['points_used'] ?? 0);
+            $bUid = (int)($bookingRow['user_id'] ?? 0);
+            if ($ptsUsed > 0 && $bUid > 0 && db_table_has_column($pdo, 'users', 'points')) {
+                try {
+                    $pdo->prepare("UPDATE users SET points = IFNULL(points, 0) + ? WHERE id = ?")->execute([$ptsUsed, $bUid]);
+                } catch (Throwable $pe) {}
+            }
+        }
+
+        $noteSuffix = " [Hủy trước hạn ({$appliedPolicy}, hoàn " . number_format($refundAmount) . "đ) - {$payStatus}: {$reason}]";
+        $stmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, remaining_amount = 0, cancel_policy_applied = ?, refund_amount = ?, note = CONCAT(IFNULL(note,''), ?) WHERE id = ?");
+        $stmt->execute([$targetStatus, $payStatus, $appliedPolicy, $refundAmount, $noteSuffix, (int)$bookingRow['id']]);
+
+        write_audit_log(
+            $pdo,
+            'CANCEL_BOOKING',
+            $code,
+            ($bookingRow['status'] ?? '') . ' (' . ($bookingRow['payment_status'] ?? '') . ')',
+            "{$targetStatus} ({$payStatus}) | Chính sách áp dụng: {$appliedPolicy} (Đề xuất: {$policyRecommended}, còn {$hoursBeforeMatch}h) | Hoàn: " . number_format($refundAmount) . "đ | Lý do: {$reason}",
+            $currentUser
+        );
+
+        $pdo->commit();
+    } catch (\Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("[EARLY CANCEL ERROR] " . $e->getMessage());
+        json_error('Có lỗi xảy ra khi hủy đơn đặt sân: ' . $e->getMessage(), 500, 'ERR_CANCEL_FAILED');
     }
-
-    $noteSuffix = " [Hủy trước hạn ({$appliedPolicy}, hoàn " . number_format($refundAmount) . "đ) - {$payStatus}: {$reason}]";
-    $stmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, remaining_amount = 0, cancel_policy_applied = ?, refund_amount = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-    $stmt->execute([$targetStatus, $payStatus, $appliedPolicy, $refundAmount, $noteSuffix, $code]);
-
-    write_audit_log(
-        $pdo,
-        'CANCEL_BOOKING',
-        $code,
-        ($bookingRow['status'] ?? '') . ' (' . ($bookingRow['payment_status'] ?? '') . ')',
-        "{$targetStatus} ({$payStatus}) | Chính sách áp dụng: {$appliedPolicy} (Đề xuất: {$policyRecommended}, còn {$hoursBeforeMatch}h) | Hoàn: " . number_format($refundAmount) . "đ | Lý do: {$reason}",
-        $currentUser
-    );
 
     // Gửi Telegram & thông báo khách khi hủy đơn
     $tgMsg = "⚠️ <b>ĐƠN ĐẶT SÂN BỊ HỦY</b>\n"
@@ -1491,9 +1536,9 @@ if ($method === 'GET') {
     $stmt = $pdo->prepare("SELECT b.*, p.name as pitch_name, p.type_name, p.variant 
                            FROM bookings b 
                            JOIN pitches p ON b.pitch_id = p.id 
-                           WHERE b.user_id = ? OR b.phone = ? 
+                           WHERE b.user_id = ? 
                            ORDER BY b.id DESC LIMIT 50");
-    $stmt->execute([$currentUser['id'], $currentUser['phone']]);
+    $stmt->execute([(int)$currentUser['id']]);
     $list = $stmt->fetchAll();
 
     foreach ($list as &$item) {

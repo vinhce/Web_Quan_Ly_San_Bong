@@ -349,21 +349,31 @@ try {
         $today = date('Y-m-d');
         $isStaff = (($actor['role'] ?? '') === 'staff');
 
-        $todayStmt = $pdo->prepare("SELECT COUNT(*) as count, COALESCE(SUM(deposit_amount), 0) as today_deposit, COALESCE(SUM(total_price), 0) as today_total FROM bookings WHERE booking_date = ? AND status NOT IN ('Đã hủy') AND payment_status != 'Đã hủy'");
-        $todayStmt->execute([$today]);
+        $todayCondition = booking_date_condition_sql('b');
+        // Đếm buổi theo lịch; tiền của gói chỉ ghi nhận một lần vào ngày bắt đầu.
+        $todayStmt = $pdo->prepare("SELECT COUNT(*) as count,
+                                   COALESCE(SUM(CASE WHEN b.booking_date = ? THEN b.deposit_amount ELSE 0 END), 0) as today_deposit,
+                                   COALESCE(SUM(CASE WHEN b.booking_date = ? THEN b.total_price ELSE 0 END), 0) as today_total
+                                   FROM bookings b WHERE {$todayCondition}
+                                     AND b.status NOT IN ('Đã hủy') AND b.payment_status != 'Đã hủy'");
+        $todayStmt->execute([$today, $today, $today, $today]);
         $todayStats = $todayStmt->fetch();
 
         $listStmt = $pdo->prepare("SELECT b.*, p.name as pitch_name, p.type_name, p.variant 
                                    FROM bookings b 
                                    JOIN pitches p ON b.pitch_id = p.id 
-                                   WHERE b.booking_date = ? 
+                                   WHERE {$todayCondition}
                                    ORDER BY b.slot_time ASC");
-        $listStmt->execute([$today]);
+        $listStmt->execute([$today, $today]);
         $todayBookings = $listStmt->fetchAll();
 
         foreach ($todayBookings as &$b) {
             $b = admin_map_booking($b);
+            $b['packageStartDate'] = $b['booking_date'];
+            $b['occurrenceDate'] = $today;
+            $b['date'] = $today;
         }
+        unset($b);
 
         $pitchesStmt = $pdo->query("SELECT id, name, type_name, status FROM pitches ORDER BY type ASC, id ASC");
         $pitchRows = $pitchesStmt->fetchAll();
@@ -587,15 +597,8 @@ try {
             try {
                 $pdo->beginTransaction();
 
-                $lockOldStmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
-                $lockOldStmt->execute([$code]);
-                $oldBooking = $lockOldStmt->fetch();
-                if (!$oldBooking) {
-                    $pdo->rollBack();
-                    json_error('Không tìm thấy đơn đặt sân cần chuyển.', 404, 'ERR_BOOKING_NOT_FOUND');
-                }
-
-                $npStmt = $pdo->prepare("SELECT id, name, type, base_price, peak_price, weekend_price, status FROM pitches WHERE id = ? LIMIT 1");
+                // Khóa sân đích trước các đơn, cùng thứ tự với luồng tạo đơn/lịch cố định.
+                $npStmt = $pdo->prepare("SELECT id, name, type, base_price, peak_price, weekend_price, status FROM pitches WHERE id = ? LIMIT 1 FOR UPDATE");
                 $npStmt->execute([$newPitchId]);
                 $targetPitch = $npStmt->fetch();
                 if (!$targetPitch || in_array($targetPitch['status'], ['Bảo trì', 'Ẩn'], true)) {
@@ -603,21 +606,29 @@ try {
                     json_error('Sân chuyển đến không tồn tại hoặc đang bảo trì/tạm ẩn.', 400, 'ERR_PITCH_UNAVAILABLE');
                 }
 
-                $busyStmt = $pdo->prepare("
-                    SELECT code FROM bookings
-                    WHERE pitch_id = ? AND booking_date = ? AND slot_id = ? AND code != ?
-                      AND status NOT IN ('Đã hủy', 'Khách chưa đến')
-                      AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
-                    LIMIT 1 FOR UPDATE
-                ");
-                $busyStmt->execute([$newPitchId, $oldBooking['booking_date'], $oldBooking['slot_id'], $code]);
-                if ($busyCode = $busyStmt->fetchColumn()) {
+                $lockOldStmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+                $lockOldStmt->execute([$code]);
+                $oldBooking = $lockOldStmt->fetch();
+                if (!$oldBooking) {
                     $pdo->rollBack();
-                    json_error("Sân {$targetPitch['name']} khung giờ {$oldBooking['slot_time']} đã có đơn #{$busyCode}!", 409, 'ERR_DOUBLE_BOOKING');
+                    json_error('Không tìm thấy đơn đặt sân cần chuyển.', 404, 'ERR_BOOKING_NOT_FOUND');
                 }
-                if ($mRow = find_active_maintenance_for_slot($pdo, $newPitchId, (string)$oldBooking['booking_date'], (string)$oldBooking['slot_time'])) {
+                if ($newPitchId === (string)$oldBooking['pitch_id']) {
                     $pdo->rollBack();
-                    json_error("Sân {$targetPitch['name']} đang bảo trì khung giờ này: {$mRow['reason']}.", 400, 'ERR_PITCH_MAINTENANCE');
+                    json_error('Vui lòng chọn sân đích khác với sân hiện tại.', 400, 'ERR_INVALID_TARGET_PITCH');
+                }
+
+                $occurrenceDates = booking_occurrence_dates($oldBooking);
+                foreach ($occurrenceDates as $occurrenceDate) {
+                    $busyBooking = find_booking_conflict($pdo, $newPitchId, $occurrenceDate, (string)$oldBooking['slot_id'], $code);
+                    if ($busyBooking) {
+                        $pdo->rollBack();
+                        json_error("Sân {$targetPitch['name']} ngày {$occurrenceDate} khung giờ {$oldBooking['slot_time']} đã có đơn #{$busyBooking['code']}!", 409, 'ERR_DOUBLE_BOOKING');
+                    }
+                    if ($mRow = find_active_maintenance_for_slot($pdo, $newPitchId, $occurrenceDate, (string)$oldBooking['slot_time'])) {
+                        $pdo->rollBack();
+                        json_error("Sân {$targetPitch['name']} đang bảo trì ngày {$occurrenceDate} khung giờ này: {$mRow['reason']}.", 400, 'ERR_PITCH_MAINTENANCE');
+                    }
                 }
 
                 $diffPrice = 0;

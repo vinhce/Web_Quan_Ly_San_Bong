@@ -2,7 +2,8 @@
   'use strict';
 
   const getRel = (p) => (window.SanBongHelpers ? window.SanBongHelpers.getRelativePath(p) : '/' + p);
-  const esc = (s) => (window.SanBongHelpers ? window.SanBongHelpers.escapeHTML(s) : String(s || ''));
+  const escapeHtml = (s) => (window.SanBongHelpers ? window.SanBongHelpers.escapeHTML(s) : String(s || ''));
+  const esc = escapeHtml;
 
   const skillLabels = {
     beginner: 'Vui vẻ / Văn phòng',
@@ -18,6 +19,7 @@
   };
 
   let currentPosts = [];
+  let currentJoinPost = null;
 
   async function loadMatches() {
     const grid = document.getElementById('matches-grid');
@@ -83,20 +85,60 @@
 
     grid.innerHTML = posts.map(p => {
       const isMatched = p.status === 'matched';
+      const isOpen = p.status === 'open';
+      const isMine = Boolean(p.is_mine);
       const dateStr = p.match_date ? p.match_date.split('-').reverse().join('/') : '';
+
       const statusBadge = isMatched
         ? `<span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">Đã ghép: ${esc(p.opponent_team || 'Có đối')}</span>`
         : `<span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-[11px] font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse"></span> Đang tìm đối</span>`;
+
+      const isMineBadge = isMine
+        ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">★ Kèo của bạn</span>`
+        : '';
+
+      const authorHtml = `<div class="text-[11px] text-[#64748B] mb-1">Đăng bởi: <span class="font-semibold text-[#0F172A]">${escapeHtml(p.author_fullname || p.author_username || p.captain_name)}</span> ${p.author_tier ? '<span class="ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Hội viên ' + escapeHtml(p.author_tier) + '</span>' : '<span class="ml-1 text-[10px] text-slate-400">(Hội viên)</span>'}</div>`;
+
+      let actionButtons = '';
+      if (isMatched) {
+        actionButtons = `<div class="text-xs font-bold text-blue-700 w-full text-center py-2 bg-blue-50 rounded-lg">🤝 ${esc(p.team_name)} vs ${esc(p.opponent_team)} (SĐT: ${esc(p.phone_masked || p.phone || '')})</div>`;
+      } else if (isMine && isOpen) {
+        actionButtons = `
+          <div class="text-xs text-[#64748B]">SĐT: <span class="font-mono font-bold text-[#0F172A]">${esc(p.phone_masked || p.phone || '')}</span></div>
+          <button type="button" class="btn-cancel-post px-3 py-2 rounded-lg border border-red-200 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors" data-post-id="${esc(p.id)}" data-post-code="${esc(p.post_code)}">
+            Hủy Kèo
+          </button>
+        `;
+      } else if (!isMine && isOpen) {
+        actionButtons = `
+          <div class="text-xs text-[#64748B]">SĐT: <span class="font-mono font-bold text-[#0F172A]">${esc(p.phone_masked || p.phone || '')}</span></div>
+          <div class="flex items-center gap-2">
+            ${p.phone ? `<a href="https://zalo.me/${esc(p.phone)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-2 rounded-lg border border-blue-200 text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-1 transition-colors">💬 Nhắn Zalo</a>` : ''}
+            <button type="button" class="btn-base btn-primary px-4 py-2 text-xs font-bold shadow-sm join-match-btn" data-post-id="${esc(p.id)}" data-code="${esc(p.post_code)}">
+              Bắt Kèo Ngay
+            </button>
+          </div>
+        `;
+      } else {
+        actionButtons = `
+          <div class="text-xs text-[#64748B]">SĐT: <span class="font-mono font-bold text-[#0F172A]">${esc(p.phone_masked || p.phone || '')}</span></div>
+          <span class="text-xs font-semibold text-slate-400">Đã đóng</span>
+        `;
+      }
 
       return `
         <div class="ui-card p-5 flex flex-col justify-between hover:shadow-lg transition-all border border-[#E2E8F0]">
           <div class="space-y-3">
             <div class="flex items-start justify-between gap-2">
               <div>
+                ${authorHtml}
                 <div class="text-[11px] font-mono font-bold text-[#64748B]">#${esc(p.post_code)}</div>
                 <h3 class="font-heading font-bold text-lg text-[#0F172A] mt-0.5">${esc(p.team_name)}</h3>
               </div>
-              ${statusBadge}
+              <div class="flex flex-col items-end gap-1.5">
+                ${isMineBadge}
+                ${statusBadge}
+              </div>
             </div>
 
             <div class="grid grid-cols-2 gap-2 text-xs bg-[#F8FAFC] p-3 rounded-xl border border-[#F1F5F9]">
@@ -128,20 +170,18 @@
           </div>
 
           <div class="pt-4 mt-4 border-t border-[#F1F5F9] flex items-center justify-between gap-3">
-            ${isMatched
-              ? `<div class="text-xs font-bold text-blue-700 w-full text-center py-2 bg-blue-50 rounded-lg">🤝 ${esc(p.team_name)} vs ${esc(p.opponent_team)} (SĐT: ${esc(p.phone_masked)})</div>`
-              : `<div class="text-xs text-[#64748B]">SĐT: <span class="font-mono font-bold text-[#0F172A]">${esc(p.phone_masked)}</span></div>
-                 <button type="button" class="join-match-btn btn-base btn-primary px-4 py-2 text-xs font-bold shadow-sm" data-code="${esc(p.post_code)}">
-                   Bắt Kèo Ngay
-                 </button>`
-            }
+            ${actionButtons}
           </div>
         </div>
       `;
     }).join('');
 
     document.querySelectorAll('.join-match-btn').forEach(btn => {
-      btn.addEventListener('click', () => openJoinModal(btn.dataset.code));
+      btn.addEventListener('click', () => openJoinModal(btn.dataset.code || btn.dataset.postId));
+    });
+
+    document.querySelectorAll('.btn-cancel-post').forEach(btn => {
+      btn.addEventListener('click', () => openCancelModal(btn.dataset.postId, btn.dataset.postCode));
     });
   }
 
@@ -157,12 +197,56 @@
     } catch (e) {}
   }
 
+  const ERROR_CLASSES = ['!border-red-500', '!ring-1', '!ring-red-500'];
+
+  function markFieldError(el) {
+    if (!el) return;
+    el.classList.add(...ERROR_CLASSES);
+  }
+
+  function clearFieldError(el) {
+    if (!el) return;
+    el.classList.remove(...ERROR_CLASSES);
+  }
+
+  function clearAllFieldErrors(formEl) {
+    if (!formEl) return;
+    const inputs = formEl.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => clearFieldError(el));
+  }
+
+  function setupAutoClearErrors(formEl) {
+    if (!formEl) return;
+    const inputs = formEl.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => {
+      const clear = () => clearFieldError(el);
+      el.addEventListener('input', clear);
+      el.addEventListener('change', clear);
+    });
+  }
+
+  function isValidVNPhone(phone) {
+    const clean = String(phone || '').replace(/[\s\.\-\(\)]+/g, '');
+    return /^(?:0|\+84)(?:3|5|7|8|9)\d{8}$/.test(clean);
+  }
+
+  function getTodayISO() {
+    if (window.SanBongApp?.getLocalTodayISO) {
+      return window.SanBongApp.getLocalTodayISO();
+    }
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   function openPostModal() {
     const modal = document.getElementById('post-match-modal');
     if (!modal) return;
     const dateInput = document.getElementById('post-match-date');
     if (dateInput && !dateInput.value) {
-      const today = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
+      const today = getTodayISO();
       dateInput.value = today;
       dateInput.min = today;
     }
@@ -177,13 +261,15 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
     }
+    clearAllFieldErrors(document.getElementById('post-match-form'));
   }
 
-  function openJoinModal(postCode) {
-    const post = currentPosts.find(p => p.post_code === postCode);
+  function openJoinModal(postCodeOrId) {
+    const post = currentPosts.find(p => p.post_code === postCodeOrId || String(p.id) === String(postCodeOrId));
     if (!post) return;
+    currentJoinPost = post;
     const modal = document.getElementById('join-match-modal');
-    document.getElementById('join-post-code').value = postCode;
+    document.getElementById('join-post-code').value = post.post_code;
     document.getElementById('join-match-summary').innerHTML = `
       <div><strong>Chủ kèo:</strong> ${esc(post.team_name)} (Cap: ${esc(post.captain_name)})</div>
       <div><strong>Thời gian:</strong> ${esc(post.match_date)} lúc <span class="text-[#16A34A] font-bold">${esc(post.slot_time)}</span></div>
@@ -200,10 +286,143 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
     }
+    clearAllFieldErrors(document.getElementById('join-match-form'));
+  }
+
+  function openCancelModal(postId, postCode) {
+    const modal = document.getElementById('cancel-match-modal');
+    if (!modal) return;
+    const idInput = document.getElementById('cancel-post-id');
+    const codeInput = document.getElementById('cancel-post-code');
+    if (idInput) idInput.value = postId || '';
+    if (codeInput) codeInput.value = postCode || '';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeCancelModal() {
+    const modal = document.getElementById('cancel-match-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  }
+
+  async function handleConfirmCancel() {
+    const postId = document.getElementById('cancel-post-id')?.value;
+    const postCode = document.getElementById('cancel-post-code')?.value;
+    if (!postId && !postCode) return;
+
+    const confirmBtn = document.getElementById('confirm-cancel-match-btn');
+    const origText = confirmBtn ? confirmBtn.textContent : '';
+    const notify = (msg, type = 'info') => window.SanBongApp?.showToast ? window.SanBongApp.showToast(msg, type) : alert(msg);
+
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Đang xử lý...';
+    }
+
+    try {
+      if (window.SanBongApp?.ensureCsrfToken) {
+        await window.SanBongApp.ensureCsrfToken();
+      }
+      const headers = window.SanBongApp?.getAuthFetchHeaders
+        ? window.SanBongApp.getAuthFetchHeaders()
+        : { 'Content-Type': 'application/json' };
+
+      const res = await fetch(getRel('api/matchmaking.php'), {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          action: 'cancel_match',
+          post_id: postId,
+          post_code: postCode
+        })
+      });
+
+      const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(tokenHeader);
+      }
+      const json = await res.json();
+      if (json?.csrf_token && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(json.csrf_token);
+      }
+
+      if (json.success) {
+        notify(json.message || 'Đã hủy bài đăng tìm đối thành công.', 'success');
+        closeCancelModal();
+        loadMatches();
+      } else {
+        notify(json.message || 'Không thể hủy bài đăng.', 'error');
+      }
+    } catch (err) {
+      notify('Lỗi kết nối khi hủy bài đăng.', 'error');
+    } finally {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = origText;
+      }
+    }
+  }
+
+  function openContactModal(contactData) {
+    const modal = document.getElementById('match-contact-modal');
+    if (!modal) return;
+
+    const teamEl = document.getElementById('contact-team-name');
+    const capEl = document.getElementById('contact-captain-name');
+    const phoneEl = document.getElementById('contact-phone');
+    const callBtn = document.getElementById('contact-call-btn');
+    const zaloBtn = document.getElementById('contact-zalo-btn');
+
+    const teamName = contactData.host_team || contactData.team_name || 'Đội đối thủ';
+    const captainName = contactData.host_captain || contactData.captain_name || 'Đội trưởng';
+    const phone = contactData.host_phone || contactData.phone || '';
+    const cleanPhone = String(phone).replace(/\D/g, '');
+
+    if (teamEl) teamEl.textContent = teamName;
+    if (capEl) capEl.textContent = captainName;
+    if (phoneEl) phoneEl.textContent = phone || 'Chưa cập nhật';
+
+    if (callBtn) {
+      callBtn.href = phone ? `tel:${phone}` : '#';
+      if (!phone) {
+        callBtn.classList.add('opacity-50', 'pointer-events-none');
+      } else {
+        callBtn.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    }
+
+    if (zaloBtn) {
+      zaloBtn.href = cleanPhone ? `https://zalo.me/${cleanPhone}` : '#';
+      if (!cleanPhone) {
+        zaloBtn.classList.add('opacity-50', 'pointer-events-none');
+      } else {
+        zaloBtn.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeContactModal() {
+    const modal = document.getElementById('match-contact-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     loadMatches();
+
+    const postFormEl = document.getElementById('post-match-form');
+    const joinFormEl = document.getElementById('join-match-form');
+    setupAutoClearErrors(postFormEl);
+    setupAutoClearErrors(joinFormEl);
 
     document.getElementById('filter-pitch-type')?.addEventListener('change', loadMatches);
     document.getElementById('filter-status')?.addEventListener('change', loadMatches);
@@ -217,18 +436,61 @@
     document.getElementById('close-join-modal')?.addEventListener('click', closeJoinModal);
     document.getElementById('cancel-join-btn')?.addEventListener('click', closeJoinModal);
 
-    document.getElementById('post-match-form')?.addEventListener('submit', async (e) => {
+    postFormEl?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const formEl = e.currentTarget;
       const submitBtn = formEl.querySelector('button[type="submit"]');
       const origText = submitBtn ? submitBtn.textContent : '';
+      const notify = (msg, type = 'info') => window.SanBongApp?.showToast ? window.SanBongApp.showToast(msg, type) : alert(msg);
+
+      const teamNameEl = document.getElementById('post-team-name');
+      const captainNameEl = document.getElementById('post-captain-name');
+      const phoneEl = document.getElementById('post-phone');
+      const dateEl = document.getElementById('post-match-date');
+
+      const invalidEls = [];
+      const todayISO = getTodayISO();
+
+      if (!teamNameEl?.value.trim()) {
+        invalidEls.push(teamNameEl);
+      } else {
+        clearFieldError(teamNameEl);
+      }
+
+      if (!captainNameEl?.value.trim()) {
+        invalidEls.push(captainNameEl);
+      } else {
+        clearFieldError(captainNameEl);
+      }
+
+      const phoneVal = phoneEl?.value.trim() || '';
+      if (!phoneVal || !isValidVNPhone(phoneVal)) {
+        invalidEls.push(phoneEl);
+      } else {
+        clearFieldError(phoneEl);
+      }
+
+      const dateVal = dateEl?.value || '';
+      if (!dateVal || dateVal < todayISO) {
+        invalidEls.push(dateEl);
+      } else {
+        clearFieldError(dateEl);
+      }
+
+      if (invalidEls.length > 0) {
+        invalidEls.forEach(el => markFieldError(el));
+        invalidEls[0]?.focus();
+        notify('Vui lòng kiểm tra và điền đầy đủ các trường thông tin bắt buộc màu đỏ.', 'warning');
+        return;
+      }
+
       const payload = {
         action: 'create_post',
-        team_name: document.getElementById('post-team-name').value.trim(),
-        captain_name: document.getElementById('post-captain-name').value.trim(),
-        phone: document.getElementById('post-phone').value.trim(),
+        team_name: teamNameEl.value.trim(),
+        captain_name: captainNameEl.value.trim(),
+        phone: phoneVal,
         pitch_type: document.getElementById('post-pitch-type').value,
-        match_date: document.getElementById('post-match-date').value,
+        match_date: dateVal,
         slot_time: document.getElementById('post-slot-time').value,
         skill_level: document.getElementById('post-skill-level').value,
         fee_mode: document.getElementById('post-fee-mode').value,
@@ -240,7 +502,6 @@
       const headers = window.SanBongApp?.getAuthFetchHeaders
         ? window.SanBongApp.getAuthFetchHeaders()
         : { 'Content-Type': 'application/json' };
-      const notify = (msg, type = 'info') => window.SanBongApp?.showToast ? window.SanBongApp.showToast(msg, type) : alert(msg);
 
       if (submitBtn) {
         submitBtn.disabled = true;
@@ -279,17 +540,51 @@
       }
     });
 
-    document.getElementById('join-match-form')?.addEventListener('submit', async (e) => {
+    joinFormEl?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const formEl = e.currentTarget;
       const submitBtn = formEl.querySelector('button[type="submit"]');
       const origText = submitBtn ? submitBtn.textContent : '';
+      const notify = (msg, type = 'info') => window.SanBongApp?.showToast ? window.SanBongApp.showToast(msg, type) : alert(msg);
+
+      const teamNameEl = document.getElementById('join-team-name');
+      const captainNameEl = document.getElementById('join-captain-name');
+      const phoneEl = document.getElementById('join-phone');
+
+      const invalidEls = [];
+
+      if (!teamNameEl?.value.trim()) {
+        invalidEls.push(teamNameEl);
+      } else {
+        clearFieldError(teamNameEl);
+      }
+
+      if (!captainNameEl?.value.trim()) {
+        invalidEls.push(captainNameEl);
+      } else {
+        clearFieldError(captainNameEl);
+      }
+
+      const phoneVal = phoneEl?.value.trim() || '';
+      if (!phoneVal || !isValidVNPhone(phoneVal)) {
+        invalidEls.push(phoneEl);
+      } else {
+        clearFieldError(phoneEl);
+      }
+
+      if (invalidEls.length > 0) {
+        invalidEls.forEach(el => markFieldError(el));
+        invalidEls[0]?.focus();
+        notify('Vui lòng kiểm tra và điền đầy đủ các trường thông tin bắt buộc màu đỏ.', 'warning');
+        return;
+      }
+
       const payload = {
         action: 'join_match',
         post_code: document.getElementById('join-post-code').value,
-        opponent_team: document.getElementById('join-team-name').value.trim(),
-        opponent_captain: document.getElementById('join-captain-name').value.trim(),
-        opponent_phone: document.getElementById('join-phone').value.trim()
+        opponent_team: teamNameEl.value.trim(),
+        opponent_captain: captainNameEl.value.trim(),
+        opponent_phone: phoneVal
       };
       if (window.SanBongApp?.ensureCsrfToken) {
         await window.SanBongApp.ensureCsrfToken();
@@ -297,7 +592,6 @@
       const headers = window.SanBongApp?.getAuthFetchHeaders
         ? window.SanBongApp.getAuthFetchHeaders()
         : { 'Content-Type': 'application/json' };
-      const notify = (msg, type = 'info') => window.SanBongApp?.showToast ? window.SanBongApp.showToast(msg, type) : alert(msg);
 
       if (submitBtn) {
         submitBtn.disabled = true;
@@ -319,10 +613,17 @@
           window.SanBongApp.setCsrfToken(json.csrf_token);
         }
         if (json.success) {
-          notify(json.message, 'success');
+          notify(json.message || 'Bắt kèo thành công!', 'success');
           closeJoinModal();
           formEl.reset();
           loadMatches();
+
+          const hostData = {
+            host_team: json.data?.host_team || currentJoinPost?.team_name || 'Đối thủ',
+            host_captain: json.data?.host_captain || currentJoinPost?.captain_name || 'Đội trưởng',
+            host_phone: json.data?.host_phone || json.host_phone || currentJoinPost?.phone || ''
+          };
+          openContactModal(hostData);
         } else {
           notify(json.message || 'Không thể nhận kèo.', 'error');
         }
@@ -333,6 +634,31 @@
           submitBtn.disabled = false;
           submitBtn.textContent = origText;
         }
+      }
+    });
+
+    // Sự kiện Modal Liên Hệ Thành Công
+    document.getElementById('close-match-contact-modal')?.addEventListener('click', closeContactModal);
+    document.getElementById('dismiss-match-contact-btn')?.addEventListener('click', closeContactModal);
+    document.getElementById('match-contact-modal')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeContactModal();
+    });
+
+    // Sự kiện Modal Hủy Kèo
+    document.getElementById('close-cancel-match-modal')?.addEventListener('click', closeCancelModal);
+    document.getElementById('dismiss-cancel-match-btn')?.addEventListener('click', closeCancelModal);
+    document.getElementById('confirm-cancel-match-btn')?.addEventListener('click', handleConfirmCancel);
+    document.getElementById('cancel-match-modal')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeCancelModal();
+    });
+
+    // Hỗ trợ phím Escape đóng modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closePostModal();
+        closeJoinModal();
+        closeCancelModal();
+        closeContactModal();
       }
     });
   });

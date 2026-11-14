@@ -308,9 +308,6 @@ function refresh_session_user($pdo = null) {
         $stmt->execute([$_SESSION['user_id']]);
         $fresh = $stmt->fetch();
         if (!$fresh) {
-            if (!empty($_SESSION['user']) && is_array($_SESSION['user'])) {
-                return $_SESSION['user'];
-            }
             destroy_current_session();
             return null;
         }
@@ -800,6 +797,56 @@ function time_ranges_overlap(int $aStart, int $aEnd, int $bStart, int $bEnd): bo
     return ($aStart < $bEnd) && ($bStart < $aEnd);
 }
 
+function booking_occurrence_dates(array $booking): array {
+    $startDate = (string)($booking['booking_date'] ?? $booking['date'] ?? '');
+    $start = DateTimeImmutable::createFromFormat('!Y-m-d', $startDate);
+    if (!$start || $start->format('Y-m-d') !== $startDate) {
+        throw new InvalidArgumentException('Ngày bắt đầu đơn đặt sân không hợp lệ.');
+    }
+    $weeks = max(1, (int)($booking['weeks_count'] ?? $booking['weeksCount'] ?? 1));
+    $dates = [];
+    for ($week = 0; $week < $weeks; $week++) {
+        $dates[] = $start->modify('+' . ($week * 7) . ' days')->format('Y-m-d');
+    }
+    return $dates;
+}
+
+// Bind the requested ISO date twice, in this order. A package remains one financial row.
+function booking_date_condition_sql(string $alias = 'b'): string {
+    if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $alias)) {
+        throw new InvalidArgumentException('Bí danh bảng đặt sân không hợp lệ.');
+    }
+    return "(DATEDIFF(?, {$alias}.booking_date) BETWEEN 0 AND 7 * (GREATEST(1, COALESCE({$alias}.weeks_count, 1)) - 1)"
+        . " AND MOD(DATEDIFF(?, {$alias}.booking_date), 7) = 0)";
+}
+
+// Shared by the locking booking check and the read-only waitlist occupancy check.
+function booking_conflict_query_sql(): string {
+    $dateCondition = booking_date_condition_sql('b');
+    return "SELECT b.code
+            FROM bookings b
+            JOIN time_slots occupied_slot ON occupied_slot.id = b.slot_id
+            JOIN time_slots requested_slot ON requested_slot.id = ?
+            WHERE b.pitch_id = ?
+              AND {$dateCondition}
+              AND TIME(occupied_slot.start_time) < TIME(requested_slot.end_time)
+              AND TIME(requested_slot.start_time) < TIME(occupied_slot.end_time)
+              AND b.code <> ?
+              AND b.status NOT IN ('Đã hủy', 'Khách chưa đến')
+              AND b.payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
+            LIMIT 1";
+}
+
+// Callers must lock the pitch row first, including when no bookings exist yet.
+function find_booking_conflict(PDO $pdo, string $pitchId, string $date, string $slotId, string $excludeCode = ''): ?array {
+    if (!$pdo->inTransaction()) {
+        throw new LogicException('Kiểm tra trùng lịch phải nằm trong giao dịch đã khóa sân.');
+    }
+    $stmt = $pdo->prepare(booking_conflict_query_sql() . ' FOR UPDATE');
+    $stmt->execute([$slotId, $pitchId, $date, $date, $excludeCode]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
 function find_active_maintenance_for_slot(?PDO $pdo, string $pitchId, string $date, string $slotTime = ''): ?array {
     if (!$pdo || $pitchId === '' || $date === '') {
         return null;
@@ -989,14 +1036,8 @@ function trigger_waitlist_notification(?PDO $pdo, string $pitchId, string $booki
     }
     try {
         // Kiểm tra sân + khung giờ thật sự trống và không bị bảo trì
-        $busyStmt = $pdo->prepare("
-            SELECT id FROM bookings
-            WHERE pitch_id = ? AND booking_date = ? AND slot_id = ?
-              AND status NOT IN ('Đã hủy', 'Khách chưa đến')
-              AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
-            LIMIT 1
-        ");
-        $busyStmt->execute([$pitchId, $bookingDate, $slotId]);
+        $busyStmt = $pdo->prepare(booking_conflict_query_sql());
+        $busyStmt->execute([$slotId, $pitchId, $bookingDate, $bookingDate, '']);
         if ($busyStmt->fetchColumn()) {
             return null;
         }
@@ -1232,26 +1273,26 @@ function generate_recurring_bookings_window(?PDO $pdo, ?int $onlyScheduleId = nu
             try {
                 $pdo->beginTransaction();
 
+                $pitchLock = $pdo->prepare("SELECT id FROM pitches WHERE id = ? LIMIT 1 FOR UPDATE");
+                $pitchLock->execute([$pitchId]);
+                if (!$pitchLock->fetchColumn()) {
+                    throw new RuntimeException('Không tìm thấy sân của lịch cố định.');
+                }
+
                 // Đã từng sinh buổi cho chuỗi này vào ngày này chưa (kể cả đã xin nghỉ 1 buổi)?
-                $existsOwn = $pdo->prepare("SELECT id FROM bookings WHERE recurring_schedule_id = ? AND booking_date = ? LIMIT 1 FOR UPDATE");
-                $existsOwn->execute([$schId, $bookingDate]);
+                $ownDateCondition = booking_date_condition_sql('b');
+                $existsOwn = $pdo->prepare("SELECT b.id FROM bookings b WHERE b.recurring_schedule_id = ? AND {$ownDateCondition} LIMIT 1 FOR UPDATE");
+                $existsOwn->execute([$schId, $bookingDate, $bookingDate]);
                 if ($existsOwn->fetchColumn()) {
                     $pdo->commit();
                     $curTs = strtotime('+7 days', $curTs);
                     continue;
                 }
 
-                // Kiểm tra trùng đơn của khách khác
-                $busyStmt = $pdo->prepare("
-                    SELECT code FROM bookings
-                    WHERE pitch_id = ? AND booking_date = ? AND slot_id = ?
-                      AND status NOT IN ('Đã hủy', 'Khách chưa đến')
-                      AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
-                    LIMIT 1 FOR UPDATE
-                ");
-                $busyStmt->execute([$pitchId, $bookingDate, $slotId]);
-                $busyCode = $busyStmt->fetchColumn();
-                if ($busyCode) {
+                // Kiểm tra cả các slot chồng giờ và những tuần sau của gói đã đặt.
+                $busyBooking = find_booking_conflict($pdo, $pitchId, $bookingDate, $slotId);
+                if ($busyBooking) {
+                    $busyCode = $busyBooking['code'];
                     $pdo->rollBack();
                     $conflicts[] = [
                         'schedule_code' => $sch['schedule_code'],

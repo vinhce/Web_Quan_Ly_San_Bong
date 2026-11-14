@@ -68,6 +68,14 @@ try {
                 ]);
             }
         }
+
+        if (!$booking) {
+            json_response([
+                'success'  => false,
+                'message'  => 'Không tìm thấy đơn đặt sân tương ứng.',
+                'ref_code' => 'ERR_NOT_FOUND'
+            ], 404);
+        }
     }
 
     $expectedAmount = $booking ? (int)$booking['deposit_amount'] : get_expected_deposit_amount($pdo, $code);
@@ -84,7 +92,9 @@ try {
     $receivedAmount = (int)($result['transaction']['amount'] ?? 0);
 
     if (!empty($result['paid']) && $expectedAmount > 0 && $receivedAmount >= $expectedAmount) {
-        $newPaid = $booking ? max((int)($booking['paid_amount'] ?? 0), $receivedAmount > 0 ? $receivedAmount : $expectedAmount) : $receivedAmount;
+        $targetAmount = $receivedAmount > 0 ? $receivedAmount : $expectedAmount;
+        $newPaid = $booking ? max((int)($booking['paid_amount'] ?? 0), $targetAmount) : $targetAmount;
+        $newPaymentStatus = 'Đã cọc 30%';
         if ($pdo && $booking) {
             try {
                 $pdo->beginTransaction();
@@ -92,15 +102,18 @@ try {
                 $lockStmt->execute([(int)$booking['id']]);
                 $freshBooking = $lockStmt->fetch();
                 if ($freshBooking) {
-                    $bTotalPrice = (int)($freshBooking['total_price'] ?? 0);
-                    $newPayStatus = ($bTotalPrice > 0 && $newPaid >= $bTotalPrice) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
+                    $currentPaid = (int)($freshBooking['paid_amount'] ?? 0);
+                    $targetAmount = $receivedAmount > 0 ? $receivedAmount : $expectedAmount;
+                    $newPaid = max($currentPaid, $targetAmount);
+                    $remainingAmount = max(0, (int)($freshBooking['total_price'] ?? 0) - $newPaid);
+                    $newPaymentStatus = ($remainingAmount <= 0) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
                     $newStatus = ($freshBooking['status'] === 'Chờ duyệt cọc') ? 'Đã xác nhận' : $freshBooking['status'];
                     $updateStmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
-                    $updateStmt->execute([$newStatus, $newPayStatus, $newPaid, $newPaid, (int)$freshBooking['id']]);
+                    $updateStmt->execute([$newStatus, $newPaymentStatus, $newPaid, $newPaid, (int)$freshBooking['id']]);
                     award_booking_loyalty_points($pdo, $freshBooking);
                 }
                 $pdo->commit();
-                $result['payment_status'] = $newPayStatus ?? 'Đã cọc 30%';
+                $result['payment_status'] = $newPaymentStatus;
             } catch (Throwable $updEx) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();

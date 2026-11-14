@@ -30,6 +30,7 @@ if ($method === 'GET') {
     }
 
     try {
+        $currentUser = function_exists('get_authenticated_user') ? get_authenticated_user($pdo) : null;
         $status = sanitize_string($_GET['status'] ?? 'open', 20);
         $pitchType = isset($_GET['pitch_type']) && $_GET['pitch_type'] !== '' ? (int)$_GET['pitch_type'] : null;
         $date = sanitize_string($_GET['date'] ?? '', 15);
@@ -39,30 +40,29 @@ if ($method === 'GET') {
         $params = [];
 
         if ($status === 'open') {
-            $where[] = "status = 'open'";
+            $where[] = "m.status = 'open'";
         } elseif ($status === 'matched') {
-            $where[] = "status = 'matched'";
+            $where[] = "m.status = 'matched'";
         } else {
-            $where[] = "status IN ('open', 'matched')";
+            $where[] = "m.status IN ('open', 'matched')";
         }
 
         if ($pitchType && in_array($pitchType, [5, 7, 11], true)) {
-            $where[] = "pitch_type = ?";
+            $where[] = "m.pitch_type = ?";
             $params[] = $pitchType;
         }
         if ($date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            $where[] = "match_date >= ?";
+            $where[] = "m.match_date >= ?";
             $params[] = $date;
         } else {
-            $where[] = "match_date >= CURDATE()";
+            $where[] = "m.match_date >= CURDATE()";
         }
 
-        $sql = "SELECT id, post_code, team_name, captain_name, phone, match_date, slot_id, slot_time,
-                       pitch_id, pitch_type, skill_level, fee_mode, status, opponent_team, opponent_captain,
-                       note, created_at
-                FROM matchmaking_posts
+        $sql = "SELECT m.*, u.username AS author_username, u.full_name AS author_fullname, u.customer_tier AS author_tier
+                FROM matchmaking_posts m
+                LEFT JOIN users u ON m.user_id = u.id
                 WHERE " . implode(' AND ', $where) . "
-                ORDER BY match_date ASC, created_at DESC
+                ORDER BY m.match_date ASC, m.created_at DESC
                 LIMIT {$limit}";
 
         $stmt = $pdo->prepare($sql);
@@ -71,9 +71,17 @@ if ($method === 'GET') {
 
         foreach ($posts as &$p) {
             $p['pitch_type'] = (int)$p['pitch_type'];
+            $isMine = ($currentUser && (int)($p['user_id'] ?? 0) === (int)$currentUser['id']);
+            $p['is_mine'] = $isMine;
             $p['phone_masked'] = mask_phone_number($p['phone'] ?? '');
-            unset($p['phone'], $p['opponent_phone']);
+            if ($currentUser !== null || $isMine) {
+                // Giữ nguyên $p['phone'] cho hội viên đã đăng nhập để liên hệ
+            } else {
+                unset($p['phone']);
+            }
+            unset($p['opponent_phone']);
         }
+        unset($p);
 
         json_response([
             'success'         => true,
@@ -296,6 +304,66 @@ if ($method === 'POST') {
                 'opponent_team'    => $opponentTeam,
                 'opponent_captain' => $opponentCaptain
             ]
+        ]);
+    }
+
+    if ($action === 'cancel_match') {
+        $currentUser = get_authenticated_user($pdo);
+        if (!$currentUser) {
+            json_error('Vui lòng đăng nhập để thực hiện thao tác này.', 401, 'ERR_UNAUTHORIZED');
+        }
+
+        if (!verify_csrf_token($body)) {
+            json_error('Mã bảo mật CSRF không hợp lệ hoặc đã hết hạn.', 403, 'ERR_CSRF_INVALID');
+        }
+
+        $postId = (int)($_POST['post_id'] ?? $body['post_id'] ?? 0);
+        if ($postId <= 0) {
+            json_error('ID bài đăng không hợp lệ.', 400, 'ERR_INVALID_PARAMS');
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM matchmaking_posts WHERE id = ? FOR UPDATE");
+            $stmt->execute([$postId]);
+            $post = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$post) {
+                $pdo->rollBack();
+                json_error('Không tìm thấy bài đăng tìm đối.', 404, 'ERR_NOT_FOUND');
+            }
+
+            $isOwner = ((int)($post['user_id'] ?? 0) === (int)$currentUser['id']);
+            $isOperator = function_exists('is_portal_operator') && is_portal_operator($currentUser);
+
+            if (!$isOwner && !$isOperator) {
+                $pdo->rollBack();
+                json_error('Bạn không có quyền hủy bài đăng này.', 403, 'ERR_FORBIDDEN');
+            }
+
+            if (!in_array($post['status'], ['open', 'pending'], true)) {
+                $pdo->rollBack();
+                json_error('Chỉ có thể hủy bài đăng khi đang ở trạng thái mở hoặc chờ duyệt.', 400, 'ERR_CANNOT_CANCEL');
+            }
+
+            $updateStmt = $pdo->prepare("UPDATE matchmaking_posts SET status = 'closed', updated_at = NOW() WHERE id = ?");
+            $updateStmt->execute([$postId]);
+
+            $pdo->commit();
+        } catch (Exception $txEx) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $txEx;
+        }
+
+        if (function_exists('write_audit_log')) {
+            write_audit_log($pdo, 'matchmaking_cancel', $post['post_code'] ?? (string)$postId, $post['status'], 'closed', $currentUser['username'] ?? 'user');
+        }
+
+        json_response([
+            'success' => true,
+            'message' => 'Đã hủy bài đăng tìm đối thành công.'
         ]);
     }
 

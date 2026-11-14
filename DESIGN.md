@@ -55,6 +55,12 @@
 - Mỗi khối ca đá có viền mảnh phân màu trạng thái, nhãn tên đội và SĐT khách rõ ràng.
 - Bấm vào ca đá mở ngay Popup điều hành: Đá bù giờ (+15p, +30p), Thêm nước giải khát, In hóa đơn hoặc Đổi sân tại chỗ.
 
+### 3.5. Trực Quan Hóa Dữ Liệu (Data Visualization — Inline SVG Vector Thuần)
+- Toàn bộ biểu đồ báo cáo tài chính, phân tích xu hướng giờ lấp đầy và so sánh doanh thu tuần/tháng được xây dựng bằng **Inline SVG Vector thuần**, loại bỏ hoàn toàn các thư viện cồng kềnh bên thứ ba như Chart.js để tối ưu tải trang và không phát sinh chi phí runtime.
+- Render trực tiếp các thẻ hình học SVG (`<svg viewBox="...">`, `<rect>`, `<path>`, `<polyline>`, `<circle>`, `<text>`) qua JavaScript ES6 module (`js/admin_finance.js`).
+- Giao diện Responsive tự co giãn theo container, hiển thị sắc nét tuyệt đối trên mọi độ phân giải (Retina, 4K, Mobile).
+- Tương tác vi mô (Micro-interactions): Tooltip hiển thị chi tiết doanh thu / số ca đá khi hover/touch vào các cột mốc dữ liệu mà không gây giật lag.
+
 ---
 
 ## 4. QUY TẮC RESPONSIVE & 4 TRẠNG THÁI UI

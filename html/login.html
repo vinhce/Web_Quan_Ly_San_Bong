@@ -37,9 +37,9 @@
   </header>
 
   <main class="flex-1 flex items-center justify-center p-4 md:p-8">
-    <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 ui-card overflow-hidden shadow-2xl border-slate-200">
+    <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 ui-card overflow-hidden shadow-2xl border-slate-200">
 
-      <div class="bg-[#0F172A] p-8 md:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+      <div class="bg-[#0F172A] p-6 sm:p-8 md:p-10 flex flex-col justify-between text-white relative overflow-hidden">
         
         <div class="absolute inset-0 opacity-15 pointer-events-none">
           <div id="login-pitch-bg" class="w-full h-full"></div>
@@ -57,7 +57,7 @@
           </p>
         </div>
 
-        <div class="relative z-10 space-y-3 pt-6 border-t border-slate-800 text-xs text-slate-300">
+        <div class="relative z-10 space-y-3 pt-6 border-t border-slate-800 text-xs sm:text-sm text-slate-300">
           <div class="flex items-center gap-2">
             <span class="text-[#4ADE80] font-bold">✓</span> Xem lịch trống theo thời gian thực 17 sân
           </div>
@@ -70,72 +70,72 @@
         </div>
       </div>
 
-      <div class="p-6 md:p-8 space-y-5 bg-white">
+      <div class="p-6 sm:p-8 md:p-10 space-y-6 bg-white">
         
-        <div class="grid grid-cols-2 p-1 rounded-xl bg-[#F1F5F9] text-center text-xs font-bold">
-          <button id="tab-btn-login" onclick="switchAuthTab('login')" class="py-2.5 rounded-lg bg-white text-[#16A34A] shadow-sm transition-all">
+        <div class="grid grid-cols-2 p-1.5 rounded-xl bg-[#F1F5F9] text-center text-sm font-bold">
+          <button id="tab-btn-login" onclick="switchAuthTab('login')" class="py-2.5 md:py-3 rounded-lg bg-white text-[#16A34A] shadow-sm transition-all font-bold">
             Đăng nhập
           </button>
-          <button id="tab-btn-register" onclick="switchAuthTab('register')" class="py-2.5 rounded-lg text-[#64748B] hover:text-[#0F172A] transition-all">
+          <button id="tab-btn-register" onclick="switchAuthTab('register')" class="py-2.5 md:py-3 rounded-lg text-[#64748B] hover:text-[#0F172A] transition-all font-bold">
             Đăng ký mới
           </button>
         </div>
 
-        <div id="auth-alert-box" class="hidden p-3.5 rounded-xl text-xs font-semibold flex items-start gap-2.5 transition-all mb-2"></div>
+        <div id="auth-alert-box" class="hidden p-3.5 rounded-xl text-xs sm:text-sm font-semibold flex items-start gap-2.5 transition-all mb-2"></div>
 
-        <form id="login-form" class="space-y-4">
+        <form id="login-form" class="space-y-4 sm:space-y-5">
           <div>
-            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Số điện thoại / Email</label>
-            <input type="text" id="login-username" autocomplete="username" class="input-field font-semibold" placeholder="Nhập SĐT hoặc email">
+            <label class="block text-xs sm:text-sm font-bold text-[#475569] uppercase tracking-wider mb-1.5">Số điện thoại / Email</label>
+            <input type="text" id="login-username" autocomplete="username" class="input-field h-11 sm:h-12 px-4 text-sm md:text-base font-semibold" placeholder="Nhập SĐT hoặc email">
           </div>
           <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider">Mật khẩu</label>
-              <a href="#" class="text-xs font-semibold text-[#16A34A] hover:underline">Quên mật khẩu?</a>
+            <label class="block text-xs sm:text-sm font-bold text-[#475569] uppercase tracking-wider mb-1.5">Mật khẩu</label>
+            <input type="password" id="login-password" autocomplete="current-password" class="input-field h-11 sm:h-12 px-4 text-sm md:text-base" placeholder="••••••••••">
+            <div class="flex justify-end mt-1.5">
+              <a href="#" class="text-xs sm:text-sm font-semibold text-[#16A34A] hover:text-[#15803D] hover:underline transition-colors">Quên mật khẩu?</a>
             </div>
-            <input type="password" id="login-password" autocomplete="current-password" class="input-field" placeholder="••••••••••">
           </div>
 
           <div id="login-turnstile-wrap" class="my-2"></div>
 
-          <div id="login-2fa-box" class="hidden p-4 rounded-xl bg-emerald-50 border border-emerald-300 space-y-3">
-            <div class="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+          <div id="login-2fa-box" class="hidden p-4 md:p-5 rounded-xl bg-emerald-50 border border-emerald-300 space-y-3">
+            <div class="flex items-center gap-2 text-emerald-800 text-xs sm:text-sm font-bold">
               <span>🔐</span>
               <span>Tài khoản đã kích hoạt 2FA (TOTP)</span>
             </div>
-            <p class="text-xs text-emerald-700">Vui lòng mở ứng dụng Google Authenticator hoặc ứng dụng OTP trên điện thoại và nhập mã 6 số xác thực:</p>
+            <p class="text-xs sm:text-sm text-emerald-700">Vui lòng mở ứng dụng Google Authenticator hoặc ứng dụng OTP trên điện thoại và nhập mã 6 số xác thực:</p>
             <div>
-              <label class="block text-xs font-bold text-[#475569] mb-1">Mã xác thực 6 số</label>
-              <input type="text" id="login-2fa-code" maxlength="6" inputmode="numeric" placeholder="000000" class="input-field text-center font-mono font-bold tracking-widest text-lg">
+              <label class="block text-xs sm:text-sm font-bold text-[#475569] mb-1.5">Mã xác thực 6 số</label>
+              <input type="text" id="login-2fa-code" maxlength="6" inputmode="numeric" placeholder="000000" class="input-field h-11 sm:h-12 text-center font-mono font-bold tracking-widest text-lg sm:text-xl">
             </div>
-            <button type="button" id="login-2fa-submit" class="btn-base btn-primary w-full text-xs font-bold shadow">
+            <button type="button" id="login-2fa-submit" class="btn-base btn-primary w-full h-11 sm:h-12 text-xs sm:text-sm font-bold shadow">
               Xác thực OTP &amp; Đăng nhập
             </button>
           </div>
 
-          <button type="submit" id="login-submit-btn" class="btn-base btn-primary w-full text-sm font-bold shadow-md">
+          <button type="submit" id="login-submit-btn" class="btn-base btn-primary w-full h-11 sm:h-12 text-sm md:text-base font-bold shadow-md hover:shadow-lg transition-all">
             Đăng nhập tài khoản
           </button>
         </form>
 
-        <form id="register-form" class="space-y-3.5 hidden">
+        <form id="register-form" class="space-y-4 sm:space-y-5 hidden">
           <div>
-            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Họ và tên *</label>
-            <input type="text" id="reg-name" placeholder="Nguyễn Văn A" class="input-field font-semibold">
+            <label class="block text-xs sm:text-sm font-bold text-[#475569] uppercase tracking-wider mb-1.5">Họ và tên *</label>
+            <input type="text" id="reg-name" placeholder="Nguyễn Văn A" class="input-field h-11 sm:h-12 px-4 text-sm md:text-base font-semibold">
           </div>
           <div>
-            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Số điện thoại *</label>
-            <input type="tel" id="reg-phone" placeholder="0987 654 321" class="input-field font-semibold">
+            <label class="block text-xs sm:text-sm font-bold text-[#475569] uppercase tracking-wider mb-1.5">Số điện thoại *</label>
+            <input type="tel" id="reg-phone" placeholder="0987 654 321" class="input-field h-11 sm:h-12 px-4 text-sm md:text-base font-semibold">
           </div>
           <div>
-            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Mật khẩu *</label>
-            <input type="password" id="reg-password" placeholder="••••••••••" class="input-field">
+            <label class="block text-xs sm:text-sm font-bold text-[#475569] uppercase tracking-wider mb-1.5">Mật khẩu *</label>
+            <input type="password" id="reg-password" placeholder="••••••••••" class="input-field h-11 sm:h-12 px-4 text-sm md:text-base">
           </div>
-          <label class="flex items-start gap-2 text-xs text-[#64748B] cursor-pointer">
-            <input type="checkbox" id="reg-privacy-consent" class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A] mt-0.5">
-            <span>Tôi đồng ý với <button type="button" id="btn-show-terms-login" class="text-[#16A34A] font-semibold underline bg-transparent border-none p-0">Điều khoản sử dụng</button> và đồng ý cho phép xử lý dữ liệu cá nhân theo <button type="button" id="btn-show-privacy-login" class="text-[#16A34A] font-semibold underline bg-transparent border-none p-0">Nghị định 13/2023/NĐ-CP</button></span>
+          <label class="flex items-start gap-2.5 text-xs sm:text-sm text-[#64748B] cursor-pointer">
+            <input type="checkbox" id="reg-privacy-consent" class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A] mt-0.5 shrink-0">
+            <span>Tôi đồng ý với <button type="button" id="btn-show-terms-login" class="text-[#16A34A] font-semibold underline bg-transparent border-none p-0 hover:text-[#15803D]">Điều khoản sử dụng</button> và đồng ý cho phép xử lý dữ liệu cá nhân theo <button type="button" id="btn-show-privacy-login" class="text-[#16A34A] font-semibold underline bg-transparent border-none p-0 hover:text-[#15803D]">Nghị định 13/2023/NĐ-CP</button></span>
           </label>
-          <button type="submit" class="btn-base btn-primary w-full text-sm font-bold shadow-md">
+          <button type="submit" id="reg-submit-btn" class="btn-base btn-primary w-full h-11 sm:h-12 text-sm md:text-base font-bold shadow-md hover:shadow-lg transition-all">
             Tạo tài khoản hội viên
           </button>
         </form>
@@ -148,9 +148,9 @@
     © 2026 Sân Bóng Pro · Hệ thống quản lý đặt sân bóng đá tự động
   </footer>
 
-  <script src="../js/data.js?v=20261112_v34"></script>
-  <script src="../js/app.js?v=20261112_v34"></script>
-  <script src="../js/api.js?v=20261112_v34"></script>
-  <script src="../js/login.js?v=20261112_v34"></script>
+  <script src="../js/data.js?v=20261114_v38"></script>
+  <script src="../js/app.js?v=20261114_v39"></script>
+  <script src="../js/api.js?v=20261114_v38"></script>
+  <script src="../js/login.js?v=20261114_v38"></script>
 </body>
 </html>

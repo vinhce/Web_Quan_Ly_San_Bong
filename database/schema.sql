@@ -140,6 +140,15 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     INDEX `idx_bookings_user_points` (`user_id`, `points_awarded`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- So thu noi bo cua doi, tach biet voi thanh toan cho san.
+CREATE TABLE IF NOT EXISTS `team_bill_splits` (
+    `booking_id` INT NOT NULL PRIMARY KEY,
+    `members_json` TEXT NOT NULL,
+    `revision` INT UNSIGNED NOT NULL DEFAULT 1,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_team_split_booking` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 8. Bảng Cài đặt hệ thống (Settings)
 CREATE TABLE IF NOT EXISTS `settings` (
     `setting_key` VARCHAR(100) PRIMARY KEY,
@@ -451,6 +460,7 @@ CREATE TABLE IF NOT EXISTS `matchmaking_posts` (
     `booking_code` VARCHAR(40) NULL DEFAULT NULL,
     `note` TEXT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NULL DEFAULT NULL,
     INDEX `idx_match_date` (`match_date`),
     INDEX `idx_match_status` (`status`),
     INDEX `idx_match_type` (`pitch_type`)

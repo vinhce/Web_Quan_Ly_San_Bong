@@ -594,6 +594,8 @@
       try {
         const sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
         if (sessionUser && sessionUser.full_name) {
+          const customerTier = String(sessionUser.customer_tier || sessionUser.customerTier || sessionUser.tier || 'standard').trim().toLowerCase();
+          const tierLabels = { standard: 'Hội viên', bronze: 'Hội viên Đồng', silver: 'Hội viên Bạc', regular: 'Khách thân thiết', gold: 'Hội viên Vàng', vip: 'Khách VIP', diamond: 'Hội viên Kim Cương' };
           return {
             id: sessionUser.id,
             name: sessionUser.full_name,
@@ -601,11 +603,12 @@
             email: sessionUser.email || '',
             team: sessionUser.team || '',
             role: sessionUser.role || 'user',
+            customer_tier: customerTier,
             tier: sessionUser.role === 'admin'
               ? 'Quản trị viên'
               : (sessionUser.role === 'manager'
                 ? 'Quản lý sân'
-                : (sessionUser.role === 'staff' ? 'Nhân viên trực sân' : (sessionUser.tier || 'Hội viên'))),
+                : (sessionUser.role === 'staff' ? 'Nhân viên trực sân' : (sessionUser.tier || tierLabels[customerTier] || 'Hội viên'))),
             points: Number(sessionUser.points) || 0,
             avatar: sessionUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
             totalBookings: 0,
@@ -801,13 +804,19 @@
           voucherError = `Mã giảm giá này chỉ áp dụng riêng cho Sân ${v.pitchTypeLimit} người.`;
         } else if (Number(v.maxUsage || 0) > 0 && Number(v.usedCount || 0) >= Number(v.maxUsage)) {
           voucherError = 'Mã giảm giá đã hết lượt sử dụng.';
-        } else if (v.code.toUpperCase() === 'VIPGOLD' || (v.requiredTier && String(v.requiredTier).toLowerCase() !== 'standard' && String(v.requiredTier).toLowerCase() !== 'all')) {
+        } else if (v.code.toUpperCase() === 'VIPGOLD' || (v.requiredTier || v.required_tier)) {
           const curUser = this.getUser ? this.getUser() : null;
-          if (!curUser || !curUser.name) {
+          const requiredTier = String(v.requiredTier || v.required_tier || 'vip,regular').trim().toLowerCase();
+          const unrestricted = requiredTier === 'standard' || requiredTier === 'all';
+          if ((!curUser || !curUser.name) && !unrestricted) {
             voucherError = 'Bạn chưa đủ điều kiện. Vui lòng đăng nhập tài khoản thành viên Vàng / Kim Cương để dùng mã này.';
           } else {
-            const rawTier = String(curUser.tier || curUser.customer_tier || 'standard').toLowerCase();
-            const isQualified = rawTier.includes('vàng') || rawTier.includes('gold') || rawTier.includes('kim cương') || rawTier.includes('diamond') || rawTier.includes('vip') || rawTier === 'admin' || rawTier === 'manager';
+            const rawTier = String(curUser?.customer_tier || curUser?.tier || 'standard').trim().toLowerCase();
+            const legacyTiers = { 'hội viên vàng': 'gold', 'hội viên kim cương': 'diamond', 'khách vip': 'vip', 'khách thân thiết': 'regular' };
+            const canonicalTier = legacyTiers[rawTier] || rawTier;
+            const tierRank = { standard: 1, bronze: 2, silver: 3, regular: 4, gold: 4, vip: 5, diamond: 5 };
+            const requiredTiers = requiredTier.split(',').map(t => t.trim()).filter(Boolean);
+            const isQualified = unrestricted || requiredTiers.some(t => (tierRank[canonicalTier] || 1) >= (tierRank[t] || 99));
             if (!isQualified) {
               voucherError = 'Bạn chưa đủ điều kiện. Mã này chỉ dành riêng cho hội viên hạng Vàng và Kim Cương.';
             } else if (subtotal < (v.minOrder || 0)) {

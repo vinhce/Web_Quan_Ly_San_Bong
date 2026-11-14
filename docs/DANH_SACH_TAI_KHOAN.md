@@ -37,7 +37,33 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 
 ---
 
-### 2.3. Tài khoản Khách hàng / Hội viên Mẫu (Test User)
+### 2.3. Tài khoản Quản lý Sân (Manager)
+> Dùng để điều hành ca đá Gantt Timeline, kiểm duyệt ghép kèo, quản lý bảo trì sân, duyệt cọc lệch tiền và kiểm tra kho nước.
+
+- **Tên đăng nhập (Username):** `quanly`
+- **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
+- **Email:** `quanly@sanbongpro.vn`
+- **Số điện thoại:** `0352000222`
+- **Họ và tên:** Nguyễn Hoàng Minh (Quản Lý Sân)
+- **Vai trò (Role):** `manager` (Quản lý vận hành)
+- **Quyền hạn:** Truy cập các tab điều hành vận hành, duyệt ghép kèo, kiểm tra kho nước, xử lý đối soát cọc; giới hạn cấu hình nhân sự cấp cao.
+
+---
+
+### 2.4. Tài khoản Nhân viên Trực Sân (Staff)
+> Dùng cho nhân viên quầy ca trực để check-in vé QR, bán nước/dịch vụ, chốt ca tiền mặt và đặt sân tại quầy.
+
+- **Tên đăng nhập (Username):** `nhanvien`
+- **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
+- **Email:** `nhanvien@sanbongpro.vn`
+- **Số điện thoại:** `0352000111`
+- **Họ và tên:** Nhân Viên Trực Sân Ca 1
+- **Vai trò (Role):** `staff` (Nhân viên vận hành trực sân)
+- **Quyền hạn:** Quét vé QR check-in, bán nước/dịch vụ, chốt ca bàn giao tiền mặt, đặt sân tại quầy; ẩn toàn bộ KPI doanh thu nhạy cảm và tab cấu hình hệ thống.
+
+---
+
+### 2.5. Tài khoản Khách hàng / Hội viên Mẫu (Test User)
 > Dùng để kiểm thử luồng đặt sân, chuyển khoản cọc VietQR SePay, đổi điểm tích lũy lấy nước suối.
 
 - **Tên đăng nhập (Username):** `user` (hoặc nhập SĐT: `0352313548`)

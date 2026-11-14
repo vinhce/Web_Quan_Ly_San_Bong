@@ -567,7 +567,7 @@ if ($action === 'register') {
         ], 400);
     }
 
-    if (!preg_match('/^(0[3|5|7|8|9])[0-9]{8}$/', str_replace(' ', '', $phone))) {
+    if (!preg_match('/^0[35789]\d{8}$/', str_replace(' ', '', $phone))) {
         json_response([
             'success'  => false,
             'message'  => 'Số điện thoại không đúng định dạng di động 10 số.',
@@ -584,30 +584,11 @@ if ($action === 'register') {
     }
 
     if (!$pdo) {
-        $newUserId = time();
-        session_regenerate_id(true);
-        $_SESSION['created_at'] = time();
-        $_SESSION['last_activity'] = time();
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        $_SESSION['user_id'] = $newUserId;
-        $_SESSION['user'] = [
-            'id'            => $newUserId,
-            'username'      => $username,
-            'email'         => $email,
-            'phone'         => $phone,
-            'full_name'     => $fullName,
-            'role'          => 'user',
-            'points'        => 0,
-            'customer_tier' => 'standard',
-            'totp_enabled'  => false
-        ];
-
         json_response([
-            'success'  => true,
-            'message'  => 'Đăng ký tài khoản thành công!',
-            'user'     => $_SESSION['user'],
-            'redirect' => 'history'
-        ], 201);
+            'success'  => false,
+            'message'  => 'Hệ thống đang bảo trì cơ sở dữ liệu. Vui lòng thử lại sau.',
+            'ref_code' => 'ERR_DB_UNAVAILABLE'
+        ], 503);
     }
 
     $checkStmt = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1");

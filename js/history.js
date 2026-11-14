@@ -251,6 +251,7 @@ function renderHistory() {
               📷 Xem vé QR & Hóa đơn
             </button>
             ${reviewBtnHtml}
+            <button type="button" data-action="team-split" data-code="${safeCode}" class="btn-base btn-secondary text-xs font-bold">👥 Chia tiền theo đội</button>
             ${isConfirmed ? `
               <button type="button" data-action="cancel-booking" data-code="${safeCode}" class="btn-base btn-danger-outline text-xs font-bold">
                 🛑 Hủy trước hạn & Hoàn cọc
@@ -557,5 +558,7 @@ document.addEventListener('click', (e) => {
     openReviewModal(btn.getAttribute('data-code'), btn.getAttribute('data-pitch'));
   } else if (action === 'cancel-booking') {
     cancelBooking(btn.getAttribute('data-code'));
+  } else if (action === 'team-split') {
+    window.openTeamSplit(btn.getAttribute('data-code'));
   }
 });
