@@ -4,16 +4,20 @@ let pending2FaToken = null;
 let loginTurnstileToken = '';
 
 function getAuthApiUrl(action) {
-  if (window.SanBongApp && typeof window.SanBongApp.getAppBase === 'function') {
-    const base = window.SanBongApp.getAppBase();
-    return `${base ? base + '/' : '/'}api/auth.php?action=${action}`;
+  let root = '';
+  if (typeof window.SanBongApp?.getAppBase === 'function') {
+    root = window.SanBongApp.getAppBase() || '';
+  } else if (typeof window.SanBongHelpers?.getAppBase === 'function') {
+    root = window.SanBongHelpers.getAppBase() || '';
+  } else {
+    const pathname = (window.location && typeof window.location.pathname === 'string')
+      ? window.location.pathname.replace(/\\/g, '/')
+      : '';
+    const match = pathname.match(/^(.*?\/Quan_Ly_San_Bong)/i);
+    root = match ? match[1] : (pathname.includes('/Quan_Ly_San_Bong') ? '/Quan_Ly_San_Bong' : '');
   }
-  const pathname = (window.location && window.location.pathname) ? window.location.pathname.replace(/\\/g, '/') : '';
-  const match = pathname.match(/^(.*?\/Quan_Ly_San_Bong)/i);
-  if (match) {
-    return `${match[1]}/api/auth.php?action=${action}`;
-  }
-  return pathname.includes('/html/') ? `../api/auth.php?action=${action}` : `api/auth.php?action=${action}`;
+  root = String(root).replace(/\/+$/, '');
+  return `${root}/api/auth.php?action=${action}`;
 }
 
 function resolveAppUrl(target) {
@@ -235,7 +239,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (window.SanBongApp?.ensureCsrfToken) {
-        const apiBase = window.SanBongApp.getAppBase ? (window.SanBongApp.getAppBase() + '/') : '../';
+        const rootBase = (typeof window.SanBongApp?.getAppBase === 'function')
+          ? window.SanBongApp.getAppBase()
+          : ((typeof window.SanBongHelpers?.getAppBase === 'function')
+              ? window.SanBongHelpers.getAppBase()
+              : (window.location.pathname.includes('/Quan_Ly_San_Bong') ? '/Quan_Ly_San_Bong' : ''));
+        const apiBase = rootBase ? (String(rootBase).replace(/\/+$/, '') + '/') : '/';
         await window.SanBongApp.ensureCsrfToken(apiBase);
       }
       const headers = window.SanBongApp?.getAuthFetchHeaders
@@ -257,7 +266,21 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tokenHeader && window.SanBongApp?.setCsrfToken) {
         window.SanBongApp.setCsrfToken(tokenHeader);
       }
-      const res = await response.json();
+
+      const resText = await response.text();
+      let res = null;
+      try {
+        res = JSON.parse(resText);
+      } catch (parseErr) {
+        console.error('Login response JSON parse error:', parseErr, resText);
+        setAuthMessage(response.ok ? 'Phản hồi từ máy chủ không hợp lệ.' : `Lỗi máy chủ (${response.status}). Vui lòng thử lại sau.`, 'error');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Đăng nhập vào hệ thống';
+        }
+        return;
+      }
+
       if (res?.csrf_token && window.SanBongApp?.setCsrfToken) {
         window.SanBongApp.setCsrfToken(res.csrf_token);
       }
@@ -330,7 +353,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     try {
       if (window.SanBongApp?.ensureCsrfToken) {
-        const apiBase = window.SanBongApp.getAppBase ? (window.SanBongApp.getAppBase() + '/') : '../';
+        const rootBase = (typeof window.SanBongApp?.getAppBase === 'function')
+          ? window.SanBongApp.getAppBase()
+          : ((typeof window.SanBongHelpers?.getAppBase === 'function')
+              ? window.SanBongHelpers.getAppBase()
+              : (window.location.pathname.includes('/Quan_Ly_San_Bong') ? '/Quan_Ly_San_Bong' : ''));
+        const apiBase = rootBase ? (String(rootBase).replace(/\/+$/, '') + '/') : '/';
         await window.SanBongApp.ensureCsrfToken(apiBase);
       }
       const headers = window.SanBongApp?.getAuthFetchHeaders ? window.SanBongApp.getAuthFetchHeaders() : { 'Content-Type': 'application/json' };
@@ -344,7 +372,26 @@ document.addEventListener('DOMContentLoaded', () => {
           user_id: pending2FaUser?.id
         })
       });
-      const json = await res.json();
+
+      const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader && window.SanBongApp?.setCsrfToken) {
+        window.SanBongApp.setCsrfToken(tokenHeader);
+      }
+
+      const resText = await res.text();
+      let json = null;
+      try {
+        json = JSON.parse(resText);
+      } catch (parseErr) {
+        console.error('2FA response JSON parse error:', parseErr, resText);
+        setAuthMessage(res.ok ? 'Phản hồi từ máy chủ không hợp lệ.' : `Lỗi máy chủ (${res.status}). Vui lòng thử lại sau.`, 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Xác thực';
+        }
+        return;
+      }
+
       if (json?.csrf_token && window.SanBongApp?.setCsrfToken) {
         window.SanBongApp.setCsrfToken(json.csrf_token);
       }
@@ -431,7 +478,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (window.SanBongApp?.ensureCsrfToken) {
-        const apiBase = window.SanBongApp.getAppBase ? (window.SanBongApp.getAppBase() + '/') : '../';
+        const rootBase = (typeof window.SanBongApp?.getAppBase === 'function')
+          ? window.SanBongApp.getAppBase()
+          : ((typeof window.SanBongHelpers?.getAppBase === 'function')
+              ? window.SanBongHelpers.getAppBase()
+              : (window.location.pathname.includes('/Quan_Ly_San_Bong') ? '/Quan_Ly_San_Bong' : ''));
+        const apiBase = rootBase ? (String(rootBase).replace(/\/+$/, '') + '/') : '/';
         await window.SanBongApp.ensureCsrfToken(apiBase);
       }
       const headers = window.SanBongApp?.getAuthFetchHeaders
@@ -457,7 +509,21 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tokenHeader && window.SanBongApp?.setCsrfToken) {
         window.SanBongApp.setCsrfToken(tokenHeader);
       }
-      const res = await response.json();
+
+      const resText = await response.text();
+      let res = null;
+      try {
+        res = JSON.parse(resText);
+      } catch (parseErr) {
+        console.error('Register response JSON parse error:', parseErr, resText);
+        setAuthMessage(response.ok ? 'Phản hồi từ máy chủ không hợp lệ.' : `Lỗi máy chủ (${response.status}). Vui lòng thử lại sau.`, 'error');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Tạo tài khoản hội viên';
+        }
+        return;
+      }
+
       if (res?.csrf_token && window.SanBongApp?.setCsrfToken) {
         window.SanBongApp.setCsrfToken(res.csrf_token);
       }
