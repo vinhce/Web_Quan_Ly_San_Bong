@@ -3,6 +3,89 @@ let pending2FaUser = null;
 let pending2FaToken = null;
 let loginTurnstileToken = '';
 
+function getAuthApiUrl(action) {
+  if (window.SanBongApp && typeof window.SanBongApp.getAppBase === 'function') {
+    const base = window.SanBongApp.getAppBase();
+    return `${base ? base + '/' : '/'}api/auth.php?action=${action}`;
+  }
+  const pathname = (window.location && window.location.pathname) ? window.location.pathname.replace(/\\/g, '/') : '';
+  const match = pathname.match(/^(.*?\/Quan_Ly_San_Bong)/i);
+  if (match) {
+    return `${match[1]}/api/auth.php?action=${action}`;
+  }
+  return pathname.includes('/html/') ? `../api/auth.php?action=${action}` : `api/auth.php?action=${action}`;
+}
+
+function resolveAppUrl(target) {
+  if (window.SanBongApp && typeof window.SanBongApp.getRelativePath === 'function') {
+    return window.SanBongApp.getRelativePath(target);
+  }
+  const pathname = (window.location && window.location.pathname) ? window.location.pathname.replace(/\\/g, '/') : '/';
+  const match = pathname.match(/^(.*?\/Quan_Ly_San_Bong)/i);
+  const base = match ? match[1] : '';
+  const root = base ? `${base}/` : '/';
+
+  if (!target || target === 'index.html' || target === '/' || target === '') {
+    return root;
+  }
+  const clean = String(target)
+    .trim()
+    .replace(/^\.\.\//, '')
+    .replace(/^html\//, '')
+    .replace(/^\/+/, '')
+    .replace(/\.html(?=$|[?#])/, '');
+
+  if (clean === 'portal-admin' || clean === 'portal-admin/') {
+    return `${root}portal-admin/`;
+  }
+  return `${root}${clean}`;
+}
+
+function syncStoredUser(user) {
+  if (!user) return;
+  try {
+    const raw = JSON.stringify(user);
+    sessionStorage.setItem('sb_current_user', raw);
+    localStorage.setItem('sb_current_user', raw);
+  } catch (e) {
+    console.warn('Storage sync error:', e);
+  }
+}
+
+function handleLoginRedirect(user) {
+  const isPortalRole = Boolean(user && ['admin', 'manager', 'staff'].includes(user.role));
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirectParam = urlParams.get('redirect');
+
+  if (isPortalRole) {
+    if (redirectParam && redirectParam !== 'portal-admin' && redirectParam !== 'portal-admin/') {
+      const cleanParam = String(redirectParam).trim().replace(/^\/+/, '').replace(/^html\//, '');
+      window.location.href = resolveAppUrl(cleanParam);
+    } else {
+      window.location.href = resolveAppUrl('portal-admin/');
+    }
+    return;
+  }
+
+  // Khách hàng thường (customer/user):
+  if (redirectParam) {
+    const cleanParam = String(redirectParam).trim().replace(/^\/+/, '').replace(/^html\//, '');
+    const baseRoute = cleanParam.split(/[?#]/)[0].replace(/\.html$/, '');
+    if (baseRoute === 'portal-admin' || baseRoute === 'portal-admin/') {
+      window.location.href = resolveAppUrl('');
+      return;
+    }
+    const ALLOWED = new Set(['fields', 'booking', 'checkout', 'success', 'history', 'field-detail', 'matchmaking']);
+    if (ALLOWED.has(baseRoute)) {
+      window.location.href = resolveAppUrl(cleanParam);
+      return;
+    }
+  }
+
+  // Mặc định khách hàng thường chuyển về trang chủ
+  window.location.href = resolveAppUrl('');
+}
+
 function initLoginTurnstile(siteKey) {
   const wrap = document.getElementById('login-turnstile-wrap');
   if (!wrap || !siteKey || wrap.dataset.rendered) return;
@@ -97,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.TURNSTILE_SITE_KEY) {
     initLoginTurnstile(window.TURNSTILE_SITE_KEY);
   } else {
-    fetch('../api/auth.php?action=me', { credentials: 'same-origin', cache: 'no-store' })
+    fetch(getAuthApiUrl('me'), { credentials: 'same-origin', cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         if (d && d.turnstile_site_key) {
@@ -152,13 +235,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (window.SanBongApp?.ensureCsrfToken) {
-        await window.SanBongApp.ensureCsrfToken('../');
+        const apiBase = window.SanBongApp.getAppBase ? (window.SanBongApp.getAppBase() + '/') : '../';
+        await window.SanBongApp.ensureCsrfToken(apiBase);
       }
       const headers = window.SanBongApp?.getAuthFetchHeaders
         ? window.SanBongApp.getAuthFetchHeaders()
         : { 'Content-Type': 'application/json' };
 
-      const response = await fetch('../api/auth.php?action=login', {
+      const response = await fetch(getAuthApiUrl('login'), {
         method: 'POST',
         headers,
         credentials: 'same-origin',
@@ -190,56 +274,38 @@ document.addEventListener('DOMContentLoaded', () => {
           codeInput.focus();
         }
         setAuthMessage('🔐 Tài khoản bảo vệ 2FA: Vui lòng nhập mã 6 số từ Google Authenticator.', 'success');
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Vui lòng nhập mã xác thực OTP 6 số', 'info');
+        }
         return;
       }
 
       if (response.ok && res.success) {
         setAuthMessage('✓ Đăng nhập thành công! Đang chuyển hướng...', 'success');
-        sessionStorage.setItem('sb_current_user', JSON.stringify(res.user));
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const redirectParam = urlParams.get('redirect');
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+        }
+        syncStoredUser(res.user);
 
         setTimeout(() => {
-          const isPortalRole = Boolean(res.user && ['admin', 'manager', 'staff'].includes(res.user.role));
-          if (isPortalRole) {
-            if (redirectParam === 'portal-admin' || !redirectParam) {
-              window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('portal-admin/') : '/portal-admin/';
-              return;
-            }
-          }
-
-          if (redirectParam) {
-            const ALLOWED_REDIRECT_BASES = new Set([
-              'fields', 'booking', 'checkout', 'success', 'history',
-              'field-detail', 'matchmaking', 'portal-admin', 'portal-admin/'
-            ]);
-            const rawRedir = String(redirectParam).trim();
-            const isSafeRelative = !/^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|\/\/)/.test(rawRedir) && !rawRedir.includes('\\') && !rawRedir.includes('..');
-            const stripped = rawRedir.replace(/^\/+/, '').replace(/^html\//, '').replace(/\.html(?=$|[?#])/, '');
-            const baseRoute = stripped.split(/[?#]/)[0];
-            if (!isSafeRelative || !ALLOWED_REDIRECT_BASES.has(baseRoute)) {
-              window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
-              return;
-            }
-            if ((baseRoute === 'portal-admin' || baseRoute === 'portal-admin/') && !isPortalRole) {
-              window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
-              return;
-            }
-            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(stripped) : '/history';
-            return;
-          }
-
-          const target = res.redirect || 'history';
-          window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(target) : `/${target}`;
-        }, 500);
+          handleLoginRedirect(res.user);
+        }, 350);
         return;
       } else {
-        setAuthMessage(res.message || 'Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại.', 'error');
+        const errMsg = res?.message || 'Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại.';
+        setAuthMessage(errMsg, 'error');
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast(errMsg, 'error');
+        }
         markFieldError('login-password');
       }
     } catch (err) {
-      setAuthMessage('Không thể kết nối máy chủ xác thực. Vui lòng kiểm tra kết nối mạng và thử lại.', 'error');
+      console.error('Login error:', err);
+      const errMsg = 'Không thể kết nối máy chủ xác thực. Vui lòng kiểm tra kết nối mạng và thử lại.';
+      setAuthMessage(errMsg, 'error');
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(errMsg, 'error');
+      }
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -263,9 +329,12 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.textContent = '⏳ Đang kiểm tra OTP...';
     }
     try {
-      if (window.SanBongApp?.ensureCsrfToken) await window.SanBongApp.ensureCsrfToken('../');
+      if (window.SanBongApp?.ensureCsrfToken) {
+        const apiBase = window.SanBongApp.getAppBase ? (window.SanBongApp.getAppBase() + '/') : '../';
+        await window.SanBongApp.ensureCsrfToken(apiBase);
+      }
       const headers = window.SanBongApp?.getAuthFetchHeaders ? window.SanBongApp.getAuthFetchHeaders() : { 'Content-Type': 'application/json' };
-      const res = await fetch('../api/auth.php?action=verify_2fa', {
+      const res = await fetch(getAuthApiUrl('verify_2fa'), {
         method: 'POST',
         headers,
         credentials: 'same-origin',
@@ -280,28 +349,30 @@ document.addEventListener('DOMContentLoaded', () => {
         window.SanBongApp.setCsrfToken(json.csrf_token);
       }
       if (res.ok && json.success) {
+        const user = json.user || pending2FaUser;
         setAuthMessage('✓ Xác thực 2FA thành công! Đang chuyển hướng...', 'success');
-        sessionStorage.setItem('sb_current_user', JSON.stringify(json.user || pending2FaUser));
-        const urlParams = new URLSearchParams(window.location.search);
-        const redirectParam = urlParams.get('redirect');
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Xác thực 2FA thành công!', 'success');
+        }
+        syncStoredUser(user);
+
         setTimeout(() => {
-          const u = json.user || pending2FaUser;
-          const isPortal = Boolean(u && ['admin', 'manager', 'staff'].includes(u.role));
-          if (isPortal && (redirectParam === 'portal-admin' || !redirectParam)) {
-            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('portal-admin/') : '/portal-admin/';
-            return;
-          }
-          if (redirectParam) {
-            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(redirectParam) : redirectParam;
-            return;
-          }
-          window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
-        }, 500);
+          handleLoginRedirect(user);
+        }, 350);
       } else {
-        setAuthMessage(json.message || 'Mã xác thực 2FA không chính xác hoặc đã hết hạn.', 'error');
+        const errMsg = json?.message || 'Mã xác thực 2FA không chính xác hoặc đã hết hạn.';
+        setAuthMessage(errMsg, 'error');
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast(errMsg, 'error');
+        }
       }
     } catch (err) {
-      setAuthMessage('Lỗi kết nối máy chủ xác thực 2FA.', 'error');
+      console.error('2FA verification error:', err);
+      const errMsg = 'Lỗi kết nối máy chủ xác thực 2FA. Vui lòng thử lại sau.';
+      setAuthMessage(errMsg, 'error');
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(errMsg, 'error');
+      }
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -360,13 +431,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (window.SanBongApp?.ensureCsrfToken) {
-        await window.SanBongApp.ensureCsrfToken('../');
+        const apiBase = window.SanBongApp.getAppBase ? (window.SanBongApp.getAppBase() + '/') : '../';
+        await window.SanBongApp.ensureCsrfToken(apiBase);
       }
       const headers = window.SanBongApp?.getAuthFetchHeaders
         ? window.SanBongApp.getAuthFetchHeaders()
         : { 'Content-Type': 'application/json' };
 
-      const response = await fetch('../api/auth.php?action=register', {
+      const response = await fetch(getAuthApiUrl('register'), {
         method: 'POST',
         headers,
         credentials: 'same-origin',
@@ -392,27 +464,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (response.ok && res.success) {
         setAuthMessage('✓ Tạo tài khoản hội viên thành công! Đang chuyển hướng...', 'success');
-        sessionStorage.setItem('sb_current_user', JSON.stringify(res.user));
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const redirectParam = urlParams.get('redirect');
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Tạo tài khoản hội viên thành công!', 'success');
+        }
+        syncStoredUser(res.user);
 
         setTimeout(() => {
-          if (redirectParam) {
-            window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(redirectParam) : redirectParam;
-            return;
-          }
-
-          const target = res.redirect || 'history';
-          window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(target) : `/${target}`;
-        }, 600);
+          handleLoginRedirect(res.user);
+        }, 350);
         return;
       } else {
-        setAuthMessage(res.message || 'Không thể đăng ký tài khoản. Số điện thoại có thể đã tồn tại.', 'error');
+        const errMsg = res?.message || 'Không thể đăng ký tài khoản. Số điện thoại có thể đã tồn tại.';
+        setAuthMessage(errMsg, 'error');
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast(errMsg, 'error');
+        }
         markFieldError('reg-phone');
       }
     } catch (err) {
-      setAuthMessage('Không thể kết nối máy chủ để đăng ký. Vui lòng thử lại sau.', 'error');
+      console.error('Registration error:', err);
+      const errMsg = 'Không thể kết nối máy chủ để đăng ký. Vui lòng thử lại sau.';
+      setAuthMessage(errMsg, 'error');
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(errMsg, 'error');
+      }
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;

@@ -308,6 +308,9 @@ function refresh_session_user($pdo = null) {
         $stmt->execute([$_SESSION['user_id']]);
         $fresh = $stmt->fetch();
         if (!$fresh) {
+            if (!empty($_SESSION['user']) && is_array($_SESSION['user'])) {
+                return $_SESSION['user'];
+            }
             destroy_current_session();
             return null;
         }
@@ -324,7 +327,7 @@ function refresh_session_user($pdo = null) {
             'role'      => $fresh['role']
         ];
         return $_SESSION['user'];
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
         error_log("[SESSION REFRESH ERROR] " . $e->getMessage());
         return $_SESSION['user'] ?? null;
     }

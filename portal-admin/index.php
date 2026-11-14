@@ -3,14 +3,32 @@
 require_once __DIR__ . '/../api/security_helper.php';
 secure_session_start();
 
+// Tự động xác định base path tương thích cả subfolder lẫn root domain
+$scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+$portalAdminPos = strpos($scriptName, '/portal-admin');
+$basePath = ($portalAdminPos !== false) ? substr($scriptName, 0, $portalAdminPos) : '';
+$loginUrl = ($basePath !== '' ? $basePath : '') . '/login?redirect=portal-admin';
+
 $refreshedUser = refresh_session_user();
 if (!empty($refreshedUser['_locked']) || empty($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
-    header('Location: /login?redirect=portal-admin', true, 302);
+    header('Location: ' . $loginUrl, true, 302);
     exit;
 }
-$portalRole = $_SESSION['user']['role'] ?? 'staff';
+$currentUser = $_SESSION['user'];
+$portalRole = $currentUser['role'] ?? 'staff';
 $isOwnerAdmin = ($portalRole === 'admin');
 $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
+
+// Chuẩn bị payload an toàn để inject vào client-side sessionStorage
+$safeUserPayload = [
+    'id'        => $currentUser['id'] ?? null,
+    'username'  => $currentUser['username'] ?? '',
+    'email'     => $currentUser['email'] ?? '',
+    'phone'     => $currentUser['phone'] ?? '',
+    'full_name' => $currentUser['full_name'] ?? '',
+    'role'      => $currentUser['role'] ?? 'staff'
+];
+$currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -21,21 +39,27 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
   <title>Bảng Điều Khiển Quản Trị – Sân Bóng Pro Admin</title>
   <!-- Favicon / Tab Icon -->
   <!-- Favicon / Tab Icon -->
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="apple-touch-icon" href="/favicon.svg">
-  <!-- Pre-render RBAC Gate: Chặn tức thì mọi truy cập không phải Admin, Manager hoặc Staff -->
+  <link rel="icon" type="image/svg+xml" href="<?php echo $basePath; ?>/favicon.svg">
+  <link rel="alternate icon" type="image/x-icon" href="<?php echo $basePath; ?>/favicon.ico">
+  <link rel="apple-touch-icon" href="<?php echo $basePath; ?>/favicon.svg">
+  <!-- Pre-render RBAC Gate: Đồng bộ nguồn sự thật từ PHP Session vào sessionStorage/SanBongDB -->
   <script>
     (function() {
       try {
-        var user = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-        if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'staff')) {
-          document.documentElement.style.display = 'none';
-          window.location.replace('/login?redirect=portal-admin');
+        var serverUser = <?php echo $currentUserJson; ?>;
+        if (serverUser && serverUser.role && ['admin', 'manager', 'staff'].indexOf(serverUser.role) !== -1) {
+          sessionStorage.setItem('sb_current_user', JSON.stringify(serverUser));
+          window.sb_current_user = serverUser;
+        } else {
+          var user = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+          if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'staff')) {
+            document.documentElement.style.display = 'none';
+            var redirectUrl = <?php echo json_encode($loginUrl, JSON_UNESCAPED_SLASHES); ?>;
+            window.location.replace(redirectUrl || '../login?redirect=portal-admin');
+          }
         }
       } catch (e) {
-        document.documentElement.style.display = 'none';
-        window.location.replace('/login?redirect=portal-admin');
+        console.warn('[Admin Gate] Session sync warning:', e);
       }
     })();
   </script>
@@ -430,16 +454,16 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
   </div>
 
   <!-- SCRIPTS -->
-  <script src="/js/data.js?v=20261112_v34"></script>
-  <script src="/js/app.js?v=20261112_v34"></script>
-  <script src="/js/api.js?v=20261112_v34"></script>
-  <script src="/js/vendor/jsqr.min.js?v=20261112_v34"></script>
-  <script src="/js/admin.js?v=20261112_v34"></script>
-  <script src="/js/admin_ops.js?v=20261112_v34"></script>
-  <script src="/js/admin_crm.js?v=20261112_v34"></script>
-  <script src="/js/admin_finance.js?v=20261112_v34"></script>
-  <script src="/js/admin_inplay.js?v=20261112_v34"></script>
-  <script src="/js/admin_catalog.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/data.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/app.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/api.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261112_v34"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261112_v34"></script>
 </body>
 </html>
 
