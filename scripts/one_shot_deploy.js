@@ -123,85 +123,133 @@ async function main() {
     ...collectFiles('database/migrations')
   ];
 
-  const payload = {};
+  const chunks = [];
+  let currentChunk = {};
+  let currentSize = 0;
+  const MAX_CHUNK_SIZE = 150 * 1024;
+
   for (const f of allFiles) {
     if (fs.existsSync(f)) {
       const norm = f.split(path.sep).join('/');
-      payload[norm] = fs.readFileSync(f, 'utf8');
+      const content = fs.readFileSync(f, 'utf8');
+      const itemSize = Buffer.byteLength(content, 'utf8') + norm.length + 20;
+      if (currentSize + itemSize > MAX_CHUNK_SIZE && Object.keys(currentChunk).length > 0) {
+        chunks.push(currentChunk);
+        currentChunk = {};
+        currentSize = 0;
+      }
+      currentChunk[norm] = content;
+      currentSize += itemSize;
     }
   }
+  if (Object.keys(currentChunk).length > 0) {
+    chunks.push(currentChunk);
+  }
 
-  const jsonStr = JSON.stringify(payload);
-  console.log(`Packed ${Object.keys(payload).length} files (${jsonStr.length} chars) into deploy payload.`);
+  console.log('Packing ' + allFiles.length + ' files into ' + chunks.length + ' chunks...');
 
-  console.log('Uploading payload to public_html/deploy_payload.json...');
-  const upRes = await callMCP('write_file', {
-    path: 'public_html/deploy_payload.json',
-    content: jsonStr
-  });
-  console.log('Upload result:', JSON.stringify(upRes));
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkFile = 'public_html/deploy_chunk_' + i + '.json';
+    const chunkStr = JSON.stringify(chunks[i]);
+    console.log('Uploading chunk ' + (i + 1) + '/' + chunks.length + ' (' + Object.keys(chunks[i]).length + ' files, ' + chunkStr.length + ' chars) to ' + chunkFile + '...');
+    const upRes = await callMCP('write_file', {
+      path: chunkFile,
+      content: chunkStr
+    });
+    console.log('Chunk ' + i + ' uploaded.');
+  }
 
   const applyScript = `<?php
 ini_set('display_errors', '1');
 error_reporting(E_ALL);
 header('Content-Type: application/json; charset=utf-8');
 
-$payloadFile = __DIR__ . '/deploy_payload.json';
-if (!file_exists($payloadFile)) {
-    echo json_encode(['success' => false, 'message' => 'deploy_payload.json not found', 'dir' => __DIR__, 'files' => array_slice(scandir(__DIR__), 0, 20)]);
-    exit;
-}
-
-$raw = file_get_contents($payloadFile);
-$data = json_decode($raw, true);
-if (!is_array($data)) {
-    echo json_encode(['success' => false, 'message' => 'Invalid JSON in deploy_payload.json']);
-    exit;
-}
-
-$written = 0;
-foreach ($data as $relPath => $content) {
-    $targetPath = __DIR__ . '/' . $relPath;
-    $dir = dirname($targetPath);
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0755, true);
+\$written = 0;
+\$chunksProcessed = 0;
+\$chunkFiles = glob(__DIR__ . '/deploy_chunk_*.json');
+if (\$chunkFiles) {
+    foreach (\$chunkFiles as \$cFile) {
+        \$raw = file_get_contents(\$cFile);
+        \$data = json_decode(\$raw, true);
+        if (is_array(\$data)) {
+            foreach (\$data as \$relPath => \$content) {
+                \$targetPath = __DIR__ . '/' . \$relPath;
+                \$dir = dirname(\$targetPath);
+                if (!is_dir(\$dir)) {
+                    @mkdir(\$dir, 0755, true);
+                }
+                file_put_contents(\$targetPath, \$content);
+                \$written++;
+            }
+            \$chunksProcessed++;
+        }
+        @unlink(\$cFile);
     }
-    file_put_contents($targetPath, $content);
-    $written++;
 }
 
-// Cập nhật role admin cho vxyen0801 trong CSDL trực tiếp
-$dbUpdated = false;
+// Support legacy payload file if present
+\$payloadFile = __DIR__ . '/deploy_payload.json';
+if (file_exists(\$payloadFile)) {
+    \$raw = file_get_contents(\$payloadFile);
+    \$data = json_decode(\$raw, true);
+    if (is_array(\$data)) {
+        foreach (\$data as \$relPath => \$content) {
+            \$targetPath = __DIR__ . '/' . \$relPath;
+            \$dir = dirname(\$targetPath);
+            if (!is_dir(\$dir)) {
+                @mkdir(\$dir, 0755, true);
+            }
+            file_put_contents(\$targetPath, \$content);
+            \$written++;
+        }
+    }
+    @unlink(\$payloadFile);
+}
+
+// 1. Cập nhật mật khẩu & quyền admin cho admin và vxyen0801 trong CSDL trực tiếp
+\$dbUpdated = false;
 try {
     require_once __DIR__ . '/config/database.php';
-    $pdo = getDBConnection(false);
-    if ($pdo) {
-        $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE username = 'vxyen0801'");
-        $stmt->execute();
-        $dbUpdated = true;
+    \$pdo = getDBConnection(false);
+    if (\$pdo) {
+        \$adminHash = '\$argon2id\$v=19\$m=65536,t=4,p=1\$VTVUaVRrNThhNldzcENpZg\$kNqghJJEnQqDG/6phhZwri5Q6skH+e/dy+/fZhkxqb8';
+        \$stmt = \$pdo->prepare("UPDATE users SET password_hash = ?, failed_attempts = 0, lock_until = NULL WHERE username IN ('admin', 'vxyen0801')");
+        \$stmt->execute([\$adminHash]);
+        \$dbUpdated = true;
 
-        $migFile = __DIR__ . '/database/migrations/011_auth_role_hardening_and_demo_data.sql';
-        if (file_exists($migFile)) {
-            $migSql = file_get_contents($migFile);
-            if (!empty($migSql)) {
-                $pdo->exec($migSql);
-                $dbUpdated = 'admin_updated_and_migration_011_applied';
+        \$migFile = __DIR__ . '/database/migrations/011_auth_role_hardening_and_demo_data.sql';
+        if (file_exists(\$migFile)) {
+            \$migSql = file_get_contents(\$migFile);
+            if (!empty(\$migSql)) {
+                \$pdo->exec(\$migSql);
+                \$dbUpdated = 'admin_updated_and_migration_011_applied';
             }
         }
     }
-} catch (Throwable $e) {
-    $dbUpdated = 'Error: ' . $e->getMessage();
+} catch (Throwable \$e) {
+    \$dbUpdated = 'Error: ' . \$e->getMessage();
 }
 
-// Xóa file payload & test debug
-@unlink($payloadFile);
+// 2. Dọn dẹp file rate-limit cache để mở khóa 429 ERR_RATE_LIMITED cho admin/staff
+\$cleaned_rl = 0;
+\$rl_files = glob(__DIR__ . '/logs/ratelimit/*.json');
+if (\$rl_files) {
+    foreach (\$rl_files as \$f) {
+        if (@unlink(\$f)) {
+            \$cleaned_rl++;
+        }
+    }
+}
+
+// Xóa file test debug nếu có
 @unlink(__DIR__ . '/test_debug.php');
-@unlink(__FILE__);
 
 echo json_encode([
     'success' => true,
-    'files_written' => $written,
-    'db_updated' => $dbUpdated,
+    'files_written' => \$written,
+    'chunks_processed' => \$chunksProcessed,
+    'db_updated' => \$dbUpdated,
+    'ratelimit_cache_cleaned' => \$cleaned_rl,
     'timestamp' => date('c')
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 `;

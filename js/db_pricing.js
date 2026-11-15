@@ -66,7 +66,7 @@
 
     getAllBookings() {
       try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEYS.BOOKINGS)) || [];
+        return JSON.parse(localStorage.getItem(window.STORAGE_KEYS?.BOOKINGS || window.SanBongDB?.STORAGE_KEYS?.BOOKINGS || 'sb_bookings_v1')) || [];
       } catch (e) {
         return window.SanBongData?.DEFAULT_BOOKINGS || [];
       }

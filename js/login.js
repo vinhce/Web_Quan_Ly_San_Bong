@@ -328,6 +328,10 @@ document.addEventListener('DOMContentLoaded', () => {
           window.SanBongApp.showToast(errMsg, 'error');
         }
         markFieldError('login-password');
+        loginTurnstileToken = '';
+        if (window.turnstile && typeof window.turnstile.reset === 'function') {
+          try { window.turnstile.reset(); } catch (e) {}
+        }
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -335,6 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
       setAuthMessage(errMsg, 'error');
       if (window.SanBongApp?.showToast) {
         window.SanBongApp.showToast(errMsg, 'error');
+      }
+      loginTurnstileToken = '';
+      if (window.turnstile && typeof window.turnstile.reset === 'function') {
+        try { window.turnstile.reset(); } catch (e) {}
       }
     } finally {
       if (submitBtn) {
