@@ -36,7 +36,7 @@ $postOnlyActions = [
     'save_voucher', 'delete_voucher', 'save_golden_hour', 'delete_golden_hour',
     'save_maintenance', 'update_maintenance', 'add_expense', 'delete_expense',
     'test_telegram', 'run_match_reminders', 'run_recurring_cron',
-    'moderate_matchmaking', 'backup_database_now'
+    'moderate_matchmaking', 'backup_database_now', 'update_member'
 ];
 if (in_array($action, $postOnlyActions, true) && strtoupper($method) !== 'POST') {
     json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
