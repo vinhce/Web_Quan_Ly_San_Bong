@@ -787,6 +787,12 @@ function showAdminLogState(state, errorMessage = '') {
  * Hỗ trợ phân trang, lọc theo nhân viên, loại hành động, khoảng ngày, tìm kiếm
  */
 async function loadAdminLogs(page = 1) {
+  if (typeof isOwnerAdmin === 'function' && !isOwnerAdmin()) {
+    if (window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
+      window.SanBongApp.showToast('Bạn không có quyền xem nhật ký', 'error');
+    }
+    return;
+  }
   currentLogPage = Math.max(1, parseInt(page, 10) || 1);
   showAdminLogState('loading');
 
@@ -814,7 +820,7 @@ async function loadAdminLogs(page = 1) {
     const actionCodes = getActionCodesForGroup(groupKey, adminLogActionTypes);
     params.set('action_codes', actionCodes.length > 0 ? actionCodes.join(',') : '__NO_MATCH__');
   } else if (actionType !== '') {
-    params.set('action_type', actionType);
+    params.set('action_codes', actionType);
   }
   if (fromDate !== '') params.set('from_date', fromDate);
   if (toDate !== '') params.set('to_date', toDate);
@@ -920,21 +926,37 @@ function populateAdminLogFilters(staffList, actionTypes) {
         options.push(groupOption);
 
         const observedCodes = new Map(adminLogActionTypes.map(code => [code.toUpperCase(), code]));
-        const uniqueActions = new Map();
+        const groupedByLabel = new Map();
+
         knownActions.forEach(([code, info]) => {
-          const normalizedCode = code.toUpperCase();
-          if (!uniqueActions.has(normalizedCode)) {
-            uniqueActions.set(normalizedCode, {
-              code: observedCodes.get(normalizedCode) || code,
-              label: info.label
+          let label = String(info.label || '').trim();
+          const upperCode = code.toUpperCase();
+          if (['VOUCHER_SAVE', 'VOUCHER_CREATE', 'VOUCHER_UPDATE'].includes(upperCode)) {
+            label = 'Lưu / Cập nhật voucher';
+          }
+
+          if (!groupedByLabel.has(label)) {
+            groupedByLabel.set(label, {
+              label: label,
+              codes: []
             });
           }
+
+          const entry = groupedByLabel.get(label);
+          const actualCode = observedCodes.get(upperCode) || code;
+          if (!entry.codes.includes(actualCode)) {
+            entry.codes.push(actualCode);
+          }
+          if (!entry.codes.includes(upperCode)) {
+            entry.codes.push(upperCode);
+          }
         });
-        [...uniqueActions.values()]
+
+        [...groupedByLabel.values()]
           .sort((a, b) => a.label.localeCompare(b.label, 'vi', { sensitivity: 'base' }))
           .forEach(action => {
             const option = document.createElement('option');
-            option.value = action.code;
+            option.value = action.codes.join(',');
             option.textContent = action.label;
             options.push(option);
           });
@@ -1187,6 +1209,66 @@ function formatAdminLogTimestamp(value) {
   return text;
 }
 
+function formatAdminLogRelativeTime(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  let d = null;
+  const sqlMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (sqlMatch) {
+    d = new Date(
+      parseInt(sqlMatch[1], 10),
+      parseInt(sqlMatch[2], 10) - 1,
+      parseInt(sqlMatch[3], 10),
+      parseInt(sqlMatch[4], 10),
+      parseInt(sqlMatch[5], 10),
+      parseInt(sqlMatch[6] || 0, 10)
+    );
+  } else {
+    const dmyMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?/);
+    if (dmyMatch) {
+      d = new Date(
+        parseInt(dmyMatch[3], 10),
+        parseInt(dmyMatch[2], 10) - 1,
+        parseInt(dmyMatch[1], 10),
+        parseInt(dmyMatch[4] || 0, 10),
+        parseInt(dmyMatch[5] || 0, 10)
+      );
+    } else {
+      d = new Date(text);
+    }
+  }
+
+  if (!d || isNaN(d.getTime())) return '';
+
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+
+  if (diffSec < 60) return 'Vừa xong';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24 && now.getDate() === d.getDate() && now.getMonth() === d.getMonth() && now.getFullYear() === d.getFullYear()) {
+    return `${diffHours} giờ trước`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (yesterday.getDate() === d.getDate() && yesterday.getMonth() === d.getMonth() && yesterday.getFullYear() === d.getFullYear()) {
+    return 'Hôm qua';
+  }
+
+  const diffDays = Math.floor(diffSec / 86400);
+  if (diffDays <= 7) {
+    return `${Math.max(1, diffDays)} ngày trước`;
+  }
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 /**
  * Render dữ liệu vào tbody của bảng
  */
@@ -1199,6 +1281,7 @@ function renderAdminLogTable(logs, staffList = []) {
   );
   const html = logs.map(item => {
     const timeStr = formatAdminLogTimestamp(item.created_at_formatted || item.created_at);
+    const relativeTimeStr = formatAdminLogRelativeTime(item.created_at || item.created_at_formatted);
     const storedActorRole = String(item.actor_role || 'admin').toLowerCase();
     const isSystemActor = storedActorRole === 'system' || item.user_id === null || item.user_id === 0 || item.user_id === '0';
     const actorRole = isSystemActor ? 'system' : storedActorRole;
@@ -1259,7 +1342,7 @@ function renderAdminLogTable(logs, staffList = []) {
 
     return `
       <tr class="hover:bg-slate-50/80 transition-colors">
-        <!-- 1. Người thực hiện và thời gian -->
+        <!-- 1. Người thực hiện -->
         <td class="py-3 px-4 align-top">
           <div class="flex items-center gap-2">
             <div class="w-7 h-7 rounded-full bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
@@ -1269,7 +1352,6 @@ function renderAdminLogTable(logs, staffList = []) {
               <div class="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
                 <span class="inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${roleBadgeClass}">${roleLabel}</span>
                 <span class="break-all text-xs font-bold text-[#0F172A]">(${actorUsername})</span>
-                <span class="break-all font-mono text-[10px] text-slate-500">• ${escapeAdminLogHTML(timeStr)}</span>
               </div>
               <div class="text-[10px] text-slate-400">#${item.id}</div>
             </div>
@@ -1295,10 +1377,10 @@ function renderAdminLogTable(logs, staffList = []) {
           ${contentHtml}
         </td>
 
-        <!-- 5. IP -->
-        <td class="py-3 px-4 align-top text-right whitespace-nowrap">
-          <div class="font-mono text-xs font-semibold text-slate-600">${ip}</div>
-          <div class="text-[10px] text-slate-400">Bất biến</div>
+        <!-- 5. Thời gian (IP tooltip khi rê chuột) -->
+        <td class="py-3 px-4 align-top text-right whitespace-nowrap" title="IP: ${escapeAdminLogHTML(ip)}">
+          <div class="font-mono text-xs font-medium text-slate-700">${escapeAdminLogHTML(timeStr)}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">${escapeAdminLogHTML(relativeTimeStr)}</div>
         </td>
       </tr>
     `;

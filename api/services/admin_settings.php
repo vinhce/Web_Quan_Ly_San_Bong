@@ -185,11 +185,6 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
             $where[] = "(user_id IS NULL OR actor_role = 'system')";
         }
 
-        if ($actFilter !== '') {
-            $where[] = "action = ?";
-            $params[] = $actFilter;
-        }
-
         if ($rawActionCodes !== '') {
             if (!is_string($rawActionCodes)) {
                 json_error('Bộ lọc loại hành động không hợp lệ.', 400, 'ERR_INVALID_ACTION_FILTER');
@@ -211,6 +206,9 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
                 $where[] = 'UPPER(action) IN (' . implode(', ', array_fill(0, count($actionCodes), '?')) . ')';
                 array_push($params, ...array_map('strtoupper', $actionCodes));
             }
+        } elseif ($actFilter !== '') {
+            $where[] = "action = ?";
+            $params[] = $actFilter;
         }
 
         if ($fromDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate)) {
