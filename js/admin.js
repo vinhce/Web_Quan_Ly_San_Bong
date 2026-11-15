@@ -377,19 +377,24 @@ function applyRolePermissions() {
   if (!isAdmin) {
     const allowed = PORTAL_ALLOWED_TABS[currentPortalRole] || PORTAL_ALLOWED_TABS.staff;
     if (!allowed.includes(activeModule)) {
+      const wasLogs = (activeModule === 'logs');
       switchAdminTab('overview');
+      if (wasLogs && window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
+        window.SanBongApp.showToast('Bạn không có quyền xem nhật ký', 'error');
+      }
     }
   }
 }
 window.applyRolePermissions = applyRolePermissions;
 
 function switchAdminTab(moduleKey) {
+  const rawRequested = String(moduleKey || '').trim().toLowerCase();
   const tabNumMap = {
     '1': 'overview', '2': 'timeline', '3': 'quick-booking', '4': 'pitches',
     '5': 'pricing', '6': 'customers', '7': 'payments', '8': 'shifts',
-    '9': 'reports', '10': 'settings', '11': 'logs'
+    '9': 'reports', '10': 'settings', '11': 'logs', 'admin-logs': 'logs'
   };
-  if (tabNumMap[moduleKey]) moduleKey = tabNumMap[moduleKey];
+  if (tabNumMap[rawRequested]) moduleKey = tabNumMap[rawRequested];
 
   if (typeof window !== 'undefined' && window.sb_current_user && window.sb_current_user.role) {
     currentPortalRole = window.sb_current_user.role;
@@ -402,7 +407,15 @@ function switchAdminTab(moduleKey) {
 
   const allowed = PORTAL_ALLOWED_TABS[currentPortalRole] || PORTAL_ALLOWED_TABS.staff;
   if (!allowed.includes(moduleKey)) {
+    const isLogAttempt = (moduleKey === 'logs' || rawRequested === 'logs' || rawRequested === '11' || rawRequested === 'admin-logs');
     moduleKey = 'overview';
+    if (isLogAttempt) {
+      if (window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
+        window.SanBongApp.showToast('Bạn không có quyền xem nhật ký', 'error');
+      } else {
+        alert('Bạn không có quyền xem nhật ký');
+      }
+    }
   }
 
   activeModule = moduleKey;
