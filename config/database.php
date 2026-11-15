@@ -105,7 +105,7 @@ function ensureIndexExists(PDO $pdo, string $table, string $indexName, string $c
 }
 
 function ensureSchemaInitialized(PDO $pdo) {
-    $markerFile = dirname(__DIR__) . '/logs/.schema_v12_booking_status_ready';
+    $markerFile = dirname(__DIR__) . '/logs/.schema_v14_shifts_ready';
     if (is_file($markerFile)) {
         return;
     }
@@ -255,6 +255,14 @@ function ensureSchemaInitialized(PDO $pdo) {
         ensureIndexExists($pdo, 'bank_transactions', 'idx_bank_tx_status', '`match_status`');
         ensureIndexExists($pdo, 'bank_transactions', 'idx_bank_tx_code', '`detected_booking_code`');
         ensureIndexExists($pdo, 'bank_transactions', 'idx_bank_tx_created', '`created_at`');
+
+        // 8. shifts & bookings staff tracking
+        ensureColumnExists($pdo, 'shifts', 'initial_cash', 'DECIMAL(12,2) NOT NULL DEFAULT 0');
+        ensureColumnExists($pdo, 'shifts', 'discrepancy_reason', 'TEXT NULL DEFAULT NULL');
+        ensureColumnExists($pdo, 'shifts', 'actual_cash', 'DECIMAL(12,2) NOT NULL DEFAULT 0');
+        ensureColumnExists($pdo, 'shifts', 'cash_discrepancy', 'DECIMAL(12,2) NOT NULL DEFAULT 0');
+        ensureColumnExists($pdo, 'bookings', 'staff_id', 'INT NULL DEFAULT NULL');
+        ensureIndexExists($pdo, 'bookings', 'idx_bookings_staff_id', '`staff_id`');
 
         $postUpdates = [
             "UPDATE `pitches` SET `weekend_price` = 380000 WHERE `type` = 5 AND `weekend_price` = 0",

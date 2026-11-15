@@ -10,126 +10,171 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
 
 function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor): void {
     $computeShiftTotals = function (PDO $pdo, int $staffId, string $startTime, ?string $endTime = null): array {
-        $endBound = $endTime ?: date('Y-m-d H:i:s');
-        
-        $stmtWalkin = $pdo->prepare("SELECT COALESCE(SUM(deposit_amount), 0) AS total_walkin_cash
-            FROM bookings
-            WHERE created_at >= :start_time AND created_at <= :end_bound
-              AND status != 'Đã hủy'
-              AND (payment_method LIKE '%Tiền mặt%' OR note LIKE '%tại quầy%')
-              AND (staff_id = :staff_id OR user_id = :staff_id OR code IN (
-                  SELECT booking_id FROM audit_logs WHERE user_id = :staff_id AND action = 'WALKIN_BOOKING'
-              ))");
-        $stmtWalkin->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
-        $walkinCash = (int)$stmtWalkin->fetchColumn();
+        try {
+            $endBound = $endTime ?: date('Y-m-d H:i:s');
+            
+            $hasStaffCol = function_exists('db_table_has_column') ? db_table_has_column($pdo, 'bookings', 'staff_id') : true;
+            $staffCondition = $hasStaffCol
+                ? "(staff_id = :staff_id OR user_id = :staff_id OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id AND action = 'WALKIN_BOOKING'))"
+                : "(user_id = :staff_id OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id AND action = 'WALKIN_BOOKING'))";
 
-        $stmtRemaining = $pdo->prepare("SELECT COALESCE(SUM(CAST(REGEXP_REPLACE(old_value, '[^0-9]', '') AS SIGNED)), 0) AS total_rem_cash
-            FROM audit_logs
-            WHERE user_id = :staff_id
-              AND action = 'COLLECT_PAYMENT'
-              AND (new_value LIKE '%Tiền mặt%' OR new_value LIKE '%quầy%')
-              AND created_at >= :start_time AND created_at <= :end_bound");
-        $stmtRemaining->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
-        $remCash = (int)$stmtRemaining->fetchColumn();
+            $stmtWalkin = $pdo->prepare("SELECT COALESCE(SUM(deposit_amount), 0) AS total_walkin_cash
+                FROM bookings
+                WHERE created_at >= :start_time AND created_at <= :end_bound
+                  AND status != 'Đã hủy'
+                  AND (payment_method LIKE '%Tiền mặt%' OR note LIKE '%tại quầy%')
+                  AND {$staffCondition}");
+            $stmtWalkin->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
+            $walkinCash = (int)$stmtWalkin->fetchColumn();
 
-        $stmtSales = $pdo->prepare("SELECT COALESCE(SUM(total_amount), 0) AS total_service_cash
-            FROM service_sales
-            WHERE created_at >= :start_time AND created_at <= :end_bound
-              AND payment_method LIKE '%Tiền mặt%'
-              AND (staff_id = :staff_id OR staff_id IS NULL)");
-        $stmtSales->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
-        $serviceCash = (int)$stmtSales->fetchColumn();
+            // Tuyệt đối không dùng SQL REGEXP_REPLACE (MySQL < 8.0 crash 1305). Fetch giá trị về và preg_replace bằng PHP.
+            $stmtRemaining = $pdo->prepare("SELECT old_value
+                FROM audit_logs
+                WHERE user_id = :staff_id
+                  AND action = 'COLLECT_PAYMENT'
+                  AND (new_value LIKE '%Tiền mặt%' OR new_value LIKE '%quầy%')
+                  AND created_at >= :start_time AND created_at <= :end_bound");
+            $stmtRemaining->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
+            $remCash = 0;
+            while ($row = $stmtRemaining->fetch(PDO::FETCH_ASSOC)) {
+                $rawOld = (string)($row['old_value'] ?? '');
+                $digits = preg_replace('/[^0-9]/', '', $rawOld);
+                if ($digits !== '') {
+                    $remCash += (int)$digits;
+                }
+            }
 
-        $cashTotal = $walkinCash + $remCash + $serviceCash;
+            $stmtSales = $pdo->prepare("SELECT COALESCE(SUM(total_amount), 0) AS total_service_cash
+                FROM service_sales
+                WHERE created_at >= :start_time AND created_at <= :end_bound
+                  AND payment_method LIKE '%Tiền mặt%'
+                  AND (staff_id = :staff_id OR staff_id IS NULL)");
+            $stmtSales->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
+            $serviceCash = (int)$stmtSales->fetchColumn();
 
-        $stmtTransfer = $pdo->prepare("SELECT COALESCE(SUM(transfer_amount), 0) AS total_transfer
-            FROM bank_transactions
-            WHERE created_at >= :start_time AND created_at <= :end_bound
-              AND match_status IN ('matched', 'overpaid', 'underpaid', 'resolved')");
-        $stmtTransfer->execute([':start_time' => $startTime, ':end_bound' => $endBound]);
-        $transferTotal = (int)$stmtTransfer->fetchColumn();
+            $cashTotal = $walkinCash + $remCash + $serviceCash;
 
-        return [
-            'cashTotal'     => $cashTotal,
-            'transferTotal' => $transferTotal,
-            'walkinCash'    => $walkinCash,
-            'remCash'       => $remCash,
-            'serviceCash'   => $serviceCash
-        ];
+            $stmtTransfer = $pdo->prepare("SELECT COALESCE(SUM(transfer_amount), 0) AS total_transfer
+                FROM bank_transactions
+                WHERE created_at >= :start_time AND created_at <= :end_bound
+                  AND match_status IN ('matched', 'overpaid', 'underpaid', 'resolved')");
+            $stmtTransfer->execute([':start_time' => $startTime, ':end_bound' => $endBound]);
+            $transferTotal = (int)$stmtTransfer->fetchColumn();
+
+            return [
+                'cashTotal'     => $cashTotal,
+                'transferTotal' => $transferTotal,
+                'walkinCash'    => $walkinCash,
+                'remCash'       => $remCash,
+                'serviceCash'   => $serviceCash
+            ];
+        } catch (Throwable $e) {
+            error_log("[COMPUTE_SHIFT_TOTALS ERROR] " . $e->getMessage());
+            return [
+                'cashTotal'     => 0,
+                'transferTotal' => 0,
+                'walkinCash'    => 0,
+                'remCash'       => 0,
+                'serviceCash'   => 0
+            ];
+        }
     };
 
     if ($method === 'GET') {
-        $staffId = (int)$actor['id'];
-        $isManagerOrAdmin = in_array($actor['role'] ?? '', ['admin', 'manager'], true);
+        try {
+            $staffId = (int)($actor['id'] ?? 0);
+            $isManagerOrAdmin = in_array($actor['role'] ?? '', ['admin', 'manager'], true);
 
-        $openStmt = $pdo->prepare("SELECT * FROM shifts WHERE staff_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1");
-        $openStmt->execute([$staffId]);
-        $activeShift = $openStmt->fetch();
+            $openStmt = $pdo->prepare("SELECT * FROM shifts WHERE staff_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1");
+            $openStmt->execute([$staffId]);
+            $activeShift = $openStmt->fetch();
 
-        if ($activeShift) {
-            $totals = $computeShiftTotals($pdo, $staffId, $activeShift['start_time'], null);
-            $activeShift['cash_total'] = $totals['cashTotal'];
-            $activeShift['transfer_total'] = $totals['transferTotal'];
-            $diffHours = (time() - strtotime($activeShift['start_time'])) / 3600;
-            $activeShift['is_overdue'] = ($diffHours >= 14);
-            $activeShift['hours_open'] = round($diffHours, 1);
+            if ($activeShift) {
+                $totals = $computeShiftTotals($pdo, $staffId, $activeShift['start_time'], null);
+                $activeShift['cash_total'] = $totals['cashTotal'];
+                $activeShift['transfer_total'] = $totals['transferTotal'];
+                $diffHours = (time() - strtotime($activeShift['start_time'])) / 3600;
+                $activeShift['is_overdue'] = ($diffHours >= 14);
+                $activeShift['hours_open'] = round($diffHours, 1);
 
-            $updOpen = $pdo->prepare("UPDATE shifts SET cash_total = ?, transfer_total = ? WHERE id = ?");
-            $updOpen->execute([$totals['cashTotal'], $totals['transferTotal'], $activeShift['id']]);
-        }
-
-        $filterDate = sanitize_string($_GET['date'] ?? '', 20);
-        $filterStaff = isset($_GET['staff_id']) && $_GET['staff_id'] !== '' ? (int)$_GET['staff_id'] : null;
-        $page = max(1, (int)($_GET['page'] ?? 1));
-        $limit = min(100, max(1, (int)($_GET['limit'] ?? 20)));
-        $offset = ($page - 1) * $limit;
-
-        $whereClauses = [];
-        $params = [];
-
-        if (!$isManagerOrAdmin) {
-            $whereClauses[] = "staff_id = ?";
-            $params[] = $staffId;
-        } else {
-            if ($filterStaff !== null && $filterStaff > 0) {
-                $whereClauses[] = "staff_id = ?";
-                $params[] = $filterStaff;
+                try {
+                    $updOpen = $pdo->prepare("UPDATE shifts SET cash_total = ?, transfer_total = ? WHERE id = ?");
+                    $updOpen->execute([$totals['cashTotal'], $totals['transferTotal'], $activeShift['id']]);
+                } catch (Throwable $updEx) {
+                    error_log("[UPDATE ACTIVE SHIFT WARN] " . $updEx->getMessage());
+                }
             }
-        }
 
-        if ($filterDate !== '') {
-            $whereClauses[] = "DATE(start_time) = ?";
-            $params[] = $filterDate;
-        }
+            $filterDate = sanitize_string($_GET['date'] ?? '', 20);
+            $filterStaff = isset($_GET['staff_id']) && $_GET['staff_id'] !== '' ? (int)$_GET['staff_id'] : null;
+            $page = max(1, (int)($_GET['page'] ?? 1));
+            $limit = min(100, max(1, (int)($_GET['limit'] ?? 20)));
+            $offset = ($page - 1) * $limit;
 
-        $whereSql = count($whereClauses) > 0 ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
+            $whereClauses = [];
+            $params = [];
 
-        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM shifts {$whereSql}");
-        $countStmt->execute($params);
-        $totalShifts = (int)$countStmt->fetchColumn();
+            if (!$isManagerOrAdmin) {
+                $whereClauses[] = "staff_id = ?";
+                $params[] = $staffId;
+            } else {
+                if ($filterStaff !== null && $filterStaff > 0) {
+                    $whereClauses[] = "staff_id = ?";
+                    $params[] = $filterStaff;
+                }
+            }
 
-        $listStmt = $pdo->prepare("SELECT * FROM shifts {$whereSql} ORDER BY id DESC LIMIT {$limit} OFFSET {$offset}");
-        $listStmt->execute($params);
-        $shifts = $listStmt->fetchAll();
+            if ($filterDate !== '') {
+                $whereClauses[] = "DATE(start_time) = ?";
+                $params[] = $filterDate;
+            }
 
-        $staffListStmt = $pdo->query("SELECT id, full_name, username, role FROM users WHERE role IN ('staff', 'manager', 'admin') ORDER BY full_name ASC");
-        $staffList = $staffListStmt->fetchAll();
+            $whereSql = count($whereClauses) > 0 ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
 
-        json_response([
-            'success' => true,
-            'data'    => [
-                'activeShift'  => $activeShift,
-                'currentShift' => $activeShift,
-                'shifts'       => $shifts,
-                'staffList'    => $staffList,
-                'pagination'   => [
-                    'total'      => $totalShifts,
-                    'page'       => $page,
-                    'limit'      => $limit,
-                    'totalPages' => ceil($totalShifts / $limit)
+            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM shifts {$whereSql}");
+            $countStmt->execute($params);
+            $totalShifts = (int)$countStmt->fetchColumn();
+
+            $listStmt = $pdo->prepare("SELECT * FROM shifts {$whereSql} ORDER BY id DESC LIMIT {$limit} OFFSET {$offset}");
+            $listStmt->execute($params);
+            $shifts = $listStmt->fetchAll() ?: [];
+
+            $staffListStmt = $pdo->query("SELECT id, full_name, username, role FROM users WHERE role IN ('staff', 'manager', 'admin') ORDER BY full_name ASC");
+            $staffList = $staffListStmt ? ($staffListStmt->fetchAll() ?: []) : [];
+
+            json_response([
+                'success' => true,
+                'data'    => [
+                    'activeShift'  => $activeShift ?: null,
+                    'currentShift' => $activeShift ?: null,
+                    'shifts'       => $shifts,
+                    'staffList'    => $staffList,
+                    'pagination'   => [
+                        'total'      => $totalShifts,
+                        'page'       => $page,
+                        'limit'      => $limit,
+                        'totalPages' => ceil($totalShifts / $limit)
+                    ]
                 ]
-            ]
-        ]);
+            ]);
+        } catch (Throwable $e) {
+            error_log("[HANDLE_ADMIN_SHIFTS GET ERROR] " . $e->getMessage());
+            json_response([
+                'success' => true,
+                'data'    => [
+                    'activeShift'  => null,
+                    'currentShift' => null,
+                    'shifts'       => [],
+                    'staffList'    => [],
+                    'pagination'   => [
+                        'total'      => 0,
+                        'page'       => 1,
+                        'limit'      => 20,
+                        'totalPages' => 0
+                    ]
+                ]
+            ]);
+        }
     }
 
     if ($method === 'POST') {
@@ -230,8 +275,8 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                     json_error('Bắt buộc nhập lý do chênh lệch khi số tiền nhân viên đếm khác hệ thống!', 400, 'ERR_DISCREPANCY_REASON_REQUIRED');
                 }
 
-                $updStmt = $pdo->prepare("UPDATE shifts SET end_time = NOW(), cash_total = ?, transfer_total = ?, actual_cash_received = ?, discrepancy_amount = ?, discrepancy_reason = ?, note = ?, status = 'closed' WHERE id = ? AND status = 'open'");
-                $updStmt->execute([$cashTotal, $transferTotal, $countedCash, $discrepancy, $discrepancyReason, $note, $shift['id']]);
+                $updStmt = $pdo->prepare("UPDATE shifts SET end_time = NOW(), cash_total = ?, transfer_total = ?, actual_cash_received = ?, discrepancy_amount = ?, actual_cash = ?, cash_discrepancy = ?, discrepancy_reason = ?, note = ?, status = 'closed' WHERE id = ? AND status = 'open'");
+                $updStmt->execute([$cashTotal, $transferTotal, $countedCash, $discrepancy, $countedCash, $discrepancy, $discrepancyReason, $note, $shift['id']]);
 
                 write_audit_log(
                     $pdo,
@@ -300,8 +345,8 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                 $expectedTotal = (int)$shift['cash_total'] + (int)($shift['initial_cash'] ?? 0);
                 $discrepancy = $actualCash - $expectedTotal;
 
-                $updStmt = $pdo->prepare("UPDATE shifts SET actual_cash_received = ?, discrepancy_amount = ?, admin_note = ?, status = 'confirmed', confirmed_by = ?, confirmed_at = NOW() WHERE id = ? AND status = 'closed'");
-                $updStmt->execute([$actualCash, $discrepancy, $adminNote, (int)$mgr['id'], $shiftId]);
+                $updStmt = $pdo->prepare("UPDATE shifts SET actual_cash_received = ?, discrepancy_amount = ?, actual_cash = ?, cash_discrepancy = ?, admin_note = ?, status = 'confirmed', confirmed_by = ?, confirmed_at = NOW() WHERE id = ? AND status = 'closed'");
+                $updStmt->execute([$actualCash, $discrepancy, $actualCash, $discrepancy, $adminNote, (int)$mgr['id'], $shiftId]);
 
                 write_audit_log(
                     $pdo,

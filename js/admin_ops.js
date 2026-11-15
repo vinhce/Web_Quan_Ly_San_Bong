@@ -1,3 +1,8 @@
+let selectedTimelineDate = '';
+let timelineBookingsByDateCache = {};
+window.selectedTimelineDate = selectedTimelineDate;
+window.timelineBookingsByDateCache = timelineBookingsByDateCache;
+
 function formatTimelineDateLabel(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr + 'T00:00:00');
@@ -26,21 +31,16 @@ async function fetchTimelineDateBookings(dateStr) {
         .filter(srvB => srvB && srvB.code)
         .map(srvB => {
           const normItem = {
-            code: srvB.code,
-            customerName: srvB.customerName || srvB.customer_name || 'Khách đặt sân',
-            phone: srvB.phone || '',
-            pitchId: srvB.pitchId || srvB.pitch_id || '',
-            pitchName: srvB.pitchName || srvB.pitch_name || '',
-            date: srvB.date || srvB.booking_date || targetDate,
-            slotId: srvB.slotId || srvB.slot_id || '',
-            slotTime: srvB.slotTime || srvB.slot_time || '',
+            code: srvB.code, customerName: srvB.customerName || srvB.customer_name || 'Khách đặt sân',
+            phone: srvB.phone || '', pitchId: srvB.pitchId || srvB.pitch_id || '',
+            pitchName: srvB.pitchName || srvB.pitch_name || '', date: srvB.date || srvB.booking_date || targetDate,
+            slotId: srvB.slotId || srvB.slot_id || '', slotTime: srvB.slotTime || srvB.slot_time || '',
             totalPrice: Number(srvB.totalPrice ?? srvB.total_price ?? 0),
             depositAmount: Number(srvB.depositAmount ?? srvB.deposit_amount ?? 0),
             remainingAmount: Number(srvB.remainingAmount ?? srvB.remaining_amount ?? 0),
             status: srvB.status || 'Đã xác nhận',
             paymentStatus: srvB.paymentStatus || srvB.payment_status || 'Đã cọc 30%',
-            paymentMethod: srvB.paymentMethod || srvB.payment_method || '',
-            note: srvB.note || ''
+            paymentMethod: srvB.paymentMethod || srvB.payment_method || '', note: srvB.note || ''
           };
           const prev = oldByCode.get(srvB.code);
           return prev ? Object.assign({}, prev, normItem) : normItem;
@@ -66,6 +66,7 @@ window.changeTimelineDate = function(deltaDays) {
     const dd = String(cur.getDate()).padStart(2, '0');
     selectedTimelineDate = `${yyyy}-${mm}-${dd}`;
   }
+  window.selectedTimelineDate = selectedTimelineDate;
   const picker = document.getElementById('timeline-date-picker');
   if (picker) picker.value = selectedTimelineDate;
   const lbl = document.getElementById('timeline-date-label');
@@ -78,6 +79,7 @@ window.changeTimelineDate = function(deltaDays) {
 window.setTimelineDate = function(dateStr) {
   if (!dateStr) return;
   selectedTimelineDate = dateStr;
+  window.selectedTimelineDate = selectedTimelineDate;
   const lbl = document.getElementById('timeline-date-label');
   if (lbl) lbl.textContent = formatTimelineDateLabel(selectedTimelineDate);
   fetchTimelineDateBookings(selectedTimelineDate).finally(() => {
@@ -95,6 +97,7 @@ function renderTimelineGantt() {
   const getToday = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
   if (!selectedTimelineDate) {
     selectedTimelineDate = getToday;
+    window.selectedTimelineDate = selectedTimelineDate;
   }
   const picker = document.getElementById('timeline-date-picker');
   if (picker && picker.value !== selectedTimelineDate) {
@@ -120,11 +123,7 @@ function renderTimelineGantt() {
         return { left, width };
       }
     }
-    const presets = [
-      { left: 42, width: 16 },
-      { left: 60, width: 17 },
-      { left: 79, width: 14 }
-    ];
+    const presets = [{ left: 42, width: 16 }, { left: 60, width: 17 }, { left: 79, width: 14 }];
     return presets[fallbackIdx % presets.length];
   };
 
@@ -135,12 +134,9 @@ function renderTimelineGantt() {
       const bDate = b.date || b.booking_date;
       const bStatus = b.status || '';
       const bPayStatus = b.paymentStatus || b.payment_status || '';
-      return bPitchId === p.id &&
-        bDate === selectedTimelineDate &&
-        bStatus !== 'Đã hủy' &&
-        bStatus !== 'Khách chưa đến' &&
-        bStatus !== 'Vắng mặt (No-Show)' &&
-        !String(bStatus).includes('No-Show') &&
+      return bPitchId === p.id && bDate === selectedTimelineDate &&
+        bStatus !== 'Đã hủy' && bStatus !== 'Khách chưa đến' &&
+        bStatus !== 'Vắng mặt (No-Show)' && !String(bStatus).includes('No-Show') &&
         bPayStatus !== 'Tịch thu cọc 30%';
     });
 
@@ -611,19 +607,11 @@ function initQuickBookingForm() {
 
         const srvData = r.data || {};
         const createdBooking = db.createBooking({
-          code: srvData.code,
-          customerName: srvData.customerName || name,
-          phone: srvData.phone || phone,
-          pitchId: pitchId,
-          date: srvData.date || dateVal,
-          slotId: slotId,
+          code: srvData.code, customerName: srvData.customerName || name, phone: srvData.phone || phone,
+          pitchId: pitchId, date: srvData.date || dateVal, slotId: slotId,
           slotTime: srvData.slotTime || db.getTimeSlots().find(s => s.id === slotId)?.time,
-          weeksCount: weeksCount,
-          bookingMode: weeksCount > 1 ? 'monthly' : 'single',
-          services: [],
-          voucherCode: '',
-          note: note,
-          status: srvData.status || 'Đã xác nhận',
+          weeksCount: weeksCount, bookingMode: weeksCount > 1 ? 'monthly' : 'single',
+          services: [], voucherCode: '', note: note, status: srvData.status || 'Đã xác nhận',
           paymentStatus: srvData.paymentStatus || (payMethod.includes('100%') ? 'Đã thanh toán 100%' : (payMethod.includes('Chưa cọc') ? 'Chờ thu tại sân' : 'Đã cọc 30%')),
           paymentMethod: payMethod
         });

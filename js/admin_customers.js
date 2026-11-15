@@ -1,6 +1,13 @@
 ﻿
+let crmCustomersFetchSeq = 0;
+let currentCustomerFilter = 'all';
+let adminCustomersCache = [];
+window.crmCustomersFetchSeq = crmCustomersFetchSeq;
+window.currentCustomerFilter = currentCustomerFilter;
+
 function filterAdminCustomers(filterType) {
   currentCustomerFilter = filterType || 'all';
+  window.currentCustomerFilter = currentCustomerFilter;
   const mapBtn = {
     'all': 'cust-filter-all',
     'vip': 'cust-filter-vip',

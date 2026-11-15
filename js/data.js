@@ -429,6 +429,21 @@ const DEFAULT_BANK_INFO = {
   depositRate: 0.3
 };
 
+const DEFAULT_SYSTEM_CONFIG = {
+  depositRate: 30,
+  hotline: '0352 313 548',
+  openHours: '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+  holdMinutes: 15,
+  waitlistHoldMinutes: 15,
+  refundFullHours: 24,
+  refundPartialHours: 4,
+  autoCancelEnabled: true,
+  matchmakingEnabled: true,
+  matchmakingRequireApproval: false,
+  pricingTable: null
+};
+window.DEFAULT_SYSTEM_CONFIG = DEFAULT_SYSTEM_CONFIG;
+
 function getTodayDateString(offsetDays = 0) {
   const d = new Date();
   if (offsetDays !== 0) {
@@ -623,6 +638,7 @@ window.SanBongData = {
   PACKAGE_PROMOTIONS,
   DEFAULT_USER,
   DEFAULT_BANK_INFO,
+  DEFAULT_SYSTEM_CONFIG,
   DEFAULT_BOOKINGS,
   getTodayDateString
 };

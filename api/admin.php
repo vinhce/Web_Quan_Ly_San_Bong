@@ -158,6 +158,35 @@ if (!$pdo) {
     if ($action === 'all_bookings') {
         json_response(['success' => true, 'data' => []]);
     }
+    if ($action === 'pending_deposits') {
+        json_response([
+            'success' => true,
+            'data'    => [
+                [
+                    'id'             => 1,
+                    'code'           => 'BK-261115-001',
+                    'time'           => date('H:i d/m/Y'),
+                    'name'           => 'Khách Mẫu Dự Phòng',
+                    'phone'          => '0981234567',
+                    'pitch_name'     => 'Sân 7 - Sân A',
+                    'date'           => date('Y-m-d'),
+                    'slot_time'      => '17:30 - 19:00',
+                    'amt'            => 195000,
+                    'deposit_amount' => 195000,
+                    'total_price'    => 650000,
+                    'bank'           => 'VietQR MBBank',
+                    'payment_method' => 'VietQR Chuyển khoản',
+                    'created_at'     => date('Y-m-d H:i:s'),
+                    'bankTxStatus'   => 'matched',
+                    'bank_tx_status' => 'Đã nhận đủ',
+                    'txAmt'          => 195000,
+                    'transfer_amount'=> 195000,
+                    'paidAmt'        => 195000,
+                    'paid_amount'    => 195000
+                ]
+            ]
+        ]);
+    }
     if ($action === 'update_payment') {
         $mgr = require_manager_or_admin($pdo);
         json_response([

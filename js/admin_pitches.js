@@ -1,3 +1,6 @@
+let currentPitchFilter = 'all';
+window.currentPitchFilter = currentPitchFilter;
+
 async function toggleMaintenance(pitchId) {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
@@ -434,6 +437,7 @@ window.updateMaintenanceStatus = updateMaintenanceStatus;
 
 function filterAdminPitches(status) {
   currentPitchFilter = status || 'all';
+  window.currentPitchFilter = currentPitchFilter;
   const mapBtn = {
     'all': 'pitch-filter-all',
     'Hoạt động': 'pitch-filter-active',

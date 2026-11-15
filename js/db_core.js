@@ -1,6 +1,21 @@
 ﻿(function () {
   'use strict';
 
+  const DEFAULT_SYSTEM_CONFIG = window.DEFAULT_SYSTEM_CONFIG || window.SanBongData?.DEFAULT_SYSTEM_CONFIG || {
+    depositRate: 30,
+    hotline: '0352 313 548',
+    openHours: '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+    holdMinutes: 15,
+    waitlistHoldMinutes: 15,
+    refundFullHours: 24,
+    refundPartialHours: 4,
+    autoCancelEnabled: true,
+    matchmakingEnabled: true,
+    matchmakingRequireApproval: false,
+    pricingTable: null
+  };
+  window.DEFAULT_SYSTEM_CONFIG = DEFAULT_SYSTEM_CONFIG;
+
   const STORAGE_KEYS = {
     PITCHES: 'sb_pitches_v2',
     TIME_SLOTS: 'sb_slots_v1',
