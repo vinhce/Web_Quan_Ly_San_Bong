@@ -92,8 +92,8 @@
             </div>
             <div>
               <label class="block font-bold text-[#475569] mb-1">Chênh lệch tiền mặt</label>
-              <div id="shift-discrepancy-badge" class="h-[38px] px-3 rounded-lg border border-slate-200 bg-white flex items-center justify-center font-mono font-bold text-xs text-slate-600">
-                0đ (Khớp)
+              <div id="shift-discrepancy-badge" class="h-[38px] px-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center font-mono font-bold text-xs text-slate-500">
+                Chưa kiểm đếm
               </div>
             </div>
           </div>
@@ -106,7 +106,7 @@
             <input type="text" id="shift-close-note" placeholder="VD: Đã đếm đủ tiền mặt bàn giao ca sau..." class="input-field w-full bg-white text-xs">
           </div>
           <div class="pt-1">
-            <button type="button" id="btn-close-shift" onclick="handleCloseShift()" class="w-full btn-base bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs py-2.5 shadow-sm cursor-pointer flex items-center justify-center gap-2">
+            <button type="button" id="btn-close-shift" onclick="handleCloseShift()" disabled class="w-full btn-base bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs py-2.5 shadow-sm flex items-center justify-center gap-2 opacity-50 cursor-not-allowed">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Khóa sổ &amp; Chốt ca bàn giao
             </button>

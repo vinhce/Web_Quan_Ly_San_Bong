@@ -77,6 +77,9 @@ if ($method === 'GET' && $action === 'me') {
             $_SESSION['user']['points'] = $points;
             $_SESSION['user']['customer_tier'] = $customerTier;
             $_SESSION['user']['totp_enabled'] = $totpEnabled;
+            if (isset($uRow)) {
+                $_SESSION['user']['must_change_password'] = !empty($uRow['must_change_password']);
+            }
             $_SESSION['user']['name'] = $_SESSION['user']['full_name'] ?? $_SESSION['user']['username'] ?? 'Hội viên';
             unset($_SESSION['user']['totp_secret']);
         }
@@ -100,35 +103,20 @@ if ($method === 'GET' && $action === 'me') {
 
 if ($action === 'logout') {
     if (strtoupper($method) !== 'POST') {
-        json_response([
-            'success'  => false,
-            'message'  => 'Phương thức không hợp lệ. Vui lòng gửi POST để đăng xuất.',
-            'ref_code' => 'ERR_METHOD_NOT_ALLOWED'
-        ], 405);
+        json_response(['success' => false, 'message' => 'Phương thức không hợp lệ. Vui lòng gửi POST để đăng xuất.', 'ref_code' => 'ERR_METHOD_NOT_ALLOWED'], 405);
     }
     require_csrf_if_session_authenticated($data);
     destroy_current_session();
-    json_response([
-        'success' => true,
-        'message' => 'Đã đăng xuất thành công khỏi hệ thống.'
-    ]);
+    json_response(['success' => true, 'message' => 'Đã đăng xuất thành công khỏi hệ thống.']);
 }
 
 if ($action === 'login') {
     if (strtoupper($method) !== 'POST') {
-        json_response([
-            'success'  => false,
-            'message'  => 'Phương thức không hợp lệ. Vui lòng gửi POST để đăng nhập.',
-            'ref_code' => 'ERR_METHOD_NOT_ALLOWED'
-        ], 405);
+        json_response(['success' => false, 'message' => 'Phương thức không hợp lệ. Vui lòng gửi POST để đăng nhập.', 'ref_code' => 'ERR_METHOD_NOT_ALLOWED'], 405);
     }
     $turnstileToken = $data['turnstile_token'] ?? $data['cf-turnstile-response'] ?? null;
     if (!verify_turnstile_if_configured($turnstileToken)) {
-        json_response([
-            'success'  => false,
-            'message'  => 'Xác thực Turnstile (chống bot) không thành công. Vui lòng thử lại.',
-            'ref_code' => 'ERR_BOT_CHECK_FAILED'
-        ], 400);
+        json_response(['success' => false, 'message' => 'Xác thực Turnstile (chống bot) không thành công. Vui lòng thử lại.', 'ref_code' => 'ERR_BOT_CHECK_FAILED'], 400);
     }
 
     $username = sanitize_string($data['username'] ?? $data['email'] ?? '', 100);
@@ -136,41 +124,25 @@ if ($action === 'login') {
     $acctRateKey = strtolower($username);
 
     if (!check_rate_limit($pdo, 'login', 5, 900) || ($acctRateKey !== '' && !check_rate_limit($pdo, 'login_acct', 5, 900, $acctRateKey))) {
-        json_response([
-            'success'  => false,
-            'message'  => 'Bạn đã đăng nhập sai quá 5 lần. Vui lòng thử lại sau ít phút để bảo vệ tài khoản.',
-            'ref_code' => 'ERR_RATE_LIMITED'
-        ], 429);
+        json_response(['success' => false, 'message' => 'Bạn đã đăng nhập sai quá 5 lần. Vui lòng thử lại sau ít phút để bảo vệ tài khoản.', 'ref_code' => 'ERR_RATE_LIMITED'], 429);
     }
 
     if (empty($username) || empty($password)) {
-        json_response([
-            'success'  => false,
-            'message'  => 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.',
-            'ref_code' => 'ERR_EMPTY_FIELDS'
-        ], 400);
+        json_response(['success' => false, 'message' => 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.', 'ref_code' => 'ERR_EMPTY_FIELDS'], 400);
     }
 
     loadEnv();
     $appEnv = strtolower(trim($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production'));
     $allowDemoFallback = (strtolower(trim($_ENV['ALLOW_DEMO_FALLBACK'] ?? getenv('ALLOW_DEMO_FALLBACK') ?: '')) === 'true');
 
-    if (!$pdo) {
+    if ($pdo === null || !$pdo) {
         if ($appEnv !== 'local' || !$allowDemoFallback) {
-            json_response([
-                'success'  => false,
-                'message'  => 'Hệ thống cơ sở dữ liệu tạm thời không khả dụng. Vui lòng thử lại sau.',
-                'ref_code' => 'ERR_DB_UNAVAILABLE'
-            ], 503);
+            json_response(['success' => false, 'message' => 'Hệ thống cơ sở dữ liệu tạm thời không khả dụng. Vui lòng thử lại sau.', 'ref_code' => 'ERR_DB_UNAVAILABLE'], 503);
         }
 
         $fallbackAccounts = [
-            'admin' => ['id' => 1, 'username' => 'admin', 'email' => 'admin@sanbongpro.vn', 'phone' => '0987654321', 'full_name' => 'Nguyễn Văn Hùng (Chủ Sân)', 'role' => 'admin', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$VTVUaVRrNThhNldzcENpZg$kNqghJJEnQqDG/6phhZwri5Q6skH+e/dy+/fZhkxqb8'],
             'user' => ['id' => 2, 'username' => 'user', 'email' => 'khachhang@sanbongpro.vn', 'phone' => '0000000002', 'full_name' => 'Trần Minh Hoàng', 'role' => 'user', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$MHgzSUtGQnA1dE54YUpkWA$iy5TrvTKjwRBOtNvuU/aF0JQ1Cn0eCDr4N1Z2q/ot5A'],
-            '0000000002' => ['id' => 2, 'username' => 'user', 'email' => 'khachhang@sanbongpro.vn', 'phone' => '0000000002', 'full_name' => 'Trần Minh Hoàng', 'role' => 'user', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$MHgzSUtGQnA1dE54YUpkWA$iy5TrvTKjwRBOtNvuU/aF0JQ1Cn0eCDr4N1Z2q/ot5A'],
-            'vxyen0801' => ['id' => 3, 'username' => 'vxyen0801', 'email' => 'vxyen0801@sanbongpro.vn', 'phone' => '0352313548', 'full_name' => 'Quản Trị Viên', 'role' => 'admin', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$MHgzSUtGQnA1dE54YUpkWA$iy5TrvTKjwRBOtNvuU/aF0JQ1Cn0eCDr4N1Z2q/ot5A'],
-            'nhanvien' => ['id' => 4, 'username' => 'nhanvien', 'email' => 'nhanvien@sanbongpro.vn', 'phone' => '0352000111', 'full_name' => 'Nhân Viên Trực Sân Ca 1', 'role' => 'staff', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI'],
-            'quanly' => ['id' => 5, 'username' => 'quanly', 'email' => 'quanly@sanbongpro.vn', 'phone' => '0352000222', 'full_name' => 'Nguyễn Hoàng Minh (Quản Lý Sân)', 'role' => 'manager', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI']
+            '0000000002' => ['id' => 2, 'username' => 'user', 'email' => 'khachhang@sanbongpro.vn', 'phone' => '0000000002', 'full_name' => 'Trần Minh Hoàng', 'role' => 'user', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$MHgzSUtGQnA1dE54YUpkWA$iy5TrvTKjwRBOtNvuU/aF0JQ1Cn0eCDr4N1Z2q/ot5A']
         ];
 
         $lookupKey = strtolower($username);
@@ -273,6 +245,7 @@ if ($action === 'login') {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
         $assignedRole = $user['role'] ?? 'user';
+        $mustChange = !empty($user['must_change_password']);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user'] = [
             'id'        => $user['id'],
@@ -280,7 +253,8 @@ if ($action === 'login') {
             'email'     => $user['email'],
             'phone'     => $user['phone'],
             'full_name' => $user['full_name'],
-            'role'      => $assignedRole
+            'role'      => $assignedRole,
+            'must_change_password' => $mustChange
         ];
 
         $redirect = in_array($assignedRole, ['admin', 'manager', 'staff'], true) ? 'portal-admin/' : 'history';
@@ -289,6 +263,7 @@ if ($action === 'login') {
             'success'  => true,
             'message'  => 'Đăng nhập thành công!',
             'user'     => $_SESSION['user'],
+            'must_change_password' => $mustChange,
             'redirect' => $redirect
         ]);
     } else {
@@ -373,19 +348,22 @@ if ($action === 'verify_2fa') {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     $_SESSION['user_id'] = $user['id'];
     $role = $user['role'] ?? 'user';
+    $mustChange = !empty($user['must_change_password']);
     $_SESSION['user'] = [
         'id'        => $user['id'],
         'username'  => $user['username'],
         'email'     => $user['email'],
         'phone'     => $user['phone'],
         'full_name' => $user['full_name'],
-        'role'      => $role
+        'role'      => $role,
+        'must_change_password' => $mustChange
     ];
 
     json_response([
         'success'  => true,
         'message'  => 'Xác thực 2 lớp thành công! Đang chuyển hướng...',
         'user'     => $_SESSION['user'],
+        'must_change_password' => $mustChange,
         'redirect' => in_array($role, ['admin', 'manager', 'staff'], true) ? 'portal-admin/' : 'history'
     ]);
 }
@@ -489,38 +467,73 @@ if ($action === 'disable_2fa') {
     }
 }
 
+if ($action === 'change_password') {
+    if (strtoupper($method) !== 'POST') {
+        json_response(['success' => false, 'message' => 'Phương thức không hợp lệ. Vui lòng gửi POST để đổi mật khẩu.', 'ref_code' => 'ERR_METHOD_NOT_ALLOWED'], 405);
+    }
+    if (empty($_SESSION['user_id'])) {
+        json_response(['success' => false, 'message' => 'Vui lòng đăng nhập để thực hiện đổi mật khẩu.', 'ref_code' => 'ERR_UNAUTHORIZED'], 401);
+    }
+    require_csrf_if_session_authenticated($data);
+    if (!$pdo) {
+        json_response(['success' => false, 'message' => 'Cơ sở dữ liệu tạm thời không khả dụng. Vui lòng thử lại sau.', 'ref_code' => 'ERR_DB_UNAVAILABLE'], 503);
+    }
+
+    $oldPassword = (string)($data['old_password'] ?? $data['current_password'] ?? '');
+    $newPassword = (string)($data['new_password'] ?? $data['password'] ?? '');
+
+    if (empty($oldPassword) || empty($newPassword)) {
+        json_response(['success' => false, 'message' => 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.', 'ref_code' => 'ERR_EMPTY_FIELDS'], 400);
+    }
+
+    if (strlen($newPassword) < 8) {
+        json_response(['success' => false, 'message' => 'Mật khẩu mới phải có tối thiểu 8 ký tự.', 'ref_code' => 'ERR_WEAK_PASSWORD'], 400);
+    }
+
+    $userId = (int)$_SESSION['user_id'];
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $currentUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$currentUser || !password_verify($oldPassword, (string)($currentUser['password_hash'] ?? ''))) {
+        json_response(['success' => false, 'message' => 'Mật khẩu hiện tại không chính xác.', 'ref_code' => 'ERR_INVALID_PASSWORD'], 400);
+    }
+
+    $newHash = password_hash($newPassword, PASSWORD_ARGON2ID);
+    try {
+        $upd = $pdo->prepare("UPDATE users SET password_hash = ?, must_change_password = 0, failed_attempts = 0, lock_until = NULL WHERE id = ?");
+        $upd->execute([$newHash, $userId]);
+        session_regenerate_id(true);
+        if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+            $_SESSION['user']['must_change_password'] = false;
+        }
+        write_audit_log($pdo, 'CHANGE_PASSWORD', null, 'must_change_password=1', 'must_change_password=0', $currentUser);
+        json_response([
+            'success' => true,
+            'message' => 'Đổi mật khẩu thành công!'
+        ]);
+    } catch (Throwable $e) {
+        error_log("[CHANGE PASSWORD ERROR] " . $e->getMessage());
+        json_response(['success' => false, 'message' => 'Không thể cập nhật mật khẩu vào cơ sở dữ liệu.', 'ref_code' => 'ERR_DB'], 500);
+    }
+}
+
 if ($action === 'register') {
     if (strtoupper($method) !== 'POST') {
-        json_response([
-            'success'  => false,
-            'message'  => 'Phương thức không hợp lệ. Vui lòng gửi POST để đăng ký.',
-            'ref_code' => 'ERR_METHOD_NOT_ALLOWED'
-        ], 405);
+        json_response(['success' => false, 'message' => 'Phương thức không hợp lệ. Vui lòng gửi POST để đăng ký.', 'ref_code' => 'ERR_METHOD_NOT_ALLOWED'], 405);
     }
     $privacyConsent = !empty($data['privacy_consent']) || !empty($data['privacyConsent']);
     if (!$privacyConsent) {
-        json_response([
-            'success'  => false,
-            'message'  => 'Vui lòng đọc và tích chọn đồng ý với Chính sách bảo mật & Điều khoản dịch vụ.',
-            'ref_code' => 'ERR_PRIVACY_CONSENT_REQUIRED'
-        ], 422);
+        json_response(['success' => false, 'message' => 'Vui lòng đọc và tích chọn đồng ý với Chính sách bảo mật & Điều khoản dịch vụ.', 'ref_code' => 'ERR_PRIVACY_CONSENT_REQUIRED'], 422);
     }
 
     $turnstileToken = $data['turnstile_token'] ?? $data['cf-turnstile-response'] ?? null;
     if (!verify_turnstile_if_configured($turnstileToken)) {
-        json_response([
-            'success'  => false,
-            'message'  => 'Xác thực Turnstile (chống bot) không thành công. Vui lòng thử lại.',
-            'ref_code' => 'ERR_BOT_CHECK_FAILED'
-        ], 400);
+        json_response(['success' => false, 'message' => 'Xác thực Turnstile (chống bot) không thành công. Vui lòng thử lại.', 'ref_code' => 'ERR_BOT_CHECK_FAILED'], 400);
     }
 
     if (!check_rate_limit($pdo, 'register', 3, 300)) {
-        json_response([
-            'success'  => false,
-            'message'  => 'Thao tác quá nhanh. Vui lòng thử lại sau ít phút.',
-            'ref_code' => 'ERR_RATE_LIMITED'
-        ], 429);
+        json_response(['success' => false, 'message' => 'Thao tác quá nhanh. Vui lòng thử lại sau ít phút.', 'ref_code' => 'ERR_RATE_LIMITED'], 429);
     }
     increment_rate_limit($pdo, 'register');
 

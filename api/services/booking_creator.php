@@ -118,13 +118,76 @@ function handle_create_booking(?PDO $pdo, array $data): void {
     }
 
     $bookingDateTime = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? strtotime($date) : false;
-    $today = strtotime(date('Y-m-d'));
-    if (!$bookingDateTime || (!$isWalkin && $bookingDateTime < $today)) {
-        json_response([
-            'success'  => false,
-            'message'  => 'Ngày đặt sân không hợp lệ hoặc đã qua.',
-            'ref_code' => 'ERR_INVALID_DATE'
-        ], 400);
+    if (!$bookingDateTime) {
+        json_error('Ngày đặt sân không hợp lệ.', 400, 'ERR_INVALID_DATE');
+    }
+
+    $now = new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh'));
+    $todayStr = $now->format('Y-m-d');
+    $currentTime = $now->format('H:i');
+    $today = strtotime($todayStr);
+    $bookingDateStr = date('Y-m-d', $bookingDateTime);
+
+    if ($bookingDateStr < $todayStr) {
+        json_error('Không thể đặt sân cho ngày trong quá khứ.', 400, 'ERR_DATE_IN_PAST');
+    }
+
+    $allowPastSlot = !empty($data['allow_past_slot']) || !empty($data['allowPastSlot']);
+    $pastSlotReason = trim((string)($data['past_slot_reason'] ?? $data['pastSlotReason'] ?? $data['allow_past_slot_reason'] ?? ''));
+    $isPastSlot = false;
+
+    if ($bookingDateStr === $todayStr) {
+        $slotTime = '';
+        if ($pdo !== null) {
+            try {
+                $slotLookupStmt = $pdo->prepare("SELECT slot_time, start_time FROM time_slots WHERE id = ?");
+                $slotLookupStmt->execute([$slotId]);
+                $slotLookupRow = $slotLookupStmt->fetch(PDO::FETCH_ASSOC);
+                if ($slotLookupRow) {
+                    $slotTime = (string)($slotLookupRow['start_time'] ?: ($slotLookupRow['slot_time'] ?? ''));
+                }
+            } catch (Throwable $e) {
+                error_log("[SLOT LOOKUP WARN] " . $e->getMessage());
+            }
+        }
+        if ($slotTime === '') {
+            $fallbackSlotTimes = [
+                'S01' => '05:30 - 06:30', 'S02' => '06:30 - 07:30', 'S03' => '07:30 - 08:30',
+                'S04' => '08:30 - 09:30', 'S05' => '09:30 - 10:30', 'S06' => '14:00 - 15:00',
+                'S07' => '15:00 - 16:00', 'S08' => '16:00 - 17:00', 'S09' => '17:00 - 18:00',
+                'S10' => '17:30 - 19:00', 'S11' => '18:00 - 19:00', 'S12' => '19:00 - 20:00',
+                'S13' => '19:00 - 20:30', 'S14' => '20:00 - 21:00', 'S15' => '20:30 - 22:00',
+                'S16' => '21:00 - 22:00', 'S17' => '21:00 - 22:30', 'S18' => '22:00 - 23:00'
+            ];
+            $slotTime = $fallbackSlotTimes[$slotId] ?? (string)($data['slotTime'] ?? $data['slot_time'] ?? '');
+        }
+
+        $startSlotTime = '';
+        if ($slotTime !== '') {
+            $slotParts = explode('-', $slotTime);
+            $startSlotTime = trim($slotParts[0]);
+            if (strlen($startSlotTime) > 5) {
+                $startSlotTime = substr($startSlotTime, 0, 5);
+            }
+        }
+
+        if ($startSlotTime !== '' && $startSlotTime <= $currentTime) {
+            if ($isWalkin) {
+                if (!$allowPastSlot) {
+                    json_error('Khung giờ này đã qua, vui lòng chọn khung giờ khác.', 400, 'ERR_SLOT_IN_PAST');
+                }
+                if ($pastSlotReason === '') {
+                    json_error('Vui lòng nhập lý do cho phép đặt khung giờ đã qua.', 400, 'ERR_PAST_SLOT_REASON_REQUIRED');
+                }
+                $isPastSlot = true;
+            } else {
+                json_error('Khung giờ này đã qua, vui lòng chọn khung giờ khác.', 400, 'ERR_SLOT_IN_PAST');
+            }
+        }
+    }
+
+    if ($isPastSlot && $pastSlotReason !== '') {
+        $note = trim($note . " [Duyệt slot quá khứ: {$pastSlotReason}]");
     }
 
     if (stripos($pitchId, 'P5') === 0) {
@@ -239,6 +302,9 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 $paidAmount = $depositAmount;
                 $remainingAmount = max(0, $totalPrice - $depositAmount);
             }
+            if ($isPastSlot) {
+                write_audit_log(null, 'WALKIN_PAST_SLOT', $code, null, "Duyệt đặt slot quá khứ: {$slot['slot_time']} ngày {$date}. Lý do: {$pastSlotReason}", $walkinActor ?? null);
+            }
         }
 
         $expectedFile = __DIR__ . '/../../logs/expected_orders.json';
@@ -283,6 +349,18 @@ function handle_create_booking(?PDO $pdo, array $data): void {
         if (!$slot) {
             $pdo->rollBack();
             json_error('Khung giờ đặt không hợp lệ.', 400, 'ERR_INVALID_SLOT');
+        }
+
+        if ($bookingDateStr === $todayStr && !$isPastSlot) {
+            $slotParts = explode('-', (string)$slot['slot_time']);
+            $sTime = trim($slotParts[0] ?? '');
+            if (strlen($sTime) > 5) {
+                $sTime = substr($sTime, 0, 5);
+            }
+            if ($sTime !== '' && $sTime <= $currentTime) {
+                $pdo->rollBack();
+                json_error('Khung giờ này đã qua, vui lòng chọn khung giờ khác.', 400, 'ERR_SLOT_IN_PAST');
+            }
         }
 
         for ($k = 0; $k < $weeksCount; $k++) {
@@ -557,6 +635,9 @@ function handle_create_booking(?PDO $pdo, array $data): void {
 
         if ($isWalkin) {
             write_audit_log($pdo, 'WALKIN_BOOKING', $code, null, "Tạo đơn tại quầy: {$pitch['name']} ({$date} {$slot['slot_time']}) - Gốc: {$originalPrice}đ - Giảm: {$discountAmount}đ - Tổng: {$totalPrice}đ - TT: {$paymentMethod}", $walkinActor ?? null);
+            if ($isPastSlot) {
+                write_audit_log($pdo, 'WALKIN_PAST_SLOT', $code, null, "Duyệt đặt slot quá khứ: {$slot['slot_time']} ngày {$date}. Lý do: {$pastSlotReason}", $walkinActor ?? null);
+            }
         }
 
         $tgMsg = "⚽ <b>ĐƠN ĐẶT SÂN MỚI</b>\n"

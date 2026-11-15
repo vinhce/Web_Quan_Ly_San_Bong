@@ -5,6 +5,7 @@ require_once __DIR__ . '/security_helper.php';
 require_once __DIR__ . '/notification_helper.php';
 require_once __DIR__ . '/services/admin_bookings_manage.php';
 require_once __DIR__ . '/services/admin_staff_vouchers.php';
+require_once __DIR__ . '/services/totp_turnstile_helper.php';
 
 $actor = require_staff_or_admin();
 $pdo = getDBConnection(false);
@@ -109,6 +110,7 @@ function admin_build_settings_response(?PDO $pdo): array {
                 'matchmaking'  => ((string)($settingsMap['tg_event_matchmaking'] ?? '1') !== '0'),
                 'review'       => ((string)($settingsMap['tg_event_review'] ?? '1') !== '0'),
             ],
+            'turnstileHealth'            => function_exists('check_turnstile_health') ? check_turnstile_health() : null,
             'pricingTable' => [
                 'p5'  => [
                     'base'    => (int)($settingsMap['price_p5_base'] ?? 250000),

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password_hash` VARCHAR(255) NOT NULL,
     `role` ENUM('user', 'staff', 'manager', 'admin') NOT NULL DEFAULT 'user',
     `status` ENUM('active', 'locked') NOT NULL DEFAULT 'active',
+    `must_change_password` TINYINT(1) NOT NULL DEFAULT 0,
     `points` INT NOT NULL DEFAULT 0,
     `customer_tier` VARCHAR(30) NOT NULL DEFAULT 'standard',
     `totp_secret` VARCHAR(64) NULL DEFAULT NULL,

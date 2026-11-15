@@ -230,6 +230,9 @@ async function refreshWalkinBookedSlots() {
   const getToday = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
   const dateVal = dateInput?.value || getToday;
   const prevSlotId = slotSelect.value;
+  const isToday = dateVal === getToday;
+  const nowHHMM = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  const isSlotPast = (s) => Boolean(s) && isToday && (s.start || (s.time ? s.time.split('-')[0].trim() : '')) <= nowHHMM;
 
   const bookedMap = {};
   const localBookings = db.getAllBookings().filter(b =>
@@ -263,6 +266,9 @@ async function refreshWalkinBookedSlots() {
   const maintMap = {};
   const slots = db.getTimeSlots();
   slotSelect.innerHTML = slots.map(s => {
+    if (isSlotPast(s)) {
+      return `<option value="${escapeSearchHTML(s.id)}" disabled class="text-slate-400 opacity-50">${escapeSearchHTML(s.name || s.time)} (⏱️ Đã qua)</option>`;
+    }
     const maintReason = getSlotMaintenanceReason(pitchId, dateVal, s.time, maintenanceWindows);
     if (maintReason) {
       maintMap[s.id] = maintReason;
@@ -275,10 +281,11 @@ async function refreshWalkinBookedSlots() {
     return `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? '★ Giờ cao điểm' : ''}</option>`;
   }).join('');
 
-  if (prevSlotId && !bookedMap[prevSlotId] && !maintMap[prevSlotId]) {
+  const prevSlotObj = slots.find(s => s.id === prevSlotId);
+  if (prevSlotId && !bookedMap[prevSlotId] && !maintMap[prevSlotId] && prevSlotObj && !isSlotPast(prevSlotObj)) {
     slotSelect.value = prevSlotId;
   } else {
-    const firstFree = slots.find(s => !bookedMap[s.id] && !maintMap[s.id]);
+    const firstFree = slots.find(s => !bookedMap[s.id] && !maintMap[s.id] && !isSlotPast(s));
     slotSelect.value = firstFree ? firstFree.id : '';
   }
 

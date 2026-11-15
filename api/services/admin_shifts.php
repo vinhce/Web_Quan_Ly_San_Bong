@@ -271,16 +271,32 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                 $transferTotal = $totals['transferTotal'];
                 $initialCash = (int)($shift['initial_cash'] ?? 0);
 
-                $countedCash = isset($data['actual_cash_received']) ? (int)$data['actual_cash_received'] : (isset($data['cash_counted']) ? (int)$data['cash_counted'] : -1);
-                if ($countedCash < 0) {
-                    $countedCash = $cashTotal + $initialCash;
+                $val = $data['actual_cash_received'] ?? $data['cash_counted'] ?? null;
+                if (is_string($val)) {
+                    $val = trim($val);
+                }
+                if ($val === null || $val === '' || !is_numeric($val) || (float)$val < 0) {
+                    $pdo->rollBack();
+                    http_response_code(422);
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode([
+                        'success'  => false,
+                        'message'  => 'Vui lòng nhập số tiền mặt thực tế kiểm đếm (>= 0đ)',
+                        'ref_code' => 'ERR_ACTUAL_CASH_REQUIRED',
+                        'error'    => [
+                            'code'    => 'ERR_ACTUAL_CASH_REQUIRED',
+                            'message' => 'Vui lòng nhập số tiền mặt thực tế kiểm đếm (>= 0đ)'
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
                 }
 
+                $countedCash = (float)$val;
                 $expectedTotalCash = $cashTotal + $initialCash;
                 $discrepancy = $countedCash - $expectedTotalCash;
 
                 $discrepancyReason = sanitize_string($data['discrepancy_reason'] ?? $data['reason'] ?? '', 255);
-                if ($discrepancy !== 0 && $discrepancyReason === '') {
+                if (abs($discrepancy) > 0.0001 && $discrepancyReason === '') {
                     $pdo->rollBack();
                     json_error('Bắt buộc nhập lý do chênh lệch khi số tiền nhân viên đếm khác hệ thống!', 400, 'ERR_DISCREPANCY_REASON_REQUIRED');
                 }

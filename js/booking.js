@@ -1,7 +1,7 @@
 window.selectedPitchId = window.selectedPitchId || 'P7-A';
 window.selectedPitchType = window.selectedPitchType || 7;
 window.selectedDate = window.selectedDate || '';
-window.selectedSlotId = window.selectedSlotId || 'S08';
+window.selectedSlotId = window.selectedSlotId || '';
 window.bookingMode = window.bookingMode || 'single';
 window.monthlyWeeks = window.monthlyWeeks || 12;
 window.monthlyDates = window.monthlyDates || [];
@@ -183,19 +183,25 @@ function renderSlots(skipServerFetch = false) {
       }
     });
   }
+  const todayStr = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === todayStr;
+  const nowHHMM = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  const isSlotPast = (s) => Boolean(s) && isToday && (s.start || (s.time ? s.time.split('-')[0].trim() : '')) <= nowHHMM;
+
   if (preselectedSlotId) {
     const preObj = slotsWithStatus.find(s => s.id === preselectedSlotId);
-    if (preObj && preObj.status === 'Trống') {
+    if (preObj && preObj.status === 'Trống' && !isSlotPast(preObj)) {
       selectedSlotId = preselectedSlotId;
     }
     preselectedSlotId = '';
   }
   const curSelectedObj = slotsWithStatus.find(s => s.id === selectedSlotId);
-  if (curSelectedObj && (curSelectedObj.status === 'Đã đặt' || curSelectedObj.status === 'Khóa' || curSelectedObj.status === 'Đang đá' || curSelectedObj.status === 'Bảo trì')) {
-    const firstFree = slotsWithStatus.find(s => s.status === 'Trống');
+  if (!curSelectedObj || curSelectedObj.status === 'Đã đặt' || curSelectedObj.status === 'Khóa' || curSelectedObj.status === 'Đang đá' || curSelectedObj.status === 'Bảo trì' || isSlotPast(curSelectedObj)) {
+    const firstFree = slotsWithStatus.find(s => s.status === 'Trống' && !isSlotPast(s));
     selectedSlotId = firstFree ? firstFree.id : '';
   }
   container.innerHTML = slotsWithStatus.map(s => {
+    const isPast = isSlotPast(s);
     const isSelected = s.id === selectedSlotId;
     const isMaint = s.status === 'Bảo trì';
     const isBooked = s.status === 'Đã đặt' || s.status === 'Khóa';
@@ -204,7 +210,10 @@ function renderSlots(skipServerFetch = false) {
     const safeTime = esc(s.time);
     let chipCls = 'bg-white border border-[#16A34A] text-[#0F172A] hover:bg-[#DCFCE7]/30';
     let statusBadge = `<span class="text-[11px] text-[#16A34A] font-semibold">${s.isPeak ? 'Cao điểm' : 'Thường'}</span>`;
-    if (isMaint) {
+    if (isPast) {
+      chipCls = 'bg-slate-100 border border-slate-200 text-slate-400 opacity-50 cursor-not-allowed';
+      statusBadge = `<span class="text-[11px] font-bold text-slate-400">⏱️ Đã qua</span>`;
+    } else if (isMaint) {
       chipCls = 'hatch-slate border border-[#CBD5E1] text-[#64748B] cursor-not-allowed';
       statusBadge = `<span class="text-[11px] font-bold text-[#475569]">🛠️ Bảo trì</span>`;
     } else if (isSelected) {
@@ -217,13 +226,13 @@ function renderSlots(skipServerFetch = false) {
       chipCls = 'bg-[#FEF3C7]/40 border border-[#F59E0B] text-[#B45309] hover:bg-[#FEF3C7] cursor-pointer';
       statusBadge = `<span class="text-[11px] font-bold text-[#B45309]">🔔 Đăng ký chờ</span>`;
     }
-    const clickAttr = (isPlaying || isMaint)
+    const clickAttr = (isPast || isPlaying || isMaint)
       ? ''
       : (isBooked
         ? `onclick="openWaitlistPrompt(this.getAttribute('data-slot-id'), this.getAttribute('data-slot-time'))"`
         : `onclick="selectSlot(this.getAttribute('data-slot-id'))"`);
     return `
-      <div data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} class="slot-chip p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${isMaint ? esc(s.maintenanceReason || 'Sân đang bảo trì trong khung giờ này') : (isBooked ? 'Khung giờ đã kín. Nhấn để đăng ký danh sách chờ!' : '')}">
+      <div data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} class="slot-chip p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${isPast ? 'Khung giờ này đã qua' : (isMaint ? esc(s.maintenanceReason || 'Sân đang bảo trì trong khung giờ này') : (isBooked ? 'Khung giờ đã kín. Nhấn để đăng ký danh sách chờ!' : ''))}">
         <div class="text-xs sm:text-sm font-extrabold">${safeTime}</div>
         <div class="mt-1">${statusBadge}</div>
       </div>
@@ -251,6 +260,26 @@ function renderSlots(skipServerFetch = false) {
 }
 
 function selectSlot(slotId) {
+  const db = window.SanBongApp?.SanBongDB;
+  const todayStr = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === todayStr;
+  const nowHHMM = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  if (db && isToday) {
+    const slots = db.getTimeSlots ? db.getTimeSlots() : [];
+    const target = slots.find(s => s.id === slotId);
+    if (target) {
+      const isPast = (target.start || (target.time ? target.time.split('-')[0].trim() : '')) <= nowHHMM;
+      if (isPast) {
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Khung giờ này đã qua, vui lòng chọn khung giờ khác', 'warning');
+        } else if (typeof showToast === 'function') {
+          showToast('Khung giờ này đã qua, vui lòng chọn khung giờ khác', 'warning');
+        }
+        return;
+      }
+    }
+  }
+
   selectedSlotId = slotId;
   renderSlots();
   if (bookingMode === 'monthly') updateMonthlyPackage();

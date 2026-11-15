@@ -14,19 +14,47 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                 'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã cọc 30%']
             ]);
         }
-        $oldStmt = $pdo->prepare("SELECT status, payment_status, weeks_count FROM bookings WHERE code = ? LIMIT 1");
+        $oldStmt = $pdo->prepare("SELECT id, status, payment_status, weeks_count, total_price, deposit_amount, paid_amount FROM bookings WHERE code = ? LIMIT 1");
         $oldStmt->execute([$code]);
         $oldRow = $oldStmt->fetch();
-        $oldStatus = $oldRow ? ($oldRow['status'] . ' (' . $oldRow['payment_status'] . ')') : 'Đã xác nhận';
+        if (!$oldRow) {
+            json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
+        }
+        if ($oldRow['status'] === 'Đã hủy') {
+            json_error('Đơn đặt sân đã bị hủy, không thể nhận sân.', 400, 'ERR_BOOKING_CANCELLED');
+        }
 
-        $hasGiftDeducted = db_table_has_column($pdo, 'bookings', 'gift_deducted');
-        $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá' WHERE code = ?");
-        $stmt->execute([$code]);
+        $oldStatus = $oldRow['status'] . ' (' . $oldRow['payment_status'] . ')';
+        $currentPayStatus = (string)($oldRow['payment_status'] ?? 'Chờ duyệt cọc');
+        $isDepositPaid = in_array($currentPayStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'deposited', 'completed', 'paid'], true);
+
+        $newPayStatus = $currentPayStatus;
+        if (!$isDepositPaid) {
+            $confirmDepositCash = !empty($data['confirm_deposit_cash']) || !empty($data['collect_deposit_at_counter']) || !empty($_POST['confirm_deposit_cash']) || !empty($_GET['confirm_deposit_cash']);
+            if (!$confirmDepositCash) {
+                json_error('Đơn đặt sân chưa thanh toán tiền cọc. Vui lòng xác nhận thu cọc tại quầy trước khi cho khách nhận sân.', 400, 'ERR_DEPOSIT_NOT_COLLECTED');
+            }
+
+            $totPrice = max(0, (int)($oldRow['total_price'] ?? 0));
+            $depAmt = max(0, (int)($oldRow['deposit_amount'] ?? 0));
+            if ($depAmt === 0 && $totPrice > 0) {
+                $depAmt = (int)round($totPrice * 0.3);
+            }
+            $remAmt = max(0, $totPrice - $depAmt);
+
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = 'Đã cọc 30%', paid_amount = ?, remaining_amount = ? WHERE code = ?");
+            $stmt->execute([$depAmt, $remAmt, $code]);
+            $newPayStatus = 'Đã cọc 30%';
+        } else {
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá' WHERE code = ?");
+            $stmt->execute([$code]);
+        }
         write_audit_log($pdo, 'CHECKIN', $code, $oldStatus, 'Đang đá', $actor);
 
         if ($oldRow) {
             $weeks = (int)($oldRow['weeks_count'] ?? 1);
             if ($weeks >= 8) {
+                $hasGiftDeducted = db_table_has_column($pdo, 'bookings', 'gift_deducted');
                 $canDeductGift = true;
                 if ($hasGiftDeducted) {
                     $updGift = $pdo->prepare("UPDATE bookings SET gift_deducted = 1 WHERE code = ? AND (gift_deducted = 0 OR gift_deducted IS NULL)");
@@ -55,7 +83,7 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
         json_response([
             'success' => true,
             'message' => 'Check-in nhận sân thành công! Ca đá đã bắt đầu.',
-            'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => $oldRow['payment_status'] ?? 'Đã cọc 30%']
+            'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => $newPayStatus]
         ]);
         return true;
     }

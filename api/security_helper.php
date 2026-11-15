@@ -86,6 +86,8 @@ function generate_csrf_token(): string {
     return (string)$_SESSION['csrf_token'];
 }
 
+require_once __DIR__ . '/services/rate_limit_db_helper.php';
+
 function get_rate_limit_file(string $action, ?string $identifier = null): string {
     $dir = __DIR__ . '/../logs/ratelimit';
     if (!is_dir($dir)) {
@@ -94,95 +96,112 @@ function get_rate_limit_file(string $action, ?string $identifier = null): string
     }
     $cleanAction = preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower(trim($action)));
     $ip = get_client_ip();
-    if ($cleanAction === 'login_acct' && $identifier !== null && $identifier !== '') {
-        $scope = $cleanAction . '|' . strtolower(trim($identifier));
-    } elseif ($identifier !== null && $identifier !== '') {
-        $scope = $cleanAction . '|' . $ip . '|' . strtolower(trim($identifier));
-    } else {
-        $scope = $cleanAction . '|' . $ip;
-    }
+    $scope = ($cleanAction === 'login_acct' && !empty($identifier))
+        ? $cleanAction . '|' . strtolower(trim($identifier))
+        : (!empty($identifier) ? $cleanAction . '|' . $ip . '|' . strtolower(trim($identifier)) : $cleanAction . '|' . $ip);
     return $dir . '/rl_' . hash('sha256', $scope) . '.json';
 }
 
-function check_rate_limit($pdo, $action, $maxAttempts = 5, $windowSeconds = 900, ?string $identifier = null) {
-    $file = get_rate_limit_file((string)$action, $identifier);
+function check_rate_limit($pdo, $action, $maxAttempts = 5, $decaySeconds = 60, ?string $identifier = null) {
     $now = time();
     $maxAttempts = max(1, (int)$maxAttempts);
-    $windowSeconds = max(10, (int)$windowSeconds);
-    if (!is_file($file)) {
-        return true;
+    $decaySeconds = max(5, (int)$decaySeconds);
+    $dir = __DIR__ . '/../logs/ratelimit';
+    $fileInaccessible = (!is_dir($dir) && !@mkdir($dir, 0750, true)) || !is_writable($dir);
+
+    if (!$fileInaccessible) {
+        $file = get_rate_limit_file((string)$action, $identifier);
+        if (!file_exists($file)) {
+            $dbRes = _rate_limit_db_check($pdo, (string)$action, $identifier, $maxAttempts, $decaySeconds);
+            return $dbRes !== false;
+        }
+        $fp = @fopen($file, 'c+');
+        if (!$fp) {
+            $fileInaccessible = true;
+        } elseif (!@flock($fp, LOCK_EX | LOCK_NB)) {
+            @fclose($fp);
+            $fileInaccessible = true;
+        } else {
+            $raw = stream_get_contents($fp);
+            $decoded = $raw ? json_decode($raw, true) : null;
+            $attempts = is_array($decoded['attempts'] ?? null) ? $decoded['attempts'] : [];
+            $cutoff = $now - $decaySeconds;
+            $recent = array_values(array_filter($attempts, static fn($ts) => (is_int($ts) || ctype_digit((string)$ts)) && (int)$ts >= $cutoff));
+            if (count($recent) !== count($attempts)) {
+                ftruncate($fp, 0);
+                rewind($fp);
+                fwrite($fp, json_encode(['attempts' => $recent, 'updated_at' => $now]));
+                fflush($fp);
+            }
+            $allowed = count($recent) < $maxAttempts;
+            @flock($fp, LOCK_UN);
+            @fclose($fp);
+            if (!$allowed) return false;
+            $dbRes = _rate_limit_db_check($pdo, (string)$action, $identifier, $maxAttempts, $decaySeconds);
+            return $dbRes !== false;
+        }
     }
+
+    error_log("[SECURITY WARNING] Rate limiter file inaccessible, falling back to DB...");
+    $dbRes = _rate_limit_db_check($pdo, (string)$action, $identifier, $maxAttempts, $decaySeconds);
+    if ($dbRes === null) {
+        error_log("[SECURITY ERROR] Rate limiter completely failed, enforcing fail-closed.");
+        return false;
+    }
+    return $dbRes;
+}
+
+function increment_rate_limit($pdo, $action, $decayOrIdentifier = 60, ?string $identifier = null) {
+    if (is_string($decayOrIdentifier) && $identifier === null) {
+        $identifier = $decayOrIdentifier;
+        $decaySeconds = 60;
+    } else {
+        $decaySeconds = is_numeric($decayOrIdentifier) ? max(5, (int)$decayOrIdentifier) : 60;
+    }
+    $file = get_rate_limit_file((string)$action, $identifier);
+    $now = time();
     $fp = @fopen($file, 'c+');
-    if (!$fp) {
-        return true;
-    }
-    $allowed = true;
-    if (@flock($fp, LOCK_EX)) {
-        $raw = stream_get_contents($fp);
-        $decoded = $raw ? json_decode($raw, true) : null;
-        $attempts = is_array($decoded['attempts'] ?? null) ? $decoded['attempts'] : [];
-        $cutoff = $now - $windowSeconds;
-        $recent = array_values(array_filter($attempts, static function ($ts) use ($cutoff) {
-            return is_int($ts) || ctype_digit((string)$ts) ? ((int)$ts >= $cutoff) : false;
-        }));
-        if (count($recent) !== count($attempts)) {
+    if ($fp) {
+        if (@flock($fp, LOCK_EX | LOCK_NB)) {
+            $raw = stream_get_contents($fp);
+            $decoded = $raw ? json_decode($raw, true) : null;
+            $attempts = is_array($decoded['attempts'] ?? null) ? $decoded['attempts'] : [];
+            $cutoff = $now - max(3600, $decaySeconds);
+            $recent = array_values(array_filter($attempts, static fn($ts) => (int)$ts >= $cutoff));
+            $recent[] = $now;
+            if (count($recent) > 100) $recent = array_slice($recent, -100);
             ftruncate($fp, 0);
             rewind($fp);
             fwrite($fp, json_encode(['attempts' => $recent, 'updated_at' => $now]));
             fflush($fp);
+            @flock($fp, LOCK_UN);
         }
-        $allowed = count($recent) < $maxAttempts;
-        @flock($fp, LOCK_UN);
+        @fclose($fp);
     }
-    @fclose($fp);
-    return $allowed;
-}
-
-function increment_rate_limit($pdo, $action, ?string $identifier = null) {
-    $file = get_rate_limit_file((string)$action, $identifier);
-    $now = time();
-    $fp = @fopen($file, 'c+');
-    if (!$fp) {
-        return;
+    if ($pdo instanceof PDO) {
+        _rate_limit_db_increment($pdo, (string)$action, $identifier, $decaySeconds);
     }
-    if (@flock($fp, LOCK_EX)) {
-        $raw = stream_get_contents($fp);
-        $decoded = $raw ? json_decode($raw, true) : null;
-        $attempts = is_array($decoded['attempts'] ?? null) ? $decoded['attempts'] : [];
-        $cutoff = $now - 3600;
-        $recent = array_values(array_filter($attempts, static function ($ts) use ($cutoff) {
-            return (int)$ts >= $cutoff;
-        }));
-        $recent[] = $now;
-        if (count($recent) > 100) {
-            $recent = array_slice($recent, -100);
-        }
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode(['attempts' => $recent, 'updated_at' => $now]));
-        fflush($fp);
-        @flock($fp, LOCK_UN);
-    }
-    @fclose($fp);
 }
 
 function clear_rate_limit($pdo, $action, ?string $identifier = null) {
     $file = get_rate_limit_file((string)$action, $identifier);
-    if (!is_file($file)) {
-        return;
+    if (is_file($file)) {
+        $fp = @fopen($file, 'c+');
+        if ($fp) {
+            if (@flock($fp, LOCK_EX | LOCK_NB)) {
+                ftruncate($fp, 0);
+                rewind($fp);
+                fwrite($fp, json_encode(['attempts' => [], 'updated_at' => time()]));
+                fflush($fp);
+                @flock($fp, LOCK_UN);
+            }
+            @fclose($fp);
+        }
+        @unlink($file);
     }
-    $fp = @fopen($file, 'c+');
-    if (!$fp) {
-        return;
+    if ($pdo instanceof PDO) {
+        _rate_limit_db_clear($pdo, (string)$action, $identifier);
     }
-    if (@flock($fp, LOCK_EX)) {
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode(['attempts' => [], 'updated_at' => time()]));
-        fflush($fp);
-        @flock($fp, LOCK_UN);
-    }
-    @fclose($fp);
 }
 
 function verify_csrf_token(?array $jsonData = null): bool {

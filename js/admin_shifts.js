@@ -85,6 +85,7 @@ async function loadShiftHandovers() {
   if (openFormSec && closeFormSec) {
     openFormSec.classList.toggle('hidden', !!cur);
     closeFormSec.classList.toggle('hidden', !cur);
+    calculateShiftDiscrepancy();
   }
   const overdueWarning = document.getElementById('shift-overdue-warning');
   if (overdueWarning) {
@@ -210,32 +211,51 @@ window.loadShiftHandovers = loadShiftHandovers;
 
 function calculateShiftDiscrepancy() {
   const countedEl = document.getElementById('shift-cash-counted');
-  const badgeEl = document.getElementById('shift-discrepancy-badge');
+  const badgeEl = document.getElementById('shift-discrepancy-badge') || document.getElementById('shift-diff-badge');
+  const btnSubmit = document.getElementById('btn-close-shift');
   const reasonBox = document.getElementById('shift-discrepancy-reason-box');
   const reasonInput = document.getElementById('shift-discrepancy-reason');
-  if (!countedEl || !badgeEl) return;
+  if (!badgeEl) return;
 
-  const counted = parseInt(countedEl.value || '0', 10);
+  const rawVal = countedEl ? countedEl.value.trim() : '';
+  if (!countedEl || rawVal === '' || isNaN(Number(rawVal)) || Number(rawVal) < 0) {
+    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center font-mono font-bold text-xs text-slate-500';
+    badgeEl.textContent = 'Chưa kiểm đếm';
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    if (reasonBox) reasonBox.classList.add('hidden');
+    if (reasonInput) reasonInput.required = false;
+    return;
+  }
+
+  if (btnSubmit) {
+    btnSubmit.disabled = false;
+    btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+  }
+
+  const counted = parseInt(rawVal, 10);
   const curShift = window._currentActiveShift;
-  const sysCash = Number(curShift?.cash_total || 0);
-  const initCash = Number(curShift?.initial_cash || 0);
+  const sysCash = Number(curShift?.cash_total ?? curShift?.cashTotal ?? 0);
+  const initCash = Number(curShift?.initial_cash ?? curShift?.initialCash ?? 0);
   const expected = sysCash + initCash;
   const diff = counted - expected;
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
+  const formatCurrency = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
   if (diff === 0) {
-    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-emerald-300 bg-emerald-50 flex items-center justify-center font-mono font-bold text-xs text-emerald-700';
+    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-emerald-200 bg-emerald-50 flex items-center justify-center font-mono font-bold text-xs text-emerald-700';
     badgeEl.textContent = '✓ Khớp 0đ';
     if (reasonBox) reasonBox.classList.add('hidden');
     if (reasonInput) reasonInput.required = false;
-  } else if (diff < 0) {
-    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-red-300 bg-red-50 flex items-center justify-center font-mono font-bold text-xs text-red-700';
-    badgeEl.textContent = `Thiếu ${fmt(diff)}`;
+  } else if (diff > 0) {
+    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-blue-200 bg-blue-50 flex items-center justify-center font-mono font-bold text-xs text-blue-700';
+    badgeEl.textContent = `+${formatCurrency(diff)} (Dư)`;
     if (reasonBox) reasonBox.classList.remove('hidden');
     if (reasonInput) reasonInput.required = true;
   } else {
-    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-amber-300 bg-amber-50 flex items-center justify-center font-mono font-bold text-xs text-amber-800';
-    badgeEl.textContent = `Thừa +${fmt(diff)}`;
+    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-rose-200 bg-rose-50 flex items-center justify-center font-mono font-bold text-xs text-rose-700';
+    badgeEl.textContent = `${formatCurrency(diff)} (Thiếu)`;
     if (reasonBox) reasonBox.classList.remove('hidden');
     if (reasonInput) reasonInput.required = true;
   }
@@ -359,7 +379,7 @@ async function handleCloseShift() {
     await loadShiftHandovers();
     if (isOwnerAdmin() && typeof loadAuditLogs === 'function') loadAuditLogs();
   } finally {
-    if (btn) btn.disabled = false;
+    if (btn) calculateShiftDiscrepancy();
   }
 }
 window.handleCloseShift = handleCloseShift;

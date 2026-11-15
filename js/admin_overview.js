@@ -454,7 +454,7 @@ function renderOverviewTodayBookings() {
 window.renderOverviewTodayBookings = renderOverviewTodayBookings;
 
 // Xử lý Check-in ca đặt sân trực tiếp từ bảng tổng quan
-async function handleCheckin(code) {
+async function handleCheckIn(code) {
   if (!code) return;
   const r = await adminFetchJson('../api/bookings.php?action=checkin&code=' + encodeURIComponent(code), {
     method: 'POST',
@@ -469,10 +469,11 @@ async function handleCheckin(code) {
   if (typeof refreshAllAdminViews === 'function') refreshAllAdminViews(code);
   window.SanBongApp?.showToast(r.message || ('✅ Check-in thành công ca #' + code + '!'), 'success');
 }
-window.handleCheckin = handleCheckin;
+const handleCheckin = handleCheckIn;
+window.handleCheckIn = window.handleCheckin = handleCheckIn;
 
 // Xử lý Khách chưa đến quá 15 phút: Tịch thu cọc và nhả sân trống
-async function handleNoShowRelease(code) {
+async function handleShowRelease(code) {
   if (!code) return;
   const confirmed = typeof showAdminConfirm === 'function'
     ? await showAdminConfirm({
@@ -498,5 +499,6 @@ async function handleNoShowRelease(code) {
   if (typeof refreshAllAdminViews === 'function') refreshAllAdminViews(code);
   window.SanBongApp?.showToast(r.message || ('⚠️ Đã nhả sân trống đơn #' + code + '!'), 'warning');
 }
-window.handleNoShowRelease = handleNoShowRelease;
+const handleNoShowRelease = handleShowRelease;
+window.handleShowRelease = window.handleNoShowRelease = handleShowRelease;
 

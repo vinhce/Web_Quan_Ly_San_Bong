@@ -113,6 +113,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
         $orderDebt = 0;
         $orderPaid = 0;
         $isMatchCounted = false;
+        $isDepositConfirmed = true;
 
         if ($payStatus === 'Tịch thu cọc 30%' || $bStatus === 'Khách chưa đến') {
             $orderDeposit = $depAmt;
@@ -140,18 +141,28 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
             }
 
             $pitchNet = max(0, $totPrice - $orderServices);
-            $orderDeposit = min($depAmt, $pitchNet);
-            if ($orderDeposit === 0 && in_array($payStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)) {
-                $orderDeposit = (int)round($pitchNet * 0.3);
-            }
-            $orderRemaining = max(0, $pitchNet - $orderDeposit);
+            $isDepositConfirmed = in_array($payStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'deposited', 'completed', 'paid'], true);
 
-            if ($bStatus === 'Hoàn thành' || in_array($payStatus, ['Đã thanh toán đủ', 'Đã thanh toán 100%'], true)) {
-                $orderPaid = $totPrice;
-                $orderDebt = 0;
+            if ($isDepositConfirmed) {
+                $orderDeposit = min($depAmt, $pitchNet);
+                if ($orderDeposit === 0) {
+                    $orderDeposit = (int)round($pitchNet * 0.3);
+                }
+                $orderRemaining = max(0, $pitchNet - $orderDeposit);
+
+                if ($bStatus === 'Hoàn thành' || in_array($payStatus, ['Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid'], true)) {
+                    $orderPaid = $totPrice;
+                    $orderDebt = 0;
+                } else {
+                    $orderPaid = ($paidAmt > 0) ? min($totPrice, $paidAmt) : $orderDeposit;
+                    $orderDebt = max(0, $totPrice - $orderPaid);
+                }
             } else {
-                $orderPaid = ($paidAmt > 0) ? min($totPrice, $paidAmt) : (in_array($payStatus, ['Đã cọc 30%'], true) ? $orderDeposit : 0);
-                $orderDebt = max(0, $totPrice - $orderPaid);
+                // Trạng thái 'Chờ duyệt cọc', 'pending_deposit', 'unpaid', v.v. - Không tính cọc ảo vào doanh thu thực thu
+                $orderDeposit   = 0;
+                $orderRemaining = $pitchNet;
+                $orderPaid      = ($paidAmt > 0) ? min($totPrice, $paidAmt) : 0;
+                $orderDebt      = max(0, $totPrice - $orderPaid);
             }
         }
 
@@ -203,9 +214,10 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
             'pitch_type'       => $pType,
             'customer_name'    => $row['customer_name'] ?? '',
             'phone'            => $row['phone'] ?? '',
-            'total_price'      => $totPrice,
-            'deposit_amount'   => $orderDeposit,
-            'remaining_amount' => $orderDebt,
+            'total_price'         => $totPrice,
+            'deposit_amount'      => $orderDeposit,
+            'unconfirmed_deposit' => (!$isDepositConfirmed ? $depAmt : 0),
+            'remaining_amount'    => $orderDebt,
             'service_price'    => $orderServices,
             'status'           => $bStatus,
             'payment_status'   => $payStatus,
