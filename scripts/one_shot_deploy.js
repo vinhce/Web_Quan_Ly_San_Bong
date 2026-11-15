@@ -1,3 +1,12 @@
+/**
+ * ONE-SHOT DEPLOYER SCRIPT (AN TOÀN CHO HOSTING)
+ *
+ * CHÍNH SÁCH BẢO MẬT BẮT BUỘC:
+ * 1. TUYỆT ĐỐI CẤM TẠO EXECUTOR PHP TRONG WEBROOT, CẤM THAO TÁC DB/ĐỔI PASS, CẤM LOG SECRET.
+ * 2. CẤM THAO TÁC DB/ĐỔI PASS: Không cho phép script can thiệp vào tài khoản hoặc đổi mật khẩu cơ sở dữ liệu.
+ * 3. CẤM LOG SECRET: Tuyệt đối không in token, password hoặc credential ra console, stdout, stderr.
+ */
+
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -21,10 +30,12 @@ function loadEnvToken() {
 const MCP_URL = process.env.ONEPANEL_MCP_URL || 'https://onehost-wphn022606.000nethost.com:2023/api/mcp';
 const MCP_TOKEN = loadEnvToken();
 
-if (!MCP_TOKEN) {
-  console.error('[SECURITY ERROR] Thieu bien moi truong ONEPANEL_MCP_TOKEN hoac MCP_TOKEN (trong env hoac .env).');
-  console.error('Huong dan: Vui long dat ONEPANEL_MCP_TOKEN trong .env hoac export truoc khi chay.');
-  process.exit(1);
+function validateAuth() {
+  if (!MCP_TOKEN) {
+    console.error('[SECURITY ERROR] Thieu thong tin xac thuc MCP trong moi truong (env hoac .env).');
+    console.error('Huong dan: Vui long cau hinh khoa xac thuc MCP truoc khi chay.');
+    process.exit(1);
+  }
 }
 
 let mcpSessionId = null;
@@ -126,19 +137,31 @@ const FORBIDDEN_FILENAMES = new Set([
   '.env.example',
   'test_debug.php',
   'test_pitches.php',
-  'test_e2e_sanbong.py'
+  'test_e2e_sanbong.py',
+  'tests',
+  'test_deploy_security.js',
+  'package.json',
+  'package-lock.json',
+  'composer.json',
+  'composer.lock'
 ]);
 
 function isSafeFile(relPath) {
   const norm = relPath.replace(/\\/g, '/').replace(/^\.\//, '');
+
+  // 1. Chống Directory Traversal
+  if (norm.includes('..')) return false;
+
   const base = path.basename(norm).toLowerCase();
   const ext = path.extname(norm).toLowerCase();
 
+  // 2. Chặn các file/thư mục thuộc blacklist nhạy cảm và kiểm thử
   if (FORBIDDEN_FILENAMES.has(base)) return false;
   if (norm.startsWith('.') && base !== '.htaccess') return false;
-  if (norm.includes('node_modules') || norm.includes('.git') || norm.includes('backups')) return false;
+  if (norm.includes('node_modules') || norm.includes('.git') || norm.includes('backups') || norm.startsWith('tests/') || norm === 'tests') return false;
 
-  // Ngan chan tao hoac ghi file PHP truc tiep trong goc webroot public_html
+  // 3. TUYỆT ĐỐI CẤM TẠO EXECUTOR PHP TRONG WEBROOT, CẤM THAO TÁC DB/ĐỔI PASS, CẤM LOG SECRET
+  // Ngăn chặn tạo hoặc ghi file PHP trực tiếp trong gốc webroot public_html
   if (!norm.includes('/') && ext === '.php') {
     return false;
   }
@@ -166,6 +189,8 @@ function collectFiles(dir) {
 }
 
 async function main() {
+  validateAuth();
+
   const candidateFiles = [
     'index.html',
     '.htaccess',
@@ -219,7 +244,15 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('Loi trong qua trinh deploy:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error('Loi trong qua trinh deploy:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  isSafeFile,
+  ALLOWED_EXTENSIONS,
+  FORBIDDEN_FILENAMES
+};

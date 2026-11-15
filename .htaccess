@@ -27,7 +27,7 @@ ServerSignature Off
     RewriteRule ^(api|logs)/.*\.(json|log)$ - [F,L]
 
     # Chặn truy cập trực tiếp vào các thư mục nội bộ & partials (áp dụng trước mọi Clean URL rewrite)
-    RewriteRule ^(config|database|logs|scripts|backups|cron|portal-admin/partials|docs)(/|$) - [NC,F,L]
+    RewriteRule ^(config|database|logs|scripts|backups|cron|portal-admin/partials|docs|tests)(/|$) - [NC,F,L]
 
     # Route /portal-admin/ và /portal-admin/index.html qua cổng kiểm tra session PHP
     RewriteRule ^portal-admin/?$ portal-admin/index.php [L,QSA]

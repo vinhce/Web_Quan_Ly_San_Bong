@@ -385,7 +385,7 @@ try {
         $todayCondition = booking_date_condition_sql('b');
         // Đếm buổi theo lịch; tiền của gói chỉ ghi nhận một lần vào ngày bắt đầu.
         $todayStmt = $pdo->prepare("SELECT COUNT(*) as count,
-                                   COALESCE(SUM(CASE WHEN b.booking_date = ? THEN b.deposit_amount ELSE 0 END), 0) as today_deposit,
+                                   COALESCE(SUM(CASE WHEN b.booking_date = ? AND b.payment_status IN ('Đã cọc 30%', 'Đã cọc 50%', 'Đã thanh toán đủ', 'Đã thanh toán 100%') THEN b.deposit_amount ELSE 0 END), 0) as today_deposit,
                                    COALESCE(SUM(CASE WHEN b.booking_date = ? THEN b.total_price ELSE 0 END), 0) as today_total
                                    FROM bookings b WHERE {$todayCondition}
                                      AND b.status NOT IN ('Đã hủy') AND b.payment_status != 'Đã hủy'");
@@ -572,6 +572,56 @@ try {
     if ($action === 'shifts') {
         require_once __DIR__ . '/admin_ops.php';
         handle_admin_shifts($pdo, $method, $data, $actor);
+        exit;
+    }
+
+    if ($action === 'backup_database_now') {
+        $adminActor = require_admin($pdo);
+
+        if (!defined('SANBONG_CRON_LIB_ONLY')) {
+            define('SANBONG_CRON_LIB_ONLY', true);
+        }
+        require_once __DIR__ . '/../cron/backup_database.php';
+
+        loadEnv();
+        $customBackupDir = trim(getenv('BACKUP_DIR') ?: ($_ENV['BACKUP_DIR'] ?? ''));
+        $backupDir = ($customBackupDir !== '' && (is_dir($customBackupDir) || @mkdir($customBackupDir, 0750, true)))
+            ? rtrim($customBackupDir, '/\\')
+            : __DIR__ . '/../backups';
+
+        if (!is_dir($backupDir)) {
+            @mkdir($backupDir, 0750, true);
+        }
+
+        $ext = function_exists('gzopen') ? '.sql.gz' : '.sql';
+        $filename = 'backup_sanbong_manual_' . date('Ymd_His') . $ext;
+        $targetPath = $backupDir . '/' . $filename;
+
+        if (!$pdo) {
+            json_error('Không thể kết nối cơ sở dữ liệu để sao lưu.', 500, 'ERR_DB_CONNECT');
+        }
+
+        $result = generate_database_dump($pdo, $targetPath);
+
+        if (empty($result['success'])) {
+            json_error($result['message'] ?? 'Sao lưu cơ sở dữ liệu thất bại.', 500, 'ERR_BACKUP_FAILED');
+        }
+
+        $adminName = $adminActor['username'] ?? 'admin';
+        write_audit_log(
+            $pdo,
+            'DATABASE_BACKUP',
+            (string)($result['filename'] ?? $filename),
+            null,
+            "Quản trị viên {$adminName} (ID: {$adminActor['id']}) đã thực hiện sao lưu thủ công ({$result['total_rows']} dòng, " . round(($result['file_size'] ?? 0) / 1024, 1) . " KB)",
+            $adminActor
+        );
+
+        json_response([
+            'success' => true,
+            'message' => 'Sao lưu cơ sở dữ liệu thành công.',
+            'data'    => $result
+        ]);
         exit;
     }
 
