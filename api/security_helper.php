@@ -497,6 +497,30 @@ function audit_log_decode_structured_value($value, &$isStructured) {
     return $value;
 }
 
+function audit_log_scalar_values_equal($left, $right) {
+    if ($left === null && $right === null) {
+        return true;
+    }
+    if ($left === null || $right === null) {
+        return false;
+    }
+    if (is_object($left)) $left = get_object_vars($left);
+    if (is_object($right)) $right = get_object_vars($right);
+    if (is_array($left) || is_array($right)) {
+        if (!is_array($left) || !is_array($right)) return false;
+        return audit_log_values_equal($left, $right);
+    }
+    $leftIsNumeric = !is_bool($left) && (is_int($left) || is_float($left) || (is_string($left) && is_numeric($left)));
+    $rightIsNumeric = !is_bool($right) && (is_int($right) || is_float($right) || (is_string($right) && is_numeric($right)));
+    if ($leftIsNumeric && $rightIsNumeric) {
+        return ((string)(float)$left === (string)(float)$right) || ((float)$left == (float)$right);
+    }
+    if (is_bool($left) || is_bool($right)) {
+        return ((bool)$left === (bool)$right);
+    }
+    return trim((string)$left) === trim((string)$right);
+}
+
 function audit_log_values_equal($left, $right) {
     if (is_object($left)) {
         $left = get_object_vars($left);
@@ -520,7 +544,7 @@ function audit_log_values_equal($left, $right) {
 
         if ($leftIsList) {
             foreach ($left as $index => $value) {
-                if (!audit_log_values_equal($value, $right[$index])) {
+                if (!audit_log_scalar_values_equal($value, $right[$index])) {
                     return false;
                 }
             }
@@ -528,34 +552,123 @@ function audit_log_values_equal($left, $right) {
         }
 
         foreach ($left as $key => $value) {
-            if (!array_key_exists($key, $right) || !audit_log_values_equal($value, $right[$key])) {
+            if (!array_key_exists($key, $right) || !audit_log_scalar_values_equal($value, $right[$key])) {
                 return false;
             }
         }
         return true;
     }
 
-    $leftIsNumeric = !is_bool($left) && (is_int($left) || is_float($left) || (is_string($left) && is_numeric($left)));
-    $rightIsNumeric = !is_bool($right) && (is_int($right) || is_float($right) || (is_string($right) && is_numeric($right)));
-    if ($leftIsNumeric && $rightIsNumeric) {
-        return $left == $right;
+    return audit_log_scalar_values_equal($left, $right);
+}
+
+function audit_log_extract_changes($oldValue, $newValue) {
+    if ($oldValue === null && $newValue === null) {
+        return null;
     }
 
-    return gettype($left) === gettype($right) && $left === $right;
+    $oldIsStruct = false;
+    $newIsStruct = false;
+    $oldParsed = audit_log_decode_structured_value($oldValue, $oldIsStruct);
+    $newParsed = audit_log_decode_structured_value($newValue, $newIsStruct);
+
+    // Case 1: Cả hai đều là mảng hoặc JSON object/array
+    if ($oldIsStruct && $newIsStruct && is_array($oldParsed) && is_array($newParsed)) {
+        $oldKeys = array_keys($oldParsed);
+        $newKeys = array_keys($newParsed);
+        $oldIsList = $oldKeys === [] || $oldKeys === range(0, count($oldParsed) - 1);
+        $newIsList = $newKeys === [] || $newKeys === range(0, count($newParsed) - 1);
+
+        if ($oldIsList && $newIsList) {
+            if (count($oldParsed) === count($newParsed)) {
+                $allEqual = true;
+                foreach ($oldParsed as $idx => $val) {
+                    if (!audit_log_scalar_values_equal($val, $newParsed[$idx])) {
+                        $allEqual = false;
+                        break;
+                    }
+                }
+                if ($allEqual) {
+                    return ['has_change' => false, 'diff_old' => [], 'diff_new' => []];
+                }
+            }
+            return [
+                'has_change' => true,
+                'diff_old'   => $oldParsed,
+                'diff_new'   => $newParsed
+            ];
+        }
+
+        // Mảng kết hợp (key-value): so sánh từng key không phụ thuộc thứ tự key
+        $allKeys = array_unique(array_merge($oldKeys, $newKeys));
+        $diffOld = [];
+        $diffNew = [];
+
+        foreach ($allKeys as $k) {
+            $hasOld = array_key_exists($k, $oldParsed);
+            $hasNew = array_key_exists($k, $newParsed);
+            $vOld = $hasOld ? $oldParsed[$k] : null;
+            $vNew = $hasNew ? $newParsed[$k] : null;
+
+            if ($hasOld && !$hasNew) {
+                $diffOld[$k] = $vOld;
+                $diffNew[$k] = null;
+            } elseif (!$hasOld && $hasNew) {
+                $diffOld[$k] = null;
+                $diffNew[$k] = $vNew;
+            } else {
+                if (!audit_log_scalar_values_equal($vOld, $vNew)) {
+                    $diffOld[$k] = $vOld;
+                    $diffNew[$k] = $vNew;
+                }
+            }
+        }
+
+        if (empty($diffOld) && empty($diffNew)) {
+            return ['has_change' => false, 'diff_old' => [], 'diff_new' => []];
+        }
+
+        return [
+            'has_change' => true,
+            'diff_old'   => $diffOld,
+            'diff_new'   => $diffNew
+        ];
+    }
+
+    // Case 2: Cả hai đều là scalar khác null (cặp cũ/mới trạng thái: A -> B)
+    if ($oldValue !== null && $newValue !== null && !$oldIsStruct && !$newIsStruct) {
+        if (audit_log_scalar_values_equal($oldValue, $newValue)) {
+            return ['has_change' => false, 'diff_old' => $oldValue, 'diff_new' => $newValue];
+        }
+        return [
+            'has_change' => true,
+            'diff_old'   => $oldValue,
+            'diff_new'   => $newValue
+        ];
+    }
+
+    // Case 3: Hành động đơn lẻ không có cặp cũ/mới (Check-in, Walk-in, 2FA, Telegram test...)
+    return null;
 }
 
 function audit_log_is_unchanged_structured_pair($oldValue, $newValue) {
-    $oldStructured = false;
-    $newStructured = false;
-    $oldParsed = audit_log_decode_structured_value($oldValue, $oldStructured);
-    $newParsed = audit_log_decode_structured_value($newValue, $newStructured);
-
-    return $oldStructured && $newStructured && audit_log_values_equal($oldParsed, $newParsed);
+    $diff = audit_log_extract_changes($oldValue, $newValue);
+    if ($diff !== null) {
+        return $diff['has_change'] === false;
+    }
+    return false;
 }
 
 function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $newValue = null, $actor = null) {
-    if (audit_log_is_unchanged_structured_pair($oldValue, $newValue)) {
-        return true;
+    $diffResult = audit_log_extract_changes($oldValue, $newValue);
+    if ($diffResult !== null) {
+        if ($diffResult['has_change'] === false) {
+            // Không có thay đổi giá trị thực tế -> KHÔNG ghi log, trả về thành công
+            return true;
+        }
+        // Chỉ lưu các trường thực sự thay đổi vào old_value và new_value
+        $oldValue = $diffResult['diff_old'];
+        $newValue = $diffResult['diff_new'];
     }
 
     if ($pdo === null) {

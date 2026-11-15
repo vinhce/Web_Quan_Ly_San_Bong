@@ -478,6 +478,9 @@ class AdminLogService
         }
 
         // Trường hợp giá trị đơn lẻ (scalar)
+        if ($oldParsed !== null && $newParsed !== null && function_exists('audit_log_scalar_values_equal') && audit_log_scalar_values_equal($oldParsed, $newParsed)) {
+            return [[], []];
+        }
         $cleanOld = is_scalar($oldParsed) ? self::maskSensitiveValue('', $oldParsed) : $oldParsed;
         $cleanNew = is_scalar($newParsed) ? self::maskSensitiveValue('', $newParsed) : $newParsed;
 
