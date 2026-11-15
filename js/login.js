@@ -1,6 +1,4 @@
 
-let pending2FaUser = null;
-let pending2FaToken = null;
 let loginTurnstileToken = '';
 
 function getAuthApiUrl(action) {
@@ -99,7 +97,8 @@ function handleLoginRedirect(user) {
 
 function initLoginTurnstile(siteKey) {
   const wrap = document.getElementById('login-turnstile-wrap');
-  if (!wrap || !siteKey || wrap.dataset.rendered) return;
+  // Nếu không có container trên giao diện, không có siteKey hoặc Turnstile bị vô hiệu hóa
+  if (!wrap || !siteKey || siteKey === 'disabled' || wrap.dataset.rendered) return;
   wrap.dataset.rendered = 'true';
   const renderWidget = () => {
     if (window.turnstile && typeof window.turnstile.render === 'function') {
@@ -187,17 +186,30 @@ document.addEventListener('DOMContentLoaded', () => {
     bg.innerHTML = window.SanBongApp.renderPitchSVG('bright', 'h-full');
   }
 
-  // Khởi tạo Turnstile nếu có sitekey
-  if (window.TURNSTILE_SITE_KEY) {
-    initLoginTurnstile(window.TURNSTILE_SITE_KEY);
+  // Khởi tạo Turnstile nếu có container hiển thị trên giao diện
+  const turnstileWrap = document.getElementById('login-turnstile-wrap');
+  if (turnstileWrap) {
+    if (window.TURNSTILE_SITE_KEY) {
+      initLoginTurnstile(window.TURNSTILE_SITE_KEY);
+    } else {
+      fetch(getAuthApiUrl('me'), { credentials: 'same-origin', cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.turnstile_site_key) {
+            window.TURNSTILE_SITE_KEY = d.turnstile_site_key;
+            initLoginTurnstile(d.turnstile_site_key);
+          }
+          if (d && d.csrf_token && window.SanBongApp?.setCsrfToken) {
+            window.SanBongApp.setCsrfToken(d.csrf_token);
+          }
+        })
+        .catch(() => {});
+    }
   } else {
+    // Turnstile tắt: Chỉ đồng bộ CSRF token nếu cần
     fetch(getAuthApiUrl('me'), { credentials: 'same-origin', cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
-        if (d && d.turnstile_site_key) {
-          window.TURNSTILE_SITE_KEY = d.turnstile_site_key;
-          initLoginTurnstile(d.turnstile_site_key);
-        }
         if (d && d.csrf_token && window.SanBongApp?.setCsrfToken) {
           window.SanBongApp.setCsrfToken(d.csrf_token);
         }
@@ -292,24 +304,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.SanBongApp.setCsrfToken(res.csrf_token);
       }
 
-      if (response.ok && res.require_2fa) {
-        pending2FaUser = res.user || { username };
-        pending2FaToken = res.temp_token || '';
-        const box2Fa = document.getElementById('login-2fa-box');
-        if (box2Fa) box2Fa.classList.remove('hidden');
-        if (submitBtn) submitBtn.classList.add('hidden');
-        const codeInput = document.getElementById('login-2fa-code');
-        if (codeInput) {
-          codeInput.value = '';
-          codeInput.focus();
-        }
-        setAuthMessage('🔐 Tài khoản bảo vệ 2FA: Vui lòng nhập mã 6 số từ Google Authenticator.', 'success');
-        if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast('Vui lòng nhập mã xác thực OTP 6 số', 'info');
-        }
-        return;
-      }
-
       if (response.ok && res.success) {
         setAuthMessage('✓ Đăng nhập thành công! Đang chuyển hướng...', 'success');
         if (window.SanBongApp?.showToast) {
@@ -348,97 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Đăng nhập tài khoản';
-      }
-    }
-  });
-
-  // Verify 2FA submit
-  document.getElementById('login-2fa-submit')?.addEventListener('click', async () => {
-    const codeInput = document.getElementById('login-2fa-code');
-    const code = codeInput ? codeInput.value.trim() : '';
-    if (!code || code.length !== 6) {
-      setAuthMessage('Vui lòng nhập đủ 6 chữ số mã xác thực 2FA.', 'error');
-      if (codeInput) codeInput.focus();
-      return;
-    }
-    const btn = document.getElementById('login-2fa-submit');
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = '⏳ Đang kiểm tra OTP...';
-    }
-    try {
-      if (window.SanBongApp?.ensureCsrfToken) {
-        const rootBase = (typeof window.SanBongApp?.getAppBase === 'function')
-          ? window.SanBongApp.getAppBase()
-          : ((typeof window.SanBongHelpers?.getAppBase === 'function')
-              ? window.SanBongHelpers.getAppBase()
-              : (window.location.pathname.includes('/Quan_Ly_San_Bong') ? '/Quan_Ly_San_Bong' : ''));
-        const apiBase = rootBase ? (String(rootBase).replace(/\/+$/, '') + '/') : '/';
-        await window.SanBongApp.ensureCsrfToken(apiBase);
-      }
-      const headers = window.SanBongApp?.getAuthFetchHeaders ? window.SanBongApp.getAuthFetchHeaders() : { 'Content-Type': 'application/json' };
-      const res = await fetch(getAuthApiUrl('verify_2fa'), {
-        method: 'POST',
-        headers,
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          code: code,
-          temp_token: pending2FaToken,
-          user_id: pending2FaUser?.id
-        })
-      });
-
-      const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
-      if (tokenHeader && window.SanBongApp?.setCsrfToken) {
-        window.SanBongApp.setCsrfToken(tokenHeader);
-      }
-
-      const resText = await res.text();
-      let json = null;
-      try {
-        json = JSON.parse(resText);
-      } catch (parseErr) {
-        console.error('2FA response JSON parse error:', parseErr, resText);
-        setAuthMessage(res.ok ? 'Phản hồi từ máy chủ không hợp lệ.' : `Lỗi máy chủ (${res.status}). Vui lòng thử lại sau.`, 'error');
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Xác thực';
-        }
-        return;
-      }
-
-      if (json?.csrf_token && window.SanBongApp?.setCsrfToken) {
-        window.SanBongApp.setCsrfToken(json.csrf_token);
-      }
-      if (res.ok && json.success) {
-        const user = json.user || pending2FaUser;
-        setAuthMessage('✓ Xác thực 2FA thành công! Đang chuyển hướng...', 'success');
-        if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast('Xác thực 2FA thành công!', 'success');
-        }
-        syncStoredUser(user);
-
-        setTimeout(() => {
-          handleLoginRedirect(user);
-        }, 350);
-      } else {
-        const errMsg = json?.message || 'Mã xác thực 2FA không chính xác hoặc đã hết hạn.';
-        setAuthMessage(errMsg, 'error');
-        if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast(errMsg, 'error');
-        }
-      }
-    } catch (err) {
-      console.error('2FA verification error:', err);
-      const errMsg = 'Lỗi kết nối máy chủ xác thực 2FA. Vui lòng thử lại sau.';
-      setAuthMessage(errMsg, 'error');
-      if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(errMsg, 'error');
-      }
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Xác thực OTP & Đăng nhập';
       }
     }
   });

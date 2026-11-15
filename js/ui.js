@@ -251,11 +251,11 @@ function handleLogout() {
       </div>
 
       <!-- FLOATING QUICK ACTIONS (ZALO & HOTLINE) -->
-      <div class="fixed right-4 bottom-5 z-40 flex flex-col gap-2.5">
-        <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="w-12 h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform font-bold text-xs" title="Chat Zalo hỗ trợ 24/7">
-          <span class="text-xs font-black tracking-tighter">Zalo</span>
+      <div class="fixed right-3 sm:right-5 bottom-4 sm:bottom-6 z-40 flex flex-col gap-2 pointer-events-auto">
+        <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform font-bold text-[11px] sm:text-xs" title="Chat Zalo hỗ trợ 24/7">
+          <span class="text-[11px] sm:text-xs font-black tracking-tighter">Zalo</span>
         </a>
-        <a href="tel:0352313548" class="w-12 h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-lg" title="Gọi Hotline đặt sân 0352 313 548">
+        <a href="tel:0352313548" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-base sm:text-lg" title="Gọi Hotline đặt sân 0352 313 548">
           <span>📞</span>
         </a>
       </div>

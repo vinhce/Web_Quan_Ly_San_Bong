@@ -14,12 +14,30 @@
     const escapeHTML = (str) => (app?.escapeHTML ? app.escapeHTML(str) : String(str ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
 
     const searchDateInput = document.getElementById('search-date');
+    const searchDateFormatted = document.getElementById('search-date-formatted');
+    const updateSearchDateText = (val) => {
+      if (!searchDateFormatted) return;
+      if (!val) {
+        searchDateFormatted.textContent = '--/--/----';
+        return;
+      }
+      const parts = String(val).split('-');
+      if (parts.length === 3) {
+        searchDateFormatted.textContent = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else {
+        searchDateFormatted.textContent = val;
+      }
+    };
+
     const today = app?.getLocalTodayISO ? app.getLocalTodayISO() : new Date().toISOString().split('T')[0];
     if (searchDateInput) {
       searchDateInput.min = today;
       if (!searchDateInput.value) {
         searchDateInput.value = today;
       }
+      updateSearchDateText(searchDateInput.value);
+      searchDateInput.addEventListener('change', (e) => updateSearchDateText(e.target.value));
+      searchDateInput.addEventListener('input', (e) => updateSearchDateText(e.target.value));
     }
 
     const weatherBadge = document.getElementById('hero-weather-badge');

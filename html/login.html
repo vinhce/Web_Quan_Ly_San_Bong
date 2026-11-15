@@ -74,7 +74,7 @@
 
         <div class="relative z-10 space-y-3 pt-6 border-t border-slate-800 text-xs sm:text-sm text-slate-300">
           <div class="flex items-center gap-2">
-            <span class="text-[#4ADE80] font-bold">✓</span> Xem lịch trống theo thời gian thực 17 sân
+            <span class="text-[#4ADE80] font-bold">✓</span> Xem lịch trống theo thời gian thực 26 sân
           </div>
           <div class="flex items-center gap-2">
             <span class="text-[#4ADE80] font-bold">✓</span> Quét VietQR cọc 30% đối soát tự động
@@ -109,23 +109,6 @@
             <div class="flex justify-end mt-1.5">
               <a href="#" class="text-xs sm:text-sm font-semibold text-[#16A34A] hover:text-[#15803D] hover:underline transition-colors">Quên mật khẩu?</a>
             </div>
-          </div>
-
-          <div id="login-turnstile-wrap" class="my-2"></div>
-
-          <div id="login-2fa-box" class="hidden p-4 md:p-5 rounded-xl bg-emerald-50 border border-emerald-300 space-y-3">
-            <div class="flex items-center gap-2 text-emerald-800 text-xs sm:text-sm font-bold">
-              <span>🔐</span>
-              <span>Tài khoản đã kích hoạt 2FA (TOTP)</span>
-            </div>
-            <p class="text-xs sm:text-sm text-emerald-700">Vui lòng mở ứng dụng Google Authenticator hoặc ứng dụng OTP trên điện thoại và nhập mã 6 số xác thực:</p>
-            <div>
-              <label class="block text-xs sm:text-sm font-bold text-[#475569] mb-1.5">Mã xác thực 6 số</label>
-              <input type="text" id="login-2fa-code" maxlength="6" inputmode="numeric" placeholder="000000" class="input-field h-11 sm:h-12 text-center font-mono font-bold tracking-widest text-lg sm:text-xl">
-            </div>
-            <button type="button" id="login-2fa-submit" class="btn-base btn-primary w-full h-11 sm:h-12 text-xs sm:text-sm font-bold shadow">
-              Xác thực OTP &amp; Đăng nhập
-            </button>
           </div>
 
           <button type="submit" id="login-submit-btn" class="btn-base btn-primary w-full h-11 sm:h-12 text-sm md:text-base font-bold shadow-md hover:shadow-lg transition-all">
