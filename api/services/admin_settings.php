@@ -150,30 +150,88 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
         if ($method !== 'GET') {
             json_error('Nhật ký thao tác chỉ cho phép đọc, nghiêm cấm chỉnh sửa hoặc xóa!', 405, 'ERR_AUDIT_IMMUTABLE');
         }
-        $rawUser = $_GET['user_id'] ?? $_GET['user'] ?? '';
-        $userId = ($rawUser !== '') ? (int)$rawUser : null;
-        $actFilter = sanitize_string($_GET['filter_action'] ?? $_GET['log_action'] ?? $_GET['action_type'] ?? '', 80);
-        $dateFilter = sanitize_string($_GET['date'] ?? '', 15);
+
+        require_once __DIR__ . '/AdminLogService.php';
+
+        // 1. Phân trang
+        $page  = max(1, (int)($_GET['page'] ?? 1));
+        $limit = max(1, min(100, (int)($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+
+        // 2. Bộ lọc
+        $rawUser = $_GET['admin_id'] ?? $_GET['user_id'] ?? $_GET['user'] ?? '';
+        if (!is_string($rawUser) && !is_int($rawUser)) {
+            json_error('Bộ lọc nhân sự không hợp lệ.', 400, 'ERR_INVALID_ADMIN_FILTER');
+        }
+        $rawUser = trim((string)$rawUser);
+        $systemFilter = strtolower($rawUser) === 'system';
+        $userId = ($rawUser !== '' && !$systemFilter) ? (int)$rawUser : null;
+        $actFilter = sanitize_string($_GET['action_type'] ?? $_GET['filter_action'] ?? $_GET['log_action'] ?? '', 80);
+        $rawActionCodes = $_GET['action_codes'] ?? '';
+        $fromDate = sanitize_string($_GET['from_date'] ?? '', 20);
+        $toDate = sanitize_string($_GET['to_date'] ?? '', 20);
+        $dateFilter = sanitize_string($_GET['date'] ?? '', 20);
         $search = sanitize_string($_GET['search'] ?? '', 100);
-        $limit = max(10, min(500, (int)($_GET['limit'] ?? 100)));
 
         $where = [];
         $params = [];
+
         if ($userId !== null && $userId > 0) {
             $where[] = "user_id = ?";
             $params[] = $userId;
         }
+
+        if ($systemFilter) {
+            $where[] = "(user_id IS NULL OR actor_role = 'system')";
+        }
+
         if ($actFilter !== '') {
             $where[] = "action = ?";
             $params[] = $actFilter;
         }
-        if ($dateFilter !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFilter)) {
+
+        if ($rawActionCodes !== '') {
+            if (!is_string($rawActionCodes)) {
+                json_error('Bộ lọc loại hành động không hợp lệ.', 400, 'ERR_INVALID_ACTION_FILTER');
+            }
+            $rawActionCodeList = array_values(array_filter(array_map('trim', explode(',', $rawActionCodes)), static fn(string $code): bool => $code !== ''));
+            if (count($rawActionCodeList) > 100) {
+                json_error('Bộ lọc có quá nhiều loại hành động.', 400, 'ERR_INVALID_ACTION_FILTER');
+            }
+            if (count(array_filter(
+                $rawActionCodeList,
+                static fn(string $code): bool => preg_match('/^[A-Za-z0-9_]+$/', $code) !== 1
+            )) > 0) {
+                json_error('Bộ lọc loại hành động không hợp lệ.', 400, 'ERR_INVALID_ACTION_FILTER');
+            }
+            $actionCodes = array_values(array_unique($rawActionCodeList));
+            if ($actionCodes === []) {
+                $where[] = '1 = 0';
+            } else {
+                $where[] = 'UPPER(action) IN (' . implode(', ', array_fill(0, count($actionCodes), '?')) . ')';
+                array_push($params, ...array_map('strtoupper', $actionCodes));
+            }
+        }
+
+        if ($fromDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate)) {
+            $where[] = "DATE(created_at) >= ?";
+            $params[] = $fromDate;
+        }
+
+        if ($toDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
+            $where[] = "DATE(created_at) <= ?";
+            $params[] = $toDate;
+        }
+
+        if ($fromDate === '' && $toDate === '' && $dateFilter !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFilter)) {
             $where[] = "DATE(created_at) = ?";
             $params[] = $dateFilter;
         }
+
         if ($search !== '') {
-            $where[] = "(booking_id LIKE ? OR old_value LIKE ? OR new_value LIKE ? OR actor_name LIKE ?)";
+            $where[] = "(target_id LIKE ? OR booking_id LIKE ? OR actor_name LIKE ? OR old_value LIKE ? OR new_value LIKE ?)";
             $likeVal = '%' . $search . '%';
+            $params[] = $likeVal;
             $params[] = $likeVal;
             $params[] = $likeVal;
             $params[] = $likeVal;
@@ -181,12 +239,32 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
         }
 
         $whereSql = !empty($where) ? ('WHERE ' . implode(' AND ', $where)) : '';
-        $stmt = $pdo->prepare("SELECT * FROM audit_logs {$whereSql} ORDER BY id DESC LIMIT {$limit}");
+
+        // 3. Đếm tổng số bản ghi phục vụ phân trang
+        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM audit_logs {$whereSql}");
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+        $totalPages = $total > 0 ? (int)ceil($total / $limit) : 1;
+
+        // 4. Lấy dữ liệu trang hiện tại
+        $stmt = $pdo->prepare("SELECT * FROM audit_logs {$whereSql} ORDER BY id DESC LIMIT {$limit} OFFSET {$offset}");
         $stmt->execute($params);
-        $logs = $stmt->fetchAll();
+        $rawLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $formattedLogs = [];
+        foreach ($rawLogs as $log) {
+            $log['formatted_message'] = AdminLogService::formatLogMessage($log);
+            if (!empty($log['created_at'])) {
+                $ts = strtotime((string)$log['created_at']);
+                $log['created_at_formatted'] = ($ts !== false) ? date('d/m/Y H:i', $ts) : (string)$log['created_at'];
+            } else {
+                $log['created_at_formatted'] = '';
+            }
+            $formattedLogs[] = $log;
+        }
 
         $staffStmt = $pdo->query("SELECT id, username, full_name, role FROM users WHERE role IN ('admin', 'manager', 'staff') ORDER BY FIELD(role, 'admin', 'manager', 'staff'), id ASC");
-        $staffList = $staffStmt ? $staffStmt->fetchAll() : [];
+        $staffList = $staffStmt ? $staffStmt->fetchAll(PDO::FETCH_ASSOC) : [];
 
         $actStmt = $pdo->query("SELECT DISTINCT action FROM audit_logs ORDER BY action ASC");
         $actionTypes = $actStmt ? $actStmt->fetchAll(PDO::FETCH_COLUMN) : [];
@@ -194,7 +272,13 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
         json_response([
             'success' => true,
             'data'    => [
-                'logs'        => $logs,
+                'logs'        => $formattedLogs,
+                'pagination'  => [
+                    'page'       => $page,
+                    'limit'      => $limit,
+                    'total'      => $total,
+                    'totalPages' => $totalPages
+                ],
                 'staffList'   => $staffList,
                 'actionTypes' => $actionTypes
             ]

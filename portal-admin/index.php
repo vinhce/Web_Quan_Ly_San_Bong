@@ -170,6 +170,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
         include __DIR__ . '/partials/tab8_shifts.php';
         include __DIR__ . '/partials/tab8_reports.php';
         include __DIR__ . '/partials/tab9_settings.php';
+        include __DIR__ . '/partials/tab11_admin_logs.php';
       ?>
     </main>
   </div>
@@ -520,7 +521,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261116_v85"></script>
   <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v80"></script>
   <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261115_v78"></script>
@@ -542,6 +543,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261116_v90"></script>
 </body>
 </html>
 

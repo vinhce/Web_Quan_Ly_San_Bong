@@ -11,7 +11,7 @@ let currentPortalRole = (typeof window !== 'undefined' && window.sb_current_user
     })();
 
 const PORTAL_ALLOWED_TABS = {
-  admin: ['overview', 'timeline', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'shifts', 'reports', 'settings'],
+  admin: ['overview', 'timeline', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'shifts', 'reports', 'settings', 'logs'],
   manager: ['overview', 'timeline', 'quick-booking', 'pitches', 'customers', 'payments', 'shifts', 'reports'],
   staff: ['overview', 'timeline', 'quick-booking', 'pitches', 'customers', 'shifts'],
   user: ['overview', 'timeline', 'quick-booking', 'pitches', 'customers', 'shifts']
@@ -307,7 +307,7 @@ function applyRolePermissions() {
     }
   }
 
-  const adminOnlyTabs = ['pricing', 'settings'];
+  const adminOnlyTabs = ['pricing', 'settings', 'logs'];
   adminOnlyTabs.forEach(tab => {
     const navBtn = document.getElementById(`nav-${tab}`);
     const panel = document.getElementById(`tab-content-${tab}`);
@@ -387,7 +387,7 @@ function switchAdminTab(moduleKey) {
   const tabNumMap = {
     '1': 'overview', '2': 'timeline', '3': 'quick-booking', '4': 'pitches',
     '5': 'pricing', '6': 'customers', '7': 'payments', '8': 'shifts',
-    '9': 'reports', '10': 'settings'
+    '9': 'reports', '10': 'settings', '11': 'logs'
   };
   if (tabNumMap[moduleKey]) moduleKey = tabNumMap[moduleKey];
 
@@ -413,7 +413,7 @@ function switchAdminTab(moduleKey) {
   } catch (e) {}
 
   if (typeof closeAdminMobileDrawer === 'function') closeAdminMobileDrawer();
-  const allModules = ['overview', 'timeline', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'shifts', 'reports', 'settings'];
+  const allModules = ['overview', 'timeline', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'shifts', 'reports', 'settings', 'logs'];
 
   allModules.forEach(m => {
     const btn = document.getElementById(`nav-${m}`);
@@ -439,7 +439,8 @@ function switchAdminTab(moduleKey) {
     'payments': '7. Duyệt cọc VietQR',
     'shifts': '8. Chốt ca / Giao ca',
     'reports': '9. Báo cáo doanh thu',
-    'settings': '10. Cài đặt hệ thống'
+    'settings': '10. Cài đặt hệ thống',
+    'logs': '11. Nhật ký hệ thống & Thao tác Quản trị'
   };
   const subtitleMap = {
     'overview': 'KPI & Vận hành ca',
@@ -451,7 +452,8 @@ function switchAdminTab(moduleKey) {
     'payments': 'Duyệt cọc & Đối soát',
     'shifts': 'Chốt ca trực',
     'reports': 'Doanh thu & Chi phí',
-    'settings': 'Cài đặt & Nhật ký'
+    'settings': 'Cài đặt & Nhật ký',
+    'logs': 'Nhật ký thao tác & Hậu kiểm'
   };
   const titleEl = document.getElementById('admin-module-title');
   if (titleEl) titleEl.textContent = titleMap[moduleKey] || 'Quản trị';
@@ -503,6 +505,11 @@ function switchAdminTab(moduleKey) {
     if (typeof loadNotificationLogs === 'function') loadNotificationLogs();
     if (typeof loadBackupsList === 'function') loadBackupsList();
     if (typeof load2FaStatus === 'function') load2FaStatus();
+  }
+  if (moduleKey === 'logs' && isOwnerAdmin()) {
+    if (typeof loadAdminLogs === 'function') {
+      loadAdminLogs(1);
+    }
   }
 }
 window.switchAdminTab = switchAdminTab;

@@ -470,7 +470,94 @@ function sanitize_string($str, $maxLength = 255) {
     return $clean;
 }
 
+function audit_log_decode_structured_value($value, &$isStructured) {
+    $isStructured = false;
+    if (is_array($value)) {
+        $isStructured = true;
+        return $value;
+    }
+    if (is_object($value)) {
+        $isStructured = true;
+        return get_object_vars($value);
+    }
+    if (!is_string($value)) {
+        return $value;
+    }
+
+    $trimmed = trim($value);
+    if ($trimmed === '' || ($trimmed[0] !== '{' && $trimmed[0] !== '[')) {
+        return $value;
+    }
+
+    $decoded = json_decode($trimmed, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $isStructured = true;
+        return $decoded;
+    }
+    return $value;
+}
+
+function audit_log_values_equal($left, $right) {
+    if (is_object($left)) {
+        $left = get_object_vars($left);
+    }
+    if (is_object($right)) {
+        $right = get_object_vars($right);
+    }
+
+    if (is_array($left) || is_array($right)) {
+        if (!is_array($left) || !is_array($right) || count($left) !== count($right)) {
+            return false;
+        }
+
+        $leftKeys = array_keys($left);
+        $rightKeys = array_keys($right);
+        $leftIsList = $leftKeys === [] || $leftKeys === range(0, count($left) - 1);
+        $rightIsList = $rightKeys === [] || $rightKeys === range(0, count($right) - 1);
+        if ($leftIsList !== $rightIsList) {
+            return false;
+        }
+
+        if ($leftIsList) {
+            foreach ($left as $index => $value) {
+                if (!audit_log_values_equal($value, $right[$index])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        foreach ($left as $key => $value) {
+            if (!array_key_exists($key, $right) || !audit_log_values_equal($value, $right[$key])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    $leftIsNumeric = !is_bool($left) && (is_int($left) || is_float($left) || (is_string($left) && is_numeric($left)));
+    $rightIsNumeric = !is_bool($right) && (is_int($right) || is_float($right) || (is_string($right) && is_numeric($right)));
+    if ($leftIsNumeric && $rightIsNumeric) {
+        return $left == $right;
+    }
+
+    return gettype($left) === gettype($right) && $left === $right;
+}
+
+function audit_log_is_unchanged_structured_pair($oldValue, $newValue) {
+    $oldStructured = false;
+    $newStructured = false;
+    $oldParsed = audit_log_decode_structured_value($oldValue, $oldStructured);
+    $newParsed = audit_log_decode_structured_value($newValue, $newStructured);
+
+    return $oldStructured && $newStructured && audit_log_values_equal($oldParsed, $newParsed);
+}
+
 function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $newValue = null, $actor = null) {
+    if (audit_log_is_unchanged_structured_pair($oldValue, $newValue)) {
+        return true;
+    }
+
     if ($pdo === null) {
         $pdo = getDBConnection(false);
     }
@@ -481,10 +568,16 @@ function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $ne
         if (!is_array($actor)) {
             $actor = $_SESSION['user'] ?? null;
         }
-        $userId    = isset($actor['id']) ? (int)$actor['id'] : (isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null);
+        $isSystemActor = is_array($actor) && strtolower((string)($actor['role'] ?? '')) === 'system';
+        $userId = $isSystemActor
+            ? null
+            : (isset($actor['id']) ? (int)$actor['id'] : (isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null));
         $actorName = null;
         $actorRole = null;
-        if (is_array($actor)) {
+        if ($isSystemActor) {
+            $actorName = 'Hệ thống (tự động)';
+            $actorRole = 'system';
+        } elseif (is_array($actor)) {
             $actorName = !empty($actor['full_name']) ? $actor['full_name'] : ($actor['username'] ?? null);
             $actorRole = $actor['role'] ?? null;
         }

@@ -77,7 +77,16 @@ function handle_admin_system_ops(string $action, string $method, PDO $pdo, array
     if ($action === 'run_match_reminders') {
         $admin = require_admin($pdo);
         $res = check_and_send_match_reminders($pdo);
-        write_audit_log($pdo, 'RUN_REMINDERS', null, null, 'Chạy nhắc lịch trận đấu: ' . (int)($res['reminded_count'] ?? 0) . ' tin', $admin);
+        $initiator = sanitize_string((string)($admin['full_name'] ?? $admin['username'] ?? 'Admin') . ' (#' . (int)($admin['id'] ?? 0) . ')', 120);
+        $systemActor = ['id' => null, 'username' => 'Hệ thống (tự động)', 'role' => 'system'];
+        write_audit_log(
+            $pdo,
+            'RUN_REMINDERS',
+            null,
+            null,
+            'Chạy nhắc lịch trận đấu: ' . (int)($res['reminded_count'] ?? 0) . ' tin; khởi chạy bởi: ' . $initiator,
+            $systemActor
+        );
         json_response([
             'success' => true,
             'message' => 'Đã kiểm tra & gửi ' . (int)($res['reminded_count'] ?? 0) . ' thông báo nhắc lịch trước trận.',
