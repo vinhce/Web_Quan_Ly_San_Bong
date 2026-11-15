@@ -1270,6 +1270,94 @@ function formatAdminLogRelativeTime(value) {
 }
 
 /**
+ * Chuẩn hóa và suy đoán thông tin Đối tượng thao tác (Loại đối tượng + Tên/Mã đối tượng)
+ */
+function resolveAdminLogTarget(item) {
+  const action = String(item.action || '').trim().toUpperCase();
+  let rawType = String(item.target_type || '').trim().toLowerCase();
+  let rawId = String(item.target_id || item.booking_id || '').trim();
+
+  // 1. Nếu có sẵn rawId nhưng rawType rỗng hoặc generic 'other', suy luận loại dựa trên ID và Action
+  if (rawId !== '') {
+    if (!rawType || rawType === 'null' || rawType === 'other' || rawType === 'đối tượng') {
+      if (/^P\d+-/i.test(rawId) || action.includes('PITCH')) {
+        rawType = 'pitch';
+      } else if (/^BK-/i.test(rawId) || /^[A-Z0-9]{8,12}$/i.test(rawId) || action.includes('BOOKING') || action === 'CHECKIN' || action === 'RESTORE_BOOKING') {
+        rawType = 'booking';
+      } else if (action.includes('VOUCHER') || /^VC-/i.test(rawId) || /^QA/i.test(rawId)) {
+        rawType = 'voucher';
+      } else if (action.includes('SERVICE') || /^SRV-/i.test(rawId)) {
+        rawType = 'service';
+      } else if (action.includes('EXPENSE') || /^EXP-/i.test(rawId)) {
+        rawType = 'expense';
+      } else if (action.includes('SHIFT')) {
+        rawType = 'shift';
+      } else if (action.includes('USER') || action.includes('MEMBER') || action.includes('STAFF')) {
+        rawType = 'user';
+      }
+    }
+  } else {
+    // 2. Nếu rawId hoàn toàn rỗng (các thao tác cấp hệ thống, bảng giá, bảo mật...)
+    if (['UPDATE_PRICING', 'UPDATE_PRICE', 'PRICE_UPDATE'].includes(action)) {
+      return { typeLabel: 'Bảng giá', idText: 'Bảng giá sân' };
+    }
+    if (['ENABLE_2FA', 'DISABLE_2FA', '2FA_TOGGLE'].includes(action)) {
+      return { typeLabel: 'Bảo mật', idText: 'Xác thực 2FA' };
+    }
+    if (['UPDATE_SETTINGS', 'SYSTEM_SETTINGS'].includes(action)) {
+      return { typeLabel: 'Cài đặt', idText: 'Cấu hình chung' };
+    }
+    if (['DB_BACKUP', 'DB_BACKUP_DOWNLOAD'].includes(action)) {
+      return { typeLabel: 'Hệ thống', idText: 'Sao lưu CSDL' };
+    }
+    if (['GOLDEN_HOUR_SAVE', 'GOLDEN_HOUR_DELETE'].includes(action)) {
+      return { typeLabel: 'Khuyến mãi', idText: 'Giờ vàng' };
+    }
+    if (['SAMPLE_DATA_CLEAN', 'SAMPLE_DATA_SEED'].includes(action)) {
+      return { typeLabel: 'Dữ liệu', idText: 'Dữ liệu mẫu' };
+    }
+    if (['TELEGRAM_TEST', 'TEST_TELEGRAM'].includes(action)) {
+      return { typeLabel: 'Thông báo', idText: 'Bot Telegram' };
+    }
+    if (['RUN_RECURRING_GEN'].includes(action)) {
+      return { typeLabel: 'Lịch lặp', idText: 'Tự động sinh' };
+    }
+    if (['RUN_REMINDERS'].includes(action)) {
+      return { typeLabel: 'Nhắc lịch', idText: 'Gửi nhắc đá' };
+    }
+    if (action.includes('SHIFT')) {
+      return { typeLabel: 'Ca trực', idText: 'Ca trực' };
+    }
+    if (action.includes('CHANGE_PASSWORD')) {
+      return { typeLabel: 'Tài khoản', idText: 'Đổi mật khẩu' };
+    }
+    if (action.includes('WALKIN')) {
+      return { typeLabel: 'Đặt tại quầy', idText: 'Đơn tại quầy' };
+    }
+  }
+
+  // 3. Mapping nhãn loại đối tượng
+  let typeLabel = 'Đối tượng';
+  if (['user', 'customer', 'member'].includes(rawType)) typeLabel = 'Hội viên';
+  else if (['staff'].includes(rawType)) typeLabel = 'Nhân sự';
+  else if (rawType === 'booking') typeLabel = 'Mã ca';
+  else if (rawType === 'pitch') typeLabel = 'Sân';
+  else if (rawType === 'service') typeLabel = 'Dịch vụ';
+  else if (rawType === 'voucher') typeLabel = 'Voucher';
+  else if (rawType === 'expense') typeLabel = 'Khoản chi';
+  else if (rawType === 'shift') typeLabel = 'Ca trực';
+  else if (rawType === 'settings') typeLabel = 'Cài đặt';
+  else if (rawType === 'pricing') typeLabel = 'Bảng giá';
+  else if (rawType === 'security') typeLabel = 'Bảo mật';
+  else if (rawType === 'database' || rawType === 'system') typeLabel = 'Hệ thống';
+
+  return {
+    typeLabel: typeLabel,
+    idText: rawId || 'Toàn hệ thống'
+  };
+}
+
+/**
  * Render dữ liệu vào tbody của bảng
  */
 function renderAdminLogTable(logs, staffList = []) {
@@ -1312,25 +1400,13 @@ function renderAdminLogTable(logs, staffList = []) {
     const actionBadge = getActionBadgeInfo(item.action);
 
     // Target display
-    const targetType = String(item.target_type || '').toLowerCase();
-    const targetId   = String(item.target_id || item.booking_id || '').trim();
-    let targetDisplayHtml = '---';
-    if (targetId !== '') {
-      let typeLabel = 'Đối tượng';
-      if (['user', 'customer', 'member'].includes(targetType)) typeLabel = 'Hội viên';
-      else if (targetType === 'booking') typeLabel = 'Mã ca';
-      else if (targetType === 'pitch') typeLabel = 'Sân';
-      else if (targetType === 'service') typeLabel = 'Dịch vụ';
-      else if (targetType === 'voucher') typeLabel = 'Voucher';
-      else if (targetType === 'settings') typeLabel = 'Cài đặt';
-
-      targetDisplayHtml = `
-        <div class="min-w-0">
-          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${escapeAdminLogHTML(typeLabel)}</div>
-          <div class="font-mono font-bold text-xs text-[#0F172A] truncate" title="${escapeAdminLogHTML(targetId)}">${escapeAdminLogHTML(targetId)}</div>
-        </div>
-      `;
-    }
+    const targetInfo = resolveAdminLogTarget(item);
+    const targetDisplayHtml = `
+      <div class="min-w-0">
+        <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${escapeAdminLogHTML(targetInfo.typeLabel)}</div>
+        <div class="font-mono font-bold text-xs text-[#0F172A] truncate" title="${escapeAdminLogHTML(targetInfo.idText)}">${escapeAdminLogHTML(targetInfo.idText)}</div>
+      </div>
+    `;
 
     // Ưu tiên diff có cấu trúc để không lặp lại JSON dài từ API.
     const diffHtml = renderLogDiffContent(item.old_value, item.new_value, item.action);

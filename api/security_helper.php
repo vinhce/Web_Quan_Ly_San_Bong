@@ -704,12 +704,62 @@ function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $ne
         } elseif ($newValue !== null) {
             $newValue = (string)$newValue;
         }
-        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, actor_name, actor_role, action, booking_id, old_value, new_value, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+
+        $targetType = null;
+        $targetId = null;
+        $cleanAct = strtoupper(trim((string)$action));
+        if ($bookingId !== null && $bookingId !== '') {
+            $targetId = (string)$bookingId;
+            if (preg_match('/^P\d+-/i', $targetId) || str_contains($cleanAct, 'PITCH')) {
+                $targetType = 'pitch';
+            } elseif (preg_match('/^BK-/i', $targetId) || preg_match('/^[A-Z0-9]{8,12}$/i', $targetId) || str_contains($cleanAct, 'BOOKING') || $cleanAct === 'CHECKIN') {
+                $targetType = 'booking';
+            } elseif (str_contains($cleanAct, 'VOUCHER') || str_starts_with($targetId, 'VC-')) {
+                $targetType = 'voucher';
+            } elseif (str_contains($cleanAct, 'SERVICE') || str_starts_with($targetId, 'SRV-')) {
+                $targetType = 'service';
+            } elseif (str_contains($cleanAct, 'EXPENSE') || str_starts_with($targetId, 'EXP-')) {
+                $targetType = 'expense';
+            } elseif (str_contains($cleanAct, 'SHIFT')) {
+                $targetType = 'shift';
+            } elseif (str_contains($cleanAct, 'USER') || str_contains($cleanAct, 'MEMBER') || str_contains($cleanAct, 'STAFF')) {
+                $targetType = 'user';
+            } else {
+                $targetType = 'other';
+            }
+        } else {
+            if (in_array($cleanAct, ['UPDATE_PRICING', 'UPDATE_PRICE', 'PRICE_UPDATE'], true)) {
+                $targetType = 'pricing';
+                $targetId = 'Bảng giá sân';
+            } elseif (in_array($cleanAct, ['ENABLE_2FA', 'DISABLE_2FA', '2FA_TOGGLE'], true)) {
+                $targetType = 'security';
+                $targetId = 'Xác thực 2FA';
+            } elseif (in_array($cleanAct, ['UPDATE_SETTINGS', 'SYSTEM_SETTINGS'], true)) {
+                $targetType = 'settings';
+                $targetId = 'Cấu hình chung';
+            } elseif (in_array($cleanAct, ['DB_BACKUP', 'DB_BACKUP_DOWNLOAD'], true)) {
+                $targetType = 'database';
+                $targetId = 'Sao lưu CSDL';
+            } elseif (in_array($cleanAct, ['GOLDEN_HOUR_SAVE', 'GOLDEN_HOUR_DELETE'], true)) {
+                $targetType = 'pricing';
+                $targetId = 'Giờ vàng';
+            } elseif (in_array($cleanAct, ['SAMPLE_DATA_CLEAN', 'SAMPLE_DATA_SEED'], true)) {
+                $targetType = 'system';
+                $targetId = 'Dữ liệu mẫu';
+            } elseif (in_array($cleanAct, ['TELEGRAM_TEST'], true)) {
+                $targetType = 'system';
+                $targetId = 'Bot Telegram';
+            }
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, actor_name, actor_role, action, target_type, target_id, booking_id, old_value, new_value, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $userId,
             $actorName,
             $actorRole,
             sanitize_string($action, 80),
+            $targetType,
+            $targetId,
             $bookingId !== null ? sanitize_string((string)$bookingId, 40) : null,
             $oldValue,
             $newValue,

@@ -53,7 +53,7 @@ assert.deepStrictEqual(groups.map(group => group.label), Array.from(catalog.grou
 
 const pricingGroup = groups.find(group => group.label === 'Giá & khuyến mãi');
 assert(pricingGroup.children.some(option => option.value === '__group__:pricing'));
-const pricingAction = pricingGroup.children.find(option => option.value === 'UPDATE_PRICING');
+const pricingAction = pricingGroup.children.find(option => option.value.split(',').includes('UPDATE_PRICING'));
 assert.strictEqual(pricingAction.textContent, 'Cập nhật giá sân');
 assert(!pricingAction.textContent.includes('UPDATE_PRICING'));
 
@@ -187,5 +187,21 @@ assert(rendered.includes('Hệ thống (tự động)'));
 assert(!rendered.includes('Should not be shown'));
 assert(rendered.includes('Tự động hủy đơn quá hạn'));
 assert(rendered.includes('Mã kỹ thuật: AUTO_CANCEL_EXPIRED'));
+
+const targetPricing = vm.runInContext("resolveAdminLogTarget({ action: 'UPDATE_PRICING' })", sandbox);
+assert.strictEqual(targetPricing.typeLabel, 'Bảng giá');
+assert.strictEqual(targetPricing.idText, 'Bảng giá sân');
+
+const target2FA = vm.runInContext("resolveAdminLogTarget({ action: 'ENABLE_2FA' })", sandbox);
+assert.strictEqual(target2FA.typeLabel, 'Bảo mật');
+assert.strictEqual(target2FA.idText, 'Xác thực 2FA');
+
+const targetPitch = vm.runInContext("resolveAdminLogTarget({ action: 'PITCH_STATUS', target_id: 'P5-A' })", sandbox);
+assert.strictEqual(targetPitch.typeLabel, 'Sân');
+assert.strictEqual(targetPitch.idText, 'P5-A');
+
+const targetBooking = vm.runInContext("resolveAdminLogTarget({ action: 'CHECKIN', booking_id: 'A5FF725506' })", sandbox);
+assert.strictEqual(targetBooking.typeLabel, 'Mã ca');
+assert.strictEqual(targetBooking.idText, 'A5FF725506');
 
 console.log('PASS: nhãn, nhóm, bộ lọc, định dạng tiền và actor hệ thống.');

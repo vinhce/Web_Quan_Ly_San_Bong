@@ -258,6 +258,58 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
             } else {
                 $log['created_at_formatted'] = '';
             }
+
+            // Chuẩn hóa đối tượng thao tác nếu chưa có
+            $rawTargetType = strtolower(trim((string)($log['target_type'] ?? '')));
+            $rawTargetId   = trim((string)($log['target_id'] ?? $log['booking_id'] ?? ''));
+            $cleanAct      = strtoupper(trim((string)($log['action'] ?? '')));
+
+            if ($rawTargetId !== '') {
+                if ($rawTargetType === '' || $rawTargetType === 'other') {
+                    if (preg_match('/^P\d+-/i', $rawTargetId) || str_contains($cleanAct, 'PITCH')) {
+                        $rawTargetType = 'pitch';
+                    } elseif (preg_match('/^BK-/i', $rawTargetId) || preg_match('/^[A-Z0-9]{8,12}$/i', $rawTargetId) || str_contains($cleanAct, 'BOOKING') || $cleanAct === 'CHECKIN') {
+                        $rawTargetType = 'booking';
+                    } elseif (str_contains($cleanAct, 'VOUCHER') || str_starts_with($rawTargetId, 'VC-')) {
+                        $rawTargetType = 'voucher';
+                    } elseif (str_contains($cleanAct, 'SERVICE') || str_starts_with($rawTargetId, 'SRV-')) {
+                        $rawTargetType = 'service';
+                    } elseif (str_contains($cleanAct, 'EXPENSE') || str_starts_with($rawTargetId, 'EXP-')) {
+                        $rawTargetType = 'expense';
+                    } elseif (str_contains($cleanAct, 'SHIFT')) {
+                        $rawTargetType = 'shift';
+                    } elseif (str_contains($cleanAct, 'USER') || str_contains($cleanAct, 'MEMBER') || str_contains($cleanAct, 'STAFF')) {
+                        $rawTargetType = 'user';
+                    }
+                }
+            } else {
+                if (in_array($cleanAct, ['UPDATE_PRICING', 'UPDATE_PRICE', 'PRICE_UPDATE'], true)) {
+                    $rawTargetType = 'pricing';
+                    $rawTargetId   = 'Bảng giá sân';
+                } elseif (in_array($cleanAct, ['ENABLE_2FA', 'DISABLE_2FA', '2FA_TOGGLE'], true)) {
+                    $rawTargetType = 'security';
+                    $rawTargetId   = 'Xác thực 2FA';
+                } elseif (in_array($cleanAct, ['UPDATE_SETTINGS', 'SYSTEM_SETTINGS'], true)) {
+                    $rawTargetType = 'settings';
+                    $rawTargetId   = 'Cấu hình chung';
+                } elseif (in_array($cleanAct, ['DB_BACKUP', 'DB_BACKUP_DOWNLOAD'], true)) {
+                    $rawTargetType = 'database';
+                    $rawTargetId   = 'Sao lưu CSDL';
+                } elseif (in_array($cleanAct, ['GOLDEN_HOUR_SAVE', 'GOLDEN_HOUR_DELETE'], true)) {
+                    $rawTargetType = 'pricing';
+                    $rawTargetId   = 'Giờ vàng';
+                } elseif (in_array($cleanAct, ['SAMPLE_DATA_CLEAN', 'SAMPLE_DATA_SEED'], true)) {
+                    $rawTargetType = 'system';
+                    $rawTargetId   = 'Dữ liệu mẫu';
+                } elseif (in_array($cleanAct, ['TELEGRAM_TEST'], true)) {
+                    $rawTargetType = 'system';
+                    $rawTargetId   = 'Bot Telegram';
+                }
+            }
+
+            $log['target_type'] = $rawTargetType !== '' ? $rawTargetType : null;
+            $log['target_id']   = $rawTargetId !== '' ? $rawTargetId : null;
+
             $formattedLogs[] = $log;
         }
 
