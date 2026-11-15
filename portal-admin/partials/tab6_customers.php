@@ -9,14 +9,14 @@
           <div class="flex flex-wrap items-center gap-2">
             <div class="flex flex-wrap items-center gap-1.5 bg-white p-1 rounded-xl border border-[#E2E8F0]">
               <button type="button" id="cust-filter-all" onclick="filterAdminCustomers('all')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white cursor-pointer">Tất cả khách</button>
-              <button type="button" id="cust-filter-vip" onclick="filterAdminCustomers('vip')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">👑 VIP</button>
-              <button type="button" id="cust-filter-regular" onclick="filterAdminCustomers('regular')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">⭐ Khách quen</button>
-              <button type="button" id="cust-filter-debt" onclick="filterAdminCustomers('debt')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">💸 Đang nợ chưa thu</button>
-              <button type="button" id="cust-filter-noshow" onclick="filterAdminCustomers('noshow')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">⚠️ Hay bùng sân (≥2 No-Show)</button>
-              <button type="button" id="cust-filter-blacklisted" onclick="filterAdminCustomers('blacklisted')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#DC2626] hover:bg-rose-50 cursor-pointer">🚫 Danh sách đen</button>
+              <button type="button" id="cust-filter-vip" onclick="filterAdminCustomers('vip')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Hội viên VIP</button>
+              <button type="button" id="cust-filter-regular" onclick="filterAdminCustomers('regular')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Khách quen</button>
+              <button type="button" id="cust-filter-debt" onclick="filterAdminCustomers('debt')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Đang nợ chưa thu</button>
+              <button type="button" id="cust-filter-noshow" onclick="filterAdminCustomers('noshow')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Hay bùng sân (≥2 No-Show)</button>
+              <button type="button" id="cust-filter-blacklisted" onclick="filterAdminCustomers('blacklisted')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#DC2626] hover:bg-rose-50 cursor-pointer">Danh sách đen</button>
             </div>
             <div class="relative w-full sm:w-64">
-              <input type="text" id="admin-cust-search" oninput="renderAdminCustomers()" placeholder="Tìm theo tên hoặc SĐT..." class="w-full h-9 px-3 pl-8 rounded-lg border border-[#E2E8F0] bg-white text-xs text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#16A34A] focus:ring-1 focus:ring-[#16A34A] transition-all">
+              <input type="text" id="admin-cust-search" oninput="handleCustomerSearchDebounced()" placeholder="Tìm theo tên hoặc SĐT..." class="w-full h-9 px-3 pl-8 rounded-lg border border-[#E2E8F0] bg-white text-xs text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#16A34A] focus:ring-1 focus:ring-[#16A34A] transition-all">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-2.5 top-2.5 text-slate-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>
           </div>
@@ -47,7 +47,9 @@
           <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
             <div class="px-5 py-4 bg-[#0F172A] text-white flex items-center justify-between gap-3 shrink-0">
               <div class="flex items-center gap-2.5 min-w-0">
-                <span class="text-lg shrink-0">👤</span>
+                <span class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-emerald-400 shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                </span>
                 <div class="min-w-0">
                   <h4 id="customer-crm-modal-title" class="font-heading font-extrabold text-sm truncate">Hồ Sơ CRM &amp; Lịch Sử Khách Hàng</h4>
                   <p class="text-[11px] text-slate-300 truncate">SĐT khách hàng: <span id="crm-phone-label" class="font-mono font-bold text-emerald-400">---</span></p>
@@ -88,7 +90,7 @@
                 </div>
                 <div class="flex items-center justify-end gap-2 pt-1">
                   <button type="button" onclick="closeCustomerCrmModal()" class="btn-sm btn-secondary cursor-pointer">Đóng</button>
-                  <button type="submit" class="btn-sm btn-primary font-bold cursor-pointer">💾 Lưu hồ sơ CRM</button>
+                  <button type="submit" class="btn-sm btn-primary font-bold cursor-pointer">Lưu hồ sơ CRM</button>
                 </div>
               </form>
 

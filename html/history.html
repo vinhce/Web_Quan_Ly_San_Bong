@@ -9,7 +9,7 @@
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261112_v34">
+  <link rel="stylesheet" href="../css/style.css?v=20261115_v60">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -26,10 +26,10 @@
               👤
             </div>
             <div>
-              <div id="member-name" class="font-heading font-extrabold text-lg text-[#0F172A]">Khách vãng lai</div>
-              <div id="member-phone" class="text-xs text-[#64748B]">Chưa đăng nhập</div>
-              <span id="member-tier-badge" class="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
-                Chưa đăng nhập
+              <div id="member-name" class="font-heading font-extrabold text-lg text-[#0F172A]">Hội viên</div>
+              <div id="member-phone" class="text-xs text-[#64748B]">Đang tải thông tin...</div>
+              <span id="member-tier-badge" class="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold">
+                Hội viên
               </span>
             </div>
           </div>
@@ -56,12 +56,12 @@
             <a href="/fields" class="px-3.5 py-2.5 rounded-lg text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] block">
               Đặt sân mới
             </a>
+            <a id="btn-history-login" href="/login?redirect=history" class="hidden w-full text-center px-3.5 py-2.5 rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] block font-bold text-xs mt-2">
+              Đăng nhập tài khoản
+            </a>
             <button id="btn-history-logout" type="button" onclick="window.SanBongApp && window.SanBongApp.handleLogout && window.SanBongApp.handleLogout()" class="w-full text-left px-3.5 py-2.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] block font-semibold">
               Đăng xuất tài khoản
             </button>
-            <a id="btn-history-login" href="/login?redirect=history" class="w-full text-center px-3.5 py-2.5 rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] block font-bold text-xs hidden">
-              Đăng nhập tài khoản
-            </a>
           </div>
         </div>
 
@@ -95,25 +95,22 @@
         </div>
       </div>
 
-        <div id="history-container" class="space-y-4">
-          
-        </div>
+        <div id="history-container" class="space-y-4"></div>
 
-        <div id="guest-state" class="hidden ui-card p-10 text-center space-y-4">
-          <div class="w-14 h-14 rounded-full bg-emerald-50 text-[#16A34A] font-extrabold text-2xl flex items-center justify-center mx-auto border border-emerald-100">
+        <!-- Trạng thái Khách vãng lai (Chưa đăng nhập) -->
+        <div id="guest-state" class="hidden ui-card p-8 sm:p-12 text-center space-y-4">
+          <div class="w-14 h-14 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto text-2xl">
             🔒
           </div>
-          <div class="space-y-1">
-            <h3 class="font-heading font-extrabold text-xl text-[#0F172A]">Chế độ Khách vãng lai</h3>
-            <p class="text-xs text-[#64748B] max-w-md mx-auto leading-relaxed">
-              Lịch sử đặt sân tự động chỉ dành cho tài khoản Hội viên đã đăng nhập. Bạn có thể đăng nhập để quản lý lịch đá, hoặc nhập Mã đơn / SĐT vào ô tìm kiếm phía trên để tra cứu vé.
-            </p>
-          </div>
-          <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <a href="/login?redirect=history" class="btn-base btn-primary text-xs font-bold px-5 py-2.5">
+          <div class="font-heading font-extrabold text-xl text-[#0F172A]">Chế độ Khách vãng lai</div>
+          <p class="text-xs text-[#64748B] max-w-md mx-auto leading-relaxed">
+            Lịch sử đặt sân tự động chỉ dành cho tài khoản Hội viên đã đăng nhập. Bạn có thể đăng nhập để quản lý lịch đã, hoặc nhập Mã đơn / SĐT vào ô tìm kiếm phía trên để tra cứu vé.
+          </p>
+          <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <a href="/login?redirect=history" class="btn-base btn-primary inline-flex items-center gap-1.5 text-xs font-bold">
               👉 Đăng nhập xem lịch sử
             </a>
-            <a href="/fields" class="btn-base btn-secondary text-xs font-bold px-5 py-2.5">
+            <a href="/fields" class="btn-base btn-secondary inline-flex items-center gap-1.5 text-xs font-bold">
               ⚽ Đặt sân mới
             </a>
           </div>
@@ -166,10 +163,17 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="/js/data.js?v=20261112_v34"></script>
-  <script src="/js/app.js?v=20261115_v41"></script>
-  <script src="/js/api.js?v=20261112_v34"></script>
-  <script src="/js/team_split.js?v=20261114_v1"></script>
-  <script src="/js/history.js?v=20261115_v41"></script>
+  <script src="/js/data.js?v=20261115_v60"></script>
+  <script src="/js/helpers.js?v=20261115_v60"></script>
+  <script src="/js/db_core.js?v=20261115_v60"></script>
+  <script src="/js/db_pricing.js?v=20261115_v60"></script>
+  <script src="/js/db_bookings.js?v=20261115_v60"></script>
+  <script src="/js/db_operations.js?v=20261115_v60"></script>
+  <script src="/js/db.js?v=20261115_v60"></script>
+  <script src="/js/ui.js?v=20261115_v60"></script>
+  <script src="/js/app.js?v=20261115_v60"></script>
+  <script src="/js/api.js?v=20261115_v60"></script>
+  <script src="/js/team_split.js?v=20261115_v60"></script>
+  <script src="/js/history.js?v=20261115_v60"></script>
 </body>
 </html>

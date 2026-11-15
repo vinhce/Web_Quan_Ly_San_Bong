@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Danh Sách Sân Bóng – Cụm 17 Sân Tiêu Chuẩn FIFA</title>
+  <title>Danh SÃ¡ch SÃ¢n BÃ³ng â€“ Cá»¥m 17 SÃ¢n TiÃªu Chuáº©n FIFA</title>
 
   <script>
     (function () {
@@ -25,26 +25,26 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Danh sách sân"></div>
+  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Danh sÃ¡ch sÃ¢n"></div>
 
   <div class="bg-white border-b border-[#E2E8F0]">
     <div class="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
       <div class="text-xs text-[#64748B] mb-1.5 flex items-center gap-1.5">
-        <a href="/" class="hover:text-[#16A34A]">Trang chủ</a>
+        <a href="/" class="hover:text-[#16A34A]">Trang chá»§</a>
         <span>/</span>
-        <span class="text-[#0F172A] font-semibold">Danh sách sân bóng</span>
+        <span class="text-[#0F172A] font-semibold">Danh sÃ¡ch sÃ¢n bÃ³ng</span>
       </div>
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 class="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F172A]">Hệ thống sân bóng đá Pro</h1>
-          <p class="text-sm text-[#475569] mt-0.5">Mặt cỏ nhân tạo FIFA Quality Pro, hệ thống chiếu sáng chuẩn thi đấu</p>
+          <h1 class="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F172A]">Há»‡ thá»‘ng sÃ¢n bÃ³ng Ä‘Ã¡ Pro</h1>
+          <p class="text-sm text-[#475569] mt-0.5">Máº·t cá» nhÃ¢n táº¡o FIFA Quality Pro, há»‡ thá»‘ng chiáº¿u sÃ¡ng chuáº©n thi Ä‘áº¥u</p>
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-xs text-[#64748B] font-semibold hidden sm:inline">Sắp xếp:</label>
+          <label class="text-xs text-[#64748B] font-semibold hidden sm:inline">Sáº¯p xáº¿p:</label>
           <select id="sort-select" class="h-10 px-3 rounded-lg border border-[#E2E8F0] bg-white text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#16A34A]">
-            <option value="default">Mặc định (Sân 5 -> 7 -> 11)</option>
-            <option value="price-asc">Giá: Thấp đến Cao</option>
-            <option value="price-desc">Giá: Cao đến Thấp</option>
+            <option value="default">Máº·c Ä‘á»‹nh (SÃ¢n 5 -> 7 -> 11)</option>
+            <option value="price-asc">GiÃ¡: Tháº¥p Ä‘áº¿n Cao</option>
+            <option value="price-desc">GiÃ¡: Cao Ä‘áº¿n Tháº¥p</option>
           </select>
         </div>
       </div>
@@ -58,68 +58,68 @@
         <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
           <h3 class="font-heading font-bold text-base text-[#0F172A] flex items-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            Bộ lọc tìm kiếm
+            Bá»™ lá»c tÃ¬m kiáº¿m
           </h3>
-          <button id="reset-filter-btn" class="text-xs font-semibold text-[#16A34A] hover:underline">Đặt lại</button>
+          <button id="reset-filter-btn" class="text-xs font-semibold text-[#16A34A] hover:underline">Äáº·t láº¡i</button>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Loại sân bóng</label>
+          <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Loáº¡i sÃ¢n bÃ³ng</label>
           <div class="space-y-2 text-sm font-medium">
             <label class="flex items-center gap-2.5 cursor-pointer">
               <input type="radio" name="filter-type" value="all" checked class="w-4 h-4 text-[#16A34A] focus:ring-[#16A34A]">
-              <span>Tất cả sân (17 sân)</span>
+              <span>Táº¥t cáº£ sÃ¢n (17 sÃ¢n)</span>
             </label>
             <label class="flex items-center gap-2.5 cursor-pointer">
               <input type="radio" name="filter-type" value="5" class="w-4 h-4 text-[#16A34A] focus:ring-[#16A34A]">
-              <span>Sân 5 người (Sân 5-A, 5-B)</span>
+              <span>SÃ¢n 5 ngÆ°á»i (SÃ¢n 5-A, 5-B)</span>
             </label>
             <label class="flex items-center gap-2.5 cursor-pointer">
               <input type="radio" name="filter-type" value="7" class="w-4 h-4 text-[#16A34A] focus:ring-[#16A34A]">
-              <span>Sân 7 người (Sân 7-A, 7-B, 7-C)</span>
+              <span>SÃ¢n 7 ngÆ°á»i (SÃ¢n 7-A, 7-B, 7-C)</span>
             </label>
             <label class="flex items-center gap-2.5 cursor-pointer">
               <input type="radio" name="filter-type" value="11" class="w-4 h-4 text-[#16A34A] focus:ring-[#16A34A]">
-              <span>Sân 11 người (Ghép 7-A + 7-B)</span>
+              <span>SÃ¢n 11 ngÆ°á»i (GhÃ©p 7-A + 7-B)</span>
             </label>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Trạng thái sân</label>
+          <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Tráº¡ng thÃ¡i sÃ¢n</label>
           <div class="space-y-2 text-sm font-medium">
             <label class="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" id="filter-active-only" checked class="w-4 h-4 text-[#16A34A] rounded focus:ring-[#16A34A]">
-              <span>Chỉ hiện sân đang hoạt động</span>
+              <span>Chá»‰ hiá»‡n sÃ¢n Ä‘ang hoáº¡t Ä‘á»™ng</span>
             </label>
           </div>
         </div>
 
         <div>
           <div class="flex items-center justify-between text-xs font-bold text-[#475569] uppercase tracking-wider mb-2">
-            <span>Mức giá tối đa</span>
-            <span id="price-val-label" class="text-sm font-extrabold text-[#16A34A]">1.500.000đ/h</span>
+            <span>Má»©c giÃ¡ tá»‘i Ä‘a</span>
+            <span id="price-val-label" class="text-sm font-extrabold text-[#16A34A]">1.500.000Ä‘/h</span>
           </div>
           <input type="range" id="price-range" min="200000" max="1500000" step="50000" value="1500000" class="w-full accent-[#16A34A]">
           <div class="flex justify-between text-[11px] text-[#94A3B8] mt-1 font-semibold">
-            <span>200.000đ</span>
-            <span>850.000đ</span>
-            <span>1.500.000đ</span>
+            <span>200.000Ä‘</span>
+            <span>850.000Ä‘</span>
+            <span>1.500.000Ä‘</span>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Tiện ích đi kèm</label>
+          <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Tiá»‡n Ã­ch Ä‘i kÃ¨m</label>
           <div class="grid grid-cols-2 gap-2 text-xs font-medium text-[#475569]">
-            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">✓ Đèn LED 400W</span>
-            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">✓ Bãi đỗ xe rộng</span>
-            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">✓ Nước miễn phí</span>
-            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">✓ Tắm nóng lạnh</span>
+            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">âœ“ ÄÃ¨n LED 400W</span>
+            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">âœ“ BÃ£i Ä‘á»— xe rá»™ng</span>
+            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">âœ“ NÆ°á»›c miá»…n phÃ­</span>
+            <span class="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-1.5">âœ“ Táº¯m nÃ³ng láº¡nh</span>
           </div>
         </div>
 
         <a href="/booking" class="btn-base btn-primary w-full text-center">
-          Vào trang đặt khung giờ
+          VÃ o trang Ä‘áº·t khung giá»
         </a>
       </aside>
 
@@ -132,8 +132,8 @@
           <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </div>
-          <div class="font-heading font-bold text-lg text-[#0F172A]">Không tìm thấy sân phù hợp</div>
-          <p class="text-xs text-[#64748B]">Vui lòng thử nới lỏng bộ lọc hoặc mức giá tối đa.</p>
+          <div class="font-heading font-bold text-lg text-[#0F172A]">KhÃ´ng tÃ¬m tháº¥y sÃ¢n phÃ¹ há»£p</div>
+          <p class="text-xs text-[#64748B]">Vui lÃ²ng thá»­ ná»›i lá»ng bá»™ lá»c hoáº·c má»©c giÃ¡ tá»‘i Ä‘a.</p>
         </div>
       </div>
 
@@ -149,10 +149,17 @@
   </div>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-
-  <script src="/js/data.js?v=20261112_v34"></script>
-  <script src="/js/app.js?v=20261115_v41"></script>
-  <script src="/js/api.js?v=20261112_v34"></script>
+  <script src="/js/data.js?v=20261115_v60"></script>
+  <script src="/js/helpers.js?v=20261115_v60"></script>
+  <script src="/js/db_core.js?v=20261115_v60"></script>
+  <script src="/js/db_pricing.js?v=20261115_v60"></script>
+  <script src="/js/db_bookings.js?v=20261115_v60"></script>
+  <script src="/js/db_operations.js?v=20261115_v60"></script>
+  <script src="/js/db.js?v=20261115_v60"></script>
+  <script src="/js/ui.js?v=20261115_v60"></script>
+  <script src="/js/app.js?v=20261115_v60"></script>
+  <script src="/js/api.js?v=20261115_v60"></script>
   <script src="/js/fields.js?v=20261112_v34"></script>
 </body>
 </html>
+

@@ -509,32 +509,17 @@
         fee_mode: document.getElementById('post-fee-mode').value,
         note: document.getElementById('post-note').value.trim()
       };
-      if (window.SanBongApp?.ensureCsrfToken) {
-        await window.SanBongApp.ensureCsrfToken();
-      }
-      const headers = window.SanBongApp?.getAuthFetchHeaders
-        ? window.SanBongApp.getAuthFetchHeaders()
-        : { 'Content-Type': 'application/json' };
-
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Đang đăng...';
-      }
+      if (window.SanBongApp?.ensureCsrfToken) await window.SanBongApp.ensureCsrfToken();
+      const headers = window.SanBongApp?.getAuthFetchHeaders ? window.SanBongApp.getAuthFetchHeaders() : { 'Content-Type': 'application/json' };
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang đăng...'; }
       try {
         const res = await fetch(getRel('api/matchmaking.php'), {
-          method: 'POST',
-          headers,
-          credentials: 'same-origin',
-          body: JSON.stringify(payload)
+          method: 'POST', headers, credentials: 'same-origin', body: JSON.stringify(payload)
         });
         const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
-        if (tokenHeader && window.SanBongApp?.setCsrfToken) {
-          window.SanBongApp.setCsrfToken(tokenHeader);
-        }
+        if (tokenHeader && window.SanBongApp?.setCsrfToken) window.SanBongApp.setCsrfToken(tokenHeader);
         const json = await res.json();
-        if (json?.csrf_token && window.SanBongApp?.setCsrfToken) {
-          window.SanBongApp.setCsrfToken(json.csrf_token);
-        }
+        if (json?.csrf_token && window.SanBongApp?.setCsrfToken) window.SanBongApp.setCsrfToken(json.csrf_token);
         if (json.success) {
           notify(json.message, 'success');
           closePostModal();
@@ -650,29 +635,23 @@
       }
     });
 
-    // Sự kiện Modal Liên Hệ Thành Công
-    document.getElementById('close-match-contact-modal')?.addEventListener('click', closeContactModal);
-    document.getElementById('dismiss-match-contact-btn')?.addEventListener('click', closeContactModal);
+    ['close-match-contact-modal', 'dismiss-match-contact-btn'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', closeContactModal);
+    });
     document.getElementById('match-contact-modal')?.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeContactModal();
     });
 
-    // Sự kiện Modal Hủy Kèo
-    document.getElementById('close-cancel-match-modal')?.addEventListener('click', closeCancelModal);
-    document.getElementById('dismiss-cancel-match-btn')?.addEventListener('click', closeCancelModal);
+    ['close-cancel-match-modal', 'dismiss-cancel-match-btn'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', closeCancelModal);
+    });
     document.getElementById('confirm-cancel-match-btn')?.addEventListener('click', handleConfirmCancel);
     document.getElementById('cancel-match-modal')?.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeCancelModal();
     });
 
-    // Hỗ trợ phím Escape đóng modal
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closePostModal();
-        closeJoinModal();
-        closeCancelModal();
-        closeContactModal();
-      }
+      if (e.key === 'Escape') [closePostModal, closeJoinModal, closeCancelModal, closeContactModal].forEach(fn => fn());
     });
   });
 })();

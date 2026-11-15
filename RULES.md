@@ -9,10 +9,11 @@
 - **Cấm lệnh phá lịch sử:** Cấm tuyệt đối `git reset --hard`, `git clean -fd`, `git restore .`, `git push --force`.
 - **Cấm liên kết:** Tuyệt đối không chạm vào hay liên kết tới repo `Nhom-666`.
 
-### 1.2. Sửa Mã Nguồn Phẫu Thuật (Surgical Edits)
+### 1.2. Sửa Mã Nguồn Phẫu Thuật & Giới Hạn File
 - Chỉ sửa đúng dòng/hàm thuộc phạm vi nhiệm vụ được giao.
 - Tuyệt đối không viết lại toàn bộ file đang chạy ổn định.
 - Tuyệt đối không dùng code placeholder gây mất mát tính năng (như `// ... existing code ...`).
+- **GIỚI HẠN DÒNG & COMMENT TỐI GIẢN:** Mỗi file tuyệt đối không dài quá 666 dòng (nếu vượt phải tách module/partials/service). Chú thích chức năng phải tối giản, súc tích (1 dòng), TUYỆT ĐỐI KHÔNG vẽ khung ascii, hộp trang trí (`/* ===...=== */`, `┌──┐`, v.v.) gây phình to file.
 - **QUY TẮC ĐÓNG GÓI JAVASCRIPT BUNDLE:** File `js/app.js` là file bundle được sinh ra tự động bởi lệnh:
   ```bash
   node scripts/build_app_bundle.js

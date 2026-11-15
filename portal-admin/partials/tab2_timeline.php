@@ -24,7 +24,7 @@
         <div class="ui-card p-5 overflow-x-auto">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-3 text-xs">
             <span class="font-bold text-[#0F172A]">Sơ đồ Timeline các sân hoạt động trong ngày</span>
-            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[#15803D] font-semibold">💡 Bấm vào ca đá trên Timeline để mở Popup Điều Hành Ca Đá & Thanh Toán</span>
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[#15803D] font-semibold">Gợi ý: Bấm vào ca đá trên Timeline để mở Popup Điều Hành Ca Đá &amp; Thanh Toán</span>
           </div>
           <div class="min-w-[900px]">
             <!-- Timeline Hours Header 05:30 -> 22:30 -->
@@ -45,7 +45,7 @@
         <div class="ui-card p-5 space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#E2E8F0]">
             <div>
-              <h3 class="font-heading font-bold text-sm text-[#0F172A]">🔔 Danh Sách Chờ Sân Trống (Waitlist)</h3>
+              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Danh Sách Chờ Sân Trống (Waitlist)</h3>
               <p class="text-[11px] text-[#64748B]">Khách hàng đăng ký chờ khi khung giờ kín lịch — Tự động báo khi có ca hủy/quá hạn</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -84,12 +84,12 @@
         <div id="recurring-schedules-card" class="ui-card p-5 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#E2E8F0]">
             <div>
-              <h3 class="font-heading font-bold text-sm text-[#0F172A]">📆 5.2 Lịch Cố Định Hàng Tuần (Recurring Schedules)</h3>
+              <h3 class="font-heading font-bold text-sm text-[#0F172A]">5.2 Lịch Cố Định Hàng Tuần (Recurring Schedules)</h3>
               <p class="text-[11px] text-[#64748B]">Tạo chuỗi đặt sân cố định theo thứ trong tuần, tự động giữ chỗ và gia hạn chu kỳ 4 tuần</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <?php if (isset($portalRole) && $portalRole === 'admin'): ?>
-              <button type="button" id="btn-run-recurring-cron" onclick="runRecurringCronNow()" class="px-3 h-8 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-bold cursor-pointer">🔄 Sinh lịch 4 tuần ngay</button>
+              <button type="button" id="btn-run-recurring-cron" onclick="runRecurringCronNow()" class="px-3 h-8 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-bold cursor-pointer">Sinh lịch 4 tuần ngay</button>
               <?php endif; ?>
               <button type="button" onclick="loadRecurringSchedules()" class="px-3 h-8 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-bold cursor-pointer">Làm mới</button>
             </div>
@@ -181,7 +181,7 @@
         <div id="matchmaking-moderation-card" class="ui-card p-5 space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#E2E8F0]">
             <div>
-              <h3 class="font-heading font-bold text-sm text-[#0F172A]">🤝 5.5 Kiểm Duyệt Tin Tìm Đối / Ghép Kèo</h3>
+              <h3 class="font-heading font-bold text-sm text-[#0F172A]">5.5 Kiểm Duyệt Tin Tìm Đối / Ghép Kèo</h3>
               <p class="text-[11px] text-[#64748B]">Duyệt, từ chối hoặc đóng các tin tìm đối giao hữu do đội bóng đăng tải</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">

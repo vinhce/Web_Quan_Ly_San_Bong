@@ -1,4 +1,4 @@
-      <!-- TAB 3: VẬN HÀNH QUẦY TOÀN DIỆN (ĐẶT SÂN, BÁN NƯỚC & CHỐT CA) -->
+      <!-- TAB 3: VẬN HÀNH QUẦY (1. ĐẶT SÂN TẠI QUẦY & 2. KHO NƯỚC POS) -->
       <!-- ========================================== -->
       <div id="tab-content-quick-booking" class="space-y-6 hidden">
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
@@ -88,7 +88,7 @@
                     <span id="walkin-preview-discount" class="font-bold text-[#16A34A]">-0đ</span>
                   </div>
                   <div id="walkin-preview-gifts" class="text-[11px] font-bold text-emerald-800 bg-white/80 px-2.5 py-1.5 rounded-lg border border-emerald-200">
-                    🎁 Tặng kèm gói tháng (0đ)
+                    Tặng kèm gói tháng (0đ)
                   </div>
                 </div>
                 <div class="pt-2 border-t border-emerald-200 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
@@ -121,14 +121,15 @@
                 <h3 class="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">2. Kho Nước &amp; Bán Lẻ Dịch Vụ Tại Quầy</h3>
                 <p class="text-xs text-[#64748B] mt-0.5">Bán nhanh nước uống, thuê bóng, áo Bib tại quầy — Tự động trừ tồn kho và cộng vào doanh thu ca trực.</p>
               </div>
-              <button type="button" id="btn-open-service-modal" onclick="openServiceModal()" class="btn-sm bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer <?php echo (isset($isManagerOrAdmin) && !$isManagerOrAdmin) ? 'hidden' : ''; ?>">
-                ✏️ Sửa / ➕ Thêm dịch vụ mới
+              <button type="button" id="btn-open-service-modal" onclick="openServiceModal()" class="btn-sm bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer inline-flex items-center gap-1.5 <?php echo (isset($isManagerOrAdmin) && !$isManagerOrAdmin) ? 'hidden' : ''; ?>">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Thêm / Quản lý dịch vụ
               </button>
             </div>
 
             <!-- Banner cảnh báo tồn kho sắp hết -->
-            <div id="inventory-low-stock-banner" class="hidden p-3.5 rounded-xl bg-red-50 border-2 border-red-300 text-xs text-red-800 font-semibold flex items-start gap-2.5">
-              <span class="text-base shrink-0">⚠️</span>
+            <div id="inventory-low-stock-banner" class="hidden p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900 font-semibold flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
               <div id="inventory-low-stock-text" class="flex-1 leading-relaxed">
                 Cảnh báo tồn kho sắp hết! Vui lòng nhập thêm hàng.
               </div>
@@ -137,36 +138,44 @@
             <!-- Form Bán nhanh tại quầy (Tự trừ kho) -->
             <form id="counter-pos-sale-form" onsubmit="handleCounterServiceSale(event)" class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
               <div class="flex items-center justify-between">
-                <span class="font-heading font-bold text-xs text-[#0F172A] uppercase tracking-wider">🛒 Bán nhanh tại quầy (Tự trừ kho)</span>
+                <span class="font-heading font-bold text-xs text-[#0F172A] uppercase tracking-wider inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-[#16A34A]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                  Bán nhanh tại quầy (Tự trừ kho)
+                </span>
                 <span id="pos-sale-line-preview" class="font-bold text-[#16A34A]">Thành tiền: 0đ</span>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div class="sm:col-span-5">
                   <label class="block font-bold text-[#475569] mb-1">Chọn mặt hàng / dịch vụ *</label>
-                  <select id="pos-service-select" onchange="updatePosSalePreview()" class="input-field w-full h-9 text-xs font-bold bg-white">
+                  <select id="pos-service-select" onchange="updatePosSalePreview()" class="input-field w-full h-9 text-xs font-semibold bg-white truncate">
                     <!-- Rendered by JS -->
                   </select>
                 </div>
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-3">
                   <label class="block font-bold text-[#475569] mb-1">Số lượng *</label>
-                  <input type="number" id="pos-service-qty" value="1" min="1" max="200" oninput="updatePosSalePreview()" required class="input-field w-full h-9 text-xs font-bold text-center bg-white">
+                  <div class="flex items-center h-9 border border-[#CBD5E1] rounded-lg bg-white overflow-hidden shadow-2xs">
+                    <button type="button" onclick="stepPosQty(-1)" class="w-8 h-full bg-slate-100 hover:bg-slate-200 text-[#0F172A] font-extrabold flex items-center justify-center cursor-pointer select-none transition-colors">−</button>
+                    <input type="number" id="pos-service-qty" value="1" min="1" max="200" oninput="updatePosSalePreview()" required class="w-full h-full text-xs font-bold text-center border-0 focus:outline-none focus:ring-0">
+                    <button type="button" onclick="stepPosQty(1)" class="w-8 h-full bg-slate-100 hover:bg-slate-200 text-[#0F172A] font-extrabold flex items-center justify-center cursor-pointer select-none transition-colors">+</button>
+                  </div>
                 </div>
-                <div class="sm:col-span-5">
+                <div class="sm:col-span-4">
                   <label class="block font-bold text-[#475569] mb-1">Hình thức thu tiền *</label>
                   <select id="pos-pay-method" class="input-field w-full h-9 text-xs font-semibold bg-white">
-                    <option value="Tiền mặt tại quầy">💵 Tiền mặt tại quầy</option>
-                    <option value="Chuyển khoản VietQR">📱 Chuyển khoản VietQR</option>
+                    <option value="Tiền mặt tại quầy">Tiền mặt tại quầy</option>
+                    <option value="Chuyển khoản VietQR">Chuyển khoản VietQR</option>
                   </select>
                 </div>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div class="sm:col-span-8">
                   <label class="block font-bold text-[#475569] mb-1">Ghi chú / Mã đơn liên kết (tùy chọn)</label>
-                  <input type="text" id="pos-sale-note" placeholder="VD: Khách Sân 7-A mua lẻ 5 chai nước, hoặc nhập mã đơn #ASFS..." class="input-field w-full h-9 text-xs bg-white">
+                  <input type="text" id="pos-sale-note" placeholder="VD: Khách Sân 7-A mua 5 chai nước, hoặc mã đơn..." class="input-field w-full h-9 text-xs bg-white">
                 </div>
                 <div class="sm:col-span-4">
-                  <button type="submit" class="btn-base btn-primary w-full h-9 text-xs font-extrabold cursor-pointer shadow-sm">
-                    💰 Bán &amp; Trừ kho ngay
+                  <button type="submit" id="pos-sale-submit-btn" class="btn-base btn-primary w-full h-9 text-xs font-extrabold cursor-pointer shadow-sm inline-flex items-center justify-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Bán &amp; Trừ kho ngay
                   </button>
                 </div>
               </div>
@@ -192,88 +201,16 @@
           </div>
         </div>
 
-        <!-- KHỐI 3: CHỐT CA & BÀN GIAO TIỀN MẶT (FULL WIDTH) -->
-        <div id="shift-handover-card" class="ui-card p-5 sm:p-6 space-y-5 border-2 border-amber-200/80">
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-3">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-lg font-bold shadow-sm shrink-0">🧾</div>
-              <div>
-                <h3 class="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">3. Chốt Ca &amp; Bàn Giao Tiền Mặt Cuối Ca</h3>
-                <p class="text-xs text-[#64748B]">Tự động tổng hợp tiền mặt &amp; chuyển khoản VietQR phát sinh trong ca trực để bàn giao minh bạch cho Chủ sân</p>
-              </div>
-            </div>
-            <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold">Chống thất thoát tiền mặt</span>
-          </div>
-
-          <!-- Thống kê ca trực hiện tại & Nút chốt ca -->
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-            <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-                <div class="text-[11px] font-bold text-[#64748B] uppercase">Thời gian mở ca trực</div>
-                <div id="shift-start-time" class="font-mono font-extrabold text-sm sm:text-base text-[#0F172A] mt-1">Hôm nay, 06:00</div>
-                <div class="text-[11px] text-[#16A34A] font-semibold mt-1">● Ca đang mở hoạt động</div>
-              </div>
-              <div class="p-4 rounded-xl bg-amber-50/70 border-2 border-amber-300 flex flex-col justify-between">
-                <div class="text-[11px] font-bold text-amber-900 uppercase">💵 Tổng tiền mặt thu trong ca</div>
-                <div id="shift-cash-total" class="font-heading font-extrabold text-xl text-[#D97706] mt-1">0đ</div>
-                <div class="text-[10px] text-amber-800 mt-1">Đặt sân quầy + Thu 70% + Bán nước TM</div>
-              </div>
-              <div class="p-4 rounded-xl bg-purple-50/70 border border-purple-200 flex flex-col justify-between">
-                <div class="text-[11px] font-bold text-purple-900 uppercase">📱 Tổng chuyển khoản VietQR</div>
-                <div id="shift-transfer-total" class="font-heading font-extrabold text-xl text-purple-700 mt-1">0đ</div>
-                <div class="text-[10px] text-purple-700 mt-1">Đã vào thẳng tài khoản ngân hàng</div>
-              </div>
-            </div>
-
-            <div class="lg:col-span-5 p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex flex-col justify-between gap-3 text-xs">
-              <div>
-                <label class="block font-bold text-[#0F172A] mb-1">Ghi chú bàn giao ca trực (tiền lẻ, sự cố, gửi lại đồ...)</label>
-                <input type="text" id="shift-close-note" placeholder="VD: Đã đếm đủ tiền mặt bàn giao cho ca sau / Chủ sân..." class="input-field w-full bg-white">
-              </div>
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <span class="text-[11px] text-[#64748B]">Bấm chốt ca để khóa sổ doanh thu ca hiện tại</span>
-                <button type="button" id="btn-close-shift" onclick="handleCloseShift()" class="btn-base bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2.5 shrink-0 cursor-pointer shadow-sm">
-                  🔒 Chốt ca bàn giao
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bảng Lịch sử Chốt ca & Đối soát bàn giao -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between text-xs">
-              <h4 class="font-heading font-bold text-sm text-[#0F172A]">Lịch sử Chốt ca &amp; Đối soát bàn giao tiền mặt</h4>
-              <button type="button" onclick="loadShiftHandovers()" class="text-xs font-bold text-[#16A34A] hover:underline cursor-pointer">🔄 Làm mới danh sách ca</button>
-            </div>
-            <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
-              <table class="w-full text-left text-xs min-w-[780px]">
-                <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
-                  <tr>
-                    <th class="py-3 px-3">Mã ca</th>
-                    <th class="py-3 px-3">Nhân viên trực</th>
-                    <th class="py-3 px-3">Thời gian (Mở - Chốt)</th>
-                    <th class="py-3 px-3 text-right">Tiền mặt kê khai</th>
-                    <th class="py-3 px-3 text-right">Chuyển khoản VietQR</th>
-                    <th class="py-3 px-3 text-right">Tiền mặt thực nhận</th>
-                    <th class="py-3 px-3 text-center">Chênh lệch</th>
-                    <th class="py-3 px-3 text-center">Trạng thái</th>
-                    <th class="py-3 px-3 text-right">Thao tác đối soát</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-shifts-tbody" class="divide-y divide-[#E2E8F0]">
-                  <!-- Rendered by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <!-- TAB 3: GỒM 1. ĐẶT SÂN TẠI QUẦY & 2. KHO NƯỚC & BÁN LẺ DỊCH VỤ (MỤC CHỐT CA ĐÃ CHUYỂN SANG TAB 8) -->
 
         <!-- Modal Thêm / Sửa Dịch Vụ & Tồn Kho -->
         <div id="service-crud-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4" onclick="if(event.target===this) closeServiceModal()">
           <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden my-auto">
             <div class="px-5 py-4 bg-[#0F172A] text-white flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="text-lg">🥤</span>
+                <span class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-emerald-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </span>
                 <div>
                   <h4 id="service-modal-title" class="font-heading font-extrabold text-sm">Thêm / Cập nhật Dịch vụ &amp; Tồn kho</h4>
                   <p class="text-[11px] text-slate-300">Quản lý đơn giá bán lẻ và định mức cảnh báo hết hàng</p>
@@ -312,7 +249,7 @@
               </div>
               <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                 <button type="button" onclick="closeServiceModal()" class="btn-sm btn-secondary cursor-pointer">Hủy</button>
-                <button type="submit" class="btn-sm btn-primary font-bold cursor-pointer">💾 Lưu dịch vụ</button>
+                <button type="submit" class="btn-sm btn-primary font-bold cursor-pointer">Lưu dịch vụ</button>
               </div>
             </form>
           </div>

@@ -45,10 +45,12 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div class="flex items-center gap-2">
-                <span class="text-xl">🏆</span>
+                <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </span>
                 <h3 class="font-heading font-bold text-lg text-[#0F172A]">Chính Sách Khuyến Mãi Gói Hợp Đồng Theo Tháng (1 - 3 Tháng)</h3>
               </div>
-              <p class="text-xs text-[#64748B]">Tự động áp dụng khi khách đặt lịch cố định theo tuần trên toàn hệ thống Online & Quầy</p>
+              <p class="text-xs text-[#64748B]">Tự động áp dụng khi khách đặt lịch cố định theo tuần trên toàn hệ thống Online &amp; Quầy</p>
             </div>
             <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold">Đang áp dụng tự động</span>
           </div>
@@ -66,13 +68,13 @@
               </div>
               <div class="p-2.5 rounded-lg bg-white border border-emerald-200 space-y-1.5 text-xs">
                 <div class="font-bold text-[#15803D] flex items-center gap-1">
-                  <span>🎁</span> <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
+                  <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
                 </div>
                 <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
-                  <span>💧</span> <span><b>2 Thùng Nước Suối</b> Aquafina (48 chai)</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <span><b>2 Thùng Nước Suối</b> Aquafina (48 chai)</span>
                 </div>
                 <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
-                  <span>🏁</span> <span><b>1 Trọng Tài</b> chuyên nghiệp bắt trận</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <span><b>1 Trọng Tài</b> chuyên nghiệp bắt trận</span>
                 </div>
               </div>
               <div class="text-[11px] text-emerald-800 font-bold pt-1 border-t border-emerald-200 flex justify-between">
@@ -93,13 +95,13 @@
               </div>
               <div class="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1.5 text-xs">
                 <div class="font-bold text-sky-700 flex items-center gap-1">
-                  <span>🎁</span> <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
+                  <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
                 </div>
                 <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
-                  <span>💧</span> <span><b>1 Thùng Nước Suối</b> Aquafina (24 chai)</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> <span><b>1 Thùng Nước Suối</b> Aquafina (24 chai)</span>
                 </div>
                 <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
-                  <span>🎽</span> <span><b>1 Bộ Áo Bib</b> chia đội dạ quang (10 áo)</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> <span><b>1 Bộ Áo Bib</b> chia đội dạ quang (10 áo)</span>
                 </div>
               </div>
               <div class="text-[11px] text-slate-600 font-bold pt-1 border-t border-slate-200 flex justify-between">
@@ -120,13 +122,13 @@
               </div>
               <div class="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1.5 text-xs">
                 <div class="font-bold text-amber-700 flex items-center gap-1">
-                  <span>🎁</span> <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
+                  <span>Tài trợ MỖI TRẬN ĐẤU (0đ):</span>
                 </div>
                 <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
-                  <span>💧</span> <span><b>1 Lốc Nước Suối</b> Aquafina (12 chai)</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> <span><b>1 Lốc Nước Suối</b> Aquafina (12 chai)</span>
                 </div>
                 <div class="flex items-center gap-1.5 text-[#0F172A] font-semibold">
-                  <span>⚽</span> <span><b>Miễn phí Bóng Đá</b> Động Lực FIFA</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> <span><b>Miễn phí Bóng Đá</b> Động Lực FIFA</span>
                 </div>
               </div>
               <div class="text-[11px] text-slate-600 font-bold pt-1 border-t border-slate-200 flex justify-between">
@@ -230,7 +232,7 @@
         <div id="golden-hour-card" class="ui-card p-6 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3">
             <div>
-              <h3 class="font-heading font-bold text-lg text-[#0F172A]">⚡ 5.4 Bảng Quy Tắc Giá Giờ Vàng / Thấp Điểm</h3>
+              <h3 class="font-heading font-bold text-lg text-[#0F172A]">5.4 Bảng Quy Tắc Giá Giờ Vàng / Thấp Điểm</h3>
               <p class="text-xs text-[#64748B]">Tự động áp dụng giảm giá giờ thấp điểm hoặc phụ thu giờ cao điểm theo loại sân, thứ và khung giờ</p>
             </div>
             <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">Giá động thông minh</span>

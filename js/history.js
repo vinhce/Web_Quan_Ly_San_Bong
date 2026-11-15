@@ -6,7 +6,13 @@ async function updateHistoryUserInfo() {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
-  const user = db.getUser();
+  let user = db.getUser();
+  if (!user && (sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user'))) {
+    try {
+      user = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user'));
+    } catch (e) {}
+  }
+
   const mName = document.getElementById('member-name');
   const mPhone = document.getElementById('member-phone');
   const mAvatar = document.getElementById('member-avatar');
@@ -17,77 +23,94 @@ async function updateHistoryUserInfo() {
   const btnLogout = document.getElementById('btn-history-logout');
   const btnLogin = document.getElementById('btn-history-login');
 
-  if (!user || !user.name) {
+  const rawName = user ? (user.full_name || user.name || user.username) : '';
+  const isGuest = (!user || !rawName || user.role === 'guest' || user.is_guest || (!user.phone && !user.email && !user.username && rawName === 'Khách vãng lai'));
+
+  if (isGuest) {
     if (mName) mName.textContent = 'Khách vãng lai';
-    if (mPhone) {
-      const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=history') : '/login?redirect=history';
-      mPhone.innerHTML = '<a href="' + loginUrl + '" class="text-xs font-bold text-[#16A34A] hover:underline">👉 Đăng nhập để tích điểm</a>';
-    }
+    if (mPhone) mPhone.textContent = 'Chưa đăng nhập';
     if (mAvatar) mAvatar.textContent = '👤';
     if (mTier) {
-      mTier.textContent = 'Chưa đăng nhập';
+      mTier.textContent = 'Dành cho Hội viên';
       mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold';
     }
-    if (pLabel) pLabel.textContent = 'Dành cho Hội viên';
+    if (pLabel) pLabel.textContent = '0 / 2.000 điểm';
     if (pBar) pBar.style.width = '0%';
     if (pUpgrade) pUpgrade.textContent = 'Đăng nhập tài khoản để tích điểm hội viên';
     if (btnLogout) btnLogout.classList.add('hidden');
     if (btnLogin) btnLogin.classList.remove('hidden');
     renderHistory();
-  } else {
-    if (mName) mName.textContent = user.name;
-    if (mPhone) mPhone.textContent = user.phone || 'Chưa cập nhật SĐT';
-    if (mAvatar) mAvatar.textContent = user.avatar || 'VIP';
-    if (mTier) {
-      mTier.textContent = user.tier || 'Hội viên';
-      mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold';
-    }
-    const pts = Number(user.points) || 0;
-    if (pLabel) pLabel.textContent = `${pts.toLocaleString('vi-VN')} / 2.000 điểm`;
-    if (pBar) {
-      const pct = Math.min(100, Math.max(0, Math.round((pts / 2000) * 100)));
-      pBar.style.width = `${pct}%`;
-    }
-    if (pUpgrade) pUpgrade.textContent = `Hạng hiện tại: ${user.tier || 'Hội viên'}`;
-    if (btnLogout) btnLogout.classList.remove('hidden');
-    if (btnLogin) btnLogin.classList.add('hidden');
-
-    renderHistory();
-
-    const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
-    try {
-      const res = await fetch(getRel('api/bookings.php'), { credentials: 'same-origin', cache: 'no-store' });
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.success && Array.isArray(json.data)) {
-          localStorage.setItem('sb_bookings_v1', JSON.stringify(json.data));
-          renderHistory();
-          await syncReviewedMap(db);
-        }
-      }
-    } catch (e) {}
+    return;
   }
+
+  const isAdmin = (user.role === 'admin' || user.username === 'vxyen0801');
+  const isManager = (user.role === 'manager');
+  const isStaff = (user.role === 'staff');
+
+  const displayName = isAdmin ? (user.full_name || 'Quản Trị Viên (vxyen0801)') : rawName;
+  if (mName) mName.textContent = displayName;
+  if (mPhone) mPhone.textContent = user.phone || 'Chưa cập nhật SĐT';
+  if (mAvatar) {
+    mAvatar.textContent = isAdmin ? 'QT' : (isManager ? 'QL' : (isStaff ? 'NV' : (user.avatar || displayName.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() || 'VIP')));
+  }
+  if (mTier) {
+    mTier.textContent = isAdmin ? 'Chủ sân · Toàn quyền' : (isManager ? 'Quản lý sân' : (isStaff ? 'Nhân viên trực sân' : (user.tier || 'Hội viên')));
+    mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold';
+  }
+  const pts = Number(user.points) || 0;
+  if (pLabel) pLabel.textContent = `${pts.toLocaleString('vi-VN')} / 2.000 điểm`;
+  if (pBar) {
+    const pct = Math.min(100, Math.max(0, Math.round((pts / 2000) * 100)));
+    pBar.style.width = `${pct}%`;
+  }
+  if (pUpgrade) {
+    pUpgrade.textContent = isAdmin ? 'Tài khoản Quản trị Toàn quyền' : `Hạng hiện tại: ${user.tier || 'Hội viên'}`;
+  }
+  if (btnLogout) btnLogout.classList.remove('hidden');
+  if (btnLogin) btnLogin.classList.add('hidden');
+
+  renderHistory();
+
+  const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+  try {
+    const res = await fetch(getRel('api/bookings.php'), { credentials: 'same-origin', cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.success && Array.isArray(json.data)) {
+        localStorage.setItem('sb_bookings_v1', JSON.stringify(json.data));
+        renderHistory();
+        await syncReviewedMap(db);
+      }
+    }
+  } catch (e) {}
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
-  if (db) {
-    renderHistoryPolicyBox(db);
-    window.addEventListener('sb-data-synced', () => renderHistoryPolicyBox(db));
+  if (!db) return;
+
+  renderHistoryPolicyBox(db);
+  window.addEventListener('sb-data-synced', () => renderHistoryPolicyBox(db));
+
+  // 1. Wait for auth verification first
+  if (window.SanBongApp?.authReady) {
+    try {
+      await window.SanBongApp.authReady;
+    } catch (e) {}
+  } else if (window.SanBongApp?.syncAuthMe) {
+    try {
+      await window.SanBongApp.syncAuthMe();
+    } catch (e) {}
   }
 
+  // 2. Render user info and bookings with verified auth
   await updateHistoryUserInfo();
 
-  if (window.SanBongApp?.authReady) {
-    window.SanBongApp.authReady.then(() => updateHistoryUserInfo());
-  }
-
+  // 3. Listen to auth state events
   window.addEventListener('sb-auth-synced', () => updateHistoryUserInfo());
   window.addEventListener('sb-auth-unauthenticated', () => updateHistoryUserInfo());
 
-  if (db) {
-    await syncReviewedMap(db);
-  }
+  await syncReviewedMap(db);
 });
 
 async function syncReviewedMap(db) {
@@ -159,24 +182,27 @@ function filterHistory(filter) {
 }
 
 function renderHistory() {
-  const db = window.SanBongApp.SanBongDB;
+  const db = window.SanBongApp?.SanBongDB;
+  if (!db) return;
   const user = db.getUser();
-  const all = db.getAllBookings();
+  const rawName = user ? (user.full_name || user.name || user.username) : '';
+  const isGuest = (!user || !rawName || user.role === 'guest' || user.is_guest || (!user.phone && !user.email && !user.username && rawName === 'Khách vãng lai'));
 
-  const isGuest = (!user || !user.name);
+  const all = db.getAllBookings();
   const searchInput = document.getElementById('history-search-input');
   const searchVal = (searchInput ? searchInput.value : '').trim().toLowerCase();
   const cleanSearchPhone = searchVal.replace(/[\s\.\-]+/g, '');
 
   let userBookings = [];
   if (!isGuest) {
+    const userDisplayName = (rawName || '').toLowerCase();
     userBookings = all.filter(b => {
       const matchPhone = user.phone && b.phone && (b.phone === user.phone || String(b.phone).replace(/\D+/g, '') === String(user.phone).replace(/\D+/g, ''));
-      const matchName = user.name && b.customerName && b.customerName.toLowerCase() === user.name.toLowerCase();
+      const matchName = userDisplayName && b.customerName && b.customerName.toLowerCase() === userDisplayName;
       const matchUserId = user.id && (b.userId || b.user_id) && String(b.userId || b.user_id) === String(user.id);
       return matchPhone || matchName || matchUserId;
     });
-    if (userBookings.length === 0 && all.length > 0) {
+    if (userBookings.length === 0 && all.length > 0 && (user.role === 'admin' || user.role === 'manager')) {
       userBookings = all;
     }
     if (searchVal) {
@@ -188,8 +214,6 @@ function renderHistory() {
       });
     }
   } else {
-    // Khách vãng lai: Không tự động hiện lịch sử
-    // Chỉ hiển thị đơn khi khách nhập chính xác Mã đơn hoặc SĐT hợp lệ để tra cứu
     if (searchVal && (cleanSearchPhone.length >= 9 || searchVal.length >= 6)) {
       userBookings = all.filter(b => {
         const code = (b.code || '').toLowerCase();

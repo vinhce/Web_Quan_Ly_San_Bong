@@ -83,7 +83,7 @@
     const current = getCsrfToken();
     if (current) return current;
     try {
-      const base = apiBase !== undefined ? apiBase : (getAppBase() ? getAppBase() + '/' : '');
+      const base = apiBase !== undefined ? apiBase : (getAppBase() ? getAppBase() + '/' : '/');
       const url = `${base}api/auth.php?action=me`;
       const res = await fetch(url, { credentials: 'same-origin' });
       if (res.ok) {

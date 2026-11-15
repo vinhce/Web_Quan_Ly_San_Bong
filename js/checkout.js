@@ -415,7 +415,7 @@ function handleSePayPaymentSuccess(result) {
     badge.className = 'p-3 rounded-xl bg-[#DCFCE7] border border-[#86EFAC] text-[#15803D] text-xs font-bold flex items-center justify-center md:justify-start gap-2 shadow-sm animate-pulse';
   }
   if (text) {
-    text.innerHTML = '🎉 <strong>ĐÃ NHẬN TIỀN CỌC!</strong> Cổng SePay xác nhận giao dịch thành công. Đang chuyển hướng...';
+    text.innerHTML = '🎉 <strong>ĐÃ NHẬN TIỀN CỌC!</strong> Hệ thống đã xác nhận giao dịch thành công. Đang chuyển hướng...';
   }
 
   setTimeout(() => {
@@ -486,10 +486,7 @@ function setupLoyaltyWaterRedemption() {
     const loginLink = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
     if (summaryBox) {
       summaryBox.classList.remove('hidden');
-      summaryBox.innerHTML = `
-        <div class="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-          🔒 <a href="${loginLink}" class="underline font-bold text-amber-900 hover:text-emerald-700">Đăng nhập tài khoản</a> để dùng điểm tích lũy đổi nước suối miễn phí!
-        </div>`;
+      summaryBox.innerHTML = `<div class="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">🔒 <a href="${loginLink}" class="underline font-bold text-amber-900 hover:text-emerald-700">Đăng nhập tài khoản</a> để dùng điểm tích lũy đổi nước suối miễn phí!</div>`;
     }
     return;
   }
@@ -571,7 +568,7 @@ async function confirmPayment(isAuto = false) {
   if (!isAuto && !isPaymentAlreadyConfirmed) {
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '⏳ Đang kiểm tra cổng thanh toán SePay...';
+      btn.textContent = '⏳ Đang kiểm tra giao dịch chuyển khoản...';
     }
 
     try {
@@ -587,7 +584,7 @@ async function confirmPayment(isAuto = false) {
         }
       }
     } catch (e) {
-      console.warn('Lỗi kiểm tra SePay:', e);
+      console.warn('Lỗi kiểm tra thanh toán:', e);
     }
 
     if (btn) {
@@ -605,20 +602,19 @@ async function confirmPayment(isAuto = false) {
 
     if (window.SanBongApp?.showModal) {
       window.SanBongApp.showModal({
-        title: 'Cổng SePay chưa nhận được tiền cọc',
+        title: 'Chưa ghi nhận chuyển khoản đặt cọc',
         message: `Hệ thống chưa ghi nhận giao dịch chuyển khoản cho mã đơn: ${generatedBookingCode}\n\n• Vui lòng mở App ngân hàng quét mã VietQR hoặc chuyển đúng nội dung "${generatedBookingCode}".\n• Sau khi chuyển tiền thành công, hệ thống sẽ tự động duyệt và cấp vé ngay lập tức!`,
-        type: 'warning',
-        confirmText: 'Tôi đã hiểu'
+        type: 'warning', confirmVariant: 'warning', confirmText: 'Tôi đã hiểu'
       });
     } else if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('⚠️ Chưa nhận được tiền cọc cho mã ' + generatedBookingCode + '. Vui lòng hoàn tất chuyển khoản!', 'warning', 5000);
+      window.SanBongApp.showToast('⚠️ Hệ thống đang chờ nhận tiền cọc cho mã ' + generatedBookingCode + '. Quý khách vui lòng hoàn tất chuyển khoản!', 'warning', 5000);
     }
     return;
   }
 
   if (btn) {
     btn.disabled = true;
-    btn.textContent = '✓ SePay xác nhận thành công! Đang chuyển hướng...';
+    btn.textContent = '✓ Giao dịch đã xác nhận thành công! Đang chuyển hướng...';
   }
 
   const db = window.SanBongApp.SanBongDB;

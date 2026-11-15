@@ -1,0 +1,643 @@
+<?php
+// Dịch vụ khởi tạo đơn đặt sân trực tuyến & tại quầy
+function handle_create_booking(?PDO $pdo, array $data): void {
+    $isWalkin = !empty($data['isWalkin']) || !empty($data['is_walkin']);
+    if ($isWalkin) {
+        $walkinActor = require_staff_or_admin($pdo);
+    } else {
+        $consent = !empty($data['privacy_consent']) || !empty($data['privacyConsent']);
+        if (!$consent) {
+            json_response([
+                'success'  => false,
+                'message'  => 'Vui lòng đọc và tích chọn đồng ý với Chính sách bảo mật & Điều khoản dịch vụ khi đặt sân trực tuyến.',
+                'ref_code' => 'ERR_PRIVACY_CONSENT_REQUIRED'
+            ], 422);
+        }
+
+        $turnstileToken = $data['turnstile_token'] ?? $data['cf-turnstile-response'] ?? null;
+        if (!verify_turnstile_if_configured($turnstileToken)) {
+            json_response([
+                'success'  => false,
+                'message'  => 'Xác thực Turnstile (chống bot) không thành công. Vui lòng tải lại trang và thử lại.',
+                'ref_code' => 'ERR_BOT_CHECK_FAILED'
+            ], 400);
+        }
+
+        if (!check_rate_limit($pdo, 'create_booking', 10, 300)) {
+            json_response([
+                'success'  => false,
+                'message'  => 'Bạn thao tác quá nhanh. Vui lòng thử lại sau vài phút.',
+                'ref_code' => 'ERR_RATE_LIMITED'
+            ], 429);
+        }
+        increment_rate_limit($pdo, 'create_booking');
+    }
+
+    $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? '', 100);
+    $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
+    $email = filter_var($data['email'] ?? 'khachhang@sanbongpro.vn', FILTER_VALIDATE_EMAIL) ?: 'khachhang@sanbongpro.vn';
+    $pitchId = sanitize_string($data['pitchId'] ?? $data['pitch_id'] ?? '', 20);
+    $date = sanitize_string($data['date'] ?? $data['booking_date'] ?? '', 15);
+    $slotId = sanitize_string($data['slotId'] ?? $data['slot_id'] ?? '', 10);
+    $servicesInput = is_array($data['services'] ?? null) ? $data['services'] : [];
+    $voucherCode = strtoupper(sanitize_string($data['voucherCode'] ?? $data['voucher_code'] ?? '', 30));
+    $note = sanitize_string($data['note'] ?? '', 255);
+    $paymentMethod = sanitize_string($data['paymentMethod'] ?? $data['payment_method'] ?? 'VietQR Chuyển khoản', 50);
+
+    $rawWeeks = (int)($data['weeksCount'] ?? $data['weeks_count'] ?? 1);
+    $weeksCount = in_array($rawWeeks, [1, 4, 8, 12], true) ? $rawWeeks : 1;
+    $bookingMode = sanitize_string($data['bookingMode'] ?? $data['booking_mode'] ?? ($weeksCount >= 12 ? 'quarterly' : ($weeksCount >= 4 ? 'monthly' : 'single')), 20);
+    $payFull = !empty($data['payFull']) || !empty($data['pay_full']);
+
+    if (!$isWalkin && $phone !== '') {
+        if (!check_rate_limit($pdo, 'create_booking_phone', 4, 600, $phone)) {
+            json_response([
+                'success'  => false,
+                'message'  => 'Số điện thoại này đang tạo đơn quá nhanh. Vui lòng thử lại sau 10 phút.',
+                'ref_code' => 'ERR_RATE_LIMITED'
+            ], 429);
+        }
+        increment_rate_limit($pdo, 'create_booking_phone', $phone);
+    }
+
+    if (!$isWalkin && $pdo !== null && $phone !== '') {
+        try {
+            $cleanPh = preg_replace('/[^0-9]/', '', $phone);
+            $holdStmt = $pdo->prepare("
+                SELECT COUNT(*) FROM bookings
+                WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ?
+                  AND payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%')
+                  AND (paid_amount = 0 OR paid_amount IS NULL)
+                  AND status NOT IN ('Đã hủy', 'Khách chưa đến')
+            ");
+            $holdStmt->execute([$cleanPh]);
+            if ((int)$holdStmt->fetchColumn() >= 2) {
+                json_response([
+                    'success'  => false,
+                    'message'  => 'Bạn đang có 2 đơn đặt sân chờ thanh toán cọc. Vui lòng hoàn tất thanh toán hoặc chờ đơn hết hạn trước khi tạo thêm.',
+                    'ref_code' => 'ERR_TOO_MANY_PENDING_BOOKINGS'
+                ], 429);
+            }
+        } catch (Throwable $phEx) {
+            error_log("[PENDING HOLD CHECK WARN] " . $phEx->getMessage());
+        }
+    }
+
+    if ($weeksCount >= 12) {
+        $packageDiscountRate = 0.15;
+        $giftNote = '[Gói 3 tháng (12 tuần) - Tặng 2 thùng nước + 1 trọng tài/trận]';
+        if (mb_stripos($note, 'Gói 3 tháng') === false) {
+            $note = trim($note . ' ' . $giftNote);
+        }
+    } elseif ($weeksCount >= 8) {
+        $packageDiscountRate = 0.10;
+    } elseif ($weeksCount >= 4) {
+        $packageDiscountRate = 0.05;
+    } else {
+        $packageDiscountRate = 0.0;
+    }
+
+    if ($isWalkin && mb_stripos($note, 'tại quầy') === false) {
+        $note = trim($note . ' [Đặt trực tiếp tại quầy]');
+    }
+
+    if (empty($customerName) || empty($phone) || empty($pitchId) || empty($date) || empty($slotId)) {
+        json_response([
+            'success'  => false,
+            'message'  => 'Vui lòng điền đầy đủ các trường thông tin bắt buộc.',
+            'ref_code' => 'ERR_MISSING_REQUIRED'
+        ], 400);
+    }
+
+    if (!preg_match('/^0[0-9]{9,10}$/', $phone)) {
+        json_response([
+            'success'  => false,
+            'message'  => 'Số điện thoại không hợp lệ (cần đúng định dạng 10-11 chữ số Việt Nam).',
+            'ref_code' => 'ERR_INVALID_PHONE'
+        ], 400);
+    }
+
+    $bookingDateTime = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? strtotime($date) : false;
+    $today = strtotime(date('Y-m-d'));
+    if (!$bookingDateTime || (!$isWalkin && $bookingDateTime < $today)) {
+        json_response([
+            'success'  => false,
+            'message'  => 'Ngày đặt sân không hợp lệ hoặc đã qua.',
+            'ref_code' => 'ERR_INVALID_DATE'
+        ], 400);
+    }
+
+    if (stripos($pitchId, 'P5') === 0) {
+        $prefix = 'ASFF';
+    } elseif (stripos($pitchId, 'P11') === 0) {
+        $prefix = 'ASFE';
+    } else {
+        $prefix = 'ASFS';
+    }
+    $code = $prefix . random_int(100000, 999999);
+
+    if (!isset($_SESSION['owned_booking_codes']) || !is_array($_SESSION['owned_booking_codes'])) {
+        $_SESSION['owned_booking_codes'] = [];
+    }
+    $_SESSION['owned_booking_codes'][] = $code;
+
+    if ($pdo === null) {
+        $fallbackPitches = [
+            'P5-A'  => ['name' => 'Sân 5 - Sân A', 'base_price' => 250000, 'peak_price' => 350000, 'weekend_price' => 380000, 'status' => 'Hoạt động'],
+            'P5-B'  => ['name' => 'Sân 5 - Sân B', 'base_price' => 250000, 'peak_price' => 350000, 'weekend_price' => 380000, 'status' => 'Hoạt động'],
+            'P5-C'  => ['name' => 'Sân 5 - Sân C (Mới)', 'base_price' => 280000, 'peak_price' => 380000, 'weekend_price' => 380000, 'status' => 'Hoạt động'],
+            'P7-A'  => ['name' => 'Sân 7 - Sân A (Trung tâm)', 'base_price' => 450000, 'peak_price' => 650000, 'weekend_price' => 700000, 'status' => 'Hoạt động'],
+            'P7-B'  => ['name' => 'Sân 7 - Sân B', 'base_price' => 400000, 'peak_price' => 600000, 'weekend_price' => 700000, 'status' => 'Hoạt động'],
+            'P7-C'  => ['name' => 'Sân 7 - Sân C (VIP)', 'base_price' => 500000, 'peak_price' => 750000, 'weekend_price' => 700000, 'status' => 'Hoạt động'],
+            'P11-A' => ['name' => 'Sân 11 - Sân Ghép (A+B)', 'base_price' => 800000, 'peak_price' => 1200000, 'weekend_price' => 1400000, 'status' => 'Hoạt động'],
+            'P11-B' => ['name' => 'Sân 11 - Sân Ghép (C+D)', 'base_price' => 850000, 'peak_price' => 1300000, 'weekend_price' => 1400000, 'status' => 'Hoạt động'],
+            'P11-C' => ['name' => 'Sân 11 - Sân Trung Tâm VFF', 'base_price' => 950000, 'peak_price' => 1500000, 'weekend_price' => 1400000, 'status' => 'Hoạt động']
+        ];
+        $fallbackSlots = [
+            'S01' => ['slot_time' => '05:30 - 06:30', 'is_peak' => 0, 'duration' => 1.0],
+            'S02' => ['slot_time' => '06:30 - 07:30', 'is_peak' => 0, 'duration' => 1.0],
+            'S03' => ['slot_time' => '07:30 - 08:30', 'is_peak' => 0, 'duration' => 1.0],
+            'S04' => ['slot_time' => '08:30 - 09:30', 'is_peak' => 0, 'duration' => 1.0],
+            'S05' => ['slot_time' => '09:30 - 10:30', 'is_peak' => 0, 'duration' => 1.0],
+            'S06' => ['slot_time' => '14:00 - 15:00', 'is_peak' => 0, 'duration' => 1.0],
+            'S07' => ['slot_time' => '15:00 - 16:00', 'is_peak' => 0, 'duration' => 1.0],
+            'S08' => ['slot_time' => '16:00 - 17:00', 'is_peak' => 0, 'duration' => 1.0],
+            'S09' => ['slot_time' => '17:00 - 18:00', 'is_peak' => 1, 'duration' => 1.0],
+            'S10' => ['slot_time' => '17:30 - 19:00', 'is_peak' => 1, 'duration' => 1.5],
+            'S11' => ['slot_time' => '18:00 - 19:00', 'is_peak' => 1, 'duration' => 1.0],
+            'S12' => ['slot_time' => '19:00 - 20:00', 'is_peak' => 1, 'duration' => 1.0],
+            'S13' => ['slot_time' => '19:00 - 20:30', 'is_peak' => 1, 'duration' => 1.5],
+            'S14' => ['slot_time' => '20:00 - 21:00', 'is_peak' => 1, 'duration' => 1.0],
+            'S15' => ['slot_time' => '20:30 - 22:00', 'is_peak' => 1, 'duration' => 1.5],
+            'S16' => ['slot_time' => '21:00 - 22:00', 'is_peak' => 0, 'duration' => 1.0],
+            'S17' => ['slot_time' => '21:00 - 22:30', 'is_peak' => 0, 'duration' => 1.5],
+            'S18' => ['slot_time' => '22:00 - 23:00', 'is_peak' => 0, 'duration' => 1.0]
+        ];
+        $fallbackServices = ['SRV-WATER' => 120000, 'SRV-WATER-BOTTLE' => 10000, 'SRV-BIB' => 30000, 'SRV-BALL' => 20000, 'SRV-REF' => 150000];
+        $fallbackVouchers = [
+            'WELCOME10'    => ['type' => 'percent', 'val' => 10, 'min' => 0],
+            'GIAM50K'      => ['type' => 'fixed',   'val' => 50000, 'min' => 500000],
+            'VIPGOLD'      => ['type' => 'percent', 'val' => 15, 'min' => 300000],
+            'DATTHANG15'   => ['type' => 'percent', 'val' => 15, 'min' => 800000],
+            'SINHVIEN30K'  => ['type' => 'fixed',   'val' => 30000, 'min' => 200000],
+            'CUOITUAN100K' => ['type' => 'fixed',   'val' => 100000, 'min' => 900000]
+        ];
+
+        $pitch = $fallbackPitches[$pitchId] ?? null;
+        $slot = $fallbackSlots[$slotId] ?? null;
+        if (!$pitch || $pitch['status'] === 'Bảo trì' || !$slot) {
+            json_error('Sân bóng hoặc khung giờ không hợp lệ.', 400, 'ERR_INVALID_PITCH_OR_SLOT');
+        }
+
+        $dayOfWeek = (int)date('w', $bookingDateTime);
+        $isWeekend = ($dayOfWeek === 0 || $dayOfWeek === 6);
+        $weekendPrice = (int)($pitch['weekend_price'] ?? 0);
+        if ($isWeekend && $weekendPrice > 0) {
+            $basePrice = $slot['is_peak'] ? max((int)$pitch['peak_price'], $weekendPrice) : $weekendPrice;
+        } else {
+            $basePrice = $slot['is_peak'] ? $pitch['peak_price'] : $pitch['base_price'];
+        }
+        $pitchPrice = (int)round($basePrice * $slot['duration'] * $weeksCount * (1 - $packageDiscountRate));
+        $srvPrice = 0;
+        foreach ($servicesInput as $s) {
+            $sId = $s['id'] ?? '';
+            $sQty = max(1, min(100, (int)($s['quantity'] ?? 1)));
+            if (isset($fallbackServices[$sId])) {
+                $srvPrice += $fallbackServices[$sId] * $sQty;
+            }
+        }
+        $subtotal = $pitchPrice + $srvPrice;
+        $discountAmount = 0;
+        if (!empty($voucherCode) && isset($fallbackVouchers[$voucherCode])) {
+            $v = $fallbackVouchers[$voucherCode];
+            if ($subtotal >= $v['min']) {
+                $discountAmount = ($v['type'] === 'percent') ? (int)round($subtotal * ($v['val'] / 100)) : min($v['val'], $subtotal);
+            }
+        }
+        $totalPrice = max(0, $subtotal - $discountAmount);
+        $depositAmount = (int)round($totalPrice * 0.3);
+        $remainingAmount = $totalPrice - $depositAmount;
+        $bookingStatus = 'Đã xác nhận';
+        $paymentStatus = 'Chờ duyệt cọc';
+        $holdMinutes = 15;
+        $paidAmount = 0;
+        $expiresAt = (!$isWalkin && !$payFull) ? date('Y-m-d H:i:s', time() + ($holdMinutes * 60)) : null;
+
+        if ($isWalkin) {
+            $expiresAt = null;
+            if ($paymentMethod === 'Khách quen (Chưa cọc)' || mb_stripos($paymentMethod, 'Chưa cọc') !== false) {
+                $depositAmount = 0;
+                $remainingAmount = $totalPrice;
+            } elseif ($payFull) {
+                $bookingStatus = 'Hoàn thành';
+                $paymentStatus = 'Đã thanh toán 100%';
+                $depositAmount = $totalPrice;
+                $paidAmount = $totalPrice;
+                $remainingAmount = 0;
+            } else {
+                $paymentStatus = 'Đã cọc 30%';
+                $paidAmount = $depositAmount;
+                $remainingAmount = max(0, $totalPrice - $depositAmount);
+            }
+        }
+
+        $expectedFile = __DIR__ . '/../../logs/expected_orders.json';
+        $expectedOrders = [];
+        if (file_exists($expectedFile)) {
+            $decodedExpected = json_decode(@file_get_contents($expectedFile), true);
+            if (is_array($decodedExpected)) $expectedOrders = $decodedExpected;
+        }
+        $cleanCode = str_replace(['-', ' '], '', strtoupper($code));
+        $expectedOrders[$cleanCode] = ['code' => $code, 'deposit_amount' => $depositAmount, 'total_price' => $totalPrice, 'updated_at' => date('Y-m-d H:i:s')];
+        @file_put_contents($expectedFile, json_encode($expectedOrders, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        json_response([
+            'success' => true,
+            'message' => 'Tạo đơn đặt sân thành công!',
+            'data'    => [
+                'id' => 0, 'code' => $code, 'pitchId' => $pitchId, 'pitchName' => $pitch['name'], 'date' => $date, 'slotId' => $slotId,
+                'slotTime' => $slot['slot_time'], 'customerName' => $customerName, 'phone' => $phone, 'weeksCount' => $weeksCount,
+                'bookingMode' => $bookingMode, 'originalPrice' => $subtotal, 'discountAmount' => $discountAmount, 'totalPrice' => $totalPrice,
+                'depositAmount' => $depositAmount, 'paidAmount' => $paidAmount, 'remainingAmount' => $remainingAmount, 'status' => $bookingStatus,
+                'paymentStatus' => $paymentStatus, 'paymentMethod' => $paymentMethod, 'holdMinutes' => $holdMinutes, 'expiresAt' => $expiresAt, 'note' => $note
+            ]
+        ], 201);
+    }
+
+    maybe_run_auto_release_throttled($pdo, 30);
+
+    try {
+        $pdo->beginTransaction();
+        $pitchStmt = $pdo->prepare("SELECT id, name, type, base_price, peak_price, weekend_price, status FROM pitches WHERE id = ? FOR UPDATE");
+        $pitchStmt->execute([$pitchId]);
+        $pitch = $pitchStmt->fetch();
+
+        if (!$pitch || $pitch['status'] === 'Bảo trì' || $pitch['status'] === 'Ẩn') {
+            $pdo->rollBack();
+            json_error('Sân bóng này hiện đang bảo trì, tạm ẩn hoặc không tồn tại.', 400, 'ERR_PITCH_UNAVAILABLE');
+        }
+
+        $slotStmt = $pdo->prepare("SELECT id, slot_time, is_peak, duration FROM time_slots WHERE id = ?");
+        $slotStmt->execute([$slotId]);
+        $slot = $slotStmt->fetch();
+        if (!$slot) {
+            $pdo->rollBack();
+            json_error('Khung giờ đặt không hợp lệ.', 400, 'ERR_INVALID_SLOT');
+        }
+
+        for ($k = 0; $k < $weeksCount; $k++) {
+            $checkDate = date('Y-m-d', strtotime("+{$k} week", $bookingDateTime));
+            $checkDuplicateStmt = $pdo->prepare("
+                SELECT code FROM bookings
+                WHERE pitch_id = ? AND booking_date = ? AND slot_id = ?
+                  AND status NOT IN ('Đã hủy', 'Khách chưa đến')
+                  AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
+                LIMIT 1 FOR UPDATE
+            ");
+            $checkDuplicateStmt->execute([$pitchId, $checkDate, $slotId]);
+            $existingBusyCode = $checkDuplicateStmt->fetchColumn();
+            if ($existingBusyCode) {
+                $pdo->rollBack();
+                $weekNote = ($weeksCount > 1) ? (" (buổi tuần thứ " . ($k + 1) . ")") : "";
+                json_response([
+                    'success'  => false,
+                    'message'  => "Khung giờ {$slot['slot_time']} ngày {$checkDate}{$weekNote} tại {$pitch['name']} đã có đơn đặt trước (#{$existingBusyCode}). Vui lòng chọn khung giờ khác!",
+                    'ref_code' => 'ERR_DOUBLE_BOOKING'
+                ], 409);
+            }
+
+            $maintRow = find_active_maintenance_for_slot($pdo, $pitchId, $checkDate, (string)$slot['slot_time']);
+            if ($maintRow) {
+                $pdo->rollBack();
+                $mRange = trim(($maintRow['start_time'] ?? '05:30') . ' - ' . ($maintRow['end_time'] ?? '23:00'));
+                $weekNote = ($weeksCount > 1) ? (" ngày {$checkDate} (tuần " . ($k + 1) . ")") : "";
+                json_error("Sân bóng đang có lịch bảo trì{$weekNote} ({$mRange}): {$maintRow['reason']}. Vui lòng chọn khung giờ hoặc sân khác.", 400, 'ERR_PITCH_MAINTENANCE');
+            }
+        }
+
+        if (is_phone_blacklisted($pdo, $phone)) {
+            $pdo->rollBack();
+            json_error('Số điện thoại này hiện đang bị tạm khóa quyền đặt sân do lịch sử vi phạm chính sách. Vui lòng liên hệ hotline.', 403, 'ERR_BLACKLISTED');
+        }
+
+        $isPeak = (bool)$slot['is_peak'];
+        $dayOfWeek = (int)date('w', $bookingDateTime);
+        $isWeekend = ($dayOfWeek === 0 || $dayOfWeek === 6);
+        $weekendPrice = (int)($pitch['weekend_price'] ?? 0);
+        if ($isWeekend && $weekendPrice > 0) {
+            $basePrice = $isPeak ? max((int)$pitch['peak_price'], $weekendPrice) : $weekendPrice;
+        } else {
+            $basePrice = $isPeak ? (int)$pitch['peak_price'] : (int)$pitch['base_price'];
+        }
+        $duration = (float)$slot['duration'];
+        $pitchPriceBeforeRule = (int)round($basePrice * ($duration ?: 1.0) * $weeksCount * (1 - $packageDiscountRate));
+
+        $ghDay = (int)date('N', $bookingDateTime);
+        $ghEval = resolve_golden_hour_adjustment($pdo, (int)$pitch['type'], $ghDay, $slotId, $pitchPriceBeforeRule);
+        $pitchPrice = (int)$ghEval['adjustedPitchPrice'];
+        $appliedGoldenHourRule = $ghEval['rule'] ? [
+            'id'              => (int)$ghEval['rule']['id'],
+            'ruleName'        => (string)$ghEval['rule']['rule_name'],
+            'adjustmentType'  => (string)$ghEval['rule']['price_adjustment_type'],
+            'adjustmentValue' => (int)$ghEval['rule']['adjustment_value'],
+            'delta'           => (int)$ghEval['delta']
+        ] : null;
+
+        $totalServicesPrice = 0;
+        $cleanServices = [];
+        if (!empty($servicesInput)) {
+            $serviceIds = array_values(array_unique(array_filter(array_map(function ($item) {
+                return trim((string)($item['id'] ?? ''));
+            }, $servicesInput))));
+            if (!empty($serviceIds)) {
+                $placeholders = implode(',', array_fill(0, count($serviceIds), '?'));
+                $srvStmt = $pdo->prepare("SELECT id, name, price, unit, stock_qty, track_inventory FROM extra_services WHERE is_active = 1 AND id IN ($placeholders) FOR UPDATE");
+                $srvStmt->execute($serviceIds);
+                $dbServices = $srvStmt->fetchAll(PDO::FETCH_UNIQUE);
+
+                $requestedTotals = [];
+                foreach ($servicesInput as $s) {
+                    $sId = trim((string)($s['id'] ?? ''));
+                    $sQty = max(1, min(100, (int)($s['quantity'] ?? 1)));
+                    if (isset($dbServices[$sId])) {
+                        $requestedTotals[$sId] = ($requestedTotals[$sId] ?? 0) + $sQty;
+                    }
+                }
+                foreach ($requestedTotals as $sId => $reqTotalQty) {
+                    $srvRow = $dbServices[$sId];
+                    if ((int)($srvRow['track_inventory'] ?? 1) === 1 && (int)($srvRow['stock_qty'] ?? 0) < $reqTotalQty) {
+                        $pdo->rollBack();
+                        json_error("Sản phẩm/dịch vụ '{$srvRow['name']}' chỉ còn " . (int)$srvRow['stock_qty'] . " {$srvRow['unit']} trong kho.", 409, 'ERR_OUT_OF_STOCK');
+                    }
+                }
+                foreach ($servicesInput as $s) {
+                    $sId = trim((string)($s['id'] ?? ''));
+                    $sQty = max(1, min(100, (int)($s['quantity'] ?? 1)));
+                    if (isset($dbServices[$sId])) {
+                        $cost = (int)$dbServices[$sId]['price'] * $sQty;
+                        $totalServicesPrice += $cost;
+                        $cleanServices[] = ['id' => $sId, 'name' => $dbServices[$sId]['name'], 'price' => (int)$dbServices[$sId]['price'], 'quantity' => $sQty, 'unit' => $dbServices[$sId]['unit'], 'total' => $cost];
+                    }
+                }
+            }
+        }
+
+        $userId = $_SESSION['user_id'] ?? null;
+        $redeemedBottles = max(0, min(20, (int)($data['redeemedBottles'] ?? $data['redeemed_bottles'] ?? 0)));
+        $pointsUsed = 0;
+        if ($redeemedBottles > 0) {
+            if (!$userId) {
+                $pdo->rollBack();
+                json_error('Bạn cần đăng nhập tài khoản để đổi điểm tích lũy lấy nước suối.', 403, 'ERR_UNAUTHORIZED');
+            }
+            $pointsUsed = $redeemedBottles * 50;
+            if (db_table_has_column($pdo, 'users', 'points')) {
+                $ptStmt = $pdo->prepare("UPDATE users SET points = points - ? WHERE id = ? AND points >= ?");
+                $ptStmt->execute([$pointsUsed, $userId, $pointsUsed]);
+                if ($ptStmt->rowCount() <= 0) {
+                    $pdo->rollBack();
+                    json_error('Số điểm tích lũy không đủ để đổi ' . $redeemedBottles . ' chai nước.', 400, 'ERR_INSUFFICIENT_POINTS');
+                }
+            }
+            $cleanServices[] = ['id' => 'SRV-WATER-BOTTLE', 'name' => 'Nước suối (Đổi điểm tích lũy)', 'price' => 0, 'quantity' => $redeemedBottles, 'unit' => 'chai', 'total' => 0];
+        }
+
+        $subtotal = $pitchPrice + $totalServicesPrice;
+        $voucherDiscountAmount = 0;
+        $appliedVoucher = null;
+        if ($voucherCode !== '') {
+            $vStmt = $pdo->prepare("SELECT * FROM vouchers WHERE code = ? LIMIT 1 FOR UPDATE");
+            $vStmt->execute([$voucherCode]);
+            $vData = $vStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$vData || (int)$vData['is_active'] !== 1) {
+                $pdo->rollBack();
+                json_error('Mã giảm giá không tồn tại hoặc đã ngừng áp dụng.', 400, 'ERR_INVALID_VOUCHER');
+            }
+            $nowDate = date('Y-m-d');
+            if ((!empty($vData['valid_from']) && $nowDate < $vData['valid_from']) || (!empty($vData['valid_to']) && $nowDate > $vData['valid_to'])) {
+                $pdo->rollBack();
+                json_error('Mã giảm giá chưa đến ngày áp dụng hoặc đã hết hạn.', 400, 'ERR_INVALID_VOUCHER');
+            }
+            if (!empty($vData['pitch_type_limit']) && (int)$vData['pitch_type_limit'] !== (int)$pitch['type']) {
+                $pdo->rollBack();
+                json_error('Mã giảm giá này chỉ áp dụng riêng cho Sân ' . (int)$vData['pitch_type_limit'] . ' người.', 400, 'ERR_INVALID_VOUCHER');
+            }
+            if ((int)($vData['max_usage'] ?? 0) > 0 && (int)($vData['used_count'] ?? 0) >= (int)$vData['max_usage']) {
+                $pdo->rollBack();
+                json_error('Mã giảm giá đã hết lượt sử dụng.', 400, 'ERR_INVALID_VOUCHER');
+            }
+            if ($subtotal < (int)($vData['min_order'] ?? 0)) {
+                $pdo->rollBack();
+                json_error('Đơn hàng chưa đạt giá trị tối thiểu (' . number_format((int)$vData['min_order']) . 'đ) để dùng mã này.', 400, 'ERR_INVALID_VOUCHER');
+            }
+
+            $maxPerUser = (int)($vData['max_per_user'] ?? 0);
+            if ($maxPerUser > 0) {
+                $cleanCheckPhone = preg_replace('/[^0-9]/', '', $phone);
+                $uLimitSql = "SELECT COUNT(*) FROM bookings WHERE voucher_code = ? AND (REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? " . ($userId ? "OR user_id = ?" : "") . ") AND status NOT IN ('Đã hủy', 'Khách chưa đến')";
+                $uLimitParams = [$voucherCode, $cleanCheckPhone];
+                if ($userId) $uLimitParams[] = $userId;
+                $uLimitStmt = $pdo->prepare($uLimitSql);
+                $uLimitStmt->execute($uLimitParams);
+                if ((int)$uLimitStmt->fetchColumn() >= $maxPerUser) {
+                    $pdo->rollBack();
+                    json_error('Bạn đã sử dụng hết số lần áp dụng cho mã này (tối đa ' . $maxPerUser . ' lần/khách).', 400, 'ERR_VOUCHER_USER_LIMIT');
+                }
+            }
+
+            $reqTier = !empty($vData['required_tier']) ? trim((string)$vData['required_tier']) : ($voucherCode === 'VIPGOLD' ? 'vip,regular' : '');
+            if ($reqTier !== '' && strtolower($reqTier) !== 'standard' && strtolower($reqTier) !== 'all') {
+                if (!$userId) {
+                    $pdo->rollBack();
+                    json_error('Mã giảm giá này chỉ áp dụng cho thành viên hạng ưu đãi đã đăng nhập tài khoản.', 403, 'ERR_VOUCHER_TIER_REQUIRED');
+                }
+                $userTier = get_authenticated_user_tier($pdo, (int)$userId);
+                if (!is_tier_allowed_for_voucher($userTier, $reqTier)) {
+                    $pdo->rollBack();
+                    json_error('Hạng thành viên hiện tại chưa đủ điều kiện áp dụng mã ưu đãi này.', 403, 'ERR_VOUCHER_TIER_MISMATCH');
+                }
+            }
+
+            $voucherDiscountAmount = ($vData['discount_type'] === 'percent') ? (int)round($subtotal * ((int)$vData['discount_value'] / 100)) : min((int)$vData['discount_value'], $subtotal);
+            $appliedVoucher = $vData['code'];
+
+            if (db_table_has_column($pdo, 'vouchers', 'used_count')) {
+                $updVStmt = $pdo->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ? AND is_active = 1 AND (max_usage <= 0 OR used_count < max_usage)");
+                $updVStmt->execute([$appliedVoucher]);
+                if ($updVStmt->rowCount() < 1) {
+                    $pdo->rollBack();
+                    json_error('Mã giảm giá vừa hết lượt sử dụng. Vui lòng thử lại.', 409, 'ERR_INVALID_VOUCHER');
+                }
+            }
+        }
+
+        $totalPrice = max(0, $subtotal - $voucherDiscountAmount);
+        $preDiscountPitchPrice = max($pitchPriceBeforeRule, $pitchPrice);
+        $originalPrice = $preDiscountPitchPrice + $totalServicesPrice;
+        $discountAmount = max(0, $originalPrice - $totalPrice);
+
+        $sysSettings = get_system_settings_map($pdo);
+        $depositRate = max(10, min(100, (int)($sysSettings['deposit_rate'] ?? 30)));
+        $holdMinutes = max(5, min(120, (int)($sysSettings['hold_minutes'] ?? 15)));
+
+        $depositAmount = (int)round($totalPrice * ($depositRate / 100));
+        $remainingAmount = max(0, $totalPrice - $depositAmount);
+        $bookingStatus = 'Đã xác nhận';
+        $paymentStatus = 'Chờ duyệt cọc';
+        $paidAmount = 0;
+        $expiresAt = (!$isWalkin && !$payFull) ? date('Y-m-d H:i:s', time() + ($holdMinutes * 60)) : null;
+
+        if ($isWalkin) {
+            $expiresAt = null;
+            if ($paymentMethod === 'Khách quen (Chưa cọc)' || mb_stripos($paymentMethod, 'Chưa cọc') !== false) {
+                $bookingStatus = 'Đã xác nhận';
+                $paymentStatus = 'Chờ duyệt cọc';
+                $depositAmount = 0;
+                $paidAmount = 0;
+                $remainingAmount = $totalPrice;
+            } elseif ($payFull) {
+                $bookingStatus = 'Hoàn thành';
+                $paymentStatus = 'Đã thanh toán 100%';
+                $depositAmount = $totalPrice;
+                $paidAmount = $totalPrice;
+                $remainingAmount = 0;
+            } else {
+                $bookingStatus = 'Đã xác nhận';
+                $paymentStatus = 'Đã cọc 30%';
+                $paidAmount = $depositAmount;
+                $remainingAmount = max(0, $totalPrice - $depositAmount);
+            }
+        }
+
+        $expectedFile = __DIR__ . '/../../logs/expected_orders.json';
+        $expectedOrders = [];
+        if (file_exists($expectedFile)) {
+            $decodedExpected = json_decode(@file_get_contents($expectedFile), true);
+            if (is_array($decodedExpected)) $expectedOrders = $decodedExpected;
+        }
+        $cleanCode = str_replace(['-', ' '], '', strtoupper($code));
+        $expectedOrders[$cleanCode] = ['code' => $code, 'deposit_amount' => $depositAmount, 'total_price' => $totalPrice, 'updated_at' => date('Y-m-d H:i:s')];
+        @file_put_contents($expectedFile, json_encode($expectedOrders, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        $servicesJson = json_encode($cleanServices, JSON_UNESCAPED_UNICODE);
+        $hasPtsUsedCol = db_table_has_column($pdo, 'bookings', 'points_used');
+        $hasBottlesCol = db_table_has_column($pdo, 'bookings', 'redeemed_bottles');
+        $hasConsentCol = db_table_has_column($pdo, 'bookings', 'privacy_consent_at');
+
+        $bCols = ['code', 'user_id', 'customer_name', 'phone', 'email', 'pitch_id', 'booking_date', 'slot_id', 'slot_time', 'services_json', 'voucher_code', 'original_price', 'discount_amount', 'total_price', 'deposit_amount', 'paid_amount', 'remaining_amount', 'status', 'payment_status', 'payment_method', 'weeks_count', 'booking_mode', 'note', 'expires_at'];
+        $bVals = [$code, $userId, $customerName, $phone, $email, $pitchId, $date, $slotId, $slot['slot_time'], $servicesJson, $appliedVoucher, $originalPrice, $discountAmount, $totalPrice, $depositAmount, $paidAmount, $remainingAmount, $bookingStatus, $paymentStatus, $paymentMethod, $weeksCount, $bookingMode, $note, $expiresAt];
+
+        if ($hasPtsUsedCol) { $bCols[] = 'points_used'; $bVals[] = $pointsUsed; }
+        if ($hasBottlesCol) { $bCols[] = 'redeemed_bottles'; $bVals[] = $redeemedBottles; }
+        if ($hasConsentCol && !$isWalkin) { $bCols[] = 'privacy_consent_at'; $bVals[] = date('Y-m-d H:i:s'); }
+        $hasStaffCol = db_table_has_column($pdo, 'bookings', 'staff_id');
+        if ($hasStaffCol && $isWalkin && isset($walkinActor['id'])) { $bCols[] = 'staff_id'; $bVals[] = (int)$walkinActor['id']; }
+
+        $bColsSql = '`' . implode('`, `', $bCols) . '`';
+        $bPhSql   = implode(', ', array_fill(0, count($bCols), '?'));
+        $insertStmt = $pdo->prepare("INSERT INTO bookings ({$bColsSql}) VALUES ({$bPhSql})");
+        $insertStmt->execute($bVals);
+        $bookingId = (int)$pdo->lastInsertId();
+
+        $staffActorId = isset($walkinActor['id']) ? (int)$walkinActor['id'] : ($userId ? (int)$userId : null);
+        foreach ($cleanServices as $cs) {
+            if ($cs['price'] > 0) {
+                deduct_service_inventory($pdo, $cs['id'], (int)$cs['quantity'], $code, (int)$cs['price'], $paymentMethod, 'Đi kèm đơn đặt sân #' . $code, $staffActorId);
+            }
+        }
+
+        $pdo->commit();
+
+        if (!isset($_SESSION['owned_booking_codes']) || !is_array($_SESSION['owned_booking_codes'])) {
+            $_SESSION['owned_booking_codes'] = [];
+        }
+        if (!in_array($code, $_SESSION['owned_booking_codes'], true)) {
+            $_SESSION['owned_booking_codes'][] = $code;
+        }
+
+        if ($isWalkin) {
+            write_audit_log($pdo, 'WALKIN_BOOKING', $code, null, "Tạo đơn tại quầy: {$pitch['name']} ({$date} {$slot['slot_time']}) - Gốc: {$originalPrice}đ - Giảm: {$discountAmount}đ - Tổng: {$totalPrice}đ - TT: {$paymentMethod}", $walkinActor ?? null);
+        }
+
+        $tgMsg = "⚽ <b>ĐƠN ĐẶT SÂN MỚI</b>\n"
+               . "• Mã vé: <code>" . tg_escape($code) . "</code>\n"
+               . "• Khách: <b>" . tg_escape($customerName) . "</b> (" . tg_escape($phone) . ")\n"
+               . "• Sân: <b>" . tg_escape($pitch['name']) . "</b>\n"
+               . "• Ngày đá: <b>" . date('d/m/Y', strtotime($date)) . "</b> (" . tg_escape($slot['slot_time']) . ")\n"
+               . "• Tổng tiền: <b>" . number_format($totalPrice) . " đ</b> (Cọc: " . number_format($depositAmount) . " đ)\n"
+               . "• Hình thức: <i>" . tg_escape($paymentMethod) . "</i>";
+        send_telegram_notification($tgMsg, 'new_booking', $pdo);
+
+        send_customer_notification($pdo, 'booking_confirm', [
+            'booking_id'       => $bookingId,
+            'booking_code'     => $code,
+            'code'             => $code,
+            'customer_name'    => $customerName,
+            'phone'            => $phone,
+            'pitch_name'       => $pitch['name'],
+            'date'             => date('d/m/Y', strtotime($date)),
+            'slot_time'        => $slot['slot_time'],
+            'total_price'      => $totalPrice,
+            'deposit_amount'   => $depositAmount,
+            'remaining_amount' => $remainingAmount
+        ]);
+
+        $noShowCount = 0;
+        try {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+            if ($cleanPhone !== '') {
+                $nsStmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? AND (status = 'Khách chưa đến' OR payment_status = 'Tịch thu cọc 30%')");
+                $nsStmt->execute([$cleanPhone]);
+                $noShowCount = (int)$nsStmt->fetchColumn();
+            }
+        } catch (Exception $nsEx) {
+            error_log("[NOSHOW COUNT WARN] " . $nsEx->getMessage());
+        }
+
+        json_response([
+            'success' => true,
+            'message' => 'Tạo đơn đặt sân thành công!',
+            'data'    => [
+                'id'              => $bookingId,
+                'code'            => $code,
+                'pitchId'         => $pitchId,
+                'pitchName'       => $pitch['name'],
+                'date'            => $date,
+                'slotId'          => $slotId,
+                'slotTime'        => $slot['slot_time'],
+                'customerName'    => $customerName,
+                'phone'           => $phone,
+                'email'           => $email,
+                'weeksCount'      => $weeksCount,
+                'bookingMode'     => $bookingMode,
+                'originalPrice'   => $originalPrice,
+                'discountAmount'  => $discountAmount,
+                'goldenHourRule'  => $appliedGoldenHourRule,
+                'totalPrice'      => $totalPrice,
+                'depositAmount'   => $depositAmount,
+                'paidAmount'      => $paidAmount,
+                'remainingAmount' => $remainingAmount,
+                'status'          => $bookingStatus,
+                'paymentStatus'   => $paymentStatus,
+                'paymentMethod'   => $paymentMethod,
+                'holdMinutes'     => $holdMinutes,
+                'expiresAt'       => $expiresAt,
+                'services'        => $cleanServices,
+                'voucherCode'     => $appliedVoucher,
+                'note'            => $note,
+                'noShowCount'     => $noShowCount,
+                'noShowWarning'   => ($noShowCount >= 2)
+            ]
+        ], 201);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("[BOOKING ERROR] " . $e->getMessage());
+        json_response([
+            'success'  => false,
+            'message'  => 'Đã xảy ra sự cố khi xử lý đơn đặt sân. Vui lòng thử lại.',
+            'ref_code' => 'ERR_CREATE_BOOKING'
+        ], 500);
+    }
+}

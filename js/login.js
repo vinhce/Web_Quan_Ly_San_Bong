@@ -435,23 +435,47 @@ document.addEventListener('DOMContentLoaded', () => {
     setAuthMessage('');
 
     const fullName = document.getElementById('reg-name')?.value.trim();
-    const phone = document.getElementById('reg-phone')?.value.trim();
+    const rawPhone = document.getElementById('reg-phone')?.value.trim();
+    const cleanPhone = rawPhone ? rawPhone.replace(/\s+/g, '') : '';
     const password = document.getElementById('reg-password')?.value;
     const consent = document.getElementById('reg-privacy-consent')?.checked;
     const submitBtn = e.target.querySelector('button[type="submit"]');
 
+    // 1. Họ và tên: Bắt buộc, tối thiểu 2 ký tự, chỉ gồm chữ cái tiếng Việt và khoảng trắng
     if (!fullName) {
       setAuthMessage('Vui lòng nhập họ và tên của bạn.', 'error');
       markFieldError('reg-name');
       return;
     }
 
-    if (!phone) {
+    if (fullName.length < 2) {
+      setAuthMessage('Họ và tên phải có tối thiểu 2 ký tự.', 'error');
+      markFieldError('reg-name');
+      return;
+    }
+
+    const nameRegex = /^[\p{L}\s]+$/u;
+    if (!nameRegex.test(fullName)) {
+      setAuthMessage('Họ và tên chỉ được chứa chữ cái và khoảng trắng, không bao gồm số hoặc ký tự đặc biệt.', 'error');
+      markFieldError('reg-name');
+      return;
+    }
+
+    // 2. Số điện thoại: Bắt buộc, xóa khoảng trắng thừa, chuẩn di động Việt Nam 10 chữ số
+    if (!cleanPhone) {
       setAuthMessage('Vui lòng nhập số điện thoại liên hệ.', 'error');
       markFieldError('reg-phone');
       return;
     }
 
+    const phoneRegex = /^0[35789]\d{8}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setAuthMessage('Số điện thoại không đúng định dạng. Vui lòng nhập số di động 10 chữ số hợp lệ tại Việt Nam (đầu số 03, 05, 07, 08, 09).', 'error');
+      markFieldError('reg-phone');
+      return;
+    }
+
+    // 3. Mật khẩu: Bắt buộc, tối thiểu 8 ký tự, có cả chữ cái và chữ số
     if (!password) {
       setAuthMessage('Vui lòng đặt mật khẩu bảo mật.', 'error');
       markFieldError('reg-password');
@@ -464,10 +488,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+      setAuthMessage('Mật khẩu phải bao gồm cả chữ cái và chữ số để đảm bảo an toàn.', 'error');
+      markFieldError('reg-password');
+      return;
+    }
+
+    // 4. Điều khoản & Nghị định 13: Bắt buộc tích chọn
     if (!consent) {
-      setAuthMessage('Vui lòng tích chọn đồng ý với Điều khoản và Chính sách bảo vệ dữ liệu theo Nghị định 13/2023/NĐ-CP.', 'error');
+      setAuthMessage('Vui lòng tích chọn đồng ý với Điều khoản sử dụng và Chính sách bảo vệ dữ liệu theo Nghị định 13/2023/NĐ-CP.', 'error');
       const consentEl = document.getElementById('reg-privacy-consent');
-      if (consentEl) consentEl.focus();
+      if (consentEl) {
+        consentEl.focus();
+        consentEl.classList.add('ring-2', 'ring-rose-500');
+        const onConsentChange = () => {
+          consentEl.classList.remove('ring-2', 'ring-rose-500');
+          setAuthMessage('');
+          consentEl.removeEventListener('change', onConsentChange);
+        };
+        consentEl.addEventListener('change', onConsentChange);
+      }
       return;
     }
 
@@ -495,9 +535,9 @@ document.addEventListener('DOMContentLoaded', () => {
         headers,
         credentials: 'same-origin',
         body: JSON.stringify({
-          username: phone.replace(/\s+/g, ''),
-          email: `${phone.replace(/\s+/g, '')}@sanbongpro.vn`,
-          phone: phone,
+          username: cleanPhone,
+          email: `${cleanPhone}@sanbongpro.vn`,
+          phone: cleanPhone,
           full_name: fullName,
           password: password,
           privacy_consent: true,

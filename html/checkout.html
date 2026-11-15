@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thanh Toán Đặt Sân – Chuyển Khoản Đặt Cọc 30%</title>
+  <title>Thanh ToÃ¡n Äáº·t SÃ¢n â€“ Chuyá»ƒn Khoáº£n Äáº·t Cá»c 30%</title>
 
   <script>
     (function () {
@@ -25,23 +25,23 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Đặt sân nhanh"></div>
+  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Äáº·t sÃ¢n nhanh"></div>
 
   <div class="bg-white border-b border-[#E2E8F0] py-4">
     <div class="max-w-4xl mx-auto px-4 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs">✓</div>
-        <span class="text-xs sm:text-sm font-semibold text-[#0F172A]">Chọn sân & giờ</span>
+        <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs">âœ“</div>
+        <span class="text-xs sm:text-sm font-semibold text-[#0F172A]">Chá»n sÃ¢n & giá»</span>
       </div>
       <div class="flex-1 h-[2px] mx-2 sm:mx-4 bg-[#16A34A]"></div>
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs">✓</div>
-        <span class="text-xs sm:text-sm font-semibold text-[#0F172A]">Dịch vụ & Khách</span>
+        <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs">âœ“</div>
+        <span class="text-xs sm:text-sm font-semibold text-[#0F172A]">Dá»‹ch vá»¥ & KhÃ¡ch</span>
       </div>
       <div class="flex-1 h-[2px] mx-2 sm:mx-4 bg-[#16A34A]"></div>
       <div class="flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[#DCFCE7]">3</div>
-        <span class="text-xs sm:text-sm font-bold text-[#0F172A]">Chuyển khoản đặt cọc</span>
+        <span class="text-xs sm:text-sm font-bold text-[#0F172A]">Chuyá»ƒn khoáº£n Ä‘áº·t cá»c</span>
       </div>
     </div>
   </div>
@@ -54,77 +54,77 @@
         <div class="px-5 py-3.5 rounded-xl bg-[#FEF3C7] border border-[#F59E0B] text-[#D97706] flex items-center justify-between font-bold text-sm shadow-sm">
           <div class="flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Thời gian giữ chỗ còn lại:</span>
+            <span>Thá»i gian giá»¯ chá»— cÃ²n láº¡i:</span>
             <span id="countdown-timer" class="text-base font-extrabold font-mono text-[#B45309]">10:00</span>
           </div>
-          <span class="text-xs hidden sm:inline font-normal">Hết giờ mã đặt sân tự động nhả (<span id="hold-minutes-label">15 phút</span>)</span>
+          <span class="text-xs hidden sm:inline font-normal">Háº¿t giá» mÃ£ Ä‘áº·t sÃ¢n tá»± Ä‘á»™ng nháº£ (<span id="hold-minutes-label">15 phÃºt</span>)</span>
         </div>
 
         <div class="ui-card p-6 space-y-6 border-slate-200">
           <div class="flex items-center justify-between pb-4 border-b border-[#E2E8F0]">
             <div>
-              <h2 class="font-heading font-extrabold text-xl text-[#0F172A]">Thanh toán cọc tự động qua SePay</h2>
-              <p class="text-xs text-[#64748B] mt-0.5">Quét mã VietQR bằng ứng dụng ngân hàng bất kỳ, hệ thống sẽ tự động duyệt cọc tức thì</p>
+              <h2 class="font-heading font-extrabold text-xl text-[#0F172A]">Thanh toÃ¡n cá»c tá»± Ä‘á»™ng qua VietQR</h2>
+              <p class="text-xs text-[#64748B] mt-0.5">QuÃ©t mÃ£ VietQR báº±ng á»©ng dá»¥ng ngÃ¢n hÃ ng báº¥t ká»³, há»‡ thá»‘ng sáº½ tá»± Ä‘á»™ng duyá»‡t cá»c tá»©c thÃ¬</p>
             </div>
             <span class="px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold uppercase tracking-wider">
-              SePay VietQR 24/7
+              VietQR 24/7
             </span>
           </div>
 
           <div class="p-4 rounded-2xl bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] flex flex-col md:flex-row items-center gap-6">
             <div class="relative shrink-0 p-3 bg-white rounded-xl shadow-md border border-[#E2E8F0]">
-              <img id="sepay-qr-img" src="" alt="Mã VietQR SePay" class="w-48 h-48 object-contain rounded-lg">
+              <img id="sepay-qr-img" src="" alt="MÃ£ VietQR Thanh ToÃ¡n" class="w-48 h-48 object-contain rounded-lg">
               <div id="sepay-qr-loading" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center text-xs text-[#64748B] font-semibold gap-2 rounded-xl">
                 <div class="w-6 h-6 border-2 border-[#16A34A] border-t-transparent rounded-full animate-spin"></div>
-                <span>Đang tạo VietQR SePay...</span>
+                <span>Äang táº¡o mÃ£ VietQR...</span>
               </div>
             </div>
             <div class="flex-1 space-y-2 text-center md:text-left">
               <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#DBEAFE] text-[#1E40AF] text-xs font-bold">
                 <span class="w-2 h-2 rounded-full bg-[#2563EB] animate-pulse"></span>
-                Cổng thanh toán tự động SePay
+                Cá»•ng thanh toÃ¡n tá»± Ä‘á»™ng VietQR
               </div>
-              <h3 class="font-heading font-bold text-base text-[#0F172A]">Quét mã VietQR bằng App Ngân hàng</h3>
-              <p class="text-xs text-[#64748B]">Mở app ngân hàng (MBBank, Vietcombank, Techcombank, VPBank, Momo...), chọn Quét mã QR. Hệ thống sẽ tự động điền STK, số tiền và nội dung chuyển khoản.</p>
+              <h3 class="font-heading font-bold text-base text-[#0F172A]">QuÃ©t mÃ£ VietQR báº±ng App NgÃ¢n hÃ ng</h3>
+              <p class="text-xs text-[#64748B]">Má»Ÿ app ngÃ¢n hÃ ng (MBBank, Vietcombank, Techcombank, VPBank, Momo...), chá»n QuÃ©t mÃ£ QR. Há»‡ thá»‘ng sáº½ tá»± Ä‘á»™ng Ä‘iá»n STK, sá»‘ tiá»n vÃ  ná»™i dung chuyá»ƒn khoáº£n.</p>
 
               <div id="payment-status-badge" class="p-2.5 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-xs font-bold flex items-center justify-center md:justify-start gap-2">
                 <div class="w-2 h-2 rounded-full bg-[#F59E0B] animate-ping"></div>
-                <span id="payment-status-text">Đang lắng nghe giao dịch chuyển khoản từ SePay...</span>
+                <span id="payment-status-text">Äang tá»± Ä‘á»™ng kiá»ƒm tra giao dá»‹ch chuyá»ƒn khoáº£n VietQR...</span>
               </div>
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
-              <span class="text-[#64748B] text-xs">Ngân hàng:</span>
+              <span class="text-[#64748B] text-xs">NgÃ¢n hÃ ng:</span>
               <span id="bank-name" class="font-bold text-[#0F172A]">Vietcombank (VCB)</span>
             </div>
             <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
-              <span class="text-[#64748B] text-xs">Chủ tài khoản:</span>
+              <span class="text-[#64748B] text-xs">Chá»§ tÃ i khoáº£n:</span>
               <span id="bank-owner" class="font-bold text-[#0F172A]">NGUYEN QUANG VINH</span>
             </div>
             <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
-              <span class="text-[#64748B] text-xs">Số tài khoản:</span>
+              <span class="text-[#64748B] text-xs">Sá»‘ tÃ i khoáº£n:</span>
               <div class="flex items-center gap-2 font-mono font-bold text-base text-[#0F172A]">
                 <span id="bank-account">0123456789</span>
-                <button onclick="copyText('bank-account')" class="p-1 rounded hover:bg-[#E2E8F0] text-[#16A34A]" title="Sao chép">📋</button>
+                <button onclick="copyText('bank-account')" class="p-1 rounded hover:bg-[#E2E8F0] text-[#16A34A]" title="Sao chÃ©p">ðŸ“‹</button>
               </div>
             </div>
             <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
-              <span class="text-[#64748B] text-xs">Nội dung CK:</span>
+              <span class="text-[#64748B] text-xs">Ná»™i dung CK:</span>
               <div class="flex items-center gap-2 font-mono font-bold text-sm text-[#0F172A]">
                 <span id="bank-memo">ASFS260042</span>
-                <button onclick="copyText('bank-memo')" class="p-1 rounded hover:bg-[#E2E8F0] text-[#16A34A]" title="Sao chép">📋</button>
+                <button onclick="copyText('bank-memo')" class="p-1 rounded hover:bg-[#E2E8F0] text-[#16A34A]" title="Sao chÃ©p">ðŸ“‹</button>
               </div>
             </div>
             <div class="md:col-span-2 p-4 rounded-xl bg-[#DCFCE7] border border-[#BBF7D0] flex items-center justify-between">
               <div>
-                <span class="text-[#15803D] font-bold text-sm block">Số tiền cọc cần chuyển (30%):</span>
-                <span class="text-xs text-[#166534]">Thanh toán 70% số tiền còn lại tại quầy khi nhận sân</span>
+                <span class="text-[#15803D] font-bold text-sm block">Sá»‘ tiá»n cá»c cáº§n chuyá»ƒn (30%):</span>
+                <span class="text-xs text-[#166534]">Thanh toÃ¡n 70% sá»‘ tiá»n cÃ²n láº¡i táº¡i quáº§y khi nháº­n sÃ¢n</span>
               </div>
               <div class="flex items-center gap-2 font-heading font-extrabold text-xl text-[#16A34A]">
-                <span id="bank-amount">306.000đ</span>
-                <button onclick="copyText('bank-amount')" class="p-1 rounded hover:bg-[#BBF7D0] text-[#15803D]" title="Sao chép">📋</button>
+                <span id="bank-amount">306.000Ä‘</span>
+                <button onclick="copyText('bank-amount')" class="p-1 rounded hover:bg-[#BBF7D0] text-[#15803D]" title="Sao chÃ©p">ðŸ“‹</button>
               </div>
             </div>
           </div>
@@ -132,28 +132,28 @@
           <div class="p-4 rounded-2xl bg-gradient-to-br from-[#F8FAFC] to-[#F0FDF4] border border-[#DCFCE7] space-y-3.5">
             <div class="flex items-center justify-between pb-2.5 border-b border-[#DCFCE7]">
               <div class="flex items-center gap-2">
-                <span class="w-7 h-7 rounded-lg bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center font-bold text-sm">🎁</span>
+                <span class="w-7 h-7 rounded-lg bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center font-bold text-sm">ðŸŽ</span>
                 <div>
-                  <h3 class="font-heading font-bold text-sm text-[#0F172A]">Đổi điểm tích lũy lấy Nước Suối</h3>
-                  <p class="text-[11px] text-[#64748B]">Ưu đãi hội viên: <strong class="text-[#16A34A]">100 điểm = 1 chai Aquafina 500ml</strong></p>
+                  <h3 class="font-heading font-bold text-sm text-[#0F172A]">Äá»•i Ä‘iá»ƒm tÃ­ch lÅ©y láº¥y NÆ°á»›c Suá»‘i</h3>
+                  <p class="text-[11px] text-[#64748B]">Æ¯u Ä‘Ã£i há»™i viÃªn: <strong class="text-[#16A34A]">100 Ä‘iá»ƒm = 1 chai Aquafina 500ml</strong></p>
                 </div>
               </div>
               <div class="text-right">
-                <span class="text-[10px] text-[#64748B] block uppercase tracking-wider font-bold">Điểm hiện có</span>
-                <span id="current-user-points" class="font-mono font-extrabold text-sm text-[#16A34A]">0đ</span>
+                <span class="text-[10px] text-[#64748B] block uppercase tracking-wider font-bold">Äiá»ƒm hiá»‡n cÃ³</span>
+                <span id="current-user-points" class="font-mono font-extrabold text-sm text-[#16A34A]">0Ä‘</span>
               </div>
             </div>
 
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
               <div class="flex items-center gap-3">
-                <span class="text-2xl">💧</span>
+                <span class="text-2xl">ðŸ’§</span>
                 <div>
-                  <div class="text-xs font-bold text-[#0F172A]">Nước suối Aquafina 500ml (Ướp lạnh)</div>
-                  <div class="text-[11px] text-[#64748B]">Có thể đổi tối đa: <span id="max-redeemable-bottles" class="font-bold text-[#16A34A]">0 chai</span></div>
+                  <div class="text-xs font-bold text-[#0F172A]">NÆ°á»›c suá»‘i Aquafina 500ml (Æ¯á»›p láº¡nh)</div>
+                  <div class="text-[11px] text-[#64748B]">CÃ³ thá»ƒ Ä‘á»•i tá»‘i Ä‘a: <span id="max-redeemable-bottles" class="font-bold text-[#16A34A]">0 chai</span></div>
                 </div>
               </div>
               <div class="flex items-center gap-2 self-end sm:self-auto">
-                <button type="button" id="btn-sub-water" class="w-8 h-8 rounded-lg bg-[#F1F5F9] hover:bg-[#E2E8F0] active:scale-95 font-bold text-base text-[#0F172A] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                <button type="button" id="btn-sub-water" class="w-8 h-8 rounded-lg bg-[#F1F5F9] hover:bg-[#E2E8F0] active:scale-95 font-bold text-base text-[#0F172A] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed">âˆ’</button>
                 <span id="redeemed-bottles-count" class="w-8 text-center font-bold font-mono text-base text-[#0F172A]">0</span>
                 <button type="button" id="btn-add-water" class="w-8 h-8 rounded-lg bg-[#DCFCE7] hover:bg-[#BBF7D0] active:scale-95 font-bold text-base text-[#16A34A] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed">+</button>
                 <span class="text-xs text-[#64748B] pl-1">chai</span>
@@ -162,14 +162,14 @@
 
             <div class="space-y-1.5 text-xs">
               <div id="points-exchange-summary" class="hidden p-2.5 rounded-lg bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] font-semibold flex items-center justify-between">
-                <span>Khấu trừ: <strong id="points-to-deduct">0 điểm</strong></span>
-                <span class="text-[#059669]">Nhận thêm: <strong id="water-bottles-received">0 chai miễn phí</strong></span>
+                <span>Kháº¥u trá»«: <strong id="points-to-deduct">0 Ä‘iá»ƒm</strong></span>
+                <span class="text-[#059669]">Nháº­n thÃªm: <strong id="water-bottles-received">0 chai miá»…n phÃ­</strong></span>
               </div>
 
               <div class="p-2.5 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] flex items-start gap-2">
-                <span class="text-sm mt-0.5">⚡</span>
+                <span class="text-sm mt-0.5">âš¡</span>
                 <div class="text-[11px] leading-relaxed">
-                  <span class="font-bold text-[#78350F]">Quy định điểm thưởng:</span> Đơn này tích luỹ <strong>+100 điểm thưởng</strong>. Điểm thưởng chỉ được cộng vào tài khoản sau khi thanh toán thành công và <strong>được dùng từ trận sau</strong> (không cấn trừ ngay vào đơn hiện tại).
+                  <span class="font-bold text-[#78350F]">Quy Ä‘á»‹nh Ä‘iá»ƒm thÆ°á»Ÿng:</span> ÄÆ¡n nÃ y tÃ­ch luá»¹ <strong>+100 Ä‘iá»ƒm thÆ°á»Ÿng</strong>. Äiá»ƒm thÆ°á»Ÿng chá»‰ Ä‘Æ°á»£c cá»™ng vÃ o tÃ i khoáº£n sau khi thanh toÃ¡n thÃ nh cÃ´ng vÃ  <strong>Ä‘Æ°á»£c dÃ¹ng tá»« tráº­n sau</strong> (khÃ´ng cáº¥n trá»« ngay vÃ o Ä‘Æ¡n hiá»‡n táº¡i).
                 </div>
               </div>
             </div>
@@ -177,10 +177,10 @@
 
           <div class="pt-2 flex flex-col sm:flex-row items-center gap-4">
             <button type="button" id="confirm-payment-btn" class="btn-base btn-primary w-full sm:flex-1 text-base font-bold shadow-lg">
-              ✓ Tôi đã chuyển khoản thành công
+              âœ“ TÃ´i Ä‘Ã£ chuyá»ƒn khoáº£n thÃ nh cÃ´ng
             </button>
             <a href="/booking" class="btn-base btn-secondary w-full sm:w-auto text-xs text-[#64748B]">
-              ← Quay lại chỉnh sửa
+              â† Quay láº¡i chá»‰nh sá»­a
             </a>
           </div>
         </div>
@@ -190,7 +190,7 @@
       <div class="lg:col-span-5 space-y-4">
         <div class="ui-card p-6 space-y-5">
           <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-            <h3 class="font-heading font-bold text-lg text-[#0F172A]">Tóm tắt đơn đặt sân</h3>
+            <h3 class="font-heading font-bold text-lg text-[#0F172A]">TÃ³m táº¯t Ä‘Æ¡n Ä‘áº·t sÃ¢n</h3>
             <span id="order-code-badge" class="font-mono text-xs font-bold px-2.5 py-1 rounded bg-[#F1F5F9] text-[#0F172A]">ASFS260042</span>
           </div>
 
@@ -198,27 +198,27 @@
 
           <div class="space-y-2 text-sm">
             <div class="flex justify-between">
-              <span class="text-[#64748B]">Sân bóng:</span>
-              <span id="co-pitch-name" class="font-bold">Sân 7-A (Trung tâm)</span>
+              <span class="text-[#64748B]">SÃ¢n bÃ³ng:</span>
+              <span id="co-pitch-name" class="font-bold">SÃ¢n 7-A (Trung tÃ¢m)</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-[#64748B]">Thời gian:</span>
-              <span id="co-pitch-time" class="font-bold text-right">06/11/2026 · 18:30 - 20:00</span>
+              <span class="text-[#64748B]">Thá»i gian:</span>
+              <span id="co-pitch-time" class="font-bold text-right">06/11/2026 Â· 18:30 - 20:00</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-[#64748B]">Người đặt:</span>
+              <span class="text-[#64748B]">NgÆ°á»i Ä‘áº·t:</span>
               <span id="co-customer" class="font-bold">---</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-[#64748B]">Số điện thoại:</span>
+              <span class="text-[#64748B]">Sá»‘ Ä‘iá»‡n thoáº¡i:</span>
               <span id="co-phone" class="font-bold">---</span>
             </div>
             <div id="co-services-row" class="text-xs text-[#64748B] pt-1 border-t border-[#F1F5F9]">
               
             </div>
             <div id="co-redeemed-water-row" class="hidden text-xs text-[#16A34A] font-semibold pt-1 border-t border-[#F1F5F9] flex justify-between">
-              <span>💧 Đổi điểm lấy nước:</span>
-              <span id="co-redeemed-water-text">0 chai (0đ)</span>
+              <span>ðŸ’§ Äá»•i Ä‘iá»ƒm láº¥y nÆ°á»›c:</span>
+              <span id="co-redeemed-water-text">0 chai (0Ä‘)</span>
             </div>
             <div id="co-promo-gifts-card" class="hidden p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-xs space-y-1.5 shadow-2xs">
               <!-- Rendered dynamically by js/checkout.js -->
@@ -227,24 +227,24 @@
 
           <div class="pt-4 border-t border-[#E2E8F0] space-y-2">
             <div class="flex justify-between text-sm">
-              <span class="text-[#64748B]">Tổng tiền trọn gói:</span>
-              <span id="co-total-amount" class="font-bold text-base text-[#0F172A]">1.020.000đ</span>
+              <span class="text-[#64748B]">Tá»•ng tiá»n trá»n gÃ³i:</span>
+              <span id="co-total-amount" class="font-bold text-base text-[#0F172A]">1.020.000Ä‘</span>
             </div>
             <div class="p-3.5 rounded-xl bg-[#DCFCE7] text-[#16A34A] flex justify-between items-center font-bold">
-              <span>Số tiền cọc cần chuyển (<span id="co-deposit-pct">30</span>%):</span>
-              <span id="co-deposit-amount" class="text-xl font-extrabold">306.000đ</span>
+              <span>Sá»‘ tiá»n cá»c cáº§n chuyá»ƒn (<span id="co-deposit-pct">30</span>%):</span>
+              <span id="co-deposit-amount" class="text-xl font-extrabold">306.000Ä‘</span>
             </div>
                         <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-[#92400E] space-y-1 mt-2">
               <div class="font-bold flex items-center gap-1.5 text-[#B45309]">
-                <span>⏱️</span> Quy định giữ sân & Ân hạn 15 phút:
+                <span>â±ï¸</span> Quy Ä‘á»‹nh giá»¯ sÃ¢n & Ã‚n háº¡n 15 phÃºt:
               </div>
               <div class="text-[11px] leading-relaxed text-[#78350F]">
-                Sân bóng được giữ tối đa <b>15 phút</b> kể từ giờ bắt đầu ca đá. Quý khách vui lòng đến đúng giờ làm thủ tục check-in. Quá 15 phút không đến và không liên hệ, hệ thống sẽ tự động hủy đơn do khách chưa đến, tịch thu cọc 30% và nhả sân trống đón khách mới.
+                SÃ¢n bÃ³ng Ä‘Æ°á»£c giá»¯ tá»‘i Ä‘a <b>15 phÃºt</b> ká»ƒ tá»« giá» báº¯t Ä‘áº§u ca Ä‘Ã¡. QuÃ½ khÃ¡ch vui lÃ²ng Ä‘áº¿n Ä‘Ãºng giá» lÃ m thá»§ tá»¥c check-in. QuÃ¡ 15 phÃºt khÃ´ng Ä‘áº¿n vÃ  khÃ´ng liÃªn há»‡, há»‡ thá»‘ng sáº½ tá»± Ä‘á»™ng há»§y Ä‘Æ¡n do khÃ¡ch chÆ°a Ä‘áº¿n, tá»‹ch thu cá»c 30% vÃ  nháº£ sÃ¢n trá»‘ng Ä‘Ã³n khÃ¡ch má»›i.
               </div>
             </div>
             <div class="flex justify-between text-xs text-[#64748B]">
-              <span>Phần còn lại thanh toán tại sân:</span>
-              <span id="co-remaining-amount" class="font-bold text-[#0F172A]">714.000đ</span>
+              <span>Pháº§n cÃ²n láº¡i thanh toÃ¡n táº¡i sÃ¢n:</span>
+              <span id="co-remaining-amount" class="font-bold text-[#0F172A]">714.000Ä‘</span>
             </div>
           </div>
         </div>
@@ -254,10 +254,17 @@
   </main>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-
-  <script src="/js/data.js?v=20261112_v34"></script>
-  <script src="/js/app.js?v=20261115_v41"></script>
-  <script src="/js/api.js?v=20261112_v34"></script>
+  <script src="/js/data.js?v=20261115_v60"></script>
+  <script src="/js/helpers.js?v=20261115_v60"></script>
+  <script src="/js/db_core.js?v=20261115_v60"></script>
+  <script src="/js/db_pricing.js?v=20261115_v60"></script>
+  <script src="/js/db_bookings.js?v=20261115_v60"></script>
+  <script src="/js/db_operations.js?v=20261115_v60"></script>
+  <script src="/js/db.js?v=20261115_v60"></script>
+  <script src="/js/ui.js?v=20261115_v60"></script>
+  <script src="/js/app.js?v=20261115_v60"></script>
+  <script src="/js/api.js?v=20261115_v60"></script>
   <script src="/js/checkout.js?v=20261112_v34"></script>
 </body>
 </html>
+

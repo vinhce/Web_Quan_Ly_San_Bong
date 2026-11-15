@@ -39,7 +39,8 @@ function handleLogout() {
       showModal({
         title: 'Đăng xuất tài khoản',
         message: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
-        type: 'info',
+        type: 'danger',
+        confirmVariant: 'danger',
         confirmText: 'Đăng xuất',
         cancelText: 'Ở lại',
         onConfirm: doLogout
@@ -71,7 +72,7 @@ function handleLogout() {
       { label: 'Danh sách sân', href: getRelativePath('fields') },
       { label: 'Đặt sân nhanh', href: getRelativePath('booking') },
       ...(showMatchmaking ? [{ label: 'Tìm đối / Ghép kèo', href: getRelativePath('matchmaking') }] : []),
-      { label: 'Lịch sử & Hội viên', href: getRelativePath('history') }
+      ...(currentUser ? [{ label: 'Lịch sử & Hội viên', href: getRelativePath('history') }] : [])
     ];
 
     if (currentUser && currentUser.role === 'admin') {
@@ -83,13 +84,15 @@ function handleLogout() {
     }
 
     let authSectionHtml = '';
-    if (currentUser && currentUser.full_name) {
+    const userDisplayName = currentUser ? (currentUser.full_name || currentUser.name || currentUser.username) : '';
+    if (currentUser && userDisplayName) {
       const isAdmin = currentUser.role === 'admin';
       const isManager = currentUser.role === 'manager';
       const isStaff = currentUser.role === 'staff';
       const user = {
-        name: currentUser.full_name,
-        avatar: currentUser.full_name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase(),
+        name: userDisplayName,
+        full_name: userDisplayName,
+        avatar: userDisplayName.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() || 'VIP',
         tier: isAdmin ? 'Quản trị viên' : (isManager ? 'Quản lý sân' : (isStaff ? 'Nhân viên trực sân' : (currentUser.tier || 'Hội viên'))),
         points: Number(currentUser.points) || 0
       };
@@ -228,8 +231,13 @@ function handleLogout() {
           <p class="text-[13px] text-[#94A3B8] leading-relaxed mb-3">
             Khu liên hợp Thể thao Pro, Số 18 Đường Lê Đức Thọ, Phường Mỹ Đình, Quận Nam Từ Liêm, TP. Hà Nội.
           </p>
-          <div class="p-3 rounded-lg bg-[#1E293B] border border-[#334155] text-xs text-[#CBD5E1]">
-            <span class="text-[#16A34A] font-semibold">● Đang mở cửa:</span> 05:30 - 23:00 mỗi ngày
+          <div class="p-3 rounded-lg bg-[#1E293B] border border-[#334155] text-xs text-[#CBD5E1] flex items-center gap-2">
+            <span class="relative flex h-2.5 w-2.5 shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span class="text-emerald-400 font-semibold">Đang mở cửa:</span>
+            <span>24/24</span>
           </div>
         </div>
       </div>
@@ -310,41 +318,108 @@ function handleLogout() {
     }
   }
 
-  function showModal(options) {
-    const { title, message, type = 'info', confirmText = 'Xác nhận', cancelText = null, onConfirm = null } = options;
+  function showModal(options = {}) {
+    const {
+      title = 'Thông báo',
+      message = '',
+      type = 'info',
+      confirmText = 'Xác nhận',
+      cancelText = null,
+      confirmVariant = null,
+      onConfirm = null,
+      onCancel = null
+    } = options;
+
     const modalId = 'sb-dialog-modal';
     const existing = document.getElementById(modalId);
-    if (existing) existing.remove();
+    if (existing) {
+      if (typeof window._sbActiveModalCleanup === 'function') {
+        window._sbActiveModalCleanup();
+      }
+      existing.remove();
+    }
 
     const overlay = document.createElement('div');
     overlay.id = modalId;
     overlay.className = 'fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-200';
 
     const card = document.createElement('div');
-    card.className = 'bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 transform scale-95 transition-transform duration-200';
+    card.className = 'relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6 space-y-5 transform scale-95 transition-transform duration-200';
+
+    const isLogout = type === 'logout' || options.icon === 'logout' || (/đăng xuất/i.test(title || ''));
 
     let headerBadge = '';
-    if (type === 'error' || type === 'danger') {
-      headerBadge = '<div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-lg shrink-0">⚠️</div>';
+    if (isLogout) {
+      headerBadge = `
+        <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0 shadow-sm" aria-hidden="true">
+          <svg class="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </div>
+      `;
+    } else if (type === 'error' || type === 'danger') {
+      headerBadge = `
+        <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0 shadow-sm" aria-hidden="true">
+          <svg class="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+      `;
     } else if (type === 'warning') {
-      headerBadge = '<div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-lg shrink-0">⚡</div>';
+      headerBadge = `
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0 shadow-sm" aria-hidden="true">
+          <svg class="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+      `;
     } else if (type === 'success') {
-      headerBadge = '<div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">✓</div>';
+      headerBadge = `
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm" aria-hidden="true">
+          <svg class="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+      `;
     } else {
-      headerBadge = '<div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0">ℹ️</div>';
+      headerBadge = `
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-sm" aria-hidden="true">
+          <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+      `;
     }
 
+    const effectiveVariant = confirmVariant || (isLogout || type === 'danger' || type === 'error' ? 'danger' : (type === 'warning' ? 'warning' : 'primary'));
+
+    let confirmBtnClass = '';
+    if (effectiveVariant === 'danger') {
+      confirmBtnClass = 'bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl px-5 py-2.5 shadow-md shadow-rose-200 transition-all text-sm cursor-pointer';
+    } else if (effectiveVariant === 'warning') {
+      confirmBtnClass = 'bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl px-5 py-2.5 shadow-md shadow-amber-200 transition-all text-sm cursor-pointer';
+    } else {
+      confirmBtnClass = 'bg-[#16A34A] hover:bg-[#15803D] text-white font-semibold rounded-xl px-5 py-2.5 shadow-md shadow-emerald-200 transition-all text-sm cursor-pointer';
+    }
+
+    const cancelBtnClass = 'border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl px-5 py-2.5 transition-all text-sm cursor-pointer';
+
     card.innerHTML = `
-      <div class="flex items-start gap-3">
+      <button type="button" id="modal-close-x" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors focus:outline-none cursor-pointer" aria-label="Đóng">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="flex items-start gap-4">
         ${headerBadge}
-        <div class="flex-1">
-          <h3 class="font-heading font-extrabold text-base text-[#0F172A]">${escapeHTML(title || 'Thông báo')}</h3>
-          <div class="text-xs text-[#475569] leading-relaxed mt-1.5 whitespace-pre-line">${escapeHTML(message || '')}</div>
+        <div class="flex-1 min-w-0 pr-6">
+          <h3 class="font-heading font-bold text-lg text-slate-900 tracking-tight leading-snug">${escapeHTML(title || 'Thông báo')}</h3>
+          <div class="text-sm text-slate-600 leading-relaxed mt-1 whitespace-pre-line max-h-[60vh] overflow-y-auto pr-1">${escapeHTML(message || '')}</div>
         </div>
       </div>
-      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-        ${cancelText ? `<button type="button" id="modal-cancel-btn" class="btn-sm btn-secondary text-xs">${escapeHTML(cancelText)}</button>` : ''}
-        <button type="button" id="modal-confirm-btn" class="btn-sm btn-primary text-xs">${escapeHTML(confirmText)}</button>
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+        ${cancelText ? `<button type="button" id="modal-cancel-btn" class="${cancelBtnClass}">${escapeHTML(cancelText)}</button>` : ''}
+        <button type="button" id="modal-confirm-btn" class="${confirmBtnClass}">${escapeHTML(confirmText)}</button>
       </div>
     `;
 
@@ -358,21 +433,65 @@ function handleLogout() {
       card.classList.add('scale-100');
     });
 
-    const close = () => {
+    let closed = false;
+    const close = (triggerCancel = true) => {
+      if (closed) return;
+      closed = true;
+
+      document.removeEventListener('keydown', handleKeyDown);
+      window._sbActiveModalCleanup = null;
+
       overlay.classList.remove('opacity-100');
       overlay.classList.add('opacity-0');
       card.classList.remove('scale-100');
       card.classList.add('scale-95');
-      setTimeout(() => overlay.remove(), 200);
+
+      setTimeout(() => {
+        try { overlay.remove(); } catch (e) {}
+      }, 200);
+
+      if (triggerCancel && typeof onCancel === 'function') {
+        try { onCancel(); } catch (e) {}
+      }
     };
 
-    card.querySelector('#modal-confirm-btn').addEventListener('click', () => {
-      close();
-      if (typeof onConfirm === 'function') onConfirm();
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close(true);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    window._sbActiveModalCleanup = () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        close(true);
+      }
     });
 
+    const closeXBtn = card.querySelector('#modal-close-x');
+    if (closeXBtn) {
+      closeXBtn.addEventListener('click', () => close(true));
+    }
+
     if (cancelText) {
-      card.querySelector('#modal-cancel-btn').addEventListener('click', close);
+      const cancelBtn = card.querySelector('#modal-cancel-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => close(true));
+      }
+    }
+
+    const confirmBtn = card.querySelector('#modal-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        close(false);
+        if (typeof onConfirm === 'function') {
+          try { onConfirm(); } catch (e) {}
+        }
+      });
     }
   }
 
@@ -446,6 +565,9 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
             window.TURNSTILE_SITE_KEY = data.turnstile_site_key;
           }
           if (data && data.authenticated && data.user) {
+            const rawName = data.user.full_name || data.user.name || data.user.username || 'Hội viên';
+            data.user.name = rawName;
+            data.user.full_name = rawName;
             const current = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || '{}');
             const updated = Object.assign({}, current, data.user);
             sessionStorage.setItem('sb_current_user', JSON.stringify(updated));

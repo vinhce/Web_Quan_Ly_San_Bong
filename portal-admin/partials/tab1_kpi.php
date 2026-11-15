@@ -59,26 +59,26 @@
           </div>
                   <!-- Banner Quy chế Ân hạn 15 phút & Xử lý khách quá giờ chưa đến -->
         <div class="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 flex items-start gap-3 text-xs mb-3">
-          <div class="p-2 rounded-lg bg-amber-500 text-white font-bold shrink-0 text-sm">⏱️ 15P</div>
+          <div class="p-2 rounded-lg bg-amber-500 text-white font-bold shrink-0 text-xs">15 PHÚT</div>
           <div class="space-y-1">
-            <div class="font-bold text-[#0F172A] text-sm">Quy chế tiếp đón & Xử lý khách quá giờ chưa đến:</div>
+            <div class="font-bold text-[#0F172A] text-sm">Quy chế tiếp đón &amp; Xử lý khách quá giờ chưa đến:</div>
             <div class="text-[#475569] leading-relaxed">
               • <b>Thời gian ân hạn:</b> Hệ thống tự động đếm giờ và giữ sân tối đa <b>15 phút</b> kể từ khi bắt đầu ca đá.<br>
-              • <b>Khách đến sân:</b> Bấm <span class="text-emerald-700 font-bold">✓ Check-in</span> để xác nhận nhận sân, chuyển trạng thái "Đang đá" và thu phần tiền còn lại.<br>
-              • <b>Quá 15 phút khách chưa đến:</b> Bấm <span class="text-red-700 font-bold">⚠️ Quá giờ chưa đến: Nhả sân</span> để <b>tịch thu cọc 30%</b> và <b>giải phóng slot sân trống ngay lập tức</b> đón khách vãng lai hoặc khách đặt mới tại quầy, tuyệt đối không để trống sân.
+              • <b>Khách đến sân:</b> Bấm <span class="text-emerald-700 font-bold">Check-in</span> để xác nhận nhận sân, chuyển trạng thái "Đang đá" và thu phần tiền còn lại.<br>
+              • <b>Quá 15 phút khách chưa đến:</b> Bấm <span class="text-red-700 font-bold">Quá giờ chưa đến: Nhả sân</span> để <b>tịch thu cọc 30%</b> và <b>giải phóng slot sân trống ngay lập tức</b> đón khách vãng lai hoặc khách đặt mới tại quầy, tuyệt đối không để trống sân.
             </div>
           </div>
         </div>
           <div class="flex flex-wrap items-center justify-between gap-2 pb-1">
             <div class="flex flex-wrap items-center gap-1.5">
               <button type="button" onclick="filterOverviewBookings('all')" id="ov-filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white">Tất cả ca</button>
-              <button type="button" onclick="filterOverviewBookings('playing')" id="ov-filter-playing" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⚽ Đang chơi</button>
-              <button type="button" onclick="filterOverviewBookings('confirmed')" id="ov-filter-confirmed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⏳ Chờ Check-in</button>
-              <button type="button" onclick="filterOverviewBookings('completed')" id="ov-filter-completed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">✓ Hoàn thành & Đã thu đủ</button>
-              <button type="button" onclick="filterOverviewBookings('debt')" id="ov-filter-debt" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#DC2626] hover:bg-rose-50">💸 Đơn đang nợ chưa thu</button>
-              <button type="button" onclick="filterOverviewBookings('noshow')" id="ov-filter-noshow" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">⚠️ Chưa đến / Đã hủy</button>
+              <button type="button" onclick="filterOverviewBookings('playing')" id="ov-filter-playing" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Đang chơi</button>
+              <button type="button" onclick="filterOverviewBookings('confirmed')" id="ov-filter-confirmed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Chờ Check-in</button>
+              <button type="button" onclick="filterOverviewBookings('completed')" id="ov-filter-completed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Hoàn thành &amp; Thu đủ</button>
+              <button type="button" onclick="filterOverviewBookings('debt')" id="ov-filter-debt" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#DC2626] hover:bg-rose-50">Đơn đang nợ</button>
+              <button type="button" onclick="filterOverviewBookings('noshow')" id="ov-filter-noshow" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Chưa đến / Đã hủy</button>
             </div>
-            <button type="button" onclick="openQRScannerModal()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm">📷 Quét QR Check-in</button>
+            <button type="button" onclick="openQRScannerModal()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm">Quét QR Check-in</button>
           </div>
           <div id="overview-today-bookings" class="space-y-2 text-xs">
             <!-- Rendered by JS -->
