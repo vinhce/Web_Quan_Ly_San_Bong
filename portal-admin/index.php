@@ -78,7 +78,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       }
     };
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v75">
+  <link rel="stylesheet" href="../css/style.css?v=20261115_v76">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -499,40 +499,40 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   </div>
 
   <!-- SCRIPTS -->
-  <script src="<?php echo $basePath; ?>/js/data.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/helpers.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/db_core.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/db_pricing.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/db.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/app.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v75"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v75"></script>
+  <script src="<?php echo $basePath; ?>/js/data.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/helpers.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/db_core.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/db_pricing.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/db.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/app.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v76"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v76"></script>
 </body>
 </html>
 

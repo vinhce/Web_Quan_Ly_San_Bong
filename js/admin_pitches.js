@@ -1,5 +1,7 @@
 let currentPitchFilter = 'all';
 window.currentPitchFilter = currentPitchFilter;
+let maintenanceSchedulesCache = [];
+window.maintenanceSchedulesCache = maintenanceSchedulesCache;
 
 async function toggleMaintenance(pitchId) {
   const db = window.SanBongApp?.SanBongDB;
@@ -220,18 +222,19 @@ function renderMaintenanceAffectedBanner(affectedBookings) {
 window.renderMaintenanceAffectedBanner = renderMaintenanceAffectedBanner;
 
 async function loadMaintenanceSchedules() {
-  const tbody = document.getElementById('maintenance-schedules-tbody');
+  const tbody = document.getElementById('admin-maintenance-tbody') || document.getElementById('maintenance-schedules-tbody');
   if (!tbody) return;
 
-  const r = await adminFetchJson('../api/admin.php?action=save_maintenance');
+  const r = await adminFetchJson('../api/admin.php?action=get_maintenance');
   if (!r.ok || !Array.isArray(r.data)) {
-    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-400">Chưa có lịch bảo trì nào được ghi nhận.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-400">Chưa có lịch bảo trì sân nào.</td></tr>';
     return;
   }
 
   maintenanceSchedulesCache = r.data;
+  window.maintenanceSchedulesCache = maintenanceSchedulesCache;
   if (r.data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-400">Chưa có lịch bảo trì nào. Bấm "+ Lên lịch bảo trì" để tạo mới.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-400">Chưa có lịch bảo trì sân nào. Bấm "+ Lên lịch bảo trì" để tạo mới.</td></tr>';
     return;
   }
 
