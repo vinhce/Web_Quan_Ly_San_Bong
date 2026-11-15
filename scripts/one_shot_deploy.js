@@ -2,8 +2,30 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const MCP_URL = 'https://onehost-wphn022606.000nethost.com:2023/api/mcp';
-const MCP_TOKEN = 'sp_2b47e40b9c8c1ddb86602577324f46979f30b433af0e303066726eb3837e2d75';
+function loadEnvToken() {
+  if (process.env.ONEPANEL_MCP_TOKEN) return process.env.ONEPANEL_MCP_TOKEN;
+  if (process.env.MCP_TOKEN) return process.env.MCP_TOKEN;
+  const envPath = path.join(__dirname, '../.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const match = line.match(/^\s*(ONEPANEL_MCP_TOKEN|MCP_TOKEN)\s*=\s*(.*)$/);
+      if (match) {
+        return match[2].trim().replace(/^['"]|['"]$/g, '');
+      }
+    }
+  }
+  return null;
+}
+
+const MCP_URL = process.env.ONEPANEL_MCP_URL || 'https://onehost-wphn022606.000nethost.com:2023/api/mcp';
+const MCP_TOKEN = loadEnvToken();
+
+if (!MCP_TOKEN) {
+  console.error('[SECURITY ERROR] Thieu bien moi truong ONEPANEL_MCP_TOKEN hoac MCP_TOKEN (trong env hoac .env).');
+  console.error('Huong dan: Vui long dat ONEPANEL_MCP_TOKEN trong .env hoac export truoc khi chay.');
+  process.exit(1);
+}
 
 let mcpSessionId = null;
 
@@ -48,7 +70,7 @@ async function ensureSession() {
     params: {
       protocolVersion: '2024-11-05',
       capabilities: {},
-      clientInfo: { name: 'one-shot-deployer', version: '1.0.0' }
+      clientInfo: { name: 'one-shot-deployer-secure', version: '2.0.0' }
     }
   });
 
@@ -94,6 +116,39 @@ async function callMCP(toolName, args) {
   }
 }
 
+// Allowlist cac dinh dang file hop le va an toan cho web application
+const ALLOWED_EXTENSIONS = new Set([
+  '.html', '.css', '.js', '.php', '.sql', '.htaccess', '.json', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.txt'
+]);
+
+const FORBIDDEN_FILENAMES = new Set([
+  '.env',
+  '.env.example',
+  'test_debug.php',
+  'test_pitches.php',
+  'test_e2e_sanbong.py'
+]);
+
+function isSafeFile(relPath) {
+  const norm = relPath.replace(/\\/g, '/').replace(/^\.\//, '');
+  const base = path.basename(norm).toLowerCase();
+  const ext = path.extname(norm).toLowerCase();
+
+  if (FORBIDDEN_FILENAMES.has(base)) return false;
+  if (norm.startsWith('.') && base !== '.htaccess') return false;
+  if (norm.includes('node_modules') || norm.includes('.git') || norm.includes('backups')) return false;
+
+  // Ngan chan tao hoac ghi file PHP truc tiep trong goc webroot public_html
+  if (!norm.includes('/') && ext === '.php') {
+    return false;
+  }
+
+  if (base === '.htaccess') return true;
+  if (!ALLOWED_EXTENSIONS.has(ext)) return false;
+
+  return true;
+}
+
 function collectFiles(dir) {
   const results = [];
   if (!fs.existsSync(dir)) return results;
@@ -111,158 +166,60 @@ function collectFiles(dir) {
 }
 
 async function main() {
-  const allFiles = [
+  const candidateFiles = [
     'index.html',
     '.htaccess',
+    'favicon.svg',
+    'favicon.ico',
+    'robots.txt',
     'config/database.php',
-    'portal-admin/index.php',
+    'database/schema.sql',
+    ...collectFiles('portal-admin'),
     ...collectFiles('api'),
     ...collectFiles('js'),
-    ...collectFiles('portal-admin/partials'),
-    ...collectFiles('html'),
     ...collectFiles('css'),
+    ...collectFiles('html'),
+    ...collectFiles('cron'),
+    ...collectFiles('data'),
     ...collectFiles('database/migrations')
   ];
 
-  const chunks = [];
-  let currentChunk = {};
-  let currentSize = 0;
-  const MAX_CHUNK_SIZE = 150 * 1024;
+  const uniqueFiles = Array.from(new Set(candidateFiles))
+    .filter(f => fs.existsSync(f) && isSafeFile(f));
 
-  for (const f of allFiles) {
-    if (fs.existsSync(f)) {
-      const norm = f.split(path.sep).join('/');
-      const content = fs.readFileSync(f, 'utf8');
-      const itemSize = Buffer.byteLength(content, 'utf8') + norm.length + 20;
-      if (currentSize + itemSize > MAX_CHUNK_SIZE && Object.keys(currentChunk).length > 0) {
-        chunks.push(currentChunk);
-        currentChunk = {};
-        currentSize = 0;
-      }
-      currentChunk[norm] = content;
-      currentSize += itemSize;
-    }
-  }
-  if (Object.keys(currentChunk).length > 0) {
-    chunks.push(currentChunk);
-  }
+  console.log('Bat dau deploy ' + uniqueFiles.length + ' files an toan len hosting qua MCP...');
 
-  console.log('Packing ' + allFiles.length + ' files into ' + chunks.length + ' chunks...');
+  let successCount = 0;
+  let failCount = 0;
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunkFile = 'public_html/deploy_chunk_' + i + '.json';
-    const chunkStr = JSON.stringify(chunks[i]);
-    console.log('Uploading chunk ' + (i + 1) + '/' + chunks.length + ' (' + Object.keys(chunks[i]).length + ' files, ' + chunkStr.length + ' chars) to ' + chunkFile + '...');
-    const upRes = await callMCP('write_file', {
-      path: chunkFile,
-      content: chunkStr
+  for (let i = 0; i < uniqueFiles.length; i++) {
+    const file = uniqueFiles[i];
+    const norm = file.replace(/\\/g, '/').replace(/^\.\//, '');
+    const remotePath = 'public_html/' + norm;
+    const content = fs.readFileSync(file, 'utf8');
+
+    process.stdout.write(`[${i + 1}/${uniqueFiles.length}] Ghi ${norm} -> ${remotePath}... `);
+    const res = await callMCP('write_file', {
+      path: remotePath,
+      content: content
     });
-    console.log('Chunk ' + i + ' uploaded.');
+
+    if (res && res.error) {
+      console.log('FAIL: ' + JSON.stringify(res.error));
+      failCount++;
+    } else {
+      console.log('OK');
+      successCount++;
+    }
   }
 
-  const applyScript = `<?php
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
-header('Content-Type: application/json; charset=utf-8');
-
-\$written = 0;
-\$chunksProcessed = 0;
-\$chunkFiles = glob(__DIR__ . '/deploy_chunk_*.json');
-if (\$chunkFiles) {
-    foreach (\$chunkFiles as \$cFile) {
-        \$raw = file_get_contents(\$cFile);
-        \$data = json_decode(\$raw, true);
-        if (is_array(\$data)) {
-            foreach (\$data as \$relPath => \$content) {
-                \$targetPath = __DIR__ . '/' . \$relPath;
-                \$dir = dirname(\$targetPath);
-                if (!is_dir(\$dir)) {
-                    @mkdir(\$dir, 0755, true);
-                }
-                file_put_contents(\$targetPath, \$content);
-                \$written++;
-            }
-            \$chunksProcessed++;
-        }
-        @unlink(\$cFile);
-    }
+  console.log(`Hoan tat deploy: ${successCount} thanh cong, ${failCount} that bai.`);
+  if (failCount > 0) {
+    process.exit(1);
+  }
 }
 
-// Support legacy payload file if present
-\$payloadFile = __DIR__ . '/deploy_payload.json';
-if (file_exists(\$payloadFile)) {
-    \$raw = file_get_contents(\$payloadFile);
-    \$data = json_decode(\$raw, true);
-    if (is_array(\$data)) {
-        foreach (\$data as \$relPath => \$content) {
-            \$targetPath = __DIR__ . '/' . \$relPath;
-            \$dir = dirname(\$targetPath);
-            if (!is_dir(\$dir)) {
-                @mkdir(\$dir, 0755, true);
-            }
-            file_put_contents(\$targetPath, \$content);
-            \$written++;
-        }
-    }
-    @unlink(\$payloadFile);
-}
-
-// 1. Cập nhật mật khẩu & quyền admin cho admin và vxyen0801 trong CSDL trực tiếp
-\$dbUpdated = false;
-try {
-    require_once __DIR__ . '/config/database.php';
-    \$pdo = getDBConnection(false);
-    if (\$pdo) {
-        \$adminHash = '\$argon2id\$v=19\$m=65536,t=4,p=1\$VTVUaVRrNThhNldzcENpZg\$kNqghJJEnQqDG/6phhZwri5Q6skH+e/dy+/fZhkxqb8'; // admin123
-        \$vxyenHash = '\$argon2id\$v=19\$m=65536,t=4,p=1\$MHgzSUtGQnA1dE54YUpkWA\$iy5TrvTKjwRBOtNvuU/aF0JQ1Cn0eCDr4N1Z2q/ot5A'; // clgt12345
-        \$pdo->prepare("UPDATE users SET password_hash = ?, failed_attempts = 0, lock_until = NULL WHERE username = 'admin'")->execute([\$adminHash]);
-        \$pdo->prepare("UPDATE users SET password_hash = ?, failed_attempts = 0, lock_until = NULL WHERE username = 'vxyen0801'")->execute([\$vxyenHash]);
-        \$pdo->prepare("UPDATE users SET password_hash = ?, failed_attempts = 0, lock_until = NULL WHERE username = 'user'")->execute([\$vxyenHash]);
-        \$dbUpdated = true;
-
-        \$migFile = __DIR__ . '/database/migrations/011_auth_role_hardening_and_demo_data.sql';
-        if (file_exists(\$migFile)) {
-            \$migSql = file_get_contents(\$migFile);
-            if (!empty(\$migSql)) {
-                \$pdo->exec(\$migSql);
-                \$dbUpdated = 'admin_updated_and_migration_011_applied';
-            }
-        }
-    }
-} catch (Throwable \$e) {
-    \$dbUpdated = 'Error: ' . \$e->getMessage();
-}
-
-// 2. Dọn dẹp file rate-limit cache để mở khóa 429 ERR_RATE_LIMITED cho admin/staff
-\$cleaned_rl = 0;
-\$rl_files = glob(__DIR__ . '/logs/ratelimit/*.json');
-if (\$rl_files) {
-    foreach (\$rl_files as \$f) {
-        if (@unlink(\$f)) {
-            \$cleaned_rl++;
-        }
-    }
-}
-
-// Xóa file test debug nếu có
-@unlink(__DIR__ . '/test_debug.php');
-
-echo json_encode([
-    'success' => true,
-    'files_written' => \$written,
-    'chunks_processed' => \$chunksProcessed,
-    'db_updated' => \$dbUpdated,
-    'ratelimit_cache_cleaned' => \$cleaned_rl,
-    'timestamp' => date('c')
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-`;
-
-  console.log('Uploading apply script to public_html/apply_deploy.php...');
-  const scriptRes = await callMCP('write_file', {
-    path: 'public_html/apply_deploy.php',
-    content: applyScript
-  });
-  console.log('Apply script upload result:', JSON.stringify(scriptRes));
-}
-
-main().catch(console.error);
+main().catch(err => {
+  console.error('Loi trong qua trinh deploy:', err);
+  process.exit(1);
+});

@@ -452,3 +452,51 @@ function renderOverviewTodayBookings() {
   }).join("");
 }
 window.renderOverviewTodayBookings = renderOverviewTodayBookings;
+
+// Xử lý Check-in ca đặt sân trực tiếp từ bảng tổng quan
+async function handleCheckin(code) {
+  if (!code) return;
+  const r = await adminFetchJson('../api/bookings.php?action=checkin&code=' + encodeURIComponent(code), {
+    method: 'POST',
+    body: JSON.stringify({ code: code })
+  });
+  if (!r.ok) {
+    window.SanBongApp?.showToast(r.message || 'Không thể check-in lúc này!', 'error');
+    return;
+  }
+  const db = window.SanBongApp?.SanBongDB;
+  if (db?.checkinBooking) db.checkinBooking(code);
+  if (typeof refreshAllAdminViews === 'function') refreshAllAdminViews(code);
+  window.SanBongApp?.showToast(r.message || ('✅ Check-in thành công ca #' + code + '!'), 'success');
+}
+window.handleCheckin = handleCheckin;
+
+// Xử lý Khách chưa đến quá 15 phút: Tịch thu cọc và nhả sân trống
+async function handleNoShowRelease(code) {
+  if (!code) return;
+  const confirmed = typeof showAdminConfirm === 'function'
+    ? await showAdminConfirm({
+        title: 'Xác nhận Chưa Đến & Nhả Sân',
+        message: `Khách của ca #${code} quá 15 phút chưa đến. Bạn có chắc chắn muốn TỊCH THU CỌC 30% và LẬP TỨC NHẢ SÂN TRỐNG?`,
+        confirmText: 'Nhả sân & Tịch thu cọc',
+        cancelText: 'Hủy bỏ',
+        danger: true
+      })
+    : confirm(`Khách quá 15 phút chưa đến. Bạn có chắc muốn TỊCH THU CỌC 30% và NHẢ SÂN đơn #${code}?`);
+  if (!confirmed) return;
+
+  const r = await adminFetchJson('../api/bookings.php?action=noshow_release&code=' + encodeURIComponent(code), {
+    method: 'POST',
+    body: JSON.stringify({ code: code })
+  });
+  if (!r.ok) {
+    window.SanBongApp?.showToast(r.message || 'Không thể nhả sân lúc này!', 'error');
+    return;
+  }
+  const db = window.SanBongApp?.SanBongDB;
+  if (db?.releaseNoShowBooking) db.releaseNoShowBooking(code);
+  if (typeof refreshAllAdminViews === 'function') refreshAllAdminViews(code);
+  window.SanBongApp?.showToast(r.message || ('⚠️ Đã nhả sân trống đơn #' + code + '!'), 'warning');
+}
+window.handleNoShowRelease = handleNoShowRelease;
+

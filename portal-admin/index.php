@@ -513,7 +513,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v79"></script>
   <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v78"></script>
