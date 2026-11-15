@@ -125,7 +125,8 @@ async function main() {
   const payload = {};
   for (const f of allFiles) {
     if (fs.existsSync(f)) {
-      payload[f] = fs.readFileSync(f, 'utf8');
+      const norm = f.split(path.sep).join('/');
+      payload[norm] = fs.readFileSync(f, 'utf8');
     }
   }
 
@@ -137,7 +138,7 @@ async function main() {
     path: 'public_html/deploy_payload.json',
     content: jsonStr
   });
-  console.log('Upload result:', JSON.stringify(upRes).substring(0, 100));
+  console.log('Upload result:', JSON.stringify(upRes));
 
   const applyScript = `<?php
 ini_set('display_errors', '1');
@@ -146,7 +147,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 $payloadFile = __DIR__ . '/deploy_payload.json';
 if (!file_exists($payloadFile)) {
-    echo json_encode(['success' => false, 'message' => 'deploy_payload.json not found']);
+    echo json_encode(['success' => false, 'message' => 'deploy_payload.json not found', 'dir' => __DIR__, 'files' => array_slice(scandir(__DIR__), 0, 20)]);
     exit;
 }
 
@@ -200,7 +201,7 @@ echo json_encode([
     path: 'public_html/apply_deploy.php',
     content: applyScript
   });
-  console.log('Apply script upload result:', JSON.stringify(scriptRes).substring(0, 100));
+  console.log('Apply script upload result:', JSON.stringify(scriptRes));
 }
 
 main().catch(console.error);

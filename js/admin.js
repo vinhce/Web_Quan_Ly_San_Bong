@@ -431,10 +431,10 @@ function switchAdminTab(moduleKey) {
   });
 
   const titleMap = {
-    'overview': '1. Tổng quan',
-    'timeline': '2. Lịch đặt sân',
+    'overview': '1. Tổng quan & Đang chơi',
+    'timeline': '2. Lịch đặt sân Timeline',
     'quick-booking': '3. Đặt sân tại quầy',
-    'pitches': '4. Quản lý sân',
+    'pitches': '4. Quản lý sân bóng',
     'pricing': '5. Bảng giá & Voucher',
     'customers': '6. Khách & Hội viên',
     'payments': '7. Duyệt cọc VietQR',
@@ -443,16 +443,16 @@ function switchAdminTab(moduleKey) {
     'settings': '10. Cài đặt hệ thống'
   };
   const subtitleMap = {
-    'overview': 'Tổng quan KPI & Vận hành ca đá',
-    'timeline': 'Lịch đặt sân Timeline & Ghép kèo',
-    'quick-booking': 'Bán lẻ dịch vụ & Đặt sân nhanh',
-    'pitches': 'Danh sách sân, Bảo trì & Tiện ích',
-    'pricing': 'Bảng giá niêm yết & Voucher',
-    'customers': 'Hồ sơ hội viên, Công nợ & Khách chưa đến',
-    'payments': 'Duyệt biên lai & Đối soát VietQR',
-    'shifts': 'Chốt ca trực & Bàn giao tiền mặt',
-    'reports': 'Báo cáo doanh thu, Chi phí & Lãi ròng',
-    'settings': 'Cài đặt hệ thống & Audit Logs'
+    'overview': 'KPI & Vận hành ca',
+    'timeline': 'Lịch & Ghép kèo',
+    'quick-booking': 'Bán lẻ & Đặt nhanh',
+    'pitches': 'Sân & Tiện ích',
+    'pricing': 'Bảng giá & Ưu đãi',
+    'customers': 'Hồ sơ & Công nợ',
+    'payments': 'Duyệt cọc & Đối soát',
+    'shifts': 'Chốt ca trực',
+    'reports': 'Doanh thu & Chi phí',
+    'settings': 'Cài đặt & Nhật ký'
   };
   const titleEl = document.getElementById('admin-module-title');
   if (titleEl) titleEl.textContent = titleMap[moduleKey] || 'Quản trị';
@@ -550,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const subEl = document.getElementById('admin-module-subtitle');
   if (subEl) {
-    subEl.textContent = formatTimelineDateLabel(getLocalTodayISO()) + ' · Cập nhật trực tiếp';
+    subEl.textContent = formatTimelineDateLabel(getLocalTodayISO());
   }
 
   if (localUser && localUser.role) {

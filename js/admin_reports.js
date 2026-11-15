@@ -8,7 +8,7 @@ function renderDailyRevenueSVG(dailyRevenue) {
   const container = document.getElementById('rpt-daily-svg-container');
   if (!container) return;
   if (!Array.isArray(dailyRevenue) || dailyRevenue.length === 0) {
-    container.innerHTML = '<span class="text-xs text-slate-400">KhÃ´ng cÃ³ dá»¯ liá»‡u doanh thu trong ká»³ lá»c.</span>';
+    container.innerHTML = '<span class="text-xs text-slate-400">Không có dữ liệu doanh thu trong kỳ lọc.</span>';
     return;
   }
 
@@ -26,7 +26,7 @@ function renderDailyRevenueSVG(dailyRevenue) {
     const x = Math.round(idx * (w / dailyRevenue.length) + (w / dailyRevenue.length - barWidth) / 2);
     const y = h - paddingBottom - barH;
     const dateLabel = String(d.date || '').slice(5).replace('-', '/');
-    const tipText = `NgÃ y: ${d.date} | Doanh thu: ${rev.toLocaleString('vi-VN')}Ä‘ (${d.matches || 0} ca)`;
+    const tipText = `Ngày: ${d.date} | Doanh thu: ${rev.toLocaleString('vi-VN')}đ (${d.matches || 0} ca)`;
 
     return `
       <g class="cursor-pointer group">
@@ -63,7 +63,7 @@ function renderPitchTypeRevenueSVG(byType) {
   const total = r5 + r7 + r11;
 
   if (total === 0) {
-    container.innerHTML = '<span class="text-xs text-slate-400">ChÆ°a cÃ³ doanh thu theo loáº¡i sÃ¢n trong ká»³.</span>';
+    container.innerHTML = '<span class="text-xs text-slate-400">Chưa có doanh thu theo loại sân trong kỳ.</span>';
     return;
   }
 
@@ -75,8 +75,8 @@ function renderPitchTypeRevenueSVG(byType) {
     <div class="w-full space-y-3.5 p-2 text-xs">
       <div>
         <div class="flex justify-between font-bold mb-1">
-          <span class="text-emerald-700">âš½ SÃ¢n 5 ngÆ°á»i</span>
-          <span class="text-[#0F172A]">${r5.toLocaleString('vi-VN')}Ä‘ <span class="text-emerald-600 font-extrabold">(${p5Pct}%)</span></span>
+          <span class="text-emerald-700">⚽ Sân 5 người</span>
+          <span class="text-[#0F172A]">${r5.toLocaleString('vi-VN')}đ <span class="text-emerald-600 font-extrabold">(${p5Pct}%)</span></span>
         </div>
         <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
           <div class="h-full bg-[#16A34A] rounded-full transition-all" style="width:${p5Pct}%"></div>
@@ -84,8 +84,8 @@ function renderPitchTypeRevenueSVG(byType) {
       </div>
       <div>
         <div class="flex justify-between font-bold mb-1">
-          <span class="text-blue-700">âš½ SÃ¢n 7 ngÆ°á»i</span>
-          <span class="text-[#0F172A]">${r7.toLocaleString('vi-VN')}Ä‘ <span class="text-blue-600 font-extrabold">(${p7Pct}%)</span></span>
+          <span class="text-blue-700">⚽ Sân 7 người</span>
+          <span class="text-[#0F172A]">${r7.toLocaleString('vi-VN')}đ <span class="text-blue-600 font-extrabold">(${p7Pct}%)</span></span>
         </div>
         <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
           <div class="h-full bg-[#2563EB] rounded-full transition-all" style="width:${p7Pct}%"></div>
@@ -93,8 +93,8 @@ function renderPitchTypeRevenueSVG(byType) {
       </div>
       <div>
         <div class="flex justify-between font-bold mb-1">
-          <span class="text-purple-700">âš½ SÃ¢n 11 ngÆ°á»i</span>
-          <span class="text-[#0F172A]">${r11.toLocaleString('vi-VN')}Ä‘ <span class="text-purple-600 font-extrabold">(${p11Pct}%)</span></span>
+          <span class="text-purple-700">⚽ Sân 11 người</span>
+          <span class="text-[#0F172A]">${r11.toLocaleString('vi-VN')}đ <span class="text-purple-600 font-extrabold">(${p11Pct}%)</span></span>
         </div>
         <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
           <div class="h-full bg-purple-600 rounded-full transition-all" style="width:${p11Pct}%"></div>
@@ -117,7 +117,7 @@ function renderReportLedger() {
   const pageItems = currentReportLedgerFiltered.slice(startIdx, startIdx + REPORT_LEDGER_PAGE_SIZE);
 
   const countInfo = document.getElementById('rpt-ledger-count-info');
-  if (countInfo) countInfo.textContent = `Hiá»ƒn thá»‹ ${pageItems.length ? startIdx + 1 : 0} - ${startIdx + pageItems.length} trÃªn tá»•ng ${totalItems} ca`;
+  if (countInfo) countInfo.textContent = `Hiển thị ${pageItems.length ? startIdx + 1 : 0} - ${startIdx + pageItems.length} trên tổng ${totalItems} ca`;
 
   const pageInfo = document.getElementById('rpt-ledger-page-info');
   if (pageInfo) pageInfo.textContent = `Trang ${currentReportLedgerPage} / ${totalPages}`;
@@ -128,16 +128,16 @@ function renderReportLedger() {
   if (nextBtn) nextBtn.disabled = (currentReportLedgerPage >= totalPages);
 
   if (pageItems.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-[#94A3B8]">KhÃ´ng tÃ¬m tháº¥y ca Ä‘áº·t sÃ¢n nÃ o phÃ¹ há»£p.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-[#94A3B8]">Không tìm thấy ca đặt sân nào phù hợp.</td></tr>';
     return;
   }
 
   tbody.innerHTML = pageItems.map(b => {
-    const isCancelled = (b.status === 'ÄÃ£ há»§y');
+    const isCancelled = (b.status === 'Đã hủy');
     const statusBadge = isCancelled
-      ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700">ÄÃ£ há»§y</span>'
-      : (b.status === 'HoÃ n thÃ nh'
-        ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">HoÃ n thÃ nh</span>'
+      ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700">Đã hủy</span>'
+      : (b.status === 'Hoàn thành'
+        ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">Hoàn thành</span>'
         : `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700">${escapeSearchHTML(b.status || '')}</span>`);
 
     return `
@@ -146,13 +146,13 @@ function renderReportLedger() {
         <td class="py-2.5 px-3 text-[#334155] whitespace-nowrap">${escapeSearchHTML(b.booking_date || '')} <span class="text-xs text-[#64748B]">(${escapeSearchHTML(b.slot_time || '')})</span></td>
         <td class="py-2.5 px-3 font-semibold text-[#0F172A]">${escapeSearchHTML(b.pitch_name || b.pitch_id || '')}</td>
         <td class="py-2.5 px-3">
-          <div class="font-bold text-[#0F172A]">${escapeSearchHTML(b.customer_name || 'KhÃ¡ch vÃ£ng lai')}</div>
+          <div class="font-bold text-[#0F172A]">${escapeSearchHTML(b.customer_name || 'Khách vãng lai')}</div>
           <div class="text-[11px] text-[#64748B] font-mono">${escapeSearchHTML(b.phone || '')}</div>
         </td>
-        <td class="py-2.5 px-3 text-right font-extrabold text-[#0F172A]">${Number(b.total_price || 0).toLocaleString('vi-VN')}Ä‘</td>
-        <td class="py-2.5 px-3 text-right font-bold text-emerald-700">${Number(b.deposit_amount || 0).toLocaleString('vi-VN')}Ä‘</td>
-        <td class="py-2.5 px-3 text-right font-bold ${Number(b.remaining_amount || 0) > 0 ? 'text-rose-600' : 'text-slate-400'}">${Number(b.remaining_amount || 0).toLocaleString('vi-VN')}Ä‘</td>
-        <td class="py-2.5 px-3 text-right text-sky-700 font-semibold">${Number(b.service_price || 0).toLocaleString('vi-VN')}Ä‘</td>
+        <td class="py-2.5 px-3 text-right font-extrabold text-[#0F172A]">${Number(b.total_price || 0).toLocaleString('vi-VN')}đ</td>
+        <td class="py-2.5 px-3 text-right font-bold text-emerald-700">${Number(b.deposit_amount || 0).toLocaleString('vi-VN')}đ</td>
+        <td class="py-2.5 px-3 text-right font-bold ${Number(b.remaining_amount || 0) > 0 ? 'text-rose-600' : 'text-slate-400'}">${Number(b.remaining_amount || 0).toLocaleString('vi-VN')}đ</td>
+        <td class="py-2.5 px-3 text-right text-sky-700 font-semibold">${Number(b.service_price || 0).toLocaleString('vi-VN')}đ</td>
         <td class="py-2.5 px-3">${statusBadge}</td>
         <td class="py-2.5 px-3 text-xs text-[#475569] max-w-[150px] truncate" title="${escapeSearchHTML(b.payment_method || '')}">${escapeSearchHTML(b.payment_method || '')}</td>
       </tr>
@@ -289,7 +289,7 @@ async function renderAdminReports() {
     });
 
     bookings.forEach(b => {
-      if (b.status === 'ÄÃ£ há»§y' || b.paymentStatus === 'ÄÃ£ há»§y' || b.paymentStatus === 'ÄÃ£ hoÃ n cá»c 100%') return;
+      if (b.status === 'Đã hủy' || b.paymentStatus === 'Đã hủy' || b.paymentStatus === 'Đã hoàn cọc 100%') return;
       const bDate = String(b.date || b.booking_date || '').slice(0, 10);
       if (fromDate && bDate && bDate < fromDate) return;
       if (toDate && bDate && bDate > toDate) return;
@@ -300,12 +300,12 @@ async function renderAdminReports() {
       let colDep = 0;
       let colRem = 0;
 
-      if (b.status === 'HoÃ n thÃ nh' || b.paymentStatus === 'ÄÃ£ thanh toÃ¡n 100%' || b.paymentStatus === 'ÄÃ£ thanh toÃ¡n Ä‘á»§') {
+      if (b.status === 'Hoàn thành' || b.paymentStatus === 'Đã thanh toán 100%' || b.paymentStatus === 'Đã thanh toán đủ') {
         collected = total;
         colDep = dep;
         colRem = Math.max(0, total - dep);
-      } else if (b.status === 'Äang Ä‘Ã¡' || b.status === 'ÄÃ£ xÃ¡c nháº­n' || b.status === 'KhÃ¡ch chÆ°a Ä‘áº¿n' || b.paymentStatus === 'ÄÃ£ cá»c 30%' || b.paymentStatus === 'Tá»‹ch thu cá»c 30%') {
-        if (!String(b.paymentMethod || '').includes('ChÆ°a cá»c')) {
+      } else if (b.status === 'Đang đá' || b.status === 'Đã xác nhận' || b.status === 'Khách chưa đến' || b.paymentStatus === 'Đã cọc 30%' || b.paymentStatus === 'Tịch thu cọc 30%') {
+        if (!String(b.paymentMethod || '').includes('Chưa cọc')) {
           collected = dep;
           colDep = dep;
         }
@@ -317,7 +317,7 @@ async function renderAdminReports() {
       totalMatches += 1;
 
       const pm = String(b.paymentMethod || '').toLowerCase();
-      if (pm.includes('tiá»n máº·t')) {
+      if (pm.includes('tiền mặt')) {
         cashRev += collected;
       } else {
         vietqrRev += collected;
@@ -330,10 +330,10 @@ async function renderAdminReports() {
       }
 
       const pId = String(b.pitchId || '').toUpperCase();
-      if (pId.startsWith('P5') || (b.pitchName && b.pitchName.includes('SÃ¢n 5'))) {
+      if (pId.startsWith('P5') || (b.pitchName && b.pitchName.includes('Sân 5'))) {
         p5Rev += collected;
         p5Count += 1;
-      } else if (pId.startsWith('P11') || (b.pitchName && b.pitchName.includes('SÃ¢n 11'))) {
+      } else if (pId.startsWith('P11') || (b.pitchName && b.pitchName.includes('Sân 11'))) {
         p11Rev += collected;
         p11Count += 1;
       } else {
@@ -364,23 +364,23 @@ async function renderAdminReports() {
   const grossProfit = Number(reportData?.grossProfit ?? (collectedRev - totalExpenses));
   const occupancyRate = Number(reportData?.occupancyRate ?? 0);
 
-  setElText('rpt-total-revenue', totalRev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-collected-revenue', collectedRev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-gross-profit', grossProfit.toLocaleString('vi-VN') + 'Ä‘');
+  setElText('rpt-total-revenue', totalRev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-collected-revenue', collectedRev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-gross-profit', grossProfit.toLocaleString('vi-VN') + 'đ');
   const grossProfitEl = document.getElementById('rpt-gross-profit');
   if (grossProfitEl) {
     grossProfitEl.className = `font-heading font-extrabold text-2xl mt-1 ${grossProfit < 0 ? 'text-rose-600' : 'text-blue-700'}`;
   }
   setElText('rpt-occupancy-rate', occupancyRate + '%');
   setElText('rpt-total-matches', totalMatches + ' ca');
-  setElText('rpt-services-revenue', servicesRev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-avg-revenue', avgRev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-deposit-revenue', depositRev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-remaining-revenue', remainingRev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-cash-revenue', cashRev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-vietqr-revenue', vietqrRev.toLocaleString('vi-VN') + 'Ä‘');
+  setElText('rpt-services-revenue', servicesRev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-avg-revenue', avgRev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-deposit-revenue', depositRev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-remaining-revenue', remainingRev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-cash-revenue', cashRev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-vietqr-revenue', vietqrRev.toLocaleString('vi-VN') + 'đ');
 
-  // Äá»I CHIáº¾U 2 CÃ”NG THá»¨C
+  // ĐỐI CHIẾU 2 CÔNG THỨC
   const f1 = reportData?.formula1 || {};
   const f2 = reportData?.formula2 || {};
   const isAllMatched = (f1.isMatched !== false) && (f2.isMatched !== false);
@@ -388,53 +388,53 @@ async function renderAdminReports() {
   if (badgeEl) {
     if (isAllMatched) {
       badgeEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300';
-      badgeEl.textContent = 'Khá»›p sá»‘ liá»‡u 100% (0Ä‘ lá»‡ch)';
+      badgeEl.textContent = 'Khớp số liệu 100% (0đ lệch)';
     } else {
       const maxDiff = Math.max(Number(f1.diff || 0), Number(f2.diff || 0));
       badgeEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse';
-      badgeEl.textContent = `Cáº¢NH BÃO Lá»†CH ${maxDiff.toLocaleString('vi-VN')}Ä‘!`;
+      badgeEl.textContent = `CẢNH BÁO LỆCH ${maxDiff.toLocaleString('vi-VN')}đ!`;
     }
   }
-  setElText('rpt-f1-cash', Number(f1.cash ?? cashRev).toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-f1-transfer', Number(f1.transfer ?? vietqrRev).toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-f1-debt', Number(f1.debt ?? 0).toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-f1-total', Number(f1.calculated ?? totalRev).toLocaleString('vi-VN') + 'Ä‘');
+  setElText('rpt-f1-cash', Number(f1.cash ?? cashRev).toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-f1-transfer', Number(f1.transfer ?? vietqrRev).toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-f1-debt', Number(f1.debt ?? 0).toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-f1-total', Number(f1.calculated ?? totalRev).toLocaleString('vi-VN') + 'đ');
   const f1Status = document.getElementById('rpt-f1-status');
   if (f1Status) {
-    f1Status.textContent = f1.isMatched !== false ? 'Khá»›p 100%' : `Lá»‡ch ${Number(f1.diff || 0).toLocaleString('vi-VN')}Ä‘`;
+    f1Status.textContent = f1.isMatched !== false ? 'Khớp 100%' : `Lệch ${Number(f1.diff || 0).toLocaleString('vi-VN')}đ`;
     f1Status.className = f1.isMatched !== false ? 'text-emerald-600 font-extrabold' : 'text-rose-600 font-extrabold';
   }
 
-  setElText('rpt-f2-deposit', Number(f2.deposit ?? depositRev).toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-f2-remaining', Number(f2.remaining ?? remainingRev).toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-f2-services', Number(f2.services ?? servicesRev).toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-f2-total', Number(f2.calculated ?? totalRev).toLocaleString('vi-VN') + 'Ä‘');
+  setElText('rpt-f2-deposit', Number(f2.deposit ?? depositRev).toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-f2-remaining', Number(f2.remaining ?? remainingRev).toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-f2-services', Number(f2.services ?? servicesRev).toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-f2-total', Number(f2.calculated ?? totalRev).toLocaleString('vi-VN') + 'đ');
   const f2Status = document.getElementById('rpt-f2-status');
   if (f2Status) {
-    f2Status.textContent = f2.isMatched !== false ? 'Khá»›p 100%' : `Lá»‡ch ${Number(f2.diff || 0).toLocaleString('vi-VN')}Ä‘`;
+    f2Status.textContent = f2.isMatched !== false ? 'Khớp 100%' : `Lệch ${Number(f2.diff || 0).toLocaleString('vi-VN')}đ`;
     f2Status.className = f2.isMatched !== false ? 'text-emerald-600 font-extrabold' : 'text-rose-600 font-extrabold';
   }
 
-  setElText('rpt-total-expenses', totalExpenses.toLocaleString('vi-VN') + 'Ä‘');
+  setElText('rpt-total-expenses', totalExpenses.toLocaleString('vi-VN') + 'đ');
   const netProfitEl = document.getElementById('rpt-net-profit');
   if (netProfitEl) {
-    netProfitEl.textContent = netProfit.toLocaleString('vi-VN') + 'Ä‘';
+    netProfitEl.textContent = netProfit.toLocaleString('vi-VN') + 'đ';
     netProfitEl.className = `font-heading font-extrabold text-2xl mt-1 ${netProfit < 0 ? 'text-rose-600' : 'text-[#16A34A]'}`;
   }
   setElText('rpt-profit-margin', profitMargin + '%');
 
-  setElText('rpt-p5-revenue', p5Rev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-p5-count', p5Count + ' ca Ä‘áº·t');
-  setElText('rpt-p7-revenue', p7Rev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-p7-count', p7Count + ' ca Ä‘áº·t');
-  setElText('rpt-p11-revenue', p11Rev.toLocaleString('vi-VN') + 'Ä‘');
-  setElText('rpt-p11-count', p11Count + ' ca Ä‘áº·t');
+  setElText('rpt-p5-revenue', p5Rev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-p5-count', p5Count + ' ca đặt');
+  setElText('rpt-p7-revenue', p7Rev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-p7-count', p7Count + ' ca đặt');
+  setElText('rpt-p11-revenue', p11Rev.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-p11-count', p11Count + ' ca đặt');
 
-  // Váº½ biá»ƒu Ä‘á»“ SVG
+  // Vẽ biểu đồ SVG
   renderDailyRevenueSVG(reportData?.dailyRevenue || []);
   renderPitchTypeRevenueSVG(reportData?.byType || { p5: { revenue: p5Rev }, p7: { revenue: p7Rev }, p11: { revenue: p11Rev } });
 
-  // Báº£ng kÃª chi tiáº¿t
+  // Bảng kê chi tiết
   currentReportLedgerBookings = Array.isArray(reportData?.detailedBookings) ? reportData.detailedBookings : [];
   currentReportLedgerFiltered = [...currentReportLedgerBookings];
   currentReportLedgerPage = 1;
@@ -443,7 +443,7 @@ async function renderAdminReports() {
   const expChartEl = document.getElementById('rpt-expense-categories-chart');
   if (expChartEl) {
     if (expensesByCategory.length === 0) {
-      expChartEl.innerHTML = '<div class="py-4 text-center text-[#94A3B8]">ChÆ°a cÃ³ khoáº£n chi váº­n hÃ nh nÃ o trong ká»³ lá»c.</div>';
+      expChartEl.innerHTML = '<div class="py-4 text-center text-[#94A3B8]">Chưa có khoản chi vận hành nào trong kỳ lọc.</div>';
     } else {
       const maxExp = Math.max(1, ...expensesByCategory.map(c => Number(c.amount || 0)));
       const totalExpForPct = Math.max(1, expensesByCategory.reduce((acc, c) => acc + Number(c.amount || 0), 0));
@@ -454,8 +454,8 @@ async function renderAdminReports() {
         return `
           <div class="space-y-1">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold text-[#0F172A]">${escapeSearchHTML(c.categoryName || c.category || '')} <span class="text-[#64748B] font-normal">(${Number(c.count || 0)} khoáº£n)</span></span>
-              <span class="font-extrabold text-rose-600">${amt.toLocaleString('vi-VN')}Ä‘ <span class="text-[#64748B] font-normal">(${sharePct}%)</span></span>
+              <span class="font-bold text-[#0F172A]">${escapeSearchHTML(c.categoryName || c.category || '')} <span class="text-[#64748B] font-normal">(${Number(c.count || 0)} khoản)</span></span>
+              <span class="font-extrabold text-rose-600">${amt.toLocaleString('vi-VN')}đ <span class="text-[#64748B] font-normal">(${sharePct}%)</span></span>
             </div>
             <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
               <div class="h-full bg-rose-500 rounded-full transition-all" style="width:${wPct}%"></div>
@@ -473,12 +473,12 @@ async function renderAdminReports() {
         <td class="py-3 px-4 font-bold text-[#0F172A]">${escapeSearchHTML(p.name)}</td>
         <td class="py-3 px-4 text-[#475569]">${escapeSearchHTML(p.typeName || p.type_name || '')}</td>
         <td class="py-3 px-4">
-          <span class="px-2 py-0.5 rounded text-[11px] font-bold ${p.status === 'Báº£o trÃ¬' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}">
+          <span class="px-2 py-0.5 rounded text-[11px] font-bold ${p.status === 'Bảo trì' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}">
             ${escapeSearchHTML(p.status)}
           </span>
         </td>
         <td class="py-3 px-4 text-center font-bold text-[#334155]">${Number(p.matches || 0)} ca</td>
-        <td class="py-3 px-4 text-right font-extrabold text-[#16A34A]">${Number(p.revenue || 0).toLocaleString('vi-VN')}Ä‘</td>
+        <td class="py-3 px-4 text-right font-extrabold text-[#16A34A]">${Number(p.revenue || 0).toLocaleString('vi-VN')}đ</td>
       </tr>
     `).join('');
   }
@@ -489,14 +489,14 @@ async function renderAdminReports() {
 
 async function exportAdminReportsCSV() {
   if (!isManagerOrAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Quáº£n lÃ½ hoáº·c Chá»§ sÃ¢n má»›i cÃ³ quyá»n xuáº¥t bÃ¡o cÃ¡o doanh thu!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Quản lý hoặc Chủ sân mới có quyền xuất báo cáo doanh thu!', 'error');
     return;
   }
 
   const fromDate = (document.getElementById('rpt-from-date')?.value || '').trim();
   const toDate = (document.getElementById('rpt-to-date')?.value || '').trim();
 
-  // Æ¯u tiÃªn gá»i API xuáº¥t CSV cá»§a server náº¿u há»— trá»£ tráº£ vá» file CSV trá»±c tiáº¿p
+  // Æ¯u tiên gọi API xuất CSV của server nếu hỗ trợ trả về file CSV trực tiếp
   try {
     const qs = new URLSearchParams({ action: 'export_reports_csv' });
     if (fromDate) qs.set('from', fromDate);
@@ -515,14 +515,14 @@ async function exportAdminReportsCSV() {
         a.remove();
         URL.revokeObjectURL(url);
         if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast('ðŸ“¥ ÄÃ£ xuáº¥t file bÃ¡o cÃ¡o doanh thu Excel/CSV thÃ nh cÃ´ng!', 'success', 3000);
+          window.SanBongApp.showToast('📥 Đã xuất file báo cáo doanh thu Excel/CSV thành công!', 'success', 3000);
         }
         return;
       }
     }
   } catch (e) {}
 
-  // Fallback chuáº©n UTF-8 BOM cho Excel trÃªn mÃ¡y khÃ¡ch
+  // Fallback chuẩn UTF-8 BOM cho Excel trên máy khách
   const db = window.SanBongApp?.SanBongDB;
   const bookings = (db && db.getAllBookings) ? db.getAllBookings() : [];
   const filtered = bookings.filter(b => {
@@ -540,9 +540,9 @@ async function exportAdminReportsCSV() {
     return `"${str.replace(/"/g, '""')}"`;
   };
   const lines = [];
-  lines.push(['BÃO CÃO DOANH THU & Äá»I SOÃT SÃ‚N BÃ“NG PRO', `Tá»« ngÃ y: ${fromDate || 'Táº¥t cáº£'}`, `Äáº¿n ngÃ y: ${toDate || 'Táº¥t cáº£'}`].map(csvEscape).join(','));
+  lines.push(['BÁO CÁO DOANH THU & ĐỐI SOÁT SÂN BÓNG PRO', `Từ ngày: ${fromDate || 'Tất cả'}`, `Đến ngày: ${toDate || 'Tất cả'}`].map(csvEscape).join(','));
   lines.push([]);
-  lines.push(['MÃ£ Ä‘Æ¡n', 'NgÃ y Ä‘Ã¡', 'Khung giá»', 'SÃ¢n bÃ³ng', 'KhÃ¡ch hÃ ng', 'Sá»‘ Ä‘iá»‡n thoáº¡i', 'Tá»•ng tiá»n (VNÄ)', 'Tiá»n cá»c (VNÄ)', 'CÃ²n láº¡i (VNÄ)', 'HÃ¬nh thá»©c TT', 'Tráº¡ng thÃ¡i TT', 'Tráº¡ng thÃ¡i ca', 'Ghi chÃº'].map(csvEscape).join(','));
+  lines.push(['Mã đơn', 'Ngày đá', 'Khung giờ', 'Sân bóng', 'Khách hàng', 'Số điện thoại', 'Tổng tiền (VNĐ)', 'Tiền cọc (VNĐ)', 'Còn lại (VNĐ)', 'Hình thức TT', 'Trạng thái TT', 'Trạng thái ca', 'Ghi chú'].map(csvEscape).join(','));
 
   filtered.forEach(b => {
     const total = Number(b.totalPrice || 0);
@@ -577,7 +577,7 @@ async function exportAdminReportsCSV() {
   URL.revokeObjectURL(url);
 
   if (window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast('ðŸ“¥ ÄÃ£ xuáº¥t bÃ¡o cÃ¡o doanh thu ra file Excel / CSV (UTF-8 BOM)!', 'success', 3000);
+    window.SanBongApp.showToast('📥 Đã xuất báo cáo doanh thu ra file Excel / CSV (UTF-8 BOM)!', 'success', 3000);
   }
 }
 window.exportAdminReportsCSV = exportAdminReportsCSV;

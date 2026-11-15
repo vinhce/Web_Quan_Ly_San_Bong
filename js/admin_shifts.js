@@ -1,5 +1,5 @@
 ﻿// =========================================================
-// Má»¤C 2.2: CHá»T CA & BÃ€N GIAO TIá»€N Máº¶T (SHIFT HANDOVER)
+// MỤC 2.2: CHỐT CA & BÀN GIAO TIỀN MẶT (SHIFT HANDOVER)
 // =========================================================
 function renderShiftHandoverStats(customStats = null) {
   const db = window.SanBongApp?.SanBongDB;
@@ -9,7 +9,7 @@ function renderShiftHandoverStats(customStats = null) {
     cashTotal: 0,
     transferTotal: 0
   });
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
   const startEl = document.getElementById('shift-start-time');
   const cashEl = document.getElementById('shift-cash-total');
@@ -47,16 +47,16 @@ async function loadShiftHandovers() {
 
   window._currentActiveShift = cur;
   const initialCashEl = document.getElementById('shift-initial-cash-display');
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
   if (initialCashEl) {
     initialCashEl.textContent = fmt(cur?.initial_cash || 0);
   }
   const operatorEl = document.getElementById('shift-operator-name');
   if (operatorEl) {
-    operatorEl.textContent = cur ? (cur.staff_name || cur.staffName || 'NhÃ¢n viÃªn trá»±c') : 'ChÆ°a má»Ÿ ca';
+    operatorEl.textContent = cur ? (cur.staff_name || cur.staffName || 'Nhân viên trực') : 'Chưa mở ca';
   }
 
-  // Cáº­p nháº­t dropdown bá»™ lá»c nhÃ¢n viÃªn náº¿u cÃ³ danh sÃ¡ch tá»« server
+  // Cập nhật dropdown bộ lọc nhân viên nếu có danh sách từ server
   if (shiftRes.ok && shiftRes.data && Array.isArray(shiftRes.data.staffList)) {
     const staffSelect = document.getElementById('shift-filter-staff');
     if (staffSelect && staffSelect.options.length <= 1) {
@@ -69,7 +69,7 @@ async function loadShiftHandovers() {
     }
   }
 
-  // Cáº­p nháº­t cháº¥m tráº¡ng thÃ¡i xanh á»Ÿ menu Tab 8 vÃ  cÃ¡c badge
+  // Cập nhật chấm trạng thái xanh ở menu Tab 8 và các badge
   const statusDot = document.getElementById('shift-nav-status-dot');
   if (statusDot) {
     statusDot.classList.toggle('hidden', !cur);
@@ -102,7 +102,7 @@ async function loadShiftHandovers() {
     curUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
   } catch (e) {}
 
-  // Staff chá»‰ tháº¥y cÃ¡c ca cá»§a chÃ­nh mÃ¬nh; Manager & Admin tháº¥y toÃ n bá»™ ca cá»§a má»i nhÃ¢n viÃªn
+  // Staff chỉ thấy các ca của chính mình; Manager & Admin thấy toàn bộ ca của mọi nhân viên
   if (!isManagerOrAdmin() && curUser) {
     const myUname = String(curUser.username || '').toLowerCase();
     const myId = Number(curUser.id || 0);
@@ -120,7 +120,7 @@ async function loadShiftHandovers() {
     tbody.innerHTML = `
       <tr>
         <td colspan="10" class="py-8 text-center text-xs text-[#64748B]">
-          ChÆ°a cÃ³ lá»‹ch sá»­ chá»‘t ca nÃ o Ä‘Æ°á»£c ghi nháº­n.
+          Chưa có lịch sử chốt ca nào được ghi nhận.
         </td>
       </tr>
     `;
@@ -129,9 +129,9 @@ async function loadShiftHandovers() {
 
   tbody.innerHTML = shifts.map(sh => {
     const id = sh.id || sh.shift_code || `CA-${sh.shift_id || ''}`;
-    const staffName = sh.staff_name || sh.staffName || sh.staff_username || 'NhÃ¢n viÃªn trá»±c';
+    const staffName = sh.staff_name || sh.staffName || sh.staff_username || 'Nhân viên trực';
     const startT = sh.start_time || sh.startTime || '';
-    const endT = sh.end_time || sh.endTime || 'Äang má»Ÿ';
+    const endT = sh.end_time || sh.endTime || 'Đang mở';
     const initialCash = Number(sh.initial_cash ?? sh.initialCash ?? 0);
     const cashDeclared = Number(sh.cash_total ?? sh.cashDeclared ?? 0);
     const transferTotal = Number(sh.transfer_total ?? sh.transferTotal ?? 0);
@@ -141,14 +141,14 @@ async function loadShiftHandovers() {
     const expectedTotal = initialCash + cashDeclared;
     const diff = hasCounted ? (cashActual - expectedTotal) : null;
 
-    let diffHtml = '<span class="text-slate-400 italic">Chá» chá»‘t ca</span>';
+    let diffHtml = '<span class="text-slate-400 italic">Chờ chốt ca</span>';
     if (hasCounted) {
       if (diff === 0) {
-        diffHtml = `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-extrabold text-[11px] border border-emerald-300">âœ“ Khá»›p 0Ä‘</span>`;
+        diffHtml = `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-extrabold text-[11px] border border-emerald-300">✓ Khớp 0đ</span>`;
       } else if (diff < 0) {
-        diffHtml = `<span class="px-2 py-0.5 rounded bg-red-100 text-red-700 font-extrabold text-[11px] border border-red-300" title="${escapeJsAttr(sh.discrepancy_reason || '')}">Thiáº¿u ${fmt(diff)}</span>`;
+        diffHtml = `<span class="px-2 py-0.5 rounded bg-red-100 text-red-700 font-extrabold text-[11px] border border-red-300" title="${escapeJsAttr(sh.discrepancy_reason || '')}">Thiếu ${fmt(diff)}</span>`;
       } else {
-        diffHtml = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-extrabold text-[11px] border border-amber-300" title="${escapeJsAttr(sh.discrepancy_reason || '')}">Thá»«a +${fmt(diff)}</span>`;
+        diffHtml = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-extrabold text-[11px] border border-amber-300" title="${escapeJsAttr(sh.discrepancy_reason || '')}">Thừa +${fmt(diff)}</span>`;
       }
       if (sh.discrepancy_reason) {
         diffHtml += `<div class="text-[10px] text-slate-500 mt-0.5 italic truncate max-w-[120px]" title="${escapeJsAttr(sh.discrepancy_reason)}">${escapeSearchHTML(sh.discrepancy_reason)}</div>`;
@@ -157,25 +157,25 @@ async function loadShiftHandovers() {
 
     const stRaw = String(sh.status || 'closed').toLowerCase();
     let statusBadge = '';
-    if (stRaw === 'open' || stRaw === 'Ä‘ang má»Ÿ') {
-      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">Äang má»Ÿ</span>';
-    } else if (stRaw === 'confirmed' || stRaw === 'Ä‘Ã£ xÃ¡c nháº­n') {
-      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">âœ“ ÄÃ£ Ä‘á»‘i soÃ¡t</span>';
+    if (stRaw === 'open' || stRaw === 'đang mở') {
+      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">Đang mở</span>';
+    } else if (stRaw === 'confirmed' || stRaw === 'đã xác nhận') {
+      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">✓ Đã đối soát</span>';
     } else {
-      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">â³ ÄÃ£ chá»‘t (chá» Ä‘á»‘i soÃ¡t)</span>';
+      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Đã chốt (chờ đối soát)</span>';
     }
 
     let actionHtml = '';
     if (stRaw === 'open') {
-      actionHtml = '<span class="text-[11px] text-slate-400 italic">Ca Ä‘ang má»Ÿ</span>';
+      actionHtml = '<span class="text-[11px] text-slate-400 italic">Ca đang mở</span>';
     } else if (stRaw === 'confirmed') {
-      actionHtml = '<span class="text-[11px] text-emerald-600 font-bold">âœ“ ÄÃ£ khÃ³a sá»•</span>';
+      actionHtml = '<span class="text-[11px] text-emerald-600 font-bold">✓ Đã khóa sổ</span>';
     } else {
       actionHtml = isManagerOrAdmin()
         ? `<button type="button" onclick="handleConfirmShift('${escapeJsAttr(String(id))}', ${expectedTotal})" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] shadow-sm cursor-pointer">
-             Äá»‘i soÃ¡t tiá»n máº·t
+             Đối soát tiền mặt
            </button>`
-        : '<span class="text-[11px] text-slate-400">Chá» Quáº£n lÃ½ Ä‘á»‘i soÃ¡t</span>';
+        : '<span class="text-[11px] text-slate-400">Chờ Quản lý đối soát</span>';
     }
 
     return `
@@ -183,8 +183,8 @@ async function loadShiftHandovers() {
         <td class="py-2.5 px-3 font-mono font-bold text-[#0F172A]">${escapeSearchHTML(String(id))}</td>
         <td class="py-2.5 px-3 font-semibold text-[#0F172A]">${escapeSearchHTML(staffName)}</td>
         <td class="py-2.5 px-3 text-[11px] text-slate-600">
-          <div>Má»Ÿ: <b>${escapeSearchHTML(startT)}</b></div>
-          <div>Chá»‘t: <b>${escapeSearchHTML(endT)}</b></div>
+          <div>Mở: <b>${escapeSearchHTML(startT)}</b></div>
+          <div>Chốt: <b>${escapeSearchHTML(endT)}</b></div>
         </td>
         <td class="py-2.5 px-3 text-right font-bold text-emerald-700">${fmt(initialCash)}</td>
         <td class="py-2.5 px-3 text-right font-extrabold text-[#D97706]">${fmt(cashDeclared)}</td>
@@ -214,21 +214,21 @@ function calculateShiftDiscrepancy() {
   const initCash = Number(curShift?.initial_cash || 0);
   const expected = sysCash + initCash;
   const diff = counted - expected;
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
   if (diff === 0) {
     badgeEl.className = 'h-[38px] px-3 rounded-lg border border-emerald-300 bg-emerald-50 flex items-center justify-center font-mono font-bold text-xs text-emerald-700';
-    badgeEl.textContent = 'âœ“ Khá»›p 0Ä‘';
+    badgeEl.textContent = '✓ Khớp 0đ';
     if (reasonBox) reasonBox.classList.add('hidden');
     if (reasonInput) reasonInput.required = false;
   } else if (diff < 0) {
     badgeEl.className = 'h-[38px] px-3 rounded-lg border border-red-300 bg-red-50 flex items-center justify-center font-mono font-bold text-xs text-red-700';
-    badgeEl.textContent = `Thiáº¿u ${fmt(diff)}`;
+    badgeEl.textContent = `Thiếu ${fmt(diff)}`;
     if (reasonBox) reasonBox.classList.remove('hidden');
     if (reasonInput) reasonInput.required = true;
   } else {
     badgeEl.className = 'h-[38px] px-3 rounded-lg border border-amber-300 bg-amber-50 flex items-center justify-center font-mono font-bold text-xs text-amber-800';
-    badgeEl.textContent = `Thá»«a +${fmt(diff)}`;
+    badgeEl.textContent = `Thừa +${fmt(diff)}`;
     if (reasonBox) reasonBox.classList.remove('hidden');
     if (reasonInput) reasonInput.required = true;
   }
@@ -241,19 +241,19 @@ async function handleOpenShift() {
   const btn = document.getElementById('btn-open-shift');
   const initCash = parseInt(initCashEl?.value ?? '-1', 10);
   const note = (noteEl?.value || '').trim();
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
   if (isNaN(initCash) || initCash < 0) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p tiá»n máº·t Ä‘áº§u ca (sá»‘ nguyÃªn â‰¥ 0Ä‘)!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập tiền mặt đầu ca (số nguyên ≥ 0đ)!', 'error');
     if (initCashEl) initCashEl.focus();
     return;
   }
 
   const ok = await showAdminConfirm({
-    title: 'Báº¯t Ä‘áº§u má»Ÿ ca trá»±c má»›i',
-    message: `Báº¡n chuáº©n bá»‹ má»Ÿ ca trá»±c vá»›i tiá»n máº·t Ä‘áº§u ca: ${fmt(initCash)}. XÃ¡c nháº­n báº¯t Ä‘áº§u?`,
-    confirmText: 'Má»Ÿ ca ngay',
-    cancelText: 'Há»§y'
+    title: 'Bắt đầu mở ca trực mới',
+    message: `Bạn chuẩn bị mở ca trực với tiền mặt đầu ca: ${fmt(initCash)}. Xác nhận bắt đầu?`,
+    confirmText: 'Mở ca ngay',
+    cancelText: 'Hủy'
   });
   if (!ok) return;
 
@@ -268,11 +268,11 @@ async function handleOpenShift() {
       })
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ má»Ÿ ca trá»±c!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể mở ca trực!', 'error', 4000);
       return;
     }
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(r.message || `ÄÃ£ má»Ÿ ca trá»±c thÃ nh cÃ´ng!`, 'success', 3500);
+      window.SanBongApp.showToast(r.message || `Đã mở ca trực thành công!`, 'success', 3500);
     }
     await loadShiftHandovers();
   } finally {
@@ -284,7 +284,7 @@ window.handleOpenShift = handleOpenShift;
 async function handleCloseShift() {
   const curShift = window._currentActiveShift;
   if (!curShift) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('KhÃ´ng cÃ³ ca trá»±c nÃ o Ä‘ang má»Ÿ!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không có ca trực nào đang mở!', 'warning');
     return;
   }
 
@@ -292,11 +292,11 @@ async function handleCloseShift() {
   const reasonEl = document.getElementById('shift-discrepancy-reason');
   const noteEl = document.getElementById('shift-close-note');
   const btn = document.getElementById('btn-close-shift');
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
   const counted = parseInt(countedEl?.value ?? '-1', 10);
   if (isNaN(counted) || counted < 0) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p sá»‘ tiá»n máº·t nhÃ¢n viÃªn Ä‘áº¿m Ä‘Æ°á»£c thá»±c táº¿!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập số tiền mặt nhân viên đếm được thực tế!', 'error');
     if (countedEl) countedEl.focus();
     return;
   }
@@ -308,26 +308,26 @@ async function handleCloseShift() {
   const reason = (reasonEl?.value || '').trim();
 
   if (diff !== 0 && !reason) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Báº¯t buá»™c nháº­p lÃ½ do chÃªnh lá»‡ch khi sá»‘ tiá»n Ä‘áº¿m khÃ¡c há»‡ thá»‘ng!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Bắt buộc nhập lý do chênh lệch khi số tiền đếm khác hệ thống!', 'error');
     if (reasonEl) reasonEl.focus();
     return;
   }
 
-  const diffStr = diff === 0 ? 'Khá»›p 0Ä‘' : (diff < 0 ? `Thiáº¿u ${fmt(diff)}` : `Thá»«a +${fmt(diff)}`);
+  const diffStr = diff === 0 ? 'Khớp 0đ' : (diff < 0 ? `Thiếu ${fmt(diff)}` : `Thừa +${fmt(diff)}`);
   const confirmMsg =
-    `XÃC NHáº¬N CHá»T CA TRá»°C:\n` +
-    `â€¢ Tiá»n Ä‘áº§u ca: ${fmt(initCash)}\n` +
-    `â€¢ Há»‡ thá»‘ng tÃ­nh thu trong ca: ${fmt(sysCash)}\n` +
-    `â€¢ Tá»•ng tiá»n lÃ½ thuyáº¿t: ${fmt(expectedTotal)}\n` +
-    `â€¢ NhÃ¢n viÃªn Ä‘áº¿m thá»±c táº¿: ${fmt(counted)} (${diffStr})\n` +
-    (diff !== 0 ? `â€¢ LÃ½ do lá»‡ch: ${reason}\n` : '') +
-    `\nBáº¥m Chá»‘t ca Ä‘á»ƒ khÃ³a sá»• bÃ n giao ca trá»±c?`;
+    `XÁC NHẬN CHỐT CA TRỰC:\n` +
+    `• Tiền đầu ca: ${fmt(initCash)}\n` +
+    `• Hệ thống tính thu trong ca: ${fmt(sysCash)}\n` +
+    `• Tổng tiền lý thuyết: ${fmt(expectedTotal)}\n` +
+    `• Nhân viên đếm thực tế: ${fmt(counted)} (${diffStr})\n` +
+    (diff !== 0 ? `• Lý do lệch: ${reason}\n` : '') +
+    `\nBấm Chốt ca để khóa sổ bàn giao ca trực?`;
 
   const ok = await showAdminConfirm({
-    title: 'KhÃ³a sá»• & Chá»‘t ca bÃ n giao',
+    title: 'Khóa sổ & Chốt ca bàn giao',
     message: confirmMsg,
-    confirmText: 'Chá»‘t ca ngay',
-    cancelText: 'Kiá»ƒm láº¡i'
+    confirmText: 'Chốt ca ngay',
+    cancelText: 'Kiểm lại'
   });
   if (!ok) return;
 
@@ -343,11 +343,11 @@ async function handleCloseShift() {
       })
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ chá»‘t ca trá»±c!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể chốt ca trực!', 'error', 4000);
       return;
     }
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(r.message || `ÄÃ£ chá»‘t ca thÃ nh cÃ´ng!`, 'success', 4000);
+      window.SanBongApp.showToast(r.message || `Đã chốt ca thành công!`, 'success', 4000);
     }
     await loadShiftHandovers();
     if (isOwnerAdmin() && typeof loadAuditLogs === 'function') loadAuditLogs();
@@ -359,36 +359,36 @@ window.handleCloseShift = handleCloseShift;
 
 async function handleConfirmShift(shiftId, expectedTotal = 0) {
   if (!isManagerOrAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Quáº£n lÃ½ hoáº·c Chá»§ sÃ¢n má»›i cÃ³ quyá»n Ä‘á»‘i soÃ¡t tiá»n máº·t!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Quản lý hoặc Chủ sân mới có quyền đối soát tiền mặt!', 'error');
     return;
   }
 
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
   const rawInput = await showAdminPrompt({
-    title: `Äá»‘i soÃ¡t bÃ n giao tiá»n máº·t ca #${shiftId}`,
-    message: `â€¢ Tá»•ng tiá»n há»‡ thá»‘ng + Ä‘áº§u ca cáº§n bÃ n giao: ${fmt(expectedTotal)}\nâ€¢ Nháº­p sá»‘ tiá»n THá»°C NHáº¬N trong kÃ©t tá»« nhÃ¢n viÃªn:`,
-    placeholder: 'Nháº­p sá»‘ tiá»n thá»±c nháº­n',
+    title: `Đối soát bàn giao tiền mặt ca #${shiftId}`,
+    message: `• Tổng tiền hệ thống + đầu ca cần bàn giao: ${fmt(expectedTotal)}\n• Nhập số tiền THỰC NHẬN trong két từ nhân viên:`,
+    placeholder: 'Nhập số tiền thực nhận',
     defaultValue: String(expectedTotal || 0),
     inputType: 'number',
-    confirmText: 'XÃ¡c nháº­n Ä‘á»‘i soÃ¡t',
-    cancelText: 'Há»§y'
+    confirmText: 'Xác nhận đối soát',
+    cancelText: 'Hủy'
   });
   if (rawInput === null) return;
 
   const actualCash = parseInt(String(rawInput).replace(/[^\d]/g, ''), 10);
   if (isNaN(actualCash) || actualCash < 0) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Sá»‘ tiá»n thá»±c nháº­n khÃ´ng há»£p lá»‡!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Số tiền thực nhận không hợp lệ!', 'error');
     return;
   }
 
   const diff = actualCash - Number(expectedTotal || 0);
-  const diffLabel = diff === 0 ? 'Khá»›p 0Ä‘' : (diff < 0 ? `Thiáº¿u ${fmt(diff)}` : `Thá»«a +${fmt(diff)}`);
+  const diffLabel = diff === 0 ? 'Khớp 0đ' : (diff < 0 ? `Thiếu ${fmt(diff)}` : `Thừa +${fmt(diff)}`);
 
   const secondOk = await showAdminConfirm({
-    title: `XÃ¡c nháº­n láº§n 2: Äá»‘i soÃ¡t ca #${shiftId}`,
-    message: `Báº¡n xÃ¡c nháº­n thá»±c nháº­n ${fmt(actualCash)} (${diffLabel}) cho ca #${shiftId}? Ca trá»±c sáº½ Ä‘Æ°á»£c khÃ³a vÄ©nh viá»…n vÃ  ghi vÃ o sá»• kiá»ƒm toÃ¡n.`,
-    confirmText: 'Äá»“ng Ã½ khÃ³a sá»• Ä‘á»‘i soÃ¡t',
-    cancelText: 'Há»§y'
+    title: `Xác nhận lần 2: Đối soát ca #${shiftId}`,
+    message: `Bạn xác nhận thực nhận ${fmt(actualCash)} (${diffLabel}) cho ca #${shiftId}? Ca trực sẽ được khóa vĩnh viễn và ghi vào sổ kiểm toán.`,
+    confirmText: 'Đồng ý khóa sổ đối soát',
+    cancelText: 'Hủy'
   });
   if (!secondOk) return;
 
@@ -401,7 +401,7 @@ async function handleConfirmShift(shiftId, expectedTotal = 0) {
     })
   });
   if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ Ä‘á»‘i soÃ¡t ca trá»±c!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể đối soát ca trực!', 'error', 4000);
     return;
   }
 
@@ -409,14 +409,14 @@ async function handleConfirmShift(shiftId, expectedTotal = 0) {
   if (typeof loadAuditLogs === 'function') loadAuditLogs();
 
   if (window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast(r.message || `ÄÃ£ Ä‘á»‘i soÃ¡t thÃ nh cÃ´ng ca #${shiftId}!`, diff < 0 ? 'warning' : 'success', 4000);
+    window.SanBongApp.showToast(r.message || `Đã đối soát thành công ca #${shiftId}!`, diff < 0 ? 'warning' : 'success', 4000);
   }
 }
 window.handleConfirmShift = handleConfirmShift;
 window.handleConfirmShift = handleConfirmShift;
 
 // =========================================================
-// Má»¤C 2.1: NHáº¬T KÃ KIá»‚M TOÃN Há»† THá»NG (AUDIT LOG - CHá»NG THáº¤T THOÃT)
+// MỤC 2.1: NHẬT KÝ KIỂM TOÁN HỆ THỐNG (AUDIT LOG - CHỐNG THẤT THOÁT)
 // =========================================================
 async function loadAuditLogs() {
   if (!isOwnerAdmin()) return;
@@ -467,16 +467,16 @@ async function loadAuditLogs() {
     }
   }
 
-  // Populate dropdown nhÃ¢n sá»± (#audit-filter-user) dÃ¹ng ID sá»‘ thá»±c trong DB
+  // Populate dropdown nhân sự (#audit-filter-user) dùng ID số thực trong DB
   const userSelect = document.getElementById('audit-filter-user');
   if (userSelect) {
     const prevU = userSelect.value;
     const roleShortLabel = {
-      admin: 'Chá»§ sÃ¢n',
-      manager: 'Quáº£n lÃ½ sÃ¢n',
-      staff: 'NhÃ¢n viÃªn'
+      admin: 'Chủ sân',
+      manager: 'Quản lý sân',
+      staff: 'Nhân viên'
     };
-    let optionsHtml = '<option value="">ðŸ‘¤ Táº¥t cáº£ nhÃ¢n sá»±</option>';
+    let optionsHtml = '<option value="">👤 Tất cả nhân sự</option>';
     if (serverStaffList.length > 0) {
       optionsHtml += serverStaffList.map(u => {
         const uid = String(u.id ?? '').trim();
@@ -484,7 +484,7 @@ async function loadAuditLogs() {
         const name = u.full_name || u.username || `ID #${uid}`;
         const uname = u.username ? ` (${u.username})` : '';
         const rLabel = roleShortLabel[String(u.role || '').toLowerCase()] || u.role || '';
-        return `<option value="${escapeSearchHTML(uid)}">${escapeSearchHTML(`${name}${uname}${rLabel ? ' Â· ' + rLabel : ''}`)}</option>`;
+        return `<option value="${escapeSearchHTML(uid)}">${escapeSearchHTML(`${name}${uname}${rLabel ? ' · ' + rLabel : ''}`)}</option>`;
       }).join('');
     } else {
       const actors = new Map();
@@ -499,9 +499,9 @@ async function loadAuditLogs() {
         }
       });
       if (actors.size === 0) {
-        actors.set('admin', 'Quáº£n Trá»‹ ViÃªn (admin)');
-        actors.set('manager', 'Quáº£n LÃ½ SÃ¢n (manager)');
-        actors.set('staff', 'NhÃ¢n ViÃªn Trá»±c SÃ¢n (staff)');
+        actors.set('admin', 'Quản Trị Viên (admin)');
+        actors.set('manager', 'Quản Lý Sân (manager)');
+        actors.set('staff', 'Nhân Viên Trực Sân (staff)');
       }
       optionsHtml += Array.from(actors.entries())
         .map(([val, label]) => `<option value="${escapeSearchHTML(val)}">${escapeSearchHTML(label)}</option>`)
@@ -511,7 +511,7 @@ async function loadAuditLogs() {
     if (prevU) userSelect.value = prevU;
   }
 
-  // Khi offline fallback thÃ¬ lá»c client; khi serverLoaded thÃ¬ giá»¯ káº¿t quáº£ server Ä‘Ã£ lá»c chÃ­nh xÃ¡c
+  // Khi offline fallback thì lọc client; khi serverLoaded thì giữ kết quả server đã lọc chính xác
   const filtered = serverLoaded ? logs : logs.filter(l => {
     const actor = String(l.actor_name || l.actorName || l.actorUsername || l.username || l.user_id || '').toLowerCase();
     const uId = String(l.user_id ?? '').trim();
@@ -543,7 +543,7 @@ function renderAuditLogs(logs) {
     tbody.innerHTML = `
       <tr>
         <td colspan="7" class="py-8 text-center text-xs text-[#64748B]">
-          KhÃ´ng cÃ³ báº£n ghi kiá»ƒm toÃ¡n (Audit Log) nÃ o khá»›p vá»›i bá»™ lá»c hiá»‡n táº¡i.
+          Không có bản ghi kiểm toán (Audit Log) nào khớp với bộ lọc hiện tại.
         </td>
       </tr>
     `;
@@ -611,23 +611,23 @@ function renderAuditLogs(logs) {
 
   tbody.innerHTML = logs.slice(0, 100).map(l => {
     const timeStr = l.time || l.created_at || '';
-    const actorName = l.actor_name || l.actorName || l.full_name || l.actorUsername || l.username || 'Há»‡ thá»‘ng';
+    const actorName = l.actor_name || l.actorName || l.full_name || l.actorUsername || l.username || 'Hệ thống';
     const role = String(l.actor_role || l.actorRole || l.role || 'staff').toLowerCase();
     const act = String(l.action || l.action_type || 'ACTION').toUpperCase();
-    const target = l.booking_id || l.target || l.target_code || l.entity_id || 'â€”';
-    const oldVal = l.oldValue ?? l.old_value ?? 'â€”';
-    const newVal = l.newValue ?? l.new_value ?? 'â€”';
+    const target = l.booking_id || l.target || l.target_code || l.entity_id || '—';
+    const oldVal = l.oldValue ?? l.old_value ?? '—';
+    const newVal = l.newValue ?? l.new_value ?? '—';
     const ip = l.ip || l.ip_address || '127.0.0.1';
 
-    let roleBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold">NhÃ¢n viÃªn</span>';
+    let roleBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold">Nhân viên</span>';
     if (role === 'admin') {
-      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">Chá»§ sÃ¢n</span>';
+      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">Chủ sân</span>';
     } else if (role === 'manager') {
-      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-purple-100 text-[#7C3AED] text-[10px] font-bold">Quáº£n lÃ½ sÃ¢n</span>';
+      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-purple-100 text-[#7C3AED] text-[10px] font-bold">Quản lý sân</span>';
     } else if (role === 'system') {
-      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold">Há»‡ thá»‘ng (Cron)</span>';
+      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold">Hệ thống (Cron)</span>';
     } else if (role === 'user') {
-      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold">KhÃ¡ch hÃ ng</span>';
+      roleBadge = '<span class="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold">Khách hàng</span>';
     }
 
     const actCls = badgeMap[act] || 'bg-slate-100 text-slate-700 border-slate-300';
