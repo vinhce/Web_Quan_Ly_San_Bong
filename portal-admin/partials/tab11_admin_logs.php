@@ -163,11 +163,11 @@
       <table class="w-full text-left text-xs min-w-[960px]">
         <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
           <tr>
-            <th class="py-3 px-4 w-52">Người thực hiện • Thời gian</th>
+            <th class="py-3 px-4 w-52">Người thực hiện</th>
             <th class="py-3 px-4 w-[260px] min-w-[220px]">Hành động</th>
             <th class="py-3 px-4 w-32">Đối tượng</th>
             <th class="py-3 px-4 min-w-[320px]">Nội dung thay đổi (Cũ → Mới)</th>
-            <th class="py-3 px-4 w-36 text-right whitespace-nowrap">Địa chỉ IP</th>
+            <th class="py-3 px-4 w-44 text-right whitespace-nowrap">Thời gian</th>
           </tr>
         </thead>
         <tbody id="admin-log-tbody" class="divide-y divide-[#E2E8F0] bg-white">
