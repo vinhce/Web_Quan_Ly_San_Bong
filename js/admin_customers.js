@@ -177,7 +177,7 @@ async function renderAdminCustomers() {
         <td class="py-3 px-4 text-right">${debtHtml}</td>
         <td class="py-3 px-4 text-right font-extrabold text-[#0F172A]">${Number(c.spend || 0).toLocaleString('vi-VN')}đ</td>
         <td class="py-3 px-4 text-right whitespace-nowrap">
-          <button type="button" onclick="openCustomerCrmModal('${safePhoneAttr}')" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">Hồ sÆ¡ / CRM</button>
+          <button type="button" onclick="openCustomerCrmModal('${safePhoneAttr}')" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">Hồ sơ / CRM</button>
         </td>
       </tr>
     `;
@@ -200,7 +200,9 @@ async function openCustomerCrmModal(phone) {
 
   if (phoneLbl) phoneLbl.textContent = phone || '---';
   if (formPhoneEl) formPhoneEl.value = phone || '';
-  if (statsEl) statsEl.innerHTML = '<div class="col-span-4 py-3 text-center text-[#64748B]">Đang tải hồ sÆ¡ CRM...</div>';
+  const cached = adminCustomersCache.find(c => c.phone === phone);
+  if (cached && cached.name && nameEl) nameEl.value = cached.name;
+  if (statsEl) statsEl.innerHTML = '<div class="col-span-4 py-3 text-center text-[#64748B]">Đang tải hồ sơ CRM...</div>';
   if (histTbody) histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">Đang tải lịch sử đặt sân...</td></tr>';
 
   modal.classList.remove('hidden');
@@ -208,14 +210,14 @@ async function openCustomerCrmModal(phone) {
 
   const r = await adminFetchJson(`../api/admin.php?action=customer_detail&phone=${encodeURIComponent(phone)}`);
   if (!r.ok || !r.data) {
-    if (statsEl) statsEl.innerHTML = `<div class="col-span-4 py-3 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải hồ sÆ¡ khách hàng.')}</div>`;
+    if (statsEl) statsEl.innerHTML = `<div class="col-span-4 py-3 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải hồ sơ khách hàng.')}</div>`;
     if (histTbody) histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">Không có dữ liệu lịch sử.</td></tr>';
     return;
   }
 
   const d = r.data;
   const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
-  if (nameEl) nameEl.value = d.customerName || d.customer_name || '';
+  if (nameEl) nameEl.value = d.customerName || d.customer_name || nameEl.value || '';
   if (tierEl) tierEl.value = d.customerTier || d.customer_tier || 'standard';
   if (blackEl) blackEl.checked = Boolean(d.isBlacklisted ?? d.is_blacklisted);
   if (noteEl) noteEl.value = d.adminNote || d.admin_note || '';
@@ -240,7 +242,7 @@ async function openCustomerCrmModal(phone) {
       <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
         <div class="text-[11px] text-[#64748B]">Tổng chi tiêu</div>
         <div class="font-heading font-extrabold text-lg text-[#16A34A] mt-0.5">${escapeSearchHTML(fmt(d.totalSpent || 0))}</div>
-        <div class="text-[10px] text-[#64748B]">Tích lÅ©y hợp lệ</div>
+        <div class="text-[10px] text-[#64748B]">Tích lũy hợp lệ</div>
       </div>
     `;
   }
@@ -311,11 +313,11 @@ async function saveCustomerCrm(e) {
       })
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể cập nhật hồ sÆ¡ CRM!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể cập nhật hồ sơ CRM!', 'error', 4000);
       return;
     }
     closeCustomerCrmModal();
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || `✓ Đã lưu hồ sÆ¡ CRM cho ${customerName}!`, 'success', 3500);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || `✓ Đã lưu hồ sơ CRM cho ${customerName}!`, 'success', 3500);
     await renderAdminCustomers();
     const walkinPhone = document.getElementById('admin-cust-phone')?.value || '';
     if (walkinPhone && walkinPhone.replace(/[^\d]/g, '') === phone.replace(/[^\d]/g, '')) {

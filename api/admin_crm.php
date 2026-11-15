@@ -156,7 +156,7 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
             LEFT JOIN pitches p ON b.pitch_id = p.id
             WHERE REPLACE(REPLACE(REPLACE(b.phone, ' ', ''), '.', ''), '-', '') = ?
                OR b.phone LIKE ?
-            ORDER BY b.booking_date DESC, b.created_at DESC
+            ORDER BY b.id DESC, b.booking_date DESC
         ");
         $bStmt->execute([$cleanPhone, $phonePattern]);
         $bookings = $bStmt->fetchAll();

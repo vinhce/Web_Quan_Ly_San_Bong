@@ -131,7 +131,15 @@ async function loadShiftHandovers() {
     const id = sh.id || sh.shift_code || `CA-${sh.shift_id || ''}`;
     const staffName = sh.staff_name || sh.staffName || sh.staff_username || 'Nhân viên trực';
     const startT = sh.start_time || sh.startTime || '';
-    const endT = sh.end_time || sh.endTime || 'Đang mở';
+    const stRaw = String(sh.status || 'closed').toLowerCase();
+    let endT = 'Chờ đối soát';
+    if (stRaw === 'open' || stRaw === 'đang mở' || stRaw === 'đang trực') {
+      endT = 'Đang trực';
+    } else if (stRaw === 'confirmed' || stRaw === 'đã xác nhận' || stRaw === 'đã đối soát') {
+      endT = sh.end_time || sh.endTime || sh.closed_at || sh.confirmed_at || 'Đã đối soát';
+    } else {
+      endT = sh.end_time || sh.endTime || sh.closed_at || 'Chờ đối soát';
+    }
     const initialCash = Number(sh.initial_cash ?? sh.initialCash ?? 0);
     const cashDeclared = Number(sh.cash_total ?? sh.cashDeclared ?? 0);
     const transferTotal = Number(sh.transfer_total ?? sh.transferTotal ?? 0);
@@ -155,19 +163,18 @@ async function loadShiftHandovers() {
       }
     }
 
-    const stRaw = String(sh.status || 'closed').toLowerCase();
     let statusBadge = '';
-    if (stRaw === 'open' || stRaw === 'đang mở') {
-      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">Đang mở</span>';
-    } else if (stRaw === 'confirmed' || stRaw === 'đã xác nhận') {
-      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">✓ Đã đối soát</span>';
+    if (stRaw === 'open' || stRaw === 'đang mở' || stRaw === 'đang trực') {
+      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px]">● Đang trực</span>';
+    } else if (stRaw === 'confirmed' || stRaw === 'đã xác nhận' || stRaw === 'đã đối soát') {
+      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold text-[10px]">✓ Đã đối soát</span>';
     } else {
-      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Đã chốt (chờ đối soát)</span>';
+      statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 font-bold text-[10px]">⏳ Chờ đối soát</span>';
     }
 
     let actionHtml = '';
-    if (stRaw === 'open') {
-      actionHtml = '<span class="text-[11px] text-slate-400 italic">Ca đang mở</span>';
+    if (stRaw === 'open' || stRaw === 'đang mở' || stRaw === 'đang trực') {
+      actionHtml = '<span class="text-[11px] text-slate-400 italic">Ca đang trực</span>';
     } else if (stRaw === 'confirmed') {
       actionHtml = '<span class="text-[11px] text-emerald-600 font-bold">✓ Đã khóa sổ</span>';
     } else {

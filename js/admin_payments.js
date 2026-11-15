@@ -12,7 +12,7 @@ async function renderAdminPayments() {
       pendingList = r.data.map(item => ({
         code: item.code,
         time: item.created_at_fmt || item.created_at || item.time || '',
-        name: item.customer_name || item.customerName || '',
+        name: item.name || item.customer_name || item.customerName || 'Khách vãng lai',
         amt: Number(item.deposit_amount || item.amt || 0),
         bank: item.gateway || item.bank || 'VietQR',
         bankTxStatus: item.bank_tx_status || 'Chưa thấy tiền',
@@ -27,6 +27,7 @@ async function renderAdminPayments() {
   if (pendingList.length === 0 && db && typeof db.getPendingPayments === 'function') {
     pendingList = db.getPendingPayments().map(p => ({
       ...p,
+      name: p.name || p.customer_name || p.customerName || 'Khách vãng lai',
       bankTxStatus: p.bankTxStatus || 'Chưa thấy tiền'
     }));
   }
@@ -90,7 +91,7 @@ async function renderAdminPayments() {
     <tr id="pay-row-${idx}" class="hover:bg-slate-50 transition-colors">
       <td class="py-3 px-4 text-[#64748B] whitespace-nowrap">${escapeSearchHTML(item.time || '')}</td>
       <td class="py-3 px-4 font-mono font-bold text-[#0F172A]">${safeCodeAttr}</td>
-      <td class="py-3 px-4 font-semibold">${escapeSearchHTML(item.name || '')}</td>
+      <td class="py-3 px-4 font-semibold">${escapeSearchHTML(item.name || item.customer_name || 'Khách vãng lai')}</td>
       <td class="py-3 px-4 font-extrabold text-[#16A34A]">${window.SanBongApp.formatVND(item.amt)}</td>
       <td class="py-3 px-4 whitespace-nowrap">${txBadgeHtml}</td>
       <td class="py-3 px-4">${escapeSearchHTML(item.bank || '')} (VietQR)</td>

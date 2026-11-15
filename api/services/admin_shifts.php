@@ -355,7 +355,7 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                 $expectedTotal = (int)$shift['cash_total'] + (int)($shift['initial_cash'] ?? 0);
                 $discrepancy = $actualCash - $expectedTotal;
 
-                $updStmt = $pdo->prepare("UPDATE shifts SET actual_cash_received = ?, discrepancy_amount = ?, actual_cash = ?, cash_discrepancy = ?, admin_note = ?, status = 'confirmed', confirmed_by = ?, confirmed_at = NOW() WHERE id = ? AND status = 'closed'");
+                $updStmt = $pdo->prepare("UPDATE shifts SET actual_cash_received = ?, discrepancy_amount = ?, actual_cash = ?, cash_discrepancy = ?, admin_note = ?, status = 'confirmed', confirmed_by = ?, confirmed_at = NOW(), end_time = COALESCE(end_time, NOW()) WHERE id = ? AND status = 'closed'");
                 $updStmt->execute([$actualCash, $discrepancy, $actualCash, $discrepancy, $adminNote, (int)$mgr['id'], $shiftId]);
 
                 write_audit_log(
