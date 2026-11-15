@@ -301,8 +301,14 @@ ON DUPLICATE KEY UPDATE `name`=`name`;
 INSERT IGNORE INTO `pitches` (`id`, `name`, `type`, `type_name`, `size`, `grass`, `base_price`, `peak_price`, `weekend_price`, `status`, `amenities_json`, `variant`, `description`)
 VALUES
 ('P5-G', 'Sân 5 - Sân G (Mẫu)', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo tiêu chuẩn, đệm hạt cao su', 260000, 360000, 390000, 'Hoạt động', '["Đèn LED", "Bãi xe máy", "Phòng thay đồ"]', 'standard', 'Sân 5 mẫu bổ sung để kiểm thử danh sách và đặt sân.'),
+('P5-H', 'Sân 5 - Sân H', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo Monofilament 50mm, thoát nước nhanh sau mưa', 250000, 350000, 380000, 'Hoạt động', '["Đèn LED 400W chống chói", "Bãi đỗ ô tô & xe máy", "Nước suối miễn phí", "Phòng thay đồ", "Wifi"]', 'standard', 'Sân 5 chất lượng cao, vị trí thoáng mát.'),
+('P5-I', 'Sân 5 - Sân I', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo kim cương FIFA Quality Pro, đệm cao su EPDM', 250000, 350000, 380000, 'Hoạt động', '["Đèn LED 400W chống chói", "Bãi đỗ xe", "Phòng thay đồ", "Wifi"]', 'bright', 'Sân 5 mới bổ sung mặt cỏ êm ái.'),
 ('P7-H', 'Sân 7 - Sân H (Mẫu)', 7, 'Sân 7 người', '30m x 50m', 'Cỏ nhân tạo sợi ngắn, thoát nước nhanh', 430000, 630000, 720000, 'Hoạt động', '["Đèn LED", "Bãi đỗ xe", "Nước uống"]', 'bright', 'Sân 7 mẫu bổ sung, phù hợp các trận giao hữu buổi tối.'),
-('P11-D', 'Sân 11 - Sân D (Mẫu)', 11, 'Sân 11 người', '68m x 105m', 'Cỏ nhân tạo tiêu chuẩn thi đấu', 920000, 1420000, 1550000, 'Hoạt động', '["Đèn thi đấu", "Khán đài", "Phòng thay đồ"]', 'hero', 'Sân 11 mẫu bổ sung để kiểm thử cấu hình và hiển thị.');
+('P7-I', 'Sân 7 - Sân I', 7, 'Sân 7 người', '30m x 50m', 'Cỏ sợi đan mật độ cao chuẩn thi đấu phong trào', 450000, 650000, 700000, 'Hoạt động', '["Hệ thống chiếu sáng 8 trụ LED", "Bãi xe ô tô", "Phòng tắm nóng lạnh", "Wifi"]', 'deep', 'Sân 7 khu khán đài C, đèn sáng rõ.'),
+('P7-K', 'Sân 7 - Sân K', 7, 'Sân 7 người', '30m x 50m', 'Cỏ nhân tạo 5cm tiêu chuẩn quốc tế, đàn hồi êm', 450000, 650000, 700000, 'Hoạt động', '["Đèn LED công suất lớn", "Bãi đỗ xe", "Nước suối miễn phí", "Wifi"]', 'twin', 'Sân 7 tiêu chuẩn mới cho các trận giao hữu.'),
+('P11-D', 'Sân 11 - Sân D (Mẫu)', 11, 'Sân 11 người', '68m x 105m', 'Cỏ nhân tạo tiêu chuẩn thi đấu', 920000, 1420000, 1550000, 'Hoạt động', '["Đèn thi đấu", "Khán đài", "Phòng thay đồ"]', 'hero', 'Sân 11 mẫu bổ sung để kiểm thử cấu hình và hiển thị.'),
+('P11-E', 'Sân 11 - Sân E (Tiêu Chuẩn FIFA)', 11, 'Sân 11 người', '68m x 105m', 'Kích thước chuẩn FIFA 68m x 105m, cỏ tiêu chuẩn thi đấu quốc tế', 900000, 1200000, 1400000, 'Hoạt động', '["Dàn đèn 12 cột chuẩn thi đấu", "Khán đài có mái che", "Phòng họp chiến thuật", "Bãi xe lớn"]', 'hero', 'Sân 11 tiêu chuẩn quốc tế tổ chức các giải đấu chuyên nghiệp.'),
+('P11-F', 'Sân 11 - Sân F (Khu Nam)', 11, 'Sân 11 người', '68m x 105m', 'Mặt cỏ FIFA Quality Pro thoát nước ngầm hiện đại', 900000, 1200000, 1400000, 'Hoạt động', '["Dàn đèn LED 1200W", "Phòng thay đồ máy lạnh", "Khán đài", "Camera Livestream"]', 'hero', 'Sân 11 khu Nam không gian rộng rãi cho các giải đấu cúp.');
 
 -- 3. Dữ liệu Khung giờ
 INSERT INTO `time_slots` (`id`, `slot_time`, `start_time`, `end_time`, `is_peak`, `duration`)
@@ -582,7 +588,6 @@ INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
 ('tg_event_waitlist', '1'),
 ('tg_event_matchmaking', '1'),
 ('tg_event_review', '1'),
-('security_totp_required_roles', 'admin,manager'),
 ('loyalty_points_per_10k', '1'),
 ('loyalty_bottle_cost_points', '50'),
 ('privacy_policy_version', '1.0');
