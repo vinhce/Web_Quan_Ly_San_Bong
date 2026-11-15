@@ -561,6 +561,17 @@ try {
         ]);
     }
 
+    if ($action === 'pending_deposits') {
+        require_once __DIR__ . '/admin_finance.php';
+        handle_admin_pending_deposits($pdo, $actor);
+        exit;
+    }
+
+    if ($action === 'shifts') {
+        require_once __DIR__ . '/admin_ops.php';
+        handle_admin_shifts($pdo, $method, $data, $actor);
+        exit;
+    }
 
     require __DIR__ . '/admin_ops.php';
     require __DIR__ . '/admin_finance.php';

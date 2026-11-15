@@ -12,103 +12,108 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
         exit;
     }
 
-    if ($action === 'pending_deposits') {
-        $staff = !empty($actor) ? $actor : require_staff_or_admin($pdo);
-        if (!in_array($staff['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
-            json_error('Bạn không có quyền hạn thực hiện thao tác này.', 403, 'ERR_FORBIDDEN');
-        }
-
-        $bStmt = $pdo->query("
-            SELECT b.id, b.code, b.customer_name, b.phone, b.pitch_id, b.booking_date, b.slot_time,
-                   b.deposit_amount, b.total_price, b.paid_amount, b.payment_status, b.payment_method,
-                   b.status, b.created_at, p.name AS pitch_name
-            FROM bookings b
-            LEFT JOIN pitches p ON b.pitch_id = p.id
-            WHERE b.payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%')
-              AND b.status NOT IN ('Đã hủy')
-            ORDER BY b.id DESC
-            LIMIT 100
-        ");
-        $bookings = $bStmt ? $bStmt->fetchAll() : [];
-
-        $pendingList = [];
-        $txCheckStmt = null;
-        try {
-            $txCheckStmt = $pdo->prepare("
-                SELECT transfer_amount, match_status
-                FROM bank_transactions
-                WHERE matched_booking_code = ? OR detected_booking_code = ? OR transaction_content LIKE ?
-                ORDER BY id DESC LIMIT 1
-            ");
-        } catch (Throwable $e) {}
-
-        foreach ($bookings as $b) {
-            $bCode = (string)($b['code'] ?? '');
-            $amt = (int)($b['deposit_amount'] ?? 0);
-            $paidAmt = (int)($b['paid_amount'] ?? 0);
-            $txAmt = 0;
-            $txStatus = 'missing';
-            $txLabel = 'Chưa thấy tiền';
-
-            if ($txCheckStmt && $bCode !== '') {
-                try {
-                    $txCheckStmt->execute([$bCode, $bCode, '%' . $bCode . '%']);
-                    $tx = $txCheckStmt->fetch();
-                    if ($tx) {
-                        $txAmt = (int)($tx['transfer_amount'] ?? 0);
-                        $mStatus = (string)($tx['match_status'] ?? '');
-                        if ($mStatus === 'matched' || $mStatus === 'overpaid' || ($txAmt >= $amt && $amt > 0)) {
-                            $txStatus = 'matched';
-                            $txLabel = ($txAmt > $amt && $amt > 0) ? 'Nhận thừa' : 'Đã nhận đủ';
-                        } elseif ($mStatus === 'underpaid' || ($txAmt > 0 && $txAmt < $amt)) {
-                            $txStatus = 'partial';
-                            $txLabel = 'Nhận thiếu';
-                        } elseif ($mStatus === 'unmatched') {
-                            $txStatus = 'unmatched';
-                            $txLabel = 'Chưa thấy tiền';
-                        } else {
-                            $txStatus = 'matched';
-                            $txLabel = 'Đã nhận đủ';
-                        }
-                    }
-                } catch (Throwable $te) {}
-            }
-
-            if ($txStatus === 'missing' && $paidAmt > 0) {
-                $txStatus = ($paidAmt >= $amt && $amt > 0) ? 'matched' : 'partial';
-                $txLabel = ($paidAmt >= $amt && $amt > 0) ? 'Đã nhận đủ' : 'Nhận thiếu';
-                $txAmt = $paidAmt;
-            }
-
-            $timeFmt = !empty($b['created_at']) ? date('H:i d/m/Y', strtotime($b['created_at'])) : '';
-
-            $pendingList[] = [
-                'id'              => (int)$b['id'],
-                'code'            => $bCode,
-                'time'            => $timeFmt,
-                'name'            => $b['customer_name'] ?? '',
-                'phone'           => $b['phone'] ?? '',
-                'pitch_name'      => $b['pitch_name'] ?? $b['pitch_id'],
-                'date'            => $b['booking_date'] ?? '',
-                'slot_time'       => $b['slot_time'] ?? '',
-                'amt'             => $amt,
-                'deposit_amount'  => $amt,
-                'total_price'     => (int)($b['total_price'] ?? 0),
-                'bank'            => 'VietQR MBBank',
-                'payment_method'  => $b['payment_method'] ?? 'VietQR Chuyển khoản',
-                'created_at'      => $b['created_at'] ?? '',
-                'created_at_fmt'  => $timeFmt,
-                'bankTxStatus'    => $txStatus,
-                'bank_tx_status'  => $txLabel,
-                'txAmt'           => $txAmt,
-                'transfer_amount' => $txAmt,
-                'paidAmt'         => $paidAmt,
-                'paid_amount'     => $paidAmt
-            ];
-        }
-
-        json_response(['success' => true, 'data' => $pendingList]);
+function handle_admin_pending_deposits(PDO $pdo, ?array $actor = null): void {
+    $staff = !empty($actor) ? $actor : require_staff_or_admin($pdo);
+    if (!in_array($staff['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
+        json_error('Bạn không có quyền hạn thực hiện thao tác này.', 403, 'ERR_FORBIDDEN');
     }
+
+    $bStmt = $pdo->query("
+        SELECT b.id, b.code, b.customer_name, b.phone, b.pitch_id, b.booking_date, b.slot_time,
+               b.deposit_amount, b.total_price, b.paid_amount, b.payment_status, b.payment_method,
+               b.status, b.created_at, p.name AS pitch_name
+        FROM bookings b
+        LEFT JOIN pitches p ON b.pitch_id = p.id
+        WHERE b.payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%')
+          AND b.status NOT IN ('Đã hủy')
+        ORDER BY b.id DESC
+        LIMIT 100
+    ");
+    $bookings = $bStmt ? $bStmt->fetchAll() : [];
+
+    $pendingList = [];
+    $txCheckStmt = null;
+    try {
+        $txCheckStmt = $pdo->prepare("
+            SELECT transfer_amount, match_status
+            FROM bank_transactions
+            WHERE matched_booking_code = ? OR detected_booking_code = ? OR transaction_content LIKE ?
+            ORDER BY id DESC LIMIT 1
+        ");
+    } catch (Throwable $e) {}
+
+    foreach ($bookings as $b) {
+        $bCode = (string)($b['code'] ?? '');
+        $amt = (int)($b['deposit_amount'] ?? 0);
+        $paidAmt = (int)($b['paid_amount'] ?? 0);
+        $txAmt = 0;
+        $txStatus = 'missing';
+        $txLabel = 'Chưa thấy tiền';
+
+        if ($txCheckStmt && $bCode !== '') {
+            try {
+                $txCheckStmt->execute([$bCode, $bCode, '%' . $bCode . '%']);
+                $tx = $txCheckStmt->fetch();
+                if ($tx) {
+                    $txAmt = (int)($tx['transfer_amount'] ?? 0);
+                    $mStatus = (string)($tx['match_status'] ?? '');
+                    if ($mStatus === 'matched' || $mStatus === 'overpaid' || ($txAmt >= $amt && $amt > 0)) {
+                        $txStatus = 'matched';
+                        $txLabel = ($txAmt > $amt && $amt > 0) ? 'Nhận thừa' : 'Đã nhận đủ';
+                    } elseif ($mStatus === 'underpaid' || ($txAmt > 0 && $txAmt < $amt)) {
+                        $txStatus = 'partial';
+                        $txLabel = 'Nhận thiếu';
+                    } elseif ($mStatus === 'unmatched') {
+                        $txStatus = 'unmatched';
+                        $txLabel = 'Chưa thấy tiền';
+                    } else {
+                        $txStatus = 'matched';
+                        $txLabel = 'Đã nhận đủ';
+                    }
+                }
+            } catch (Throwable $te) {}
+        }
+
+        if ($txStatus === 'missing' && $paidAmt > 0) {
+            $txStatus = ($paidAmt >= $amt && $amt > 0) ? 'matched' : 'partial';
+            $txLabel = ($paidAmt >= $amt && $amt > 0) ? 'Đã nhận đủ' : 'Nhận thiếu';
+            $txAmt = $paidAmt;
+        }
+
+        $timeFmt = !empty($b['created_at']) ? date('H:i d/m/Y', strtotime($b['created_at'])) : '';
+
+        $pendingList[] = [
+            'id'              => (int)$b['id'],
+            'code'            => $bCode,
+            'time'            => $timeFmt,
+            'name'            => $b['customer_name'] ?? '',
+            'phone'           => $b['phone'] ?? '',
+            'pitch_name'      => $b['pitch_name'] ?? $b['pitch_id'],
+            'date'            => $b['booking_date'] ?? '',
+            'slot_time'       => $b['slot_time'] ?? '',
+            'amt'             => $amt,
+            'deposit_amount'  => $amt,
+            'total_price'     => (int)($b['total_price'] ?? 0),
+            'bank'            => 'VietQR MBBank',
+            'payment_method'  => $b['payment_method'] ?? 'VietQR Chuyển khoản',
+            'created_at'      => $b['created_at'] ?? '',
+            'created_at_fmt'  => $timeFmt,
+            'bankTxStatus'    => $txStatus,
+            'bank_tx_status'  => $txLabel,
+            'txAmt'           => $txAmt,
+            'transfer_amount' => $txAmt,
+            'paidAmt'         => $paidAmt,
+            'paid_amount'     => $paidAmt
+        ];
+    }
+
+    json_response(['success' => true, 'data' => $pendingList]);
+}
+
+if ($action === 'pending_deposits') {
+    handle_admin_pending_deposits($pdo, $actor ?? null);
+    exit;
+}
 
     if ($action === 'bank_transactions') {
         $mgr = require_manager_or_admin($pdo);

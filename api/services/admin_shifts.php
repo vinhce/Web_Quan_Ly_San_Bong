@@ -15,8 +15,18 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
             
             $hasStaffCol = function_exists('db_table_has_column') ? db_table_has_column($pdo, 'bookings', 'staff_id') : true;
             $staffCondition = $hasStaffCol
-                ? "(staff_id = :staff_id OR user_id = :staff_id OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id AND action = 'WALKIN_BOOKING'))"
-                : "(user_id = :staff_id OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id AND action = 'WALKIN_BOOKING'))";
+                ? "(staff_id = :staff_id1 OR user_id = :staff_id2 OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id3 AND action = 'WALKIN_BOOKING'))"
+                : "(user_id = :staff_id1 OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id2 AND action = 'WALKIN_BOOKING'))";
+
+            $walkinParams = [
+                ':start_time' => $startTime,
+                ':end_bound'  => $endBound,
+                ':staff_id1'  => $staffId,
+                ':staff_id2'  => $staffId,
+            ];
+            if ($hasStaffCol) {
+                $walkinParams[':staff_id3'] = $staffId;
+            }
 
             $stmtWalkin = $pdo->prepare("SELECT COALESCE(SUM(deposit_amount), 0) AS total_walkin_cash
                 FROM bookings
@@ -24,7 +34,7 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                   AND status != 'Đã hủy'
                   AND (payment_method LIKE '%Tiền mặt%' OR note LIKE '%tại quầy%')
                   AND {$staffCondition}");
-            $stmtWalkin->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
+            $stmtWalkin->execute($walkinParams);
             $walkinCash = (int)$stmtWalkin->fetchColumn();
 
             // Tuyệt đối không dùng SQL REGEXP_REPLACE (MySQL < 8.0 crash 1305). Fetch giá trị về và preg_replace bằng PHP.

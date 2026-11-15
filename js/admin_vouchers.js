@@ -2,6 +2,12 @@
 // 4. QUẢN LÝ MÃƒ GIẢM GIÁ / VOUCHER KHUYẾN MÃƒI (TAB 5)
 // =========================================================
 // [hoisted to admin.js]
+let editingVoucherCode = '';
+let vouchersAdminCache = [];
+let goldenHourRulesCache = [];
+window.editingVoucherCode = editingVoucherCode;
+window.vouchersAdminCache = vouchersAdminCache;
+window.goldenHourRulesCache = goldenHourRulesCache;
 
 function normalizeVoucherRecord(v) {
   if (!v) return null;
@@ -135,6 +141,7 @@ function handleEditVoucher(code) {
 
 function cancelEditVoucher() {
   editingVoucherCode = '';
+  window.editingVoucherCode = '';
   const formEl = document.getElementById('admin-voucher-form');
   if (formEl && formEl.reset) formEl.reset();
 
@@ -312,6 +319,9 @@ window.handleEditVoucher = handleEditVoucher;
 window.cancelEditVoucher = cancelEditVoucher;
 window.handleToggleVoucher = handleToggleVoucher;
 window.handleDeleteVoucher = handleDeleteVoucher;
+window.saveVoucher = typeof handleSaveVoucher === 'function' ? handleSaveVoucher : undefined;
+window.deleteVoucher = typeof handleDeleteVoucher === 'function' ? handleDeleteVoucher : undefined;
+window.toggleVoucherStatus = typeof handleToggleVoucher === 'function' ? handleToggleVoucher : undefined;
 
 // =========================================================
 // 5.4 QUY TẮC GIÁ GIỜ VÀNG / THẤP ĐIỂM (TAB 5)
