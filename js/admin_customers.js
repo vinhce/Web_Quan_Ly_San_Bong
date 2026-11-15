@@ -49,7 +49,7 @@ async function renderAdminCustomers() {
   let customers = [];
   if (r.ok && Array.isArray(r.data)) {
     customers = r.data.map(c => ({
-      name: c.customerName || c.customer_name || 'KhÃ¡ch Ä‘áº·t sÃ¢n',
+      name: c.customerName || c.customer_name || 'Khách đặt sân',
       phone: c.phone || '',
       customerTier: c.customerTier || c.customer_tier || 'standard',
       adminNote: c.adminNote || c.admin_note || '',
@@ -66,7 +66,7 @@ async function renderAdminCustomers() {
       customers = customers.filter(c => c.noShowCount >= 2 || c.customerTier === 'warning_noshow');
     }
   } else if (!r.ok && r.status === 0) {
-    // Offline fallback tá»« dá»¯ liá»‡u tháº­t trong localStorage (khÃ´ng dÃ¹ng dá»¯ liá»‡u giáº£)
+    // Offline fallback từ dữ liệu thật trong localStorage (không dùng dữ liệu giả)
     const db = window.SanBongApp?.SanBongDB;
     const allBookings = db?.getAllBookings ? db.getAllBookings() : [];
     const customerMap = {};
@@ -76,7 +76,7 @@ async function renderAdminCustomers() {
       if (!cleanP) return;
       if (!customerMap[cleanP]) {
         customerMap[cleanP] = {
-          name: b.customerName || 'KhÃ¡ch Ä‘áº·t sÃ¢n',
+          name: b.customerName || 'Khách đặt sân',
           phone,
           customerTier: 'standard',
           adminNote: '',
@@ -92,11 +92,11 @@ async function renderAdminCustomers() {
       const st = String(b.status || '');
       const paySt = String(b.paymentStatus || b.payment_status || '');
       customerMap[cleanP].matches += 1;
-      if (st !== 'ÄÃ£ há»§y') customerMap[cleanP].spend += total;
+      if (st !== 'Đã hủy') customerMap[cleanP].spend += total;
       customerMap[cleanP].points = Math.floor(customerMap[cleanP].spend / 10000);
-      if (st === 'KhÃ¡ch chÆ°a Ä‘áº¿n' || st.includes('No-Show') || paySt === 'Tá»‹ch thu cá»c 30%') {
+      if (st === 'Khách chưa đến' || st.includes('No-Show') || paySt === 'Tịch thu cọc 30%') {
         customerMap[cleanP].noShowCount += 1;
-      } else if (st !== 'ÄÃ£ há»§y' && st !== 'HoÃ n thÃ nh') {
+      } else if (st !== 'Đã hủy' && st !== 'Hoàn thành') {
         const dep = Number(b.depositAmount || Math.round(total * 0.3));
         const rem = typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - dep);
         if (rem > 0) customerMap[cleanP].debtAmount += rem;
@@ -110,7 +110,7 @@ async function renderAdminCustomers() {
       customers = customers.filter(c => c.name.toLowerCase().includes(qLow) || c.phone.includes(searchQ));
     }
   } else {
-    tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch khÃ¡ch hÃ ng CRM.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải danh sách khách hàng CRM.')}</td></tr>`;
     return;
   }
 
@@ -121,8 +121,8 @@ async function renderAdminCustomers() {
     tbody.innerHTML = `
       <tr>
         <td colspan="9" class="py-10 text-center text-[#64748B]">
-          <div class="font-bold text-xs text-[#0F172A]">KhÃ´ng tÃ¬m tháº¥y khÃ¡ch hÃ ng nÃ o trong bá»™ lá»c nÃ y</div>
-          <div class="text-[11px] text-[#94A3B8]">Thá»­ chuyá»ƒn bá»™ lá»c hoáº·c tÃ¬m vá»›i sá»‘ Ä‘iá»‡n thoáº¡i khÃ¡c</div>
+          <div class="font-bold text-xs text-[#0F172A]">Không tìm thấy khách hàng nào trong bộ lọc này</div>
+          <div class="text-[11px] text-[#94A3B8]">Thử chuyển bộ lọc hoặc tìm với số điện thoại khác</div>
         </td>
       </tr>
     `;
@@ -131,9 +131,9 @@ async function renderAdminCustomers() {
 
   const crmBadgeMap = {
     vip: '<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">VIP</span>',
-    regular: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">KhÃ¡ch quen</span>',
-    warning_noshow: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-300">Cáº£nh bÃ¡o bÃ¹ng</span>',
-    standard: '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">TiÃªu chuáº©n</span>'
+    regular: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">Khách quen</span>',
+    warning_noshow: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-300">Cảnh báo bùng</span>',
+    standard: '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">Tiêu chuẩn</span>'
   };
 
   tbody.innerHTML = customers.map(c => {
@@ -145,14 +145,14 @@ async function renderAdminCustomers() {
       : '';
 
     const nsBadge = ns >= 2
-      ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700 border border-red-200">${ns} láº§n bÃ¹ng</span>`
+      ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700 border border-red-200">${ns} lần bùng</span>`
       : (ns === 1
-        ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">1 láº§n váº¯ng máº·t</span>`
-        : `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">0 láº§n (Uy tÃ­n)</span>`);
+        ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">1 lần vắng mặt</span>`
+        : `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">0 lần (Uy tín)</span>`);
 
     const debtHtml = debt > 0
-      ? `<span class="font-extrabold text-[#DC2626]">${debt.toLocaleString('vi-VN')}Ä‘</span>`
-      : `<span class="text-slate-400 font-medium">0Ä‘</span>`;
+      ? `<span class="font-extrabold text-[#DC2626]">${debt.toLocaleString('vi-VN')}đ</span>`
+      : `<span class="text-slate-400 font-medium">0đ</span>`;
 
     const safePhoneAttr = escapeJsAttr(c.phone);
 
@@ -160,17 +160,17 @@ async function renderAdminCustomers() {
       <tr class="hover:bg-slate-50 transition-colors ${c.isBlacklisted ? 'bg-red-50/40' : ''}">
         <td class="py-3 px-4">
           <div class="font-bold text-[#0F172A]">${escapeSearchHTML(c.name)}</div>
-          ${c.adminNote ? `<div class="text-[10px] text-[#64748B] truncate max-w-[200px]" title="${escapeSearchHTML(c.adminNote)}">Ghi chÃº: ${escapeSearchHTML(c.adminNote)}</div>` : ''}
+          ${c.adminNote ? `<div class="text-[10px] text-[#64748B] truncate max-w-[200px]" title="${escapeSearchHTML(c.adminNote)}">Ghi chú: ${escapeSearchHTML(c.adminNote)}</div>` : ''}
         </td>
         <td class="py-3 px-4 font-mono font-medium text-[#475569]">${escapeSearchHTML(c.phone)}</td>
         <td class="py-3 px-4 whitespace-nowrap">${tierBadge}${blacklistBadge}</td>
-        <td class="py-3 px-4 font-medium text-[#334155]">${Number(c.matches) || 0} tráº­n</td>
-        <td class="py-3 px-4 font-bold text-[#16A34A]">${Number(c.points || 0).toLocaleString('vi-VN')} Ä‘</td>
+        <td class="py-3 px-4 font-medium text-[#334155]">${Number(c.matches) || 0} trận</td>
+        <td class="py-3 px-4 font-bold text-[#16A34A]">${Number(c.points || 0).toLocaleString('vi-VN')} đ</td>
         <td class="py-3 px-4 text-center">${nsBadge}</td>
         <td class="py-3 px-4 text-right">${debtHtml}</td>
-        <td class="py-3 px-4 text-right font-extrabold text-[#0F172A]">${Number(c.spend || 0).toLocaleString('vi-VN')}Ä‘</td>
+        <td class="py-3 px-4 text-right font-extrabold text-[#0F172A]">${Number(c.spend || 0).toLocaleString('vi-VN')}đ</td>
         <td class="py-3 px-4 text-right whitespace-nowrap">
-          <button type="button" onclick="openCustomerCrmModal('${safePhoneAttr}')" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">Há»“ sÆ¡ / CRM</button>
+          <button type="button" onclick="openCustomerCrmModal('${safePhoneAttr}')" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">Hồ sÆ¡ / CRM</button>
         </td>
       </tr>
     `;
@@ -193,21 +193,21 @@ async function openCustomerCrmModal(phone) {
 
   if (phoneLbl) phoneLbl.textContent = phone || '---';
   if (formPhoneEl) formPhoneEl.value = phone || '';
-  if (statsEl) statsEl.innerHTML = '<div class="col-span-4 py-3 text-center text-[#64748B]">Äang táº£i há»“ sÆ¡ CRM...</div>';
-  if (histTbody) histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">Äang táº£i lá»‹ch sá»­ Ä‘áº·t sÃ¢n...</td></tr>';
+  if (statsEl) statsEl.innerHTML = '<div class="col-span-4 py-3 text-center text-[#64748B]">Đang tải hồ sÆ¡ CRM...</div>';
+  if (histTbody) histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">Đang tải lịch sử đặt sân...</td></tr>';
 
   modal.classList.remove('hidden');
   modal.classList.add('flex');
 
   const r = await adminFetchJson(`../api/admin.php?action=customer_detail&phone=${encodeURIComponent(phone)}`);
   if (!r.ok || !r.data) {
-    if (statsEl) statsEl.innerHTML = `<div class="col-span-4 py-3 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'KhÃ´ng thá»ƒ táº£i há»“ sÆ¡ khÃ¡ch hÃ ng.')}</div>`;
-    if (histTbody) histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">KhÃ´ng cÃ³ dá»¯ liá»‡u lá»‹ch sá»­.</td></tr>';
+    if (statsEl) statsEl.innerHTML = `<div class="col-span-4 py-3 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải hồ sÆ¡ khách hàng.')}</div>`;
+    if (histTbody) histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">Không có dữ liệu lịch sử.</td></tr>';
     return;
   }
 
   const d = r.data;
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
   if (nameEl) nameEl.value = d.customerName || d.customer_name || '';
   if (tierEl) tierEl.value = d.customerTier || d.customer_tier || 'standard';
   if (blackEl) blackEl.checked = Boolean(d.isBlacklisted ?? d.is_blacklisted);
@@ -216,24 +216,24 @@ async function openCustomerCrmModal(phone) {
   if (statsEl) {
     statsEl.innerHTML = `
       <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
-        <div class="text-[11px] text-[#64748B]">Tá»•ng sá»‘ tráº­n</div>
+        <div class="text-[11px] text-[#64748B]">Tổng số trận</div>
         <div class="font-heading font-extrabold text-lg text-[#0F172A] mt-0.5">${Number(d.totalBookings || 0)}</div>
-        <div class="text-[10px] text-[#16A34A]">${Number(d.completedCount || 0)} hoÃ n thÃ nh</div>
+        <div class="text-[10px] text-[#16A34A]">${Number(d.completedCount || 0)} hoàn thành</div>
       </div>
       <div class="p-3 rounded-xl bg-amber-50 border border-amber-200">
-        <div class="text-[11px] text-[#64748B]">Váº¯ng máº·t / Há»§y</div>
+        <div class="text-[11px] text-[#64748B]">Vắng mặt / Hủy</div>
         <div class="font-heading font-extrabold text-lg text-amber-700 mt-0.5">${Number(d.noShowCount || 0)} / ${Number(d.cancelledCount || 0)}</div>
-        <div class="text-[10px] text-[#64748B]">No-Show / ÄÃ£ há»§y</div>
+        <div class="text-[10px] text-[#64748B]">No-Show / Đã hủy</div>
       </div>
       <div class="p-3 rounded-xl bg-rose-50 border border-rose-200">
-        <div class="text-[11px] text-[#64748B]">CÃ´ng ná»£ hiá»‡n táº¡i</div>
+        <div class="text-[11px] text-[#64748B]">Công nợ hiện tại</div>
         <div class="font-heading font-extrabold text-lg text-rose-600 mt-0.5">${escapeSearchHTML(fmt(d.debtAmount || 0))}</div>
-        <div class="text-[10px] text-[#64748B]">Cáº§n thu táº¡i sÃ¢n</div>
+        <div class="text-[10px] text-[#64748B]">Cần thu tại sân</div>
       </div>
       <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-        <div class="text-[11px] text-[#64748B]">Tá»•ng chi tiÃªu</div>
+        <div class="text-[11px] text-[#64748B]">Tổng chi tiêu</div>
         <div class="font-heading font-extrabold text-lg text-[#16A34A] mt-0.5">${escapeSearchHTML(fmt(d.totalSpent || 0))}</div>
-        <div class="text-[10px] text-[#64748B]">TÃ­ch lÅ©y há»£p lá»‡</div>
+        <div class="text-[10px] text-[#64748B]">Tích lÅ©y hợp lệ</div>
       </div>
     `;
   }
@@ -241,7 +241,7 @@ async function openCustomerCrmModal(phone) {
   const bookings = Array.isArray(d.bookings) ? d.bookings : [];
   if (histTbody) {
     if (bookings.length === 0) {
-      histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">KhÃ¡ch chÆ°a cÃ³ lá»‹ch sá»­ Ä‘áº·t sÃ¢n.</td></tr>';
+      histTbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-[#94A3B8]">Khách chưa có lịch sử đặt sân.</td></tr>';
     } else {
       histTbody.innerHTML = bookings.map(b => (
         `<tr class="hover:bg-slate-50">
@@ -281,7 +281,7 @@ async function saveCustomerCrm(e) {
   const adminNote = (document.getElementById('crm-form-note')?.value || '').trim();
 
   if (!phone || !customerName) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ SÄT vÃ  TÃªn khÃ¡ch hÃ ng!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập đầy đủ SĐT và Tên khách hàng!', 'warning');
     return;
   }
 
@@ -290,7 +290,7 @@ async function saveCustomerCrm(e) {
   const orig = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = 'â³ Äang lÆ°u...';
+    submitBtn.innerHTML = '⏳ Đang lưu...';
   }
   try {
     const r = await adminFetchJson('../api/admin.php?action=update_customer_crm', {
@@ -304,11 +304,11 @@ async function saveCustomerCrm(e) {
       })
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ cáº­p nháº­t há»“ sÆ¡ CRM!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể cập nhật hồ sÆ¡ CRM!', 'error', 4000);
       return;
     }
     closeCustomerCrmModal();
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || `âœ“ ÄÃ£ lÆ°u há»“ sÆ¡ CRM cho ${customerName}!`, 'success', 3500);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || `✓ Đã lưu hồ sÆ¡ CRM cho ${customerName}!`, 'success', 3500);
     await renderAdminCustomers();
     const walkinPhone = document.getElementById('admin-cust-phone')?.value || '';
     if (walkinPhone && walkinPhone.replace(/[^\d]/g, '') === phone.replace(/[^\d]/g, '')) {

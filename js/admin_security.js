@@ -15,12 +15,12 @@ async function load2FaStatus() {
       const data = await res.json();
       current2FaEnabled = Boolean(data?.user?.totp_enabled);
       if (current2FaEnabled) {
-        pill.textContent = 'â— ÄÃ£ kÃ­ch hoáº¡t 2FA';
+        pill.textContent = 'â— Đã kích hoạt 2FA';
         pill.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800';
         if (setupSec) setupSec.classList.add('hidden');
         if (activeSec) activeSec.classList.remove('hidden');
       } else {
-        pill.textContent = 'â—‹ ChÆ°a kÃ­ch hoáº¡t';
+        pill.textContent = 'â—‹ Chưa kích hoạt';
         pill.className = 'px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800';
         if (setupSec) setupSec.classList.remove('hidden');
         if (activeSec) activeSec.classList.add('hidden');
@@ -29,7 +29,7 @@ async function load2FaStatus() {
       if (disableBox) disableBox.classList.add('hidden');
     }
   } catch (e) {
-    pill.textContent = 'Lá»—i kiá»ƒm tra 2FA';
+    pill.textContent = 'Lỗi kiểm tra 2FA';
   }
 }
 window.load2FaStatus = load2FaStatus;
@@ -42,7 +42,7 @@ async function init2FaSetup() {
 
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'â³ Äang táº¡o khÃ³a...';
+    btn.textContent = '⏳ Đang tạo khóa...';
   }
 
   try {
@@ -66,21 +66,21 @@ async function init2FaSetup() {
         otpInput.focus();
       }
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast('ÄÃ£ táº¡o mÃ£ QR 2FA! QuÃ©t mÃ£ báº±ng Authenticator vÃ  nháº­p OTP Ä‘á»ƒ kÃ­ch hoáº¡t.', 'info', 4000);
+        window.SanBongApp.showToast('Đã tạo mã QR 2FA! Quét mã bằng Authenticator và nhập OTP để kích hoạt.', 'info', 4000);
       }
     } else {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ thiáº¿t láº­p 2FA.', 'error');
+        window.SanBongApp.showToast(r.message || 'Không thể thiết lập 2FA.', 'error');
       }
     }
   } catch (err) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Lá»—i káº¿t ná»‘i khi thiáº¿t láº­p 2FA.', 'error');
+      window.SanBongApp.showToast('Lỗi kết nối khi thiết lập 2FA.', 'error');
     }
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'ðŸ“± Thiáº¿t láº­p 2FA ngay';
+      btn.textContent = '📱 Thiết lập 2FA ngay';
     }
   }
 }
@@ -91,7 +91,7 @@ async function confirm2FaSetup() {
   const code = otpInput ? otpInput.value.trim() : '';
   if (!code || code.length !== 6) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Vui lÃ²ng nháº­p Ä‘á»§ 6 chá»¯ sá»‘ OTP tá»« á»©ng dá»¥ng!', 'warning');
+      window.SanBongApp.showToast('Vui lòng nhập đủ 6 chữ số OTP từ ứng dụng!', 'warning');
     }
     if (otpInput) otpInput.focus();
     return;
@@ -100,7 +100,7 @@ async function confirm2FaSetup() {
   const btn = document.getElementById('btn-confirm-2fa');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Äang xÃ¡c thá»±c...';
+    btn.textContent = 'Đang xác thực...';
   }
 
   try {
@@ -110,22 +110,22 @@ async function confirm2FaSetup() {
     });
     if (r.ok && r.json && r.json.success) {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast('âœ“ KÃ­ch hoáº¡t XÃ¡c thá»±c 2 lá»›p (2FA) thÃ nh cÃ´ng!', 'success', 3500);
+        window.SanBongApp.showToast('✓ Kích hoạt Xác thực 2 lớp (2FA) thành công!', 'success', 3500);
       }
       await load2FaStatus();
     } else {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(r.message || 'MÃ£ OTP khÃ´ng chÃ­nh xÃ¡c!', 'error');
+        window.SanBongApp.showToast(r.message || 'Mã OTP không chính xác!', 'error');
       }
     }
   } catch (e) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Lá»—i káº¿t ná»‘i xÃ¡c thá»±c 2FA.', 'error');
+      window.SanBongApp.showToast('Lỗi kết nối xác thực 2FA.', 'error');
     }
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'KÃ­ch hoáº¡t 2FA';
+      btn.textContent = 'Kích hoạt 2FA';
     }
   }
 }
@@ -158,12 +158,12 @@ async function submitDisable2Fa() {
   const code = otpInput ? otpInput.value.trim() : '';
 
   if (!password) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p máº­t kháº©u tÃ i khoáº£n hiá»‡n táº¡i!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập mật khẩu tài khoản hiện tại!', 'warning');
     if (pwInput) pwInput.focus();
     return;
   }
   if (!code || code.length !== 6) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p mÃ£ OTP 6 sá»‘ hiá»‡n táº¡i!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập mã OTP 6 số hiện tại!', 'warning');
     if (otpInput) otpInput.focus();
     return;
   }
@@ -175,17 +175,17 @@ async function submitDisable2Fa() {
     });
     if (r.ok && r.json && r.json.success) {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast('âœ“ ÄÃ£ há»§y kÃ­ch hoáº¡t XÃ¡c thá»±c 2 lá»›p!', 'success', 3500);
+        window.SanBongApp.showToast('✓ Đã hủy kích hoạt Xác thực 2 lớp!', 'success', 3500);
       }
       await load2FaStatus();
     } else {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ táº¯t 2FA. Kiá»ƒm tra láº¡i máº­t kháº©u hoáº·c OTP!', 'error');
+        window.SanBongApp.showToast(r.message || 'Không thể tắt 2FA. Kiểm tra lại mật khẩu hoặc OTP!', 'error');
       }
     }
   } catch (err) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Lá»—i káº¿t ná»‘i khi táº¯t 2FA.', 'error');
+      window.SanBongApp.showToast('Lỗi kết nối khi tắt 2FA.', 'error');
     }
   }
 }
@@ -197,7 +197,7 @@ async function runMatchRemindersNow() {
   const orig = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'â³ Äang gá»­i nháº¯c lá»‹ch...';
+    btn.innerHTML = '⏳ Đang gửi nhắc lịch...';
   }
   try {
     const r = await adminFetchJson('../api/admin.php?action=run_match_reminders', {
@@ -205,10 +205,10 @@ async function runMatchRemindersNow() {
       body: JSON.stringify({})
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ cháº¡y nháº¯c lá»‹ch trÆ°á»›c tráº­n!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể chạy nhắc lịch trước trận!', 'error', 4000);
       return;
     }
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ xá»­ lÃ½ gá»­i nháº¯c lá»‹ch trÆ°á»›c tráº­n!', 'success', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã xử lý gửi nhắc lịch trước trận!', 'success', 4000);
     await loadNotificationLogs();
   } finally {
     if (btn) {

@@ -1,5 +1,5 @@
 ﻿// =========================================================
-// 4. QUáº¢N LÃ MÃƒ GIáº¢M GIÃ / VOUCHER KHUYáº¾N MÃƒI (TAB 5)
+// 4. QUẢN LÝ MÃƒ GIẢM GIÁ / VOUCHER KHUYẾN MÃƒI (TAB 5)
 // =========================================================
 // [hoisted to admin.js]
 
@@ -35,42 +35,42 @@ async function renderAdminVouchers() {
     vouchers = (db.getVouchers() || []).map(normalizeVoucherRecord).filter(Boolean);
   } else if (!r.ok) {
     const thCount = tbody.closest('table')?.querySelectorAll('thead th').length || 7;
-    tbody.innerHTML = `<tr><td colspan="${thCount}" class="py-6 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch Voucher.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${thCount}" class="py-6 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải danh sách Voucher.')}</td></tr>`;
     return;
   }
 
   vouchersAdminCache = vouchers;
   const thEls = Array.from(tbody.closest('table')?.querySelectorAll('thead th') || []);
   const colCount = thEls.length || 7;
-  const hasLimitCol = colCount >= 7 || thEls.some(th => (th.textContent || '').toLowerCase().includes('giá»›i háº¡n'));
+  const hasLimitCol = colCount >= 7 || thEls.some(th => (th.textContent || '').toLowerCase().includes('giới hạn'));
 
   if (vouchers.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${colCount}" class="py-6 text-center text-slate-400">ChÆ°a cÃ³ mÃ£ giáº£m giÃ¡ nÃ o.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colCount}" class="py-6 text-center text-slate-400">Chưa có mã giảm giá nào.</td></tr>`;
     return;
   }
 
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
   tbody.innerHTML = vouchers.map(v => {
     const isActive = v.isActive !== false;
     const badge = v.type === 'percent'
-      ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Giáº£m ${Number(v.value)}%</span>`
-      : `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Giáº£m ${escapeSearchHTML(fmt(v.value))}</span>`;
+      ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Giảm ${Number(v.value)}%</span>`
+      : `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Giảm ${escapeSearchHTML(fmt(v.value))}</span>`;
     const statusBadge = isActive
-      ? `<span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold">Äang kÃ­ch hoáº¡t</span>`
-      : `<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[11px] font-bold">Äang táº¡m khÃ³a</span>`;
+      ? `<span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold">Đang kích hoạt</span>`
+      : `<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[11px] font-bold">Đang tạm khóa</span>`;
 
-    const usageTxt = v.max_usage > 0 ? `${v.used_count}/${v.max_usage} lÆ°á»£t` : `${v.used_count} / KhÃ´ng giá»›i háº¡n`;
+    const usageTxt = v.max_usage > 0 ? `${v.used_count}/${v.max_usage} lượt` : `${v.used_count} / Không giới hạn`;
     const dateTxt = (v.valid_from || v.valid_to)
       ? `${escapeSearchHTML(v.valid_from || '...')} â†’ ${escapeSearchHTML(v.valid_to || '...')}`
-      : 'KhÃ´ng giá»›i háº¡n ngÃ y';
-    const pitchTxt = v.pitch_type_limit ? `Chá»‰ SÃ¢n ${escapeSearchHTML(v.pitch_type_limit)} ngÆ°á»i` : 'Táº¥t cáº£ loáº¡i sÃ¢n';
+      : 'Không giới hạn ngày';
+    const pitchTxt = v.pitch_type_limit ? `Chỉ Sân ${escapeSearchHTML(v.pitch_type_limit)} người` : 'Tất cả loại sân';
 
     const limitTd = hasLimitCol ? `
       <td class="py-3 px-4 text-[11px] space-y-0.5">
-        <div class="font-bold text-[#0F172A]">LÆ°á»£t: ${escapeSearchHTML(usageTxt)}</div>
-        <div class="text-[#64748B]">ðŸ“… ${dateTxt}</div>
-        <div class="text-sky-700 font-semibold">ðŸŸï¸ ${pitchTxt}</div>
+        <div class="font-bold text-[#0F172A]">Lượt: ${escapeSearchHTML(usageTxt)}</div>
+        <div class="text-[#64748B]">📅 ${dateTxt}</div>
+        <div class="text-sky-700 font-semibold">🏟️ ${pitchTxt}</div>
       </td>
     ` : '';
 
@@ -86,9 +86,9 @@ async function renderAdminVouchers() {
         <td class="py-3 px-4">${statusBadge}</td>
         <td class="py-3 px-4 text-right">
           <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
-            <button type="button" onclick="handleEditVoucher('${codeAttr}')" class="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 cursor-pointer">âœï¸ Sá»­a mÃ£</button>
-            <button type="button" onclick="handleToggleVoucher('${codeAttr}')" class="px-2.5 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-[11px] border border-amber-200 cursor-pointer">${isActive ? 'ðŸ”’ Táº¯t' : 'ðŸ”“ Báº­t'}</button>
-            <button type="button" onclick="handleDeleteVoucher('${codeAttr}')" class="px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] border border-red-200 cursor-pointer">ðŸ—‘ï¸ XÃ³a</button>
+            <button type="button" onclick="handleEditVoucher('${codeAttr}')" class="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 cursor-pointer">✏️ Sửa mã</button>
+            <button type="button" onclick="handleToggleVoucher('${codeAttr}')" class="px-2.5 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-[11px] border border-amber-200 cursor-pointer">${isActive ? '🔒 Tắt' : '🔓 Bật'}</button>
+            <button type="button" onclick="handleDeleteVoucher('${codeAttr}')" class="px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] border border-red-200 cursor-pointer">🗑️ Xóa</button>
           </div>
         </td>
       </tr>
@@ -122,10 +122,10 @@ function handleEditVoucher(code) {
   const cancelBtn = document.getElementById('admin-voucher-cancel-btn');
   const submitBtn = document.getElementById('admin-voucher-submit-btn');
 
-  if (titleEl) titleEl.textContent = 'Chá»‰nh sá»­a mÃ£ Voucher: ' + v.code;
+  if (titleEl) titleEl.textContent = 'Chỉnh sửa mã Voucher: ' + v.code;
   if (badgeEl) badgeEl.classList.remove('hidden');
   if (cancelBtn) cancelBtn.classList.remove('hidden');
-  if (submitBtn) submitBtn.textContent = 'ðŸ’¾ LÆ°u cáº­p nháº­t Voucher';
+  if (submitBtn) submitBtn.textContent = '💾 Lưu cập nhật Voucher';
 
   const formEl = document.getElementById('admin-voucher-form');
   if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -153,16 +153,16 @@ function cancelEditVoucher() {
   const cancelBtn = document.getElementById('admin-voucher-cancel-btn');
   const submitBtn = document.getElementById('admin-voucher-submit-btn');
 
-  if (titleEl) titleEl.textContent = 'Táº¡o mÃ£ Voucher má»›i';
+  if (titleEl) titleEl.textContent = 'Tạo mã Voucher mới';
   if (badgeEl) badgeEl.classList.add('hidden');
   if (cancelBtn) cancelBtn.classList.add('hidden');
-  if (submitBtn) submitBtn.textContent = '+ ThÃªm mÃ£ Voucher';
+  if (submitBtn) submitBtn.textContent = '+ Thêm mã Voucher';
 }
 
 async function handleSaveVoucher(e) {
   if (e && e.preventDefault) e.preventDefault();
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n cáº¥u hÃ¬nh Voucher!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền cấu hình Voucher!', 'error');
     return;
   }
   const code = (document.getElementById('admin-voucher-code')?.value || '').trim().toUpperCase();
@@ -176,7 +176,7 @@ async function handleSaveVoucher(e) {
   const pitchTypeLimit = (document.getElementById('admin-voucher-pitch-limit')?.value || '').trim();
 
   if (!code || value <= 0) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p mÃ£ Voucher vÃ  giÃ¡ trá»‹ giáº£m há»£p lá»‡!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập mã Voucher và giá trị giảm hợp lệ!', 'warning');
     return;
   }
 
@@ -200,7 +200,7 @@ async function handleSaveVoucher(e) {
     })
   });
   if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ lÆ°u mÃ£ Voucher!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể lưu mã Voucher!', 'error', 4000);
     return;
   }
 
@@ -225,8 +225,8 @@ async function handleSaveVoucher(e) {
   if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(
       r.message || (isEditing
-        ? `âœ“ ÄÃ£ cáº­p nháº­t mÃ£ khuyáº¿n mÃ£i ${code} thÃ nh cÃ´ng!`
-        : `ðŸŽ ÄÃ£ thÃªm mÃ£ khuyáº¿n mÃ£i ${code} thÃ nh cÃ´ng! KhÃ¡ch hÃ ng cÃ³ thá»ƒ sá»­ dá»¥ng ngay.`),
+        ? `✓ Đã cập nhật mã khuyến mãi ${code} thành công!`
+        : `🎁 Đã thêm mã khuyến mãi ${code} thành công! Khách hàng có thể sử dụng ngay.`),
       'success',
       3500
     );
@@ -239,7 +239,7 @@ async function handleCreateVoucher(e) {
 
 async function handleToggleVoucher(code) {
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n báº­t/táº¯t Voucher!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền bật/tắt Voucher!', 'error');
     return;
   }
   if (!code) return;
@@ -249,7 +249,7 @@ async function handleToggleVoucher(code) {
     body: JSON.stringify({ sub_action: 'toggle', code })
   });
   if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ thay Ä‘á»•i tráº¡ng thÃ¡i Voucher!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể thay đổi trạng thái Voucher!', 'error', 4000);
     return;
   }
 
@@ -260,8 +260,8 @@ async function handleToggleVoucher(code) {
     const nowActive = updated ? updated.isActive !== false : true;
     window.SanBongApp.showToast(
       r.message || (nowActive
-        ? `ðŸ”“ ÄÃ£ báº­t kÃ­ch hoáº¡t mÃ£ giáº£m giÃ¡ ${code}.`
-        : `ðŸ”’ ÄÃ£ táº¡m khÃ³a mÃ£ giáº£m giÃ¡ ${code}.`),
+        ? `🔓 Đã bật kích hoạt mã giảm giá ${code}.`
+        : `🔒 Đã tạm khóa mã giảm giá ${code}.`),
       'info',
       2500
     );
@@ -270,16 +270,16 @@ async function handleToggleVoucher(code) {
 
 async function handleDeleteVoucher(code) {
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n xÃ³a Voucher!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền xóa Voucher!', 'error');
     return;
   }
   if (!code) return;
 
   const ok = await showAdminConfirm({
-    title: 'XÃ³a mÃ£ giáº£m giÃ¡ (Voucher)',
-    message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a vÄ©nh viá»…n mÃ£ Voucher ${code}?`,
-    confirmText: 'XÃ³a Voucher',
-    cancelText: 'Há»§y',
+    title: 'Xóa mã giảm giá (Voucher)',
+    message: `Bạn có chắc chắn muốn xóa vĩnh viễn mã Voucher ${code}?`,
+    confirmText: 'Xóa Voucher',
+    cancelText: 'Hủy',
     danger: true
   });
   if (!ok) return;
@@ -289,7 +289,7 @@ async function handleDeleteVoucher(code) {
     body: JSON.stringify({ sub_action: 'delete', code })
   });
   if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ xÃ³a mÃ£ Voucher!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể xóa mã Voucher!', 'error', 4000);
     return;
   }
 
@@ -301,7 +301,7 @@ async function handleDeleteVoucher(code) {
 
   await renderAdminVouchers();
   if (window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast(r.message || `ðŸ—‘ï¸ ÄÃ£ xÃ³a mÃ£ giáº£m giÃ¡ ${code}.`, 'info', 2500);
+    window.SanBongApp.showToast(r.message || `🗑️ Đã xóa mã giảm giá ${code}.`, 'info', 2500);
   }
 }
 
@@ -314,7 +314,7 @@ window.handleToggleVoucher = handleToggleVoucher;
 window.handleDeleteVoucher = handleDeleteVoucher;
 
 // =========================================================
-// 5.4 QUY Táº®C GIÃ GIá»œ VÃ€NG / THáº¤P ÄIá»‚M (TAB 5)
+// 5.4 QUY TẮC GIÁ GIỜ VÀNG / THẤP ĐIỂM (TAB 5)
 // =========================================================
 // [hoisted to admin.js]
 
@@ -325,8 +325,8 @@ function populateGoldenHourSlots() {
   if (!db) return;
   const prev = slotSel.value;
   const slots = db.getTimeSlots();
-  slotSel.innerHTML = `<option value="">Táº¥t cáº£ khung giá»</option>` + slots.map(s => (
-    `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? 'â˜… Cao Ä‘iá»ƒm' : ''}</option>`
+  slotSel.innerHTML = `<option value="">Tất cả khung giờ</option>` + slots.map(s => (
+    `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? 'â˜… Cao điểm' : ''}</option>`
   )).join('');
   if (prev && Array.from(slotSel.options).some(o => o.value === prev)) {
     slotSel.value = prev;
@@ -341,40 +341,40 @@ async function loadGoldenHourRules() {
 
   const r = await adminFetchJson('../api/admin.php?action=get_golden_hours');
   if (!r.ok || !Array.isArray(r.data)) {
-    tbody.innerHTML = `<tr><td colspan="5" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'KhÃ´ng thá»ƒ táº£i quy táº¯c giá» vÃ ng.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải quy tắc giờ vàng.')}</td></tr>`;
     return;
   }
 
   goldenHourRulesCache = r.data;
   if (r.data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-[#94A3B8]">ChÆ°a cÃ³ quy táº¯c giÃ¡ giá» vÃ ng / tháº¥p Ä‘iá»ƒm nÃ o.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-[#94A3B8]">Chưa có quy tắc giá giờ vàng / thấp điểm nào.</td></tr>';
     return;
   }
 
-  const dowMap = { '1': 'Thá»© 2', '2': 'Thá»© 3', '3': 'Thá»© 4', '4': 'Thá»© 5', '5': 'Thá»© 6', '6': 'Thá»© 7', '7': 'Chá»§ Nháº­t' };
-  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'Ä‘');
+  const dowMap = { '1': 'Thứ 2', '2': 'Thứ 3', '3': 'Thứ 4', '4': 'Thứ 5', '5': 'Thứ 6', '6': 'Thứ 7', '7': 'Chủ Nhật' };
+  const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
   tbody.innerHTML = r.data.map(rule => {
     const rid = Number(rule.id);
     const active = Number(rule.is_active) === 1 || rule.is_active === true;
-    const pLabel = rule.pitch_type ? `SÃ¢n ${escapeSearchHTML(String(rule.pitch_type))} ngÆ°á»i` : 'Táº¥t cáº£ sÃ¢n';
-    const dLabel = rule.day_of_week ? (dowMap[String(rule.day_of_week)] || `Thá»© ${escapeSearchHTML(String(rule.day_of_week))}`) : 'Má»i ngÃ y';
-    const sLabel = rule.slot_time || rule.slot_id ? `â° ${escapeSearchHTML(rule.slot_time || rule.slot_id)}` : 'Má»i khung giá»';
+    const pLabel = rule.pitch_type ? `Sân ${escapeSearchHTML(String(rule.pitch_type))} người` : 'Tất cả sân';
+    const dLabel = rule.day_of_week ? (dowMap[String(rule.day_of_week)] || `Thứ ${escapeSearchHTML(String(rule.day_of_week))}`) : 'Mọi ngày';
+    const sLabel = rule.slot_time || rule.slot_id ? `⏰ ${escapeSearchHTML(rule.slot_time || rule.slot_id)}` : 'Mọi khung giờ';
 
     let adjHtml = '';
     const adjType = rule.price_adjustment_type || 'fixed';
     const adjVal = Number(rule.adjustment_value || 0);
     if (adjType === 'percent_discount') {
-      adjHtml = `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Giáº£m ${adjVal}%</span>`;
+      adjHtml = `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Giảm ${adjVal}%</span>`;
     } else if (adjType === 'percent_surcharge') {
-      adjHtml = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Phá»¥ thu +${adjVal}%</span>`;
+      adjHtml = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Phụ thu +${adjVal}%</span>`;
     } else {
-      adjHtml = `<span class="px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-bold">Cá»‘ Ä‘á»‹nh ${escapeSearchHTML(fmt(adjVal))}</span>`;
+      adjHtml = `<span class="px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-bold">Cố định ${escapeSearchHTML(fmt(adjVal))}</span>`;
     }
 
     const stBadge = active
-      ? '<span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold">Äang Ã¡p dá»¥ng</span>'
-      : '<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[11px] font-bold">Táº¡m táº¯t</span>';
+      ? '<span class="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold">Đang áp dụng</span>'
+      : '<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[11px] font-bold">Tạm tắt</span>';
 
     return `<tr class="hover:bg-slate-50 ${active ? '' : 'opacity-65'}">
       <td class="py-3 px-4">
@@ -382,14 +382,14 @@ async function loadGoldenHourRules() {
         ${rule.description ? `<div class="text-[11px] text-[#64748B]">${escapeSearchHTML(rule.description)}</div>` : ''}
       </td>
       <td class="py-3 px-4 text-xs text-[#334155]">
-        <span class="font-semibold">${pLabel}</span> Â· <span>${escapeSearchHTML(dLabel)}</span> Â· <span>${sLabel}</span>
+        <span class="font-semibold">${pLabel}</span> · <span>${escapeSearchHTML(dLabel)}</span> · <span>${sLabel}</span>
       </td>
       <td class="py-3 px-4">${adjHtml}</td>
       <td class="py-3 px-4">${stBadge}</td>
       <td class="py-3 px-4 text-right whitespace-nowrap">
         <div class="inline-flex items-center gap-1.5">
-          <button type="button" onclick="editGoldenHourRule(${rid})" class="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 cursor-pointer">âœï¸ Sá»­a</button>
-          <button type="button" onclick="deleteGoldenHourRule(${rid})" class="px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] border border-red-200 cursor-pointer">ðŸ—‘ï¸ XÃ³a</button>
+          <button type="button" onclick="editGoldenHourRule(${rid})" class="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 cursor-pointer">✏️ Sửa</button>
+          <button type="button" onclick="deleteGoldenHourRule(${rid})" class="px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] border border-red-200 cursor-pointer">🗑️ Xóa</button>
         </div>
       </td>
     </tr>`;
@@ -418,7 +418,7 @@ function editGoldenHourRule(id) {
   const cancelBtn = document.getElementById('gh-cancel-btn');
   const submitBtn = document.getElementById('gh-submit-btn');
   if (cancelBtn) cancelBtn.classList.remove('hidden');
-  if (submitBtn) submitBtn.textContent = 'ðŸ’¾ LÆ°u quy táº¯c giá» vÃ ng';
+  if (submitBtn) submitBtn.textContent = '💾 Lưu quy tắc giờ vàng';
 
   const formEl = document.getElementById('admin-golden-hour-form');
   if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -435,7 +435,7 @@ function cancelEditGoldenHour() {
   const cancelBtn = document.getElementById('gh-cancel-btn');
   const submitBtn = document.getElementById('gh-submit-btn');
   if (cancelBtn) cancelBtn.classList.add('hidden');
-  if (submitBtn) submitBtn.textContent = '+ ThÃªm quy táº¯c giá» vÃ ng';
+  if (submitBtn) submitBtn.textContent = '+ Thêm quy tắc giờ vàng';
 }
 window.cancelEditGoldenHour = cancelEditGoldenHour;
 
@@ -454,7 +454,7 @@ async function saveGoldenHourRule(e) {
   const isActive = Boolean(document.getElementById('gh-is-active')?.checked ?? true);
 
   if (!ruleName || adjValue <= 0) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p tÃªn quy táº¯c vÃ  giÃ¡ trá»‹ Ä‘iá»u chá»‰nh há»£p lá»‡!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập tên quy tắc và giá trị điều chỉnh hợp lệ!', 'warning');
     return;
   }
 
@@ -462,7 +462,7 @@ async function saveGoldenHourRule(e) {
   const orig = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = 'â³ Äang lÆ°u...';
+    submitBtn.innerHTML = '⏳ Đang lưu...';
   }
   try {
     const r = await adminFetchJson('../api/admin.php?action=save_golden_hour', {
@@ -480,16 +480,16 @@ async function saveGoldenHourRule(e) {
       })
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ lÆ°u quy táº¯c giá» vÃ ng!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể lưu quy tắc giờ vàng!', 'error', 4000);
       return;
     }
     cancelEditGoldenHour();
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ lÆ°u quy táº¯c giÃ¡ giá» vÃ ng!', 'success', 3500);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã lưu quy tắc giá giờ vàng!', 'success', 3500);
     await loadGoldenHourRules();
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = orig || '+ ThÃªm quy táº¯c giá» vÃ ng';
+      submitBtn.innerHTML = orig || '+ Thêm quy tắc giờ vàng';
     }
   }
 }
@@ -498,10 +498,10 @@ window.saveGoldenHourRule = saveGoldenHourRule;
 async function deleteGoldenHourRule(id) {
   if (!isOwnerAdmin()) return;
   const ok = await showAdminConfirm({
-    title: 'XÃ³a quy táº¯c giÃ¡ giá» vÃ ng',
-    message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a quy táº¯c #${id}?`,
-    confirmText: 'XÃ³a quy táº¯c',
-    cancelText: 'Há»§y',
+    title: 'Xóa quy tắc giá giờ vàng',
+    message: `Bạn có chắc chắn muốn xóa quy tắc #${id}?`,
+    confirmText: 'Xóa quy tắc',
+    cancelText: 'Hủy',
     danger: true
   });
   if (!ok) return;
@@ -511,10 +511,10 @@ async function deleteGoldenHourRule(id) {
     body: JSON.stringify({ id: Number(id) })
   });
   if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ xÃ³a quy táº¯c giá» vÃ ng!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể xóa quy tắc giờ vàng!', 'error', 4000);
     return;
   }
-  if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ xÃ³a quy táº¯c giá» vÃ ng!', 'success', 3000);
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã xóa quy tắc giờ vàng!', 'success', 3000);
   await loadGoldenHourRules();
 }
 window.deleteGoldenHourRule = deleteGoldenHourRule;

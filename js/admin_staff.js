@@ -1,5 +1,5 @@
 ﻿// =========================================================
-// 5. QUáº¢N LÃ TÃ€I KHOáº¢N NHÃ‚N VIÃŠN TRá»°C SÃ‚N (TAB 9 - CHá»¦ SÃ‚N)
+// 5. QUẢN LÝ TÀI KHOẢN NHÂN VIÊN TRỰC SÂN (TAB 9 - CHỦ SÂN)
 // =========================================================
 // [hoisted to admin.js]
 // [hoisted to admin.js]
@@ -11,7 +11,7 @@ function getDefaultStaffList() {
       username: 'nhanvien',
       email: 'nhanvien@sanbongpro.vn',
       phone: '0352000111',
-      full_name: 'NhÃ¢n ViÃªn Trá»±c SÃ¢n Ca 1',
+      full_name: 'Nhân Viên Trực Sân Ca 1',
       role: 'staff',
       status: 'active',
       created_at: '2026-11-10 08:00:00'
@@ -50,7 +50,7 @@ async function loadStaffUsers(silent = true) {
   cachedStaffUsers = getLocalStaffUsers();
   renderStaffUsers(cachedStaffUsers);
   if (!silent && window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch nhÃ¢n sá»±!', 'error');
+    window.SanBongApp.showToast(r.message || 'Không thể tải danh sách nhân sự!', 'error');
   }
 }
 
@@ -60,7 +60,7 @@ function renderStaffUsers(list) {
   const staffList = Array.isArray(list) ? list : cachedStaffUsers;
   const countBadge = document.getElementById('staff-count-badge');
   if (countBadge) {
-    countBadge.textContent = `${staffList.length} nhÃ¢n sá»±`;
+    countBadge.textContent = `${staffList.length} nhân sự`;
   }
 
   const tbody = document.getElementById('admin-staff-tbody');
@@ -69,13 +69,13 @@ function renderStaffUsers(list) {
   const thEls = Array.from(tbody.closest('table')?.querySelectorAll('thead th') || []);
   const colCount = thEls.length || 5;
   const headerTexts = thEls.map(th => (th.textContent || '').trim().toLowerCase());
-  const hasRoleCol = headerTexts.some(t => t.includes('vai trÃ²'));
+  const hasRoleCol = headerTexts.some(t => t.includes('vai trò'));
 
   if (staffList.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="${colCount}" class="py-8 text-center text-xs text-[#64748B]">
-          ChÆ°a cÃ³ tÃ i khoáº£n nhÃ¢n sá»± nÃ o. HÃ£y táº¡o tÃ i khoáº£n má»›i á»Ÿ biá»ƒu máº«u phÃ­a trÃªn.
+          Chưa có tài khoản nhân sự nào. Hãy tạo tài khoản mới ở biểu mẫu phía trên.
         </td>
       </tr>
     `;
@@ -94,31 +94,31 @@ function renderStaffUsers(list) {
     const isLocked = (u.status || 'active') === 'locked';
 
     const roleBadge = uRole === 'manager'
-      ? '<span class="px-2 py-0.5 rounded-full bg-purple-100 text-[#7C3AED] border border-purple-200 text-[10px] font-bold whitespace-nowrap">ðŸ›¡ï¸ Manager</span>'
-      : '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-[#2563EB] border border-blue-200 text-[10px] font-bold whitespace-nowrap">ðŸŸï¸ Staff</span>';
+      ? '<span class="px-2 py-0.5 rounded-full bg-purple-100 text-[#7C3AED] border border-purple-200 text-[10px] font-bold whitespace-nowrap">🛡️ Manager</span>'
+      : '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-[#2563EB] border border-blue-200 text-[10px] font-bold whitespace-nowrap">🏟️ Staff</span>';
 
     const roleCellHtml = `
       <div class="space-y-1">
         <div>${roleBadge}</div>
-        <select onchange="handleChangeStaffRole(${staffId}, this.value)" aria-label="Äá»•i vai trÃ² nhÃ¢n sá»±" class="h-7 px-2 rounded-md border border-slate-200 bg-white text-[11px] font-semibold text-[#0F172A] cursor-pointer">
-          <option value="staff" ${uRole === 'staff' ? 'selected' : ''}>Staff (Trá»±c ca)</option>
-          <option value="manager" ${uRole === 'manager' ? 'selected' : ''}>Manager (Quáº£n lÃ½)</option>
+        <select onchange="handleChangeStaffRole(${staffId}, this.value)" aria-label="Đổi vai trò nhân sự" class="h-7 px-2 rounded-md border border-slate-200 bg-white text-[11px] font-semibold text-[#0F172A] cursor-pointer">
+          <option value="staff" ${uRole === 'staff' ? 'selected' : ''}>Staff (Trực ca)</option>
+          <option value="manager" ${uRole === 'manager' ? 'selected' : ''}>Manager (Quản lý)</option>
         </select>
       </div>
     `;
 
     const statusBadge = isLocked
-      ? '<span class="px-2.5 py-0.5 rounded-full bg-red-100 text-[#DC2626] text-[11px] font-bold whitespace-nowrap">ÄÃ£ khÃ³a</span>'
-      : '<span class="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold whitespace-nowrap">Äang hoáº¡t Ä‘á»™ng</span>';
+      ? '<span class="px-2.5 py-0.5 rounded-full bg-red-100 text-[#DC2626] text-[11px] font-bold whitespace-nowrap">Đã khóa</span>'
+      : '<span class="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] font-bold whitespace-nowrap">Đang hoạt động</span>';
 
-    const toggleBtnLabel = isLocked ? 'ðŸ”“ Má»Ÿ khÃ³a' : 'ðŸ”’ KhÃ³a';
+    const toggleBtnLabel = isLocked ? '🔓 Mở khóa' : '🔒 Khóa';
     const toggleBtnClass = isLocked
       ? 'px-2.5 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 cursor-pointer whitespace-nowrap'
       : 'px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] border border-red-200 cursor-pointer whitespace-nowrap';
 
     const actionHtml = `
       <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
-        <button type="button" onclick="openResetStaffPwModal(${staffId}, '${safeJsUsername}')" class="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 cursor-pointer whitespace-nowrap">ðŸ”‘ Äá»•i MK</button>
+        <button type="button" onclick="openResetStaffPwModal(${staffId}, '${safeJsUsername}')" class="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 cursor-pointer whitespace-nowrap">🔑 Đổi MK</button>
         <button type="button" onclick="handleToggleStaffStatus(${staffId})" class="${toggleBtnClass}">${toggleBtnLabel}</button>
       </div>
     `;
@@ -162,7 +162,7 @@ function renderStaffUsers(list) {
 async function handleCreateStaff(e) {
   if (e && e.preventDefault) e.preventDefault();
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n táº¡o tÃ i khoáº£n nhÃ¢n sá»±!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền tạo tài khoản nhân sự!', 'error');
     return;
   }
 
@@ -181,26 +181,26 @@ async function handleCreateStaff(e) {
   const role = (roleEl?.value === 'manager') ? 'manager' : 'staff';
 
   if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('TÃªn Ä‘Äƒng nháº­p pháº£i tá»« 3â€“30 kÃ½ tá»± (chá»¯ cÃ¡i, sá»‘, dáº¥u gáº¡ch dÆ°á»›i _).', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Tên đăng nhập phải từ 3–30 ký tự (chữ cái, số, dấu gạch dưới _).', 'warning');
     return;
   }
   if (!fullName) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lÃ²ng nháº­p há» vÃ  tÃªn nhÃ¢n sá»±.', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập họ và tên nhân sự.', 'warning');
     return;
   }
   if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(phone)) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Sá»‘ Ä‘iá»‡n thoáº¡i nhÃ¢n sá»± pháº£i Ä‘á»§ 10 sá»‘ di Ä‘á»™ng Viá»‡t Nam.', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Số điện thoại nhân sự phải đủ 10 số di động Việt Nam.', 'warning');
     return;
   }
   if (password.length < 6) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Máº­t kháº©u nhÃ¢n sá»± pháº£i cÃ³ tá»‘i thiá»ƒu 6 kÃ½ tá»±.', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mật khẩu nhân sự phải có tối thiểu 6 ký tự.', 'warning');
     return;
   }
 
   const origText = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = 'â³ Äang táº¡o tÃ i khoáº£n...';
+    submitBtn.innerHTML = '⏳ Đang tạo tài khoản...';
   }
 
   try {
@@ -219,7 +219,7 @@ async function handleCreateStaff(e) {
     if (r.ok) {
       if (form && typeof form.reset === 'function') form.reset();
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(`âœ“ ${r.message || 'ÄÃ£ táº¡o tÃ i khoáº£n nhÃ¢n sá»± thÃ nh cÃ´ng!'}`, 'success', 3500);
+        window.SanBongApp.showToast(`✓ ${r.message || 'Đã tạo tài khoản nhân sự thành công!'}`, 'success', 3500);
       }
       await loadStaffUsers();
       return;
@@ -227,7 +227,7 @@ async function handleCreateStaff(e) {
 
     if (r.status > 0) {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ táº¡o tÃ i khoáº£n nhÃ¢n sá»±.', 'error', 3500);
+        window.SanBongApp.showToast(r.message || 'Không thể tạo tài khoản nhân sự.', 'error', 3500);
       }
       return;
     }
@@ -236,7 +236,7 @@ async function handleCreateStaff(e) {
     const localList = getLocalStaffUsers();
     if (localList.some(u => String(u.username || '').toLowerCase() === username.toLowerCase())) {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast('TÃªn Ä‘Äƒng nháº­p nÃ y Ä‘Ã£ tá»“n táº¡i trÃªn há»‡ thá»‘ng.', 'error');
+        window.SanBongApp.showToast('Tên đăng nhập này đã tồn tại trên hệ thống.', 'error');
       }
       return;
     }
@@ -256,7 +256,7 @@ async function handleCreateStaff(e) {
     renderStaffUsers(cachedStaffUsers);
     if (form && typeof form.reset === 'function') form.reset();
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(`âœ“ ÄÃ£ táº¡o tÃ i khoáº£n ${role === 'manager' ? 'Quáº£n lÃ½ sÃ¢n' : 'NhÃ¢n viÃªn trá»±c'} ${username} (offline)!`, 'success', 3500);
+      window.SanBongApp.showToast(`✓ Đã tạo tài khoản ${role === 'manager' ? 'Quản lý sân' : 'Nhân viên trực'} ${username} (offline)!`, 'success', 3500);
     }
   } finally {
     if (submitBtn) {
@@ -268,7 +268,7 @@ async function handleCreateStaff(e) {
 
 async function handleChangeStaffRole(userId, newRole) {
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n Ä‘á»•i vai trÃ² nhÃ¢n sá»±!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền đổi vai trò nhân sự!', 'error');
     return;
   }
 
@@ -289,7 +289,7 @@ async function handleChangeStaffRole(userId, newRole) {
       saveLocalStaffUsers(localList);
     }
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(`âœ“ ${r.message || 'ÄÃ£ cáº­p nháº­t vai trÃ² nhÃ¢n sá»± thÃ nh cÃ´ng!'}`, 'success', 3000);
+      window.SanBongApp.showToast(`✓ ${r.message || 'Đã cập nhật vai trò nhân sự thành công!'}`, 'success', 3000);
     }
     await loadStaffUsers();
     return;
@@ -297,7 +297,7 @@ async function handleChangeStaffRole(userId, newRole) {
 
   if (r.status > 0) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ cáº­p nháº­t vai trÃ² nhÃ¢n sá»±.', 'error');
+      window.SanBongApp.showToast(r.message || 'Không thể cập nhật vai trò nhân sự.', 'error');
     }
     renderStaffUsers(cachedStaffUsers);
     return;
@@ -312,7 +312,7 @@ async function handleChangeStaffRole(userId, newRole) {
     renderStaffUsers(cachedStaffUsers);
     if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast(
-        `âœ“ ÄÃ£ chuyá»ƒn vai trÃ² @${target.username} sang ${role === 'manager' ? 'Quáº£n lÃ½ sÃ¢n (Manager)' : 'NhÃ¢n viÃªn trá»±c (Staff)'}.`,
+        `✓ Đã chuyển vai trò @${target.username} sang ${role === 'manager' ? 'Quản lý sân (Manager)' : 'Nhân viên trực (Staff)'}.`,
         'success',
         3000
       );
@@ -323,7 +323,7 @@ window.handleChangeStaffRole = handleChangeStaffRole;
 
 async function handleToggleStaffStatus(id) {
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n khÃ³a/má»Ÿ khÃ³a nhÃ¢n viÃªn!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền khóa/mở khóa nhân viên!', 'error');
     return;
   }
 
@@ -337,7 +337,7 @@ async function handleToggleStaffStatus(id) {
 
   if (r.ok) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(`âœ“ ${r.message || 'ÄÃ£ cáº­p nháº­t tráº¡ng thÃ¡i nhÃ¢n viÃªn.'}`, 'success', 3000);
+      window.SanBongApp.showToast(`✓ ${r.message || 'Đã cập nhật trạng thái nhân viên.'}`, 'success', 3000);
     }
     await loadStaffUsers();
     return;
@@ -345,7 +345,7 @@ async function handleToggleStaffStatus(id) {
 
   if (r.status > 0) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i nhÃ¢n viÃªn.', 'error');
+      window.SanBongApp.showToast(r.message || 'Không thể cập nhật trạng thái nhân viên.', 'error');
     }
     return;
   }
@@ -360,8 +360,8 @@ async function handleToggleStaffStatus(id) {
     if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast(
         target.status === 'locked'
-          ? `ðŸ”’ ÄÃ£ khÃ³a tÃ i khoáº£n nhÃ¢n viÃªn ${target.username}.`
-          : `ðŸ”“ ÄÃ£ má»Ÿ khÃ³a tÃ i khoáº£n nhÃ¢n viÃªn ${target.username}.`,
+          ? `🔒 Đã khóa tài khoản nhân viên ${target.username}.`
+          : `🔓 Đã mở khóa tài khoản nhân viên ${target.username}.`,
         'info',
         3000
       );
@@ -399,7 +399,7 @@ function closeResetStaffPwModal() {
 async function submitResetStaffPassword(e) {
   if (e && e.preventDefault) e.preventDefault();
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n Ä‘áº·t láº¡i máº­t kháº©u nhÃ¢n viÃªn!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền đặt lại mật khẩu nhân viên!', 'error');
     return;
   }
 
@@ -409,18 +409,18 @@ async function submitResetStaffPassword(e) {
   const submitBtn = document.getElementById('reset-staff-submit-btn') || form?.querySelector('button[type="submit"]');
 
   if (!id) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c tÃ i khoáº£n nhÃ¢n viÃªn.', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không xác định được tài khoản nhân viên.', 'error');
     return;
   }
   if (password.length < 6) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Máº­t kháº©u má»›i pháº£i cÃ³ tá»‘i thiá»ƒu 6 kÃ½ tá»±!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mật khẩu mới phải có tối thiểu 6 ký tự!', 'warning');
     return;
   }
 
   const origText = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = 'â³ Äang cáº­p nháº­t...';
+    submitBtn.innerHTML = '⏳ Đang cập nhật...';
   }
 
   try {
@@ -432,13 +432,13 @@ async function submitResetStaffPassword(e) {
     if (r.ok) {
       closeResetStaffPwModal();
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(`âœ“ ${r.message || 'ÄÃ£ Ä‘áº·t láº¡i máº­t kháº©u nhÃ¢n viÃªn thÃ nh cÃ´ng!'}`, 'success', 3500);
+        window.SanBongApp.showToast(`✓ ${r.message || 'Đã đặt lại mật khẩu nhân viên thành công!'}`, 'success', 3500);
       }
       return;
     }
 
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ Ä‘áº·t láº¡i máº­t kháº©u nhÃ¢n viÃªn.', 'error');
+      window.SanBongApp.showToast(r.message || 'Không thể đặt lại mật khẩu nhân viên.', 'error');
     }
   } finally {
     if (submitBtn) {

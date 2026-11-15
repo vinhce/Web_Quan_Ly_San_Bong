@@ -13,40 +13,40 @@
 
   const r = await adminFetchJson(`../api/admin.php?${qs.toString()}`);
   if (!r.ok) {
-    tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch chi phÃ­.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải danh sách chi phí.')}</td></tr>`;
     return;
   }
 
   const list = Array.isArray(r.data?.expenses) ? r.data.expenses : [];
   currentAdminExpensesList = list;
   if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-[#94A3B8]">ChÆ°a cÃ³ khoáº£n chi nÃ o trong ká»³ lá»c.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-[#94A3B8]">Chưa có khoản chi nào trong kỳ lọc.</td></tr>';
     return;
   }
 
   const catLabels = {
-    dien_nuoc: 'Äiá»‡n, nÆ°á»›c sÃ¢n',
-    bao_tri: 'Báº£o trÃ¬ & Sá»­a chá»¯a',
-    nhap_hang: 'Nháº­p hÃ ng POS',
-    luong_nhan_vien: 'LÆ°Æ¡ng & ThÆ°á»Ÿng',
-    khac: 'Chi phÃ­ khÃ¡c'
+    dien_nuoc: 'Điện, nước sân',
+    bao_tri: 'Bảo trì & Sửa chữa',
+    nhap_hang: 'Nhập hàng POS',
+    luong_nhan_vien: 'Lương & Thưởng',
+    khac: 'Chi phí khác'
   };
 
   tbody.innerHTML = list.map(ex => {
     const eid = Number(ex.id);
     const actionBtns = isManagerOrAdmin()
       ? `<div class="flex items-center justify-end gap-1">
-           <button type="button" onclick="openAdminExpenseEditModal(${eid})" class="px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-[11px] cursor-pointer">Sá»­a</button>
-           <button type="button" onclick="deleteAdminExpense(${eid})" class="px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-[11px] cursor-pointer">XÃ³a</button>
+           <button type="button" onclick="openAdminExpenseEditModal(${eid})" class="px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-[11px] cursor-pointer">Sửa</button>
+           <button type="button" onclick="deleteAdminExpense(${eid})" class="px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-[11px] cursor-pointer">Xóa</button>
          </div>`
-      : '<span class="text-[#94A3B8]">â€”</span>';
+      : '<span class="text-[#94A3B8]">—</span>';
     return `<tr class="hover:bg-slate-50">
       <td class="py-3 px-4 font-mono font-bold text-[#0F172A]">${escapeSearchHTML(ex.expense_code || ('EXP-' + eid))}</td>
       <td class="py-3 px-4 font-mono text-[#334155]">${escapeSearchHTML(ex.expense_date || '')}</td>
       <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[11px]">${escapeSearchHTML(ex.category_name || catLabels[ex.category] || ex.category || '')}</span></td>
-      <td class="py-3 px-4 font-semibold text-[#0F172A]">${escapeSearchHTML(ex.payer_name || 'â€”')}</td>
-      <td class="py-3 px-4 text-[#475569] max-w-[220px]">${escapeSearchHTML(ex.receipt_note || 'â€”')}</td>
-      <td class="py-3 px-4 text-right font-extrabold text-rose-600">${Number(ex.amount || 0).toLocaleString('vi-VN')}Ä‘</td>
+      <td class="py-3 px-4 font-semibold text-[#0F172A]">${escapeSearchHTML(ex.payer_name || '—')}</td>
+      <td class="py-3 px-4 text-[#475569] max-w-[220px]">${escapeSearchHTML(ex.receipt_note || '—')}</td>
+      <td class="py-3 px-4 text-right font-extrabold text-rose-600">${Number(ex.amount || 0).toLocaleString('vi-VN')}đ</td>
       <td class="py-3 px-4 text-right">${actionBtns}</td>
     </tr>`;
   }).join('');
@@ -55,14 +55,14 @@ window.loadAdminExpenses = loadAdminExpenses;
 
 async function deleteAdminExpense(id) {
   if (!isManagerOrAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Quáº£n lÃ½ hoáº·c Chá»§ sÃ¢n má»›i cÃ³ quyá»n xÃ³a khoáº£n chi!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Quản lý hoặc Chủ sân mới có quyền xóa khoản chi!', 'error');
     return;
   }
   const ok = await showAdminConfirm({
-    title: 'XÃ³a khoáº£n chi váº­n hÃ nh',
-    message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a khoáº£n chi #${id} khá»i sá»• chi váº­n hÃ nh?`,
-    confirmText: 'XÃ³a khoáº£n chi',
-    cancelText: 'Há»§y',
+    title: 'Xóa khoản chi vận hành',
+    message: `Bạn có chắc chắn muốn xóa khoản chi #${id} khỏi sổ chi vận hành?`,
+    confirmText: 'Xóa khoản chi',
+    cancelText: 'Hủy',
     danger: true
   });
   if (!ok) return;
@@ -72,10 +72,10 @@ async function deleteAdminExpense(id) {
     body: JSON.stringify({ id: Number(id) })
   });
   if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ xÃ³a khoáº£n chi!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể xóa khoản chi!', 'error', 4000);
     return;
   }
-  if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ xÃ³a khoáº£n chi!', 'success', 3000);
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã xóa khoản chi!', 'success', 3000);
   await renderAdminReports();
 }
 window.deleteAdminExpense = deleteAdminExpense;
@@ -124,13 +124,13 @@ async function handleSaveEditExpense(e) {
   const receiptNote = (document.getElementById('edit-exp-note')?.value || '').trim();
 
   if (id <= 0 || amount < 1000) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Dá»¯ liá»‡u sá»­a khÃ´ng há»£p lá»‡!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Dữ liệu sửa không hợp lệ!', 'warning');
     return;
   }
 
   const btn = document.getElementById('edit-exp-submit-btn');
   const orig = btn ? btn.innerHTML : '';
-  if (btn) { btn.disabled = true; btn.innerHTML = 'Äang lÆ°u...'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Đang lưu...'; }
 
   try {
     const r = await adminFetchJson('../api/admin.php?action=update_expense', {
@@ -145,10 +145,10 @@ async function handleSaveEditExpense(e) {
       })
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ cáº­p nháº­t khoáº£n chi!', 'error');
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể cập nhật khoản chi!', 'error');
       return;
     }
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ cáº­p nháº­t khoáº£n chi!', 'success');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã cập nhật khoản chi!', 'success');
     closeAdminExpenseEditModal();
     await renderAdminReports();
   } finally {
@@ -168,7 +168,7 @@ async function handleAddExpense(e) {
   const receiptNote = (document.getElementById('exp-note')?.value || '').trim();
 
   if (amount < 1000) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Sá»‘ tiá»n chi pháº£i tá»‘i thiá»ƒu 1.000Ä‘!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Số tiền chi phải tối thiểu 1.000đ!', 'warning');
     return;
   }
 
@@ -176,7 +176,7 @@ async function handleAddExpense(e) {
   const orig = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'â³ Äang ghi...';
+    btn.innerHTML = '⏳ Đang ghi...';
   }
   try {
     const r = await adminFetchJson('../api/admin.php?action=add_expense', {
@@ -190,7 +190,7 @@ async function handleAddExpense(e) {
       })
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ ghi khoáº£n chi!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể ghi khoản chi!', 'error', 4000);
       return;
     }
 
@@ -201,7 +201,7 @@ async function handleAddExpense(e) {
     if (payerEl) payerEl.value = '';
     if (noteEl) noteEl.value = '';
 
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ ghi nháº­n khoáº£n chi váº­n hÃ nh!', 'success', 3500);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã ghi nhận khoản chi vận hành!', 'success', 3500);
     await renderAdminReports();
   } finally {
     if (btn) {
@@ -214,14 +214,14 @@ window.handleAddExpense = handleAddExpense;
 
 async function deleteAdminExpense(id) {
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n (Admin) má»›i cÃ³ quyá»n xÃ³a khoáº£n chi!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân (Admin) mới có quyền xóa khoản chi!', 'error');
     return;
   }
   const ok = await showAdminConfirm({
-    title: 'XÃ³a khoáº£n chi váº­n hÃ nh',
-    message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a khoáº£n chi #${id} khá»i sá»• chi váº­n hÃ nh?`,
-    confirmText: 'XÃ³a khoáº£n chi',
-    cancelText: 'Há»§y',
+    title: 'Xóa khoản chi vận hành',
+    message: `Bạn có chắc chắn muốn xóa khoản chi #${id} khỏi sổ chi vận hành?`,
+    confirmText: 'Xóa khoản chi',
+    cancelText: 'Hủy',
     danger: true
   });
   if (!ok) return;
@@ -231,10 +231,10 @@ async function deleteAdminExpense(id) {
     body: JSON.stringify({ id: Number(id) })
   });
   if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ xÃ³a khoáº£n chi!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể xóa khoản chi!', 'error', 4000);
     return;
   }
-  if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ xÃ³a khoáº£n chi!', 'success', 3000);
+  if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã xóa khoản chi!', 'success', 3000);
   await renderAdminReports();
 }
 window.deleteAdminExpense = deleteAdminExpense;

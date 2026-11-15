@@ -1,5 +1,5 @@
 ﻿function formatPriceInputVND(num) {
-  return Number(num || 0).toLocaleString('vi-VN') + 'Ä‘';
+  return Number(num || 0).toLocaleString('vi-VN') + 'đ';
 }
 
 function parsePriceInputVND(str, fallback = 0) {
@@ -44,7 +44,7 @@ window.loadPricingTable = loadPricingTable;
 
 async function savePricingTable() {
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n thay Ä‘á»•i báº£ng giÃ¡ niÃªm yáº¿t!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền thay đổi bảng giá niêm yết!', 'error');
     return;
   }
 
@@ -91,7 +91,7 @@ async function savePricingTable() {
   const origText = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'â³ Äang lÆ°u báº£ng giÃ¡...';
+    btn.innerHTML = '⏳ Đang lưu bảng giá...';
   }
 
   try {
@@ -101,7 +101,7 @@ async function savePricingTable() {
     });
     if (!r || !r.ok || !r.json || r.json.success !== true) {
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(r?.message || 'KhÃ´ng thá»ƒ lÆ°u báº£ng giÃ¡ niÃªm yáº¿t lÃªn mÃ¡y chá»§!', 'error', 4000);
+        window.SanBongApp.showToast(r?.message || 'Không thể lưu bảng giá niêm yết lên máy chủ!', 'error', 4000);
       }
       return;
     }
@@ -126,12 +126,12 @@ async function savePricingTable() {
     initQuickBookingForm();
 
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('âœ“ ÄÃ£ lÆ°u cáº¥u hÃ¬nh báº£ng giÃ¡ má»›i vÃ o CÆ¡ sá»Ÿ dá»¯ liá»‡u & Ä‘á»“ng bá»™ sang trang Äáº·t sÃ¢n!', 'success', 3500);
+      window.SanBongApp.showToast('✓ Đã lưu cấu hình bảng giá mới vào CÆ¡ sở dữ liệu & đồng bộ sang trang Đặt sân!', 'success', 3500);
     }
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = origText || 'LÆ°u báº£ng giÃ¡';
+      btn.innerHTML = origText || 'Lưu bảng giá';
     }
   }
 }

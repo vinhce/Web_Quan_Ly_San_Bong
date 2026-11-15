@@ -6,7 +6,7 @@
   let cfg = db.getSystemConfig ? db.getSystemConfig() : {
     depositRate: 30,
     hotline: '0352 313 548',
-    openHours: '05:30 - 23:00 hÃ ng ngÃ y (ká»ƒ cáº£ Lá»…, Táº¿t)',
+    openHours: '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
     holdMinutes: 15,
     waitlistHoldMinutes: 15,
     matchmakingEnabled: true,
@@ -47,7 +47,7 @@
     cfg = {
       depositRate: Number(s.depositRate ?? s.deposit_rate ?? cfg.depositRate ?? 30),
       hotline: s.hotline || cfg.hotline || '0352 313 548',
-      openHours: s.openHours || s.open_hours || cfg.openHours || '05:30 - 23:00 hÃ ng ngÃ y (ká»ƒ cáº£ Lá»…, Táº¿t)',
+      openHours: s.openHours || s.open_hours || cfg.openHours || '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
       holdMinutes: Math.max(5, Math.min(120, Number(s.holdMinutes ?? s.hold_minutes ?? cfg.holdMinutes ?? 15))),
       waitlistHoldMinutes: Math.max(5, Math.min(120, Number(s.waitlistHoldMinutes ?? s.waitlist_hold_minutes ?? cfg.waitlistHoldMinutes ?? 15))),
       matchmakingEnabled: boolVal(s.matchmakingEnabled ?? s.matchmaking_enabled, true),
@@ -91,7 +91,7 @@
   setVal('cfg-bank-acc', bank.accountNo || bank.accountNumber || '0123456789');
   setVal('cfg-bank-holder', bank.accountName || 'CONG TY CP SAN BONG PRO');
   setVal('cfg-hotline', cfg.hotline || '0352 313 548');
-  setVal('cfg-open-hours', cfg.openHours || '05:30 - 23:00 hÃ ng ngÃ y (ká»ƒ cáº£ Lá»…, Táº¿t)');
+  setVal('cfg-open-hours', cfg.openHours || '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)');
   setVal('cfg-hold-minutes', cfg.holdMinutes ?? 15);
   setVal('cfg-refund-full-hours', cfg.refundFullHours ?? 24);
   setVal('cfg-refund-partial-hours', cfg.refundPartialHours ?? 4);
@@ -110,7 +110,7 @@
 
   setChk('cfg-tg-notify-enabled', Boolean(cfg.telegramNotifyEnabled));
   setVal('cfg-tg-chat-id', cfg.telegramChatId || '');
-  // Báº£o máº­t: khÃ´ng Ä‘iá»n token tháº­t hoáº·c '********' vÃ o input token
+  // Bảo mật: không điền token thật hoặc '********' vào input token
   setVal('cfg-tg-bot-token', '');
   setChk('cfg-tg-clear-token', false);
 
@@ -118,10 +118,10 @@
   if (tokenBadge) {
     if (cfg.telegramBotTokenConfigured) {
       tokenBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700';
-      tokenBadge.textContent = 'âœ“ ÄÃ£ cáº¥u hÃ¬nh Token';
+      tokenBadge.textContent = '✓ Đã cấu hình Token';
     } else {
       tokenBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600';
-      tokenBadge.textContent = 'ChÆ°a cáº¥u hÃ¬nh Token';
+      tokenBadge.textContent = 'Chưa cấu hình Token';
     }
   }
 
@@ -152,7 +152,7 @@
     saveBtn.disabled = !isAdmin;
     if (!isAdmin) {
       saveBtn.className = 'btn-base bg-slate-200 text-slate-400 text-xs font-bold px-5 cursor-not-allowed';
-      saveBtn.title = 'Chá»‰ Chá»§ sÃ¢n (Admin) má»›i cÃ³ quyá»n lÆ°u cáº¥u hÃ¬nh há»‡ thá»‘ng & VietQR';
+      saveBtn.title = 'Chỉ Chủ sân (Admin) mới có quyền lưu cấu hình hệ thống & VietQR';
     } else {
       saveBtn.className = 'btn-base btn-primary text-xs font-bold px-5 cursor-pointer';
       saveBtn.title = '';
@@ -163,7 +163,7 @@
 async function saveAdminSettings(e) {
   if (e && e.preventDefault) e.preventDefault();
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n thay Ä‘á»•i cÃ i Ä‘áº·t há»‡ thá»‘ng!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền thay đổi cài đặt hệ thống!', 'error');
     return;
   }
 
@@ -203,7 +203,7 @@ async function saveAdminSettings(e) {
 
   if (refundPartialHours >= refundFullHours) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Má»‘c sÃ¡t giá» khÃ´ng hoÃ n cá»c pháº£i nhá» hÆ¡n má»‘c hoÃ n 100% cá»c!', 'warning', 3500);
+      window.SanBongApp.showToast('Mốc sát giờ không hoàn cọc phải nhỏ hÆ¡n mốc hoàn 100% cọc!', 'warning', 3500);
     }
     return;
   }
@@ -254,12 +254,12 @@ async function saveAdminSettings(e) {
       const whEl = document.getElementById('cfg-customer-notify-webhook');
       if (whEl) whEl.focus();
       if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(r.message || 'URL Webhook khÃ´ng há»£p lá»‡ hoáº·c bá»‹ cháº·n báº£o máº­t SSRF!', 'error', 5000);
+        window.SanBongApp.showToast(r.message || 'URL Webhook không hợp lệ hoặc bị chặn bảo mật SSRF!', 'error', 5000);
       }
       return;
     }
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(r?.message || 'KhÃ´ng thá»ƒ lÆ°u cÃ i Ä‘áº·t há»‡ thá»‘ng lÃªn mÃ¡y chá»§!', 'error', 4000);
+      window.SanBongApp.showToast(r?.message || 'Không thể lưu cài đặt hệ thống lên máy chủ!', 'error', 4000);
     }
     return;
   }
@@ -291,14 +291,14 @@ async function saveAdminSettings(e) {
     localStorage.setItem('sb_system_config', JSON.stringify(cfg));
     localStorage.setItem('sb_bank_v1', JSON.stringify(bank));
   } catch (err) {
-    console.error('Lá»—i lÆ°u cÃ i Ä‘áº·t:', err);
+    console.error('Lỗi lưu cài đặt:', err);
   }
 
   await loadAdminSettings();
   window.dispatchEvent(new CustomEvent('sb-data-synced', { detail: { bankInfo: bank, settings: cfg } }));
 
   if (window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast('âœ“ ÄÃ£ lÆ°u cÃ i Ä‘áº·t há»‡ thá»‘ng, chÃ­nh sÃ¡ch cá»c, thÃ´ng bÃ¡o & cáº¥u hÃ¬nh VietQR thÃ nh cÃ´ng!', 'success', 3500);
+    window.SanBongApp.showToast('✓ Đã lưu cài đặt hệ thống, chính sách cọc, thông báo & cấu hình VietQR thành công!', 'success', 3500);
   }
 }
 
@@ -308,7 +308,7 @@ async function testTelegramConnection() {
   const orig = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'â³ Äang gá»­i thá»­...';
+    btn.innerHTML = '⏳ Đang gửi thử...';
   }
   try {
     const r = await adminFetchJson('../api/admin.php?action=test_telegram', {
@@ -316,10 +316,10 @@ async function testTelegramConnection() {
       body: JSON.stringify({})
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Gá»­i tin thá»­ Telegram tháº¥t báº¡i!', 'error', 4500);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Gửi tin thử Telegram thất bại!', 'error', 4500);
       return;
     }
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ gá»­i tin nháº¯n thá»­ tá»›i Telegram Chá»§ sÃ¢n!', 'success', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã gửi tin nhắn thử tới Telegram Chủ sân!', 'success', 4000);
     await loadNotificationLogs();
   } finally {
     if (btn) {
@@ -343,26 +343,26 @@ async function loadNotificationLogs() {
   const qs = new URLSearchParams({ action: 'notification_logs', channel, status, search });
   const r = await adminFetchJson(`../api/admin.php?${qs.toString()}`);
   if (!r.ok) {
-    tbody.innerHTML = `<tr><td colspan="6" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'KhÃ´ng thá»ƒ táº£i nháº­t kÃ½ thÃ´ng bÃ¡o.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải nhật ký thông báo.')}</td></tr>`;
     return;
   }
 
   const summary = r.data?.summary || {};
   const sentEl = document.getElementById('notif-sent-count');
   const failEl = document.getElementById('notif-failed-count');
-  if (sentEl) sentEl.textContent = `${Number(summary.sent || 0)} ÄÃ£ gá»­i`;
-  if (failEl) failEl.textContent = `${Number(summary.failed || 0)} Tháº¥t báº¡i`;
+  if (sentEl) sentEl.textContent = `${Number(summary.sent || 0)} Đã gửi`;
+  if (failEl) failEl.textContent = `${Number(summary.failed || 0)} Thất bại`;
 
   const logs = Array.isArray(r.data?.logs) ? r.data.logs : [];
   if (logs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-[#94A3B8]">ChÆ°a cÃ³ nháº­t kÃ½ gá»­i thÃ´ng bÃ¡o nÃ o.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-[#94A3B8]">Chưa có nhật ký gửi thông báo nào.</td></tr>';
     return;
   }
 
   const stBadge = {
-    sent: '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">ÄÃ£ gá»­i</span>',
-    failed: '<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold text-[10px]">Tháº¥t báº¡i</span>',
-    pending: '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">Äang chá»</span>'
+    sent: '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">Đã gửi</span>',
+    failed: '<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold text-[10px]">Thất bại</span>',
+    pending: '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">Đang chờ</span>'
   };
 
   tbody.innerHTML = logs.map(n => {
@@ -374,15 +374,15 @@ async function loadNotificationLogs() {
         <div class="text-[10px] text-[#64748B] mt-0.5 font-mono">${escapeSearchHTML(n.event_type || '')}</div>
       </td>
       <td class="py-2.5 px-3">
-        <div class="font-mono font-bold text-[#0F172A]">${n.booking_code ? '#' + escapeSearchHTML(n.booking_code) : 'â€”'}</div>
-        <div class="text-[11px] text-[#64748B]">${escapeSearchHTML(n.recipient || 'â€”')}</div>
+        <div class="font-mono font-bold text-[#0F172A]">${n.booking_code ? '#' + escapeSearchHTML(n.booking_code) : '—'}</div>
+        <div class="text-[11px] text-[#64748B]">${escapeSearchHTML(n.recipient || '—')}</div>
       </td>
       <td class="py-2.5 px-3 max-w-[280px]">
         <div class="font-bold text-[#0F172A]">${escapeSearchHTML(n.title || '')}</div>
         <div class="text-[11px] text-[#475569] line-clamp-2">${escapeSearchHTML(n.message || '')}</div>
       </td>
       <td class="py-2.5 px-3">${stBadge[n.status] || escapeSearchHTML(n.status || '')}</td>
-      <td class="py-2.5 px-3 text-[11px] text-[#64748B] max-w-[180px] truncate" title="${escapeSearchHTML(n.response_note || '')}">${escapeSearchHTML(n.response_note || 'â€”')}</td>
+      <td class="py-2.5 px-3 text-[11px] text-[#64748B] max-w-[180px] truncate" title="${escapeSearchHTML(n.response_note || '')}">${escapeSearchHTML(n.response_note || '—')}</td>
     </tr>`;
   }).join('');
 }
@@ -395,12 +395,12 @@ async function loadBackupsList() {
 
   const r = await adminFetchJson('../api/admin.php?action=list_backups');
   if (!r.ok || !Array.isArray(r.data)) {
-    tbody.innerHTML = `<tr><td colspan="4" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch báº£n sao lÆ°u.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="py-5 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải danh sách bản sao lưu.')}</td></tr>`;
     return;
   }
 
   if (r.data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-[#94A3B8]">ChÆ°a cÃ³ báº£n sao lÆ°u CSDL nÃ o. HÃ£y báº¥m "Táº¡o báº£n sao lÆ°u ngay".</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-[#94A3B8]">Chưa có bản sao lưu CSDL nào. Hãy bấm "Tạo bản sao lưu ngay".</td></tr>';
     return;
   }
 
@@ -412,7 +412,7 @@ async function loadBackupsList() {
       <td class="py-3 px-4 font-semibold text-[#475569]">${escapeSearchHTML(sizeLabel)}</td>
       <td class="py-3 px-4 font-mono text-[#64748B]">${escapeSearchHTML(b.created_at || '')}</td>
       <td class="py-3 px-4 text-right">
-        <button type="button" onclick="downloadBackupFile('${escapeJsAttr(fname)}')" class="px-3 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">â¬‡ï¸ Táº£i vá»</button>
+        <button type="button" onclick="downloadBackupFile('${escapeJsAttr(fname)}')" class="px-3 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">â¬‡ï¸ Tải về</button>
       </td>
     </tr>`;
   }).join('');
@@ -422,10 +422,10 @@ window.loadBackupsList = loadBackupsList;
 async function backupDatabaseNow() {
   if (!isOwnerAdmin()) return;
   const ok = await showAdminConfirm({
-    title: 'ðŸ’¾ Táº¡o báº£n sao lÆ°u CSDL ngay',
-    message: 'Há»‡ thá»‘ng sáº½ xuáº¥t toÃ n bá»™ dá»¯ liá»‡u hiá»‡n táº¡i ra file sao lÆ°u nÃ©n (.sql.gz / .sql) trÃªn mÃ¡y chá»§. Tiáº¿p tá»¥c?',
-    confirmText: 'Sao lÆ°u ngay',
-    cancelText: 'Há»§y'
+    title: '💾 Tạo bản sao lưu CSDL ngay',
+    message: 'Hệ thống sẽ xuất toàn bộ dữ liệu hiện tại ra file sao lưu nén (.sql.gz / .sql) trên máy chủ. Tiếp tục?',
+    confirmText: 'Sao lưu ngay',
+    cancelText: 'Hủy'
   });
   if (!ok) return;
 
@@ -433,7 +433,7 @@ async function backupDatabaseNow() {
   const orig = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'â³ Äang sao lÆ°u...';
+    btn.innerHTML = '⏳ Đang sao lưu...';
   }
   try {
     const r = await adminFetchJson('../api/admin.php?action=backup_database_now', {
@@ -441,10 +441,10 @@ async function backupDatabaseNow() {
       body: JSON.stringify({})
     });
     if (!r.ok) {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ táº¡o báº£n sao lÆ°u CSDL!', 'error', 4000);
+      if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể tạo bản sao lưu CSDL!', 'error', 4000);
       return;
     }
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'âœ“ ÄÃ£ táº¡o báº£n sao lÆ°u CSDL thÃ nh cÃ´ng!', 'success', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã tạo bản sao lưu CSDL thành công!', 'success', 4000);
     await loadBackupsList();
     if (typeof loadAuditLogs === 'function') loadAuditLogs();
   } finally {
@@ -469,7 +469,7 @@ window.downloadBackupFile = downloadBackupFile;
 
 async function runAutoReleaseNow() {
   if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chá»‰ Chá»§ sÃ¢n má»›i cÃ³ quyá»n cháº¡y quÃ©t nháº£ Ä‘Æ¡n quÃ¡ háº¡n!', 'error');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân mới có quyền chạy quét nhả đơn quá hạn!', 'error');
     return;
   }
 
@@ -477,7 +477,7 @@ async function runAutoReleaseNow() {
   const origHtml = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'â³ Äang quÃ©t Ä‘Æ¡n quÃ¡ háº¡n...';
+    btn.innerHTML = '⏳ Đang quét đơn quá hạn...';
   }
 
   let releasedCount = 0;
@@ -495,9 +495,9 @@ async function runAutoReleaseNow() {
   } else if (r.status > 0) {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = origHtml || 'âš¡ QuÃ©t nháº£ Ä‘Æ¡n quÃ¡ háº¡n ngay';
+      btn.innerHTML = origHtml || '⚡ Quét nhả đơn quá hạn ngay';
     }
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'KhÃ´ng thá»ƒ cháº¡y quÃ©t Ä‘Æ¡n quÃ¡ háº¡n!', 'error', 4000);
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể chạy quét đơn quá hạn!', 'error', 4000);
     return;
   }
 
@@ -510,13 +510,13 @@ async function runAutoReleaseNow() {
     allBookings.forEach(b => {
       const pSt = String(b.paymentStatus || '');
       const st = String(b.status || '');
-      if (st !== 'ÄÃ£ há»§y' && st !== 'HoÃ n thÃ nh' && st !== 'Äang Ä‘Ã¡' && (pSt === 'Chá» duyá»‡t cá»c' || pSt === 'Chá» cá»c 30%')) {
+      if (st !== 'Đã hủy' && st !== 'Hoàn thành' && st !== 'Đang đá' && (pSt === 'Chờ duyệt cọc' || pSt === 'Chờ cọc 30%')) {
         const createdMs = b.createdAt ? Date.parse(String(b.createdAt).replace(' ', 'T')) : NaN;
         if (!isNaN(createdMs) && (Date.now() - createdMs) > holdMs) {
-          b.status = 'ÄÃ£ há»§y';
-          b.paymentStatus = 'ÄÃ£ há»§y';
+          b.status = 'Đã hủy';
+          b.paymentStatus = 'Đã hủy';
           b.remainingAmount = 0;
-          b.note = (b.note ? b.note + ' | ' : '') + `[Tá»± Ä‘á»™ng nháº£ Ä‘Æ¡n quÃ¡ ${cfg.holdMinutes || 15}p chÆ°a cá»c]`;
+          b.note = (b.note ? b.note + ' | ' : '') + `[Tự động nhả đơn quá ${cfg.holdMinutes || 15}p chưa cọc]`;
           releasedCount++;
           changed = true;
         }
@@ -525,14 +525,14 @@ async function runAutoReleaseNow() {
     if (changed) {
       try { localStorage.setItem('sb_bookings_v1', JSON.stringify(allBookings)); } catch (err) {}
       if (typeof db.addAuditLog === 'function') {
-        db.addAuditLog('ADMIN_RUN_AUTO_RELEASE', 'SYSTEM', 'QuÃ©t Ä‘Æ¡n quÃ¡ háº¡n chÆ°a cá»c', `ÄÃ£ tá»± Ä‘á»™ng nháº£ ${releasedCount} Ä‘Æ¡n quÃ¡ háº¡n`);
+        db.addAuditLog('ADMIN_RUN_AUTO_RELEASE', 'SYSTEM', 'Quét đơn quá hạn chưa cọc', `Đã tự động nhả ${releasedCount} đơn quá hạn`);
       }
     }
   }
 
   if (btn) {
     btn.disabled = false;
-    btn.innerHTML = origHtml || 'âš¡ QuÃ©t nháº£ Ä‘Æ¡n quÃ¡ háº¡n ngay';
+    btn.innerHTML = origHtml || '⚡ Quét nhả đơn quá hạn ngay';
   }
 
   refreshAllAdminViews();
@@ -542,8 +542,8 @@ async function runAutoReleaseNow() {
   if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(
       serverMsg || (releasedCount > 0
-        ? `âš¡ ÄÃ£ quÃ©t vÃ  giáº£i phÃ³ng ${releasedCount} Ä‘Æ¡n giá»¯ chá»— quÃ¡ háº¡n chÆ°a cá»c!`
-        : 'âœ“ Há»‡ thá»‘ng sáº¡ch: KhÃ´ng cÃ³ Ä‘Æ¡n giá»¯ chá»— quÃ¡ háº¡n nÃ o cáº§n nháº£.'),
+        ? `⚡ Đã quét và giải phóng ${releasedCount} đơn giữ chỗ quá hạn chưa cọc!`
+        : '✓ Hệ thống sạch: Không có đơn giữ chỗ quá hạn nào cần nhả.'),
       releasedCount > 0 ? 'success' : 'info',
       4000
     );
