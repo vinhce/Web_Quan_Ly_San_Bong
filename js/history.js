@@ -43,11 +43,11 @@ async function updateHistoryUserInfo() {
     return;
   }
 
-  const isAdmin = (user.role === 'admin' || user.username === 'vxyen0801');
+  const isAdmin = user.role === 'admin';
   const isManager = (user.role === 'manager');
   const isStaff = (user.role === 'staff');
 
-  const displayName = isAdmin ? (user.full_name || 'Quản Trị Viên (vxyen0801)') : rawName;
+  const displayName = isAdmin ? (user.full_name || 'Quản Trị Viên') : rawName;
   if (mName) mName.textContent = displayName;
   if (mPhone) mPhone.textContent = user.phone || 'Chưa cập nhật SĐT';
   if (mAvatar) {

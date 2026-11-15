@@ -171,7 +171,7 @@ Yêu cầu: Laragon / XAMPP với PHP 8.1+ (bật `pdo_mysql`, `curl`, `openssl`
 | **Chủ sân (Admin)** | `vxyen0801`, `admin` | *Đã mã hóa Argon2id* | Toàn quyền quản trị hệ thống (`/portal-admin/`) |
 | **Quản lý sân (Manager)** | `quanly` | *Đã mã hóa Argon2id* | Vận hành sân, kho, chốt ca, duyệt cọc VietQR & báo cáo |
 | **Nhân viên trực (Staff)** | `nhanvien` | *Đã mã hóa Argon2id* | Tổng quan ca đá, timeline, đặt tại quầy & khách hàng |
-| **Khách hàng (User)** | `0352313548` (hoặc `user`) | *Đã mã hóa Argon2id* | Đặt sân, xem lịch sử đơn, tích lũy điểm thưởng |
+| **Khách hàng (User)** | `user` (tài khoản mẫu) | *Đã mã hóa Argon2id* | Đặt sân, xem lịch sử đơn, tích lũy điểm thưởng |
 
 > Tài liệu chi tiết danh sách tài khoản mẫu được lưu trong `docs/DANH_SACH_TAI_KHOAN.md` (chỉ đọc nội bộ, đã khóa truy cập HTTP).
 

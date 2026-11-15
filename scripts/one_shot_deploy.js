@@ -119,7 +119,8 @@ async function main() {
     ...collectFiles('js'),
     ...collectFiles('portal-admin/partials'),
     ...collectFiles('html'),
-    ...collectFiles('css')
+    ...collectFiles('css'),
+    ...collectFiles('database/migrations')
   ];
 
   const payload = {};
@@ -175,9 +176,18 @@ try {
     require_once __DIR__ . '/config/database.php';
     $pdo = getDBConnection(false);
     if ($pdo) {
-        $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE username = 'vxyen0801' OR phone = '0352313548'");
+        $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE username = 'vxyen0801'");
         $stmt->execute();
         $dbUpdated = true;
+
+        $migFile = __DIR__ . '/database/migrations/011_auth_role_hardening_and_demo_data.sql';
+        if (file_exists($migFile)) {
+            $migSql = file_get_contents($migFile);
+            if (!empty($migSql)) {
+                $pdo->exec($migSql);
+                $dbUpdated = 'admin_updated_and_migration_011_applied';
+            }
+        }
     }
 } catch (Throwable $e) {
     $dbUpdated = 'Error: ' . $e->getMessage();

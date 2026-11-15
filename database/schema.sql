@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS `rate_limits` (
 INSERT INTO `users` (`id`, `username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
 VALUES 
 (1, 'admin', 'admin@sanbongpro.vn', '0987654321', 'Ban Quản Trị Sân', '$argon2id$v=19$m=65536,t=4,p=1$VTVUaVRrNThhNldzcENpZg$kNqghJJEnQqDG/6phhZwri5Q6skH+e/dy+/fZhkxqb8', 'admin', 'active'),
-(2, 'user', 'khachhang@sanbongpro.vn', '0352313548', 'Trần Minh Hoàng', '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4', 'user', 'active'),
+(2, 'user', 'khachhang@sanbongpro.vn', '0000000002', 'Trần Minh Hoàng', '$argon2id$v=19$m=65536,t=4,p=1$aVNqalJJSE5FMVN4b2YvaQ$7HiLuSfwNyejQCN9iT24mOGZiIpajMBrxFpY01kbgq4', 'user', 'active'),
 (3, 'vxyen0801', 'vxyen0801@sanbongpro.vn', '0352313548', 'Quản Trị Viên (vxyen0801)', '$argon2id$v=19$m=65536,t=4,p=1$UThRTGkvdndJYXdBVHBDUg$bvWQoJidWljt12fhtDaAYPay1LhfDvc1B2+5jPEkPE4', 'admin', 'active')
 ON DUPLICATE KEY UPDATE `password_hash`=VALUES(`password_hash`), `role`=VALUES(`role`), `status`=VALUES(`status`);
 
@@ -267,6 +267,13 @@ INSERT IGNORE INTO `users` (`id`, `username`, `email`, `phone`, `full_name`, `pa
 VALUES
 (4, 'nhanvien', 'nhanvien@sanbongpro.vn', '0352000111', 'Nhân Viên Trực Sân Ca 1', '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI', 'staff', 'active'),
 (5, 'quanly', 'quanly@sanbongpro.vn', '0352000222', 'Nguyễn Hoàng Minh (Quản Lý Sân)', '$argon2id$v=19$m=65536,t=4,p=1$QlFIYnZIRlNaV3Nic1JwUw$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI', 'manager', 'active');
+
+-- Tài khoản hội viên mẫu chỉ phục vụ hiển thị và kiểm thử; mật khẩu ngẫu nhiên không được lưu lại.
+INSERT IGNORE INTO `users` (`username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
+VALUES
+('demo_khach01', 'khachmau01@example.test', '0000000003', 'Nguyễn An Bình', '$argon2id$v=19$m=65536,t=4,p=1$bG90TS96TnNZUlN3cmFBdA$1J//G2LAELJoLf7NP+HDYxtuStR3XTC8DM3WgUgeK98', 'user', 'active'),
+('demo_khach02', 'khachmau02@example.test', '0000000004', 'Trần Minh Khang', '$argon2id$v=19$m=65536,t=4,p=1$YUE0OXRjelRRN2doZVcuUg$aAzvgGYIdxMrWG3muygBC/mZ7eLST7y9G1acEszJ9o0', 'user', 'active'),
+('demo_khach03', 'khachmau03@example.test', '0000000005', 'Lê Gia Huy', '$argon2id$v=19$m=65536,t=4,p=1$aXM2RlFYdk5ZYUlpOVYxQQ$16uTJ4e1Lh/arvK2F2S2H2wfQu6WDBpRCg4NEu9CALw', 'user', 'active');
 
 -- 2. Dữ liệu Sân bóng
 INSERT INTO `pitches` (`id`, `name`, `type`, `type_name`, `size`, `grass`, `base_price`, `peak_price`, `status`, `amenities_json`, `variant`, `description`)
@@ -289,6 +296,12 @@ VALUES
 ('P11-B', 'Sân 11 - Sân Ghép (C+D)', 11, 'Sân 11 người', '60m x 90m', 'Ghép linh hoạt từ 2 sân 7 C và D, cỏ đồng bộ phẳng tuyệt đối', 800000, 1200000, 'Hoạt động', '["Đèn LED 1000W", "Phòng thay đồ riêng", "Bãi đỗ xe ô tô", "Nước uống miễn phí", "Phát sóng trực tiếp"]', 'hero', 'Sân 11 ghép từ cụm sân 7 C và D, mặt sân đồng đều êm ái cho các giải đấu cúp.'),
 ('P11-C', 'Sân 11 - Sân Trung Tâm VFF', 11, 'Sân 11 người', '68m x 105m', 'Mặt cỏ FIFA Quality Pro và bảng tỷ số điện tử LED hiện đại', 950000, 1500000, 'Hoạt động', '["Dàn đèn LED 1200W chuyên dụng truyền hình", "Bảng tỷ số điện tử", "Phòng thay đồ máy lạnh", "Khán đài VIP", "Camera Livestream đa góc"]', 'hero', 'Sân 11 trung tâm hiện đại nhất hệ thống, tích hợp hệ thống bảng tỷ số LED và livestream đa góc máy phục vụ các giải đấu tranh cúp đỉnh cao.')
 ON DUPLICATE KEY UPDATE `name`=`name`;
+
+INSERT IGNORE INTO `pitches` (`id`, `name`, `type`, `type_name`, `size`, `grass`, `base_price`, `peak_price`, `weekend_price`, `status`, `amenities_json`, `variant`, `description`)
+VALUES
+('P5-G', 'Sân 5 - Sân G (Mẫu)', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo tiêu chuẩn, đệm hạt cao su', 260000, 360000, 390000, 'Hoạt động', '["Đèn LED", "Bãi xe máy", "Phòng thay đồ"]', 'standard', 'Sân 5 mẫu bổ sung để kiểm thử danh sách và đặt sân.'),
+('P7-H', 'Sân 7 - Sân H (Mẫu)', 7, 'Sân 7 người', '30m x 50m', 'Cỏ nhân tạo sợi ngắn, thoát nước nhanh', 430000, 630000, 720000, 'Hoạt động', '["Đèn LED", "Bãi đỗ xe", "Nước uống"]', 'bright', 'Sân 7 mẫu bổ sung, phù hợp các trận giao hữu buổi tối.'),
+('P11-D', 'Sân 11 - Sân D (Mẫu)', 11, 'Sân 11 người', '68m x 105m', 'Cỏ nhân tạo tiêu chuẩn thi đấu', 920000, 1420000, 1550000, 'Hoạt động', '["Đèn thi đấu", "Khán đài", "Phòng thay đồ"]', 'hero', 'Sân 11 mẫu bổ sung để kiểm thử cấu hình và hiển thị.');
 
 -- 3. Dữ liệu Khung giờ
 INSERT INTO `time_slots` (`id`, `slot_time`, `start_time`, `end_time`, `is_peak`, `duration`)

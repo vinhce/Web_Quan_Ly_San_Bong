@@ -84,7 +84,7 @@ if ($method === 'GET') {
     if ($pdo === null) {
         json_response(['success' => true, 'data' => []]);
     }
-    $isAdmin = (in_array($currentUser['role'] ?? '', ['admin', 'manager'], true) || ($currentUser['username'] ?? '') === 'vxyen0801');
+    $isAdmin = in_array($currentUser['role'] ?? '', ['admin', 'manager'], true);
     if ($isAdmin) {
         $stmt = $pdo->prepare("SELECT b.*, p.name as pitch_name, p.type_name, p.variant 
                                FROM bookings b 

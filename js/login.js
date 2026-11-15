@@ -47,9 +47,6 @@ function resolveAppUrl(target) {
 
 function syncStoredUser(user) {
   if (!user) return;
-  if (user.username === 'vxyen0801' || user.phone === '0352313548') {
-    user.role = 'admin';
-  }
   try {
     const raw = JSON.stringify(user);
     sessionStorage.setItem('sb_current_user', raw);
@@ -61,9 +58,6 @@ function syncStoredUser(user) {
 }
 
 function handleLoginRedirect(user) {
-  if (user && (user.username === 'vxyen0801' || user.phone === '0352313548')) {
-    user.role = 'admin';
-  }
   syncStoredUser(user);
   const isPortalRole = Boolean(user && ['admin', 'manager', 'staff'].includes(user.role));
   const urlParams = new URLSearchParams(window.location.search);
@@ -320,9 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setAuthMessage('✓ Đăng nhập thành công! Đang chuyển hướng...', 'success');
         if (window.SanBongApp?.showToast) {
           window.SanBongApp.showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
-        }
-        if (res.user && (res.user.username === 'vxyen0801' || res.user.phone === '0352313548')) {
-          res.user.role = 'admin';
         }
         syncStoredUser(res.user);
 

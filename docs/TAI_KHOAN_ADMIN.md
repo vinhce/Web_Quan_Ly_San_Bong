@@ -79,7 +79,7 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 ## 4. Cơ chế Bảo mật Tài khoản Admin
 
 1. **Chặn truy cập trái phép từ phía Server (`portal-admin/index.php` & `api/admin.php`):**
-   - Mọi request vào `/portal-admin/` đều đi qua `portal-admin/index.php` để kiểm tra `$_SESSION['user']['role']` (`admin` hoặc `staff`) và kiểm tra trạng thái `status` từ CSDL (tài khoản `locked` bị hủy phiên tức thì).
+   - Mọi request vào `/portal-admin/` đều đi qua `portal-admin/index.php` để kiểm tra vai trò lấy từ CSDL (`admin`, `manager` hoặc `staff`) và trạng thái tài khoản; tên đăng nhập/số điện thoại không tự cấp quyền admin.
    - Các thao tác vận hành sân (`checkin`, `noshow_release`, `restore`, `toggle_pitch`, `manage_booking`) kiểm tra `require_staff_or_admin()`; các thao tác nhạy cảm (`update_payment`, `vouchers` POST, `staff_users`) bắt buộc `require_admin()` tại `api/admin.php`.
 2. **Chống dò mật khẩu (Rate Limiting):**
    - Nhập sai mật khẩu quá **5 lần trong 15 phút** (theo IP hoặc tài khoản) sẽ bị khóa tạm thời (`HTTP 429 Too Many Requests`).

