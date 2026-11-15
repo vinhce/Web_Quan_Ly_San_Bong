@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   'use strict';
 
   const DEFAULT_SYSTEM_CONFIG = window.DEFAULT_SYSTEM_CONFIG || window.SanBongData?.DEFAULT_SYSTEM_CONFIG || {
@@ -98,23 +98,23 @@
           {
             id: 1,
             created_at: '2026-11-06 08:15:20',
-            actor_name: 'Quáº£n Trá»‹ ViÃªn',
+            actor_name: 'Quản Trị Viên',
             actor_role: 'admin',
             action: 'CHECKIN',
             target_code: 'ASFS260039',
-            old_value: 'Tráº¡ng thÃ¡i: ÄÃ£ xÃ¡c nháº­n',
-            new_value: 'Tráº¡ng thÃ¡i: Äang Ä‘Ã¡ (Check-in 08:15)',
+            old_value: 'Trạng thái: Đã xác nhận',
+            new_value: 'Trạng thái: Đang đá (Check-in 08:15)',
             ip_address: '127.0.0.1'
           },
           {
             id: 2,
             created_at: '2026-11-06 09:05:11',
-            actor_name: 'Nguyá»…n VÄƒn BÃ¬nh (Ca 1)',
+            actor_name: 'Nguyễn Văn Bình (Ca 1)',
             actor_role: 'staff',
             action: 'COLLECT_PAYMENT',
             target_code: 'ASFF260038',
-            old_value: 'CÃ²n ná»£: 210.000Ä‘',
-            new_value: 'Thu Ä‘á»§ 210.000Ä‘ (Tiá»n máº·t táº¡i quáº§y)',
+            old_value: 'Còn nợ: 210.000đ',
+            new_value: 'Thu đủ 210.000đ (Tiền mặt tại quầy)',
             ip_address: '127.0.0.1'
           }
         ];
@@ -125,7 +125,7 @@
         const initShifts = [
           {
             id: 'CA-261105-02',
-            staff_name: 'Nguyá»…n VÄƒn BÃ¬nh (Trá»±c sÃ¢n)',
+            staff_name: 'Nguyễn Văn Bình (Trực sân)',
             staff_username: 'staff1',
             opened_at: '2026-11-05 14:00',
             closed_at: '2026-11-05 22:30',
@@ -134,7 +134,7 @@
             actual_cash: 2450000,
             diff_amount: 0,
             status: 'confirmed',
-            note: 'BÃ n giao Ä‘á»§ tiá»n máº·t cuá»‘i ngÃ y cho Quáº£n lÃ½'
+            note: 'Bàn giao đủ tiền mặt cuối ngày cho Quản lý'
           }
         ];
         localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(initShifts));
@@ -157,7 +157,7 @@
             diff_amount: 0,
             match_status: 'unmatched',
             status: 'pending',
-            note: 'Thiáº¿u mÃ£ Ä‘Æ¡n Ä‘áº·t sÃ¢n trong ná»™i dung chuyá»ƒn khoáº£n'
+            note: 'Thiếu mã đơn đặt sân trong nội dung chuyển khoản'
           },
           {
             id: 'TX-SEPAY-902',
@@ -172,7 +172,7 @@
             diff_amount: -50000,
             match_status: 'underpaid',
             status: 'pending',
-            note: 'KhÃ¡ch chuyá»ƒn thiáº¿u 50.000Ä‘ tiá»n cá»c yÃªu cáº§u'
+            note: 'Khách chuyển thiếu 50.000đ tiền cọc yêu cầu'
           },
           {
             id: 'TX-SEPAY-903',
@@ -187,7 +187,7 @@
             diff_amount: 250000,
             match_status: 'overpaid',
             status: 'pending',
-            note: 'KhÃ¡ch chuyá»ƒn dÆ° +250.000Ä‘ (cÃ³ thá»ƒ Ä‘Ã£ chuyá»ƒn Ä‘á»§ 100%)'
+            note: 'Khách chuyển dư +250.000đ (có thể đã chuyển đủ 100%)'
           },
           {
             id: 'TX-SEPAY-900',
@@ -202,7 +202,7 @@
             diff_amount: 0,
             match_status: 'matched',
             status: 'resolved',
-            note: 'Tá»± Ä‘á»™ng Ä‘á»‘i soÃ¡t khá»›p 100% qua SePay Webhook'
+            note: 'Tự động đối soát khớp 100% qua SePay Webhook'
           }
         ];
         localStorage.setItem(STORAGE_KEYS.BANK_TRANSACTIONS, JSON.stringify(initBankTx));
@@ -228,12 +228,12 @@
         localStorage.removeItem(STORAGE_KEYS.USER);
         localStorage.removeItem('sb_user');
         const sUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-        if (sUser && (sUser.username === 'user' || sUser.full_name === 'Tráº§n Minh HoÃ ng')) {
+        if (sUser && (sUser.username === 'user' || sUser.full_name === 'Trần Minh Hoàng')) {
           sessionStorage.removeItem('sb_current_user');
         }
       } catch (e) {}
       const currentBank = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANK) || '{}');
-      if (!localStorage.getItem(STORAGE_KEYS.BANK) || currentBank.accountName === 'NGUYEN VAN HUNG' || currentBank.branch?.includes('Nam SÃ i GÃ²n')) {
+      if (!localStorage.getItem(STORAGE_KEYS.BANK) || currentBank.accountName === 'NGUYEN VAN HUNG' || currentBank.branch?.includes('Nam Sài Gòn')) {
         localStorage.setItem(STORAGE_KEYS.BANK, JSON.stringify(data.DEFAULT_BANK_INFO || {}));
       }
       if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
@@ -248,9 +248,9 @@
           processed = [];
         }
         const defaultPending = [
-          { time: '10:12', code: 'ASFS260042', name: 'Tráº§n Minh HoÃ ng', amt: 306000, bank: 'Vietcombank' },
-          { time: '11:05', code: 'ASFS260044', name: 'Pháº¡m Quá»‘c Báº£o', amt: 126000, bank: 'Vietcombank' },
-          { time: '13:40', code: 'ASFF260045', name: 'Äá»— ThÃ nh Long', amt: 90000, bank: 'MB Bank' }
+          { time: '10:12', code: 'ASFS260042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
+          { time: '11:05', code: 'ASFS260044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
+          { time: '13:40', code: 'ASFF260045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
         ].filter(item => !processed.includes(item.code));
         localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(defaultPending));
       }
@@ -285,28 +285,28 @@
                 b.code = b.code.replace(/^SB-\d+-?/, pfx + '26');
                 changed = true;
               }
-              if (b.status === 'Váº¯ng máº·t (No-Show)' || String(b.status || '').includes('No-Show')) {
-                b.status = 'KhÃ¡ch chÆ°a Ä‘áº¿n';
+              if (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) {
+                b.status = 'Khách chưa đến';
                 changed = true;
               }
               if (b.note && String(b.note).includes('No-Show')) {
                 b.note = String(b.note)
-                  .replace(/Há»§y No-Show do quÃ¡ 15p/g, 'QuÃ¡ 15p khÃ¡ch chÆ°a Ä‘áº¿n')
-                  .replace(/No-Show/g, 'QuÃ¡ 15p khÃ¡ch chÆ°a Ä‘áº¿n');
+                  .replace(/Hủy No-Show do quá 15p/g, 'Quá 15p khách chưa đến')
+                  .replace(/No-Show/g, 'Quá 15p khách chưa đến');
                 changed = true;
               }
               const tot = Number(b.totalPrice || 0);
               const dep = Number(b.depositAmount || Math.round(tot * 0.3));
-              if (b.status === 'HoÃ n thÃ nh') {
+              if (b.status === 'Hoàn thành') {
                 if (!b.paidRemainingAmount || b.paidRemainingAmount <= 0) {
                   b.paidRemainingAmount = Math.max(0, tot - dep);
                   changed = true;
                 }
-                if (b.note && String(b.note).includes('pháº§n cÃ²n láº¡i 0Ä‘')) {
-                  b.note = String(b.note).replace('pháº§n cÃ²n láº¡i 0Ä‘', `pháº§n cÃ²n láº¡i ${b.paidRemainingAmount.toLocaleString('vi-VN')}Ä‘`);
+                if (b.note && String(b.note).includes('phần còn lại 0đ')) {
+                  b.note = String(b.note).replace('phần còn lại 0đ', `phần còn lại ${b.paidRemainingAmount.toLocaleString('vi-VN')}đ`);
                   changed = true;
                 }
-              } else if (b.status !== 'ÄÃ£ há»§y' && b.status !== 'KhÃ¡ch chÆ°a Ä‘áº¿n' && typeof b.remainingAmount !== 'number') {
+              } else if (b.status !== 'Đã hủy' && b.status !== 'Khách chưa đến' && typeof b.remainingAmount !== 'number') {
                 b.remainingAmount = Math.max(0, tot - dep);
                 changed = true;
               }
@@ -526,7 +526,7 @@
       const prevActive = existingIdx >= 0 && list[existingIdx].isActive !== undefined ? Boolean(list[existingIdx].isActive) : true;
       const item = {
         code,
-        description: String(v.description || '').trim() || `Æ¯u Ä‘Ã£i mÃ£ ${code}`,
+        description: String(v.description || '').trim() || `Ưu đãi mã ${code}`,
         type: v.type === 'fixed' ? 'fixed' : 'percent',
         value: Math.max(0, Number(v.value) || 0),
         minOrder: Math.max(0, Number(v.minOrder) || 0),

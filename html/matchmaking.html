@@ -1,249 +1,249 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TÃ¬m Äá»‘i & GhÃ©p KÃ¨o Giao LÆ°u â€“ SÃ¢n BÃ³ng Pro</title>
+  <title>Tìm Đối & Ghép Kèo Giao Lưu – Sân Bóng Pro</title>
 
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v77">
+  <link rel="stylesheet" href="../css/style.css?v=20261115_v78">
 </head>
 <body class="min-h-screen flex flex-col antialiased bg-[#F8FAFC]">
 
-  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="TÃ¬m Ä‘á»‘i / GhÃ©p kÃ¨o"></div>
+  <div id="app-navbar" class="sticky top-0 z-50 w-full" data-active-page="Tìm đối / Ghép kèo"></div>
 
   <div class="bg-white border-b border-[#E2E8F0]">
     <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div class="text-xs text-[#64748B] mb-1.5 flex items-center gap-1.5">
-            <a href="/" class="hover:text-[#16A34A]">Trang chá»§</a>
+            <a href="/" class="hover:text-[#16A34A]">Trang chủ</a>
             <span>/</span>
-            <span class="text-[#0F172A] font-semibold">TÃ¬m Ä‘á»‘i & GhÃ©p kÃ¨o</span>
+            <span class="text-[#0F172A] font-semibold">Tìm đối & Ghép kèo</span>
           </div>
-          <h1 class="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F172A]">SÃ n GhÃ©p KÃ¨o & TÃ¬m Äá»‘i Giao LÆ°u</h1>
-          <p class="text-sm text-[#475569] mt-1">Káº¿t ná»‘i cá»™ng Ä‘á»“ng phá»§i â€” TÃ¬m Ä‘á»‘i xá»©ng táº§m, nháº­n kÃ¨o nhanh chÃ³ng, chá»‘t sÃ¢n ngay.</p>
+          <h1 class="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F172A]">Sàn Ghép Kèo & Tìm Đối Giao Lưu</h1>
+          <p class="text-sm text-[#475569] mt-1">Kết nối cộng đồng phủi — Tìm đối xứng tầm, nhận kèo nhanh chóng, chốt sân ngay.</p>
         </div>
         <button id="open-post-match-modal" class="btn-base btn-primary px-5 py-3 text-sm font-bold shadow-md flex items-center gap-2 self-start md:self-auto">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-          ÄÄƒng Tin TÃ¬m Äá»‘i Ngay
+          Đăng Tin Tìm Đối Ngay
         </button>
       </div>
     </div>
   </div>
 
   <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Thanh lá»c -->
+    <!-- Thanh lọc -->
     <div class="ui-card p-4 mb-6 flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2">
-        <label class="text-xs font-bold text-[#475569] uppercase">Loáº¡i sÃ¢n:</label>
+        <label class="text-xs font-bold text-[#475569] uppercase">Loại sân:</label>
         <select id="filter-pitch-type" class="h-10 px-3 rounded-lg border border-[#E2E8F0] bg-white text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
-          <option value="">Táº¥t cáº£ sÃ¢n</option>
-          <option value="5">SÃ¢n 5 ngÆ°á»i</option>
-          <option value="7">SÃ¢n 7 ngÆ°á»i</option>
-          <option value="11">SÃ¢n 11 ngÆ°á»i</option>
+          <option value="">Tất cả sân</option>
+          <option value="5">Sân 5 người</option>
+          <option value="7">Sân 7 người</option>
+          <option value="11">Sân 11 người</option>
         </select>
       </div>
       <div class="flex items-center gap-2">
-        <label class="text-xs font-bold text-[#475569] uppercase">Tráº¡ng thÃ¡i:</label>
+        <label class="text-xs font-bold text-[#475569] uppercase">Trạng thái:</label>
         <select id="filter-status" class="h-10 px-3 rounded-lg border border-[#E2E8F0] bg-white text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
-          <option value="open">Äang tÃ¬m Ä‘á»‘i</option>
-          <option value="matched">ÄÃ£ báº¯t kÃ¨o</option>
-          <option value="all">Táº¥t cáº£ tin Ä‘Äƒng</option>
+          <option value="open">Đang tìm đối</option>
+          <option value="matched">Đã bắt kèo</option>
+          <option value="all">Tất cả tin đăng</option>
         </select>
       </div>
       <div class="flex items-center gap-2">
-        <label class="text-xs font-bold text-[#475569] uppercase">Tá»« ngÃ y:</label>
+        <label class="text-xs font-bold text-[#475569] uppercase">Từ ngày:</label>
         <input type="date" id="filter-date" class="h-10 px-3 rounded-lg border border-[#E2E8F0] bg-white text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
       </div>
       <button id="refresh-matches-btn" class="ml-auto px-4 h-10 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F1F5F9] text-xs font-bold text-[#0F172A] transition-colors">
-        LÃ m má»›i
+        Làm mới
       </button>
     </div>
 
-    <!-- Danh sÃ¡ch kÃ¨o -->
+    <!-- Danh sách kèo -->
     <div id="matches-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <div class="col-span-full py-12 text-center text-sm text-[#64748B]">Äang táº£i danh sÃ¡ch kÃ¨o giao lÆ°u...</div>
+      <div class="col-span-full py-12 text-center text-sm text-[#64748B]">Đang tải danh sách kèo giao lưu...</div>
     </div>
   </main>
 
-  <!-- Modal ÄÄƒng Tin TÃ¬m Äá»‘i -->
+  <!-- Modal Đăng Tin Tìm Đối -->
   <div id="post-match-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6">
       <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-        <h3 class="font-heading font-bold text-lg text-[#0F172A]">ÄÄƒng KÃ¨o TÃ¬m Äá»‘i Thá»§</h3>
-        <button id="close-post-modal" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">âœ•</button>
+        <h3 class="font-heading font-bold text-lg text-[#0F172A]">Đăng Kèo Tìm Đối Thủ</h3>
+        <button id="close-post-modal" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
       </div>
       <form id="post-match-form" class="space-y-4 mt-4" novalidate>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">TÃªn Ä‘á»™i bÃ³ng *</label>
-            <input type="text" id="post-team-name" required placeholder="VD: FC Phá»‘ NÃºi" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
+            <label class="block text-xs font-bold text-[#475569] mb-1">Tên đội bóng *</label>
+            <input type="text" id="post-team-name" required placeholder="VD: FC Phố Núi" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
           </div>
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">Äá»™i trÆ°á»Ÿng *</label>
-            <input type="text" id="post-captain-name" required placeholder="TÃªn ngÆ°á»i liÃªn há»‡" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
+            <label class="block text-xs font-bold text-[#475569] mb-1">Đội trưởng *</label>
+            <input type="text" id="post-captain-name" required placeholder="Tên người liên hệ" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">Sá»‘ Ä‘iá»‡n thoáº¡i (Zalo) *</label>
+            <label class="block text-xs font-bold text-[#475569] mb-1">Số điện thoại (Zalo) *</label>
             <input type="tel" id="post-phone" required placeholder="09xxxxxxxx" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
           </div>
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">Loáº¡i sÃ¢n muá»‘n Ä‘Ã¡ *</label>
+            <label class="block text-xs font-bold text-[#475569] mb-1">Loại sân muốn đá *</label>
             <select id="post-pitch-type" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
-              <option value="7">SÃ¢n 7 ngÆ°á»i</option>
-              <option value="5">SÃ¢n 5 ngÆ°á»i</option>
-              <option value="11">SÃ¢n 11 ngÆ°á»i</option>
+              <option value="7">Sân 7 người</option>
+              <option value="5">Sân 5 người</option>
+              <option value="11">Sân 11 người</option>
             </select>
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">NgÃ y dá»± kiáº¿n Ä‘Ã¡ *</label>
+            <label class="block text-xs font-bold text-[#475569] mb-1">Ngày dự kiến đá *</label>
             <input type="date" id="post-match-date" required class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
           </div>
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">Khung giá» mong muá»‘n *</label>
+            <label class="block text-xs font-bold text-[#475569] mb-1">Khung giờ mong muốn *</label>
             <select id="post-slot-time" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
-              <option value="17:30 - 19:00">17:30 - 19:00 (Giá» Ä‘áº¹p)</option>
+              <option value="17:30 - 19:00">17:30 - 19:00 (Giờ đẹp)</option>
               <option value="18:00 - 19:30">18:00 - 19:30</option>
               <option value="19:00 - 20:30">19:00 - 20:30 (Hot)</option>
               <option value="20:30 - 22:00">20:30 - 22:00</option>
-              <option value="07:30 - 09:00">07:30 - 09:00 (SÃ¡ng)</option>
-              <option value="16:00 - 17:30">16:00 - 17:30 (Chiá»u)</option>
+              <option value="07:30 - 09:00">07:30 - 09:00 (Sáng)</option>
+              <option value="16:00 - 17:30">16:00 - 17:30 (Chiều)</option>
             </select>
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">TrÃ¬nh Ä‘á»™ Ä‘á»™i bÃ³ng</label>
+            <label class="block text-xs font-bold text-[#475569] mb-1">Trình độ đội bóng</label>
             <select id="post-skill-level" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
-              <option value="beginner">Má»›i chÆ¡i / Vui váº» vÄƒn phÃ²ng</option>
-              <option value="intermediate" selected>Trung bÃ¬nh khÃ¡ / Phá»§i nháº¹</option>
-              <option value="advanced">KhÃ¡ cá»©ng / Giáº£i phong trÃ o</option>
-              <option value="all">Giao lÆ°u má»i trÃ¬nh Ä‘á»™</option>
+              <option value="beginner">Mới chơi / Vui vẻ văn phòng</option>
+              <option value="intermediate" selected>Trung bình khá / Phủi nhẹ</option>
+              <option value="advanced">Khá cứng / Giải phong trào</option>
+              <option value="all">Giao lưu mọi trình độ</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-[#475569] mb-1">Thá»ƒ lá»‡ tiá»n sÃ¢n & nÆ°á»›c</label>
+            <label class="block text-xs font-bold text-[#475569] mb-1">Thể lệ tiền sân & nước</label>
             <select id="post-fee-mode" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-semibold focus:border-[#16A34A] focus:outline-none">
-              <option value="split_50_50">Chia Ä‘Ã´i 50/50</option>
-              <option value="loser_pays">Thua tráº£ tiá»n sÃ¢n + nÆ°á»›c</option>
-              <option value="negotiable">Thá»a thuáº­n trá»±c tiáº¿p</option>
+              <option value="split_50_50">Chia đôi 50/50</option>
+              <option value="loser_pays">Thua trả tiền sân + nước</option>
+              <option value="negotiable">Thỏa thuận trực tiếp</option>
             </select>
           </div>
         </div>
         <div>
-          <label class="block text-xs font-bold text-[#475569] mb-1">Ghi chÃº thÃªm</label>
-          <textarea id="post-note" rows="2" placeholder="VD: ÄÃ£ Ä‘áº·t sáºµn sÃ¢n 7A, Ä‘á»™i mÃ¬nh Ä‘Ã¡ sáº¡ch khÃ´ng chÆ¡i xáº¥u..." class="w-full p-3 rounded-lg border border-[#E2E8F0] text-sm focus:border-[#16A34A] focus:outline-none"></textarea>
+          <label class="block text-xs font-bold text-[#475569] mb-1">Ghi chú thêm</label>
+          <textarea id="post-note" rows="2" placeholder="VD: Đã đặt sẵn sân 7A, đội mình đá sạch không chơi xấu..." class="w-full p-3 rounded-lg border border-[#E2E8F0] text-sm focus:border-[#16A34A] focus:outline-none"></textarea>
         </div>
         <div class="pt-2 flex justify-end gap-3">
-          <button type="button" id="cancel-post-btn" class="px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#475569] hover:bg-slate-50">Há»§y</button>
-          <button type="submit" class="btn-base btn-primary px-5 py-2.5 text-sm font-bold shadow">ÄÄƒng Tin Ngay</button>
+          <button type="button" id="cancel-post-btn" class="px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#475569] hover:bg-slate-50">Hủy</button>
+          <button type="submit" class="btn-base btn-primary px-5 py-2.5 text-sm font-bold shadow">Đăng Tin Ngay</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal Báº¯t KÃ¨o -->
+  <!-- Modal Bắt Kèo -->
   <div id="join-match-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 p-6">
       <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-        <h3 class="font-heading font-bold text-lg text-[#0F172A]">Nháº­n Lá»i Báº¯t KÃ¨o</h3>
-        <button id="close-join-modal" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">âœ•</button>
+        <h3 class="font-heading font-bold text-lg text-[#0F172A]">Nhận Lời Bắt Kèo</h3>
+        <button id="close-join-modal" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
       </div>
       <div id="join-match-summary" class="mt-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs space-y-1"></div>
       <form id="join-match-form" class="space-y-4 mt-4" novalidate>
         <input type="hidden" id="join-post-code">
         <div>
-          <label class="block text-xs font-bold text-[#475569] mb-1">TÃªn Ä‘á»™i cá»§a báº¡n *</label>
+          <label class="block text-xs font-bold text-[#475569] mb-1">Tên đội của bạn *</label>
           <input type="text" id="join-team-name" required placeholder="VD: FC Anh Em" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
         </div>
         <div>
-          <label class="block text-xs font-bold text-[#475569] mb-1">TÃªn Äá»™i trÆ°á»Ÿng / NgÆ°á»i liÃªn há»‡ *</label>
-          <input type="text" id="join-captain-name" required placeholder="TÃªn cá»§a báº¡n" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
+          <label class="block text-xs font-bold text-[#475569] mb-1">Tên Đội trưởng / Người liên hệ *</label>
+          <input type="text" id="join-captain-name" required placeholder="Tên của bạn" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
         </div>
         <div>
-          <label class="block text-xs font-bold text-[#475569] mb-1">Sá»‘ Ä‘iá»‡n thoáº¡i liÃªn há»‡ *</label>
+          <label class="block text-xs font-bold text-[#475569] mb-1">Số điện thoại liên hệ *</label>
           <input type="tel" id="join-phone" required placeholder="09xxxxxxxx" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] text-sm font-medium focus:border-[#16A34A] focus:outline-none">
         </div>
         <div class="pt-2 flex justify-end gap-3">
-          <button type="button" id="cancel-join-btn" class="px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#475569] hover:bg-slate-50">ÄÃ³ng</button>
-          <button type="submit" class="btn-base btn-primary px-5 py-2.5 text-sm font-bold shadow">XÃ¡c Nháº­n Báº¯t KÃ¨o</button>
+          <button type="button" id="cancel-join-btn" class="px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#475569] hover:bg-slate-50">Đóng</button>
+          <button type="submit" class="btn-base btn-primary px-5 py-2.5 text-sm font-bold shadow">Xác Nhận Bắt Kèo</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal LiÃªn Há»‡ ThÃ nh CÃ´ng Sau Khi Báº¯t KÃ¨o -->
+  <!-- Modal Liên Hệ Thành Công Sau Khi Bắt Kèo -->
   <div id="match-contact-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="match-contact-title">
     <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 p-6 relative">
       <div class="flex items-center justify-between pb-4 border-b border-slate-100">
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-base font-bold">âœ“</div>
-          <h3 id="match-contact-title" class="font-heading font-bold text-lg text-[#0F172A]">GhÃ©p KÃ¨o ThÃ nh CÃ´ng!</h3>
+          <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-base font-bold">✓</div>
+          <h3 id="match-contact-title" class="font-heading font-bold text-lg text-[#0F172A]">Ghép Kèo Thành Công!</h3>
         </div>
-        <button id="close-match-contact-modal" type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" aria-label="ÄÃ³ng">âœ•</button>
+        <button id="close-match-contact-modal" type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" aria-label="Đóng">✕</button>
       </div>
 
       <div class="py-4 space-y-4">
         <p class="text-xs text-[#475569] leading-relaxed">
-          Báº¡n Ä‘Ã£ báº¯t kÃ¨o thÃ nh cÃ´ng! HÃ£y liÃªn há»‡ ngay vá»›i Ä‘á»™i báº¡n Ä‘á»ƒ chá»‘t thá»i gian, xÃ¡c nháº­n sÃ¢n bÃ³ng vÃ  chia sáº» tiá»n sÃ¢n.
+          Bạn đã bắt kèo thành công! Hãy liên hệ ngay với đội bạn để chốt thời gian, xác nhận sân bóng và chia sẻ tiền sân.
         </p>
 
-        <!-- Tháº» thÃ´ng tin Ä‘á»‘i thá»§ -->
+        <!-- Thẻ thông tin đối thủ -->
         <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 space-y-2.5">
           <div class="flex items-center justify-between gap-2">
-            <span class="text-xs text-[#64748B]">Äá»™i bÃ³ng:</span>
-            <span id="contact-team-name" class="text-xs font-bold text-[#0F172A] text-right truncate">â€”</span>
+            <span class="text-xs text-[#64748B]">Đội bóng:</span>
+            <span id="contact-team-name" class="text-xs font-bold text-[#0F172A] text-right truncate">—</span>
           </div>
           <div class="flex items-center justify-between gap-2">
-            <span class="text-xs text-[#64748B]">Äá»™i trÆ°á»Ÿng:</span>
-            <span id="contact-captain-name" class="text-xs font-semibold text-[#0F172A] text-right truncate">â€”</span>
+            <span class="text-xs text-[#64748B]">Đội trưởng:</span>
+            <span id="contact-captain-name" class="text-xs font-semibold text-[#0F172A] text-right truncate">—</span>
           </div>
           <div class="flex items-center justify-between gap-2">
-            <span class="text-xs text-[#64748B]">Sá»‘ Ä‘iá»‡n thoáº¡i:</span>
-            <span id="contact-phone" class="text-sm font-mono font-bold text-[#16A34A] text-right">â€”</span>
+            <span class="text-xs text-[#64748B]">Số điện thoại:</span>
+            <span id="contact-phone" class="text-sm font-mono font-bold text-[#16A34A] text-right">—</span>
           </div>
         </div>
 
-        <!-- 2 nÃºt liÃªn há»‡ ná»•i báº­t -->
+        <!-- 2 nút liên hệ nổi bật -->
         <div class="grid grid-cols-2 gap-3 pt-1">
           <a id="contact-call-btn" href="#" class="btn-base bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5 transition-colors text-center">
-            <span>ðŸ“ž</span> Gá»i Ngay
+            <span>📞</span> Gọi Ngay
           </a>
           <a id="contact-zalo-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-base bg-[#0068FF] hover:bg-[#0054cc] text-white px-4 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5 transition-colors text-center">
-            <span>ðŸ’¬</span> Nháº¯n Zalo
+            <span>💬</span> Nhắn Zalo
           </a>
         </div>
       </div>
 
       <div class="pt-3 border-t border-slate-100 flex justify-end">
         <button type="button" id="dismiss-match-contact-btn" class="w-full sm:w-auto px-5 py-2.5 rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#475569] hover:bg-slate-50 transition-colors">
-          ÄÃ³ng
+          Đóng
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Modal XÃ¡c Nháº­n Há»§y KÃ¨o -->
+  <!-- Modal Xác Nhận Hủy Kèo -->
   <div id="cancel-match-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="cancel-match-title">
     <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 p-6 relative">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2 text-red-600">
-          <div class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold">âš ï¸</div>
-          <h3 id="cancel-match-title" class="font-heading font-bold text-lg text-[#0F172A]">Há»§y BÃ i ÄÄƒng TÃ¬m Äá»‘i</h3>
+          <div class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold">⚠️</div>
+          <h3 id="cancel-match-title" class="font-heading font-bold text-lg text-[#0F172A]">Hủy Bài Đăng Tìm Đối</h3>
         </div>
-        <button id="close-cancel-match-modal" type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" aria-label="ÄÃ³ng">âœ•</button>
+        <button id="close-cancel-match-modal" type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" aria-label="Đóng">✕</button>
       </div>
 
       <div class="py-4">
         <p class="text-sm text-[#475569] leading-relaxed">
-          Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n há»§y bÃ i Ä‘Äƒng tÃ¬m Ä‘á»‘i nÃ y khÃ´ng? KÃ¨o sáº½ Ä‘Æ°á»£c Ä‘Ã³ng láº¡i.
+          Bạn có chắc chắn muốn hủy bài đăng tìm đối này không? Kèo sẽ được đóng lại.
         </p>
         <input type="hidden" id="cancel-post-id" value="">
         <input type="hidden" id="cancel-post-code" value="">
@@ -251,27 +251,27 @@
 
       <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
         <button type="button" id="dismiss-cancel-match-btn" class="px-4 py-2.5 rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#475569] hover:bg-slate-50 transition-colors">
-          Giá»¯ láº¡i
+          Giữ lại
         </button>
         <button type="button" id="confirm-cancel-match-btn" class="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow transition-colors flex items-center gap-1.5">
-          XÃ¡c nháº­n há»§y
+          Xác nhận hủy
         </button>
       </div>
     </div>
   </div>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-  <script src="/js/data.js?v=20261115_v77"></script>
-  <script src="/js/helpers.js?v=20261115_v77"></script>
-  <script src="/js/db_core.js?v=20261115_v77"></script>
-  <script src="/js/db_pricing.js?v=20261115_v77"></script>
-  <script src="/js/db_bookings.js?v=20261115_v77"></script>
-  <script src="/js/db_operations.js?v=20261115_v77"></script>
-  <script src="/js/db.js?v=20261115_v77"></script>
-  <script src="/js/ui.js?v=20261115_v77"></script>
-  <script src="/js/app.js?v=20261115_v77"></script>
-  <script src="/js/api.js?v=20261115_v77"></script>
-  <script src="/js/matchmaking.js?v=20261115_v77"></script>
+  <script src="/js/data.js?v=20261115_v78"></script>
+  <script src="/js/helpers.js?v=20261115_v78"></script>
+  <script src="/js/db_core.js?v=20261115_v78"></script>
+  <script src="/js/db_pricing.js?v=20261115_v78"></script>
+  <script src="/js/db_bookings.js?v=20261115_v78"></script>
+  <script src="/js/db_operations.js?v=20261115_v78"></script>
+  <script src="/js/db.js?v=20261115_v78"></script>
+  <script src="/js/ui.js?v=20261115_v78"></script>
+  <script src="/js/app.js?v=20261115_v78"></script>
+  <script src="/js/api.js?v=20261115_v78"></script>
+  <script src="/js/matchmaking.js?v=20261115_v78"></script>
 </body>
 </html>
 

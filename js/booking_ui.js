@@ -1,4 +1,4 @@
-﻿
+
 let selectedPitchId = 'P7-A';
 let selectedPitchType = 7;
 let selectedDate = '';
@@ -7,10 +7,7 @@ let bookingMode = 'single';
 let monthlyWeeks = 12;
 let monthlyDates = [];
 let extraServicesCollapsed = false;
-let appliedServices = [
-  { id: 'SRV-WATER', quantity: 4 },
-  { id: 'SRV-BIB', quantity: 2 }
-];
+let appliedServices = window.appliedServices || [];
 let appliedVoucherCode = '';
 let isCurrentPhoneBlacklisted = false;
 let preselectedSlotId = '';
@@ -54,7 +51,7 @@ function setBookingMode(mode) {
     if (monthlyBtn) monthlyBtn.className = 'px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
     if (singleBtn) singleBtn.className = 'px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
     if (panel) panel.classList.remove('hidden');
-    // Khi Ä‘áº·t gÃ³i: KhÃ´ng cáº§n gá»i thÃªm dá»‹ch vá»¥ vÃ¬ gÃ³i Ä‘Ã£ bao gá»“m quÃ  táº·ng trá»n gÃ³i
+    // Khi đặt gói: Không cần gọi thêm dịch vụ vì gói đã bao gồm quà tặng trọn gói
     appliedServices = [];
     extraServicesCollapsed = true;
     updateMonthlyPackage();
@@ -84,10 +81,10 @@ function updateMonthlyPackage() {
   if (giftCard && promo) {
     const giftsHtml = promo.perMatchGifts.map(g => `
       <div class="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200 flex items-center gap-2.5">
-        <span class="text-xl shrink-0">${g.icon || 'ðŸŽ'}</span>
+        <span class="text-xl shrink-0">${g.icon || '🎁'}</span>
         <div class="flex-1">
           <div class="font-bold text-[#0F172A] text-xs">${g.name}</div>
-          <div class="text-[11px] text-slate-500 font-medium">TÃ i trá»£ miá»…n phÃ­: <b>${window.SanBongApp.formatVND(g.lineValue)}/tráº­n</b> â†’ <b class="text-[#15803D]">0Ä‘</b></div>
+          <div class="text-[11px] text-slate-500 font-medium">Tài trợ miễn phí: <b>${window.SanBongApp.formatVND(g.lineValue)}/trận</b> → <b class="text-[#15803D]">0đ</b></div>
         </div>
       </div>
     `).join('');
@@ -95,10 +92,10 @@ function updateMonthlyPackage() {
     giftCard.innerHTML = `
       <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
         <div class="flex items-center gap-2">
-          <span class="text-xl">ðŸŽ</span>
+          <span class="text-xl">🎁</span>
           <div>
-            <div class="text-xs font-extrabold text-[#0F172A] uppercase tracking-wide">Äáº·c quyá»n tÃ i trá»£ má»—i tráº­n thi Ä‘áº¥u</div>
-            <div class="text-[11px] text-[#15803D] font-bold">${promo.title} Â· Giáº£m ${Math.round(promo.discountRate * 100)}% tiá»n sÃ¢n</div>
+            <div class="text-xs font-extrabold text-[#0F172A] uppercase tracking-wide">Đặc quyền tài trợ mỗi trận thi đấu</div>
+            <div class="text-[11px] text-[#15803D] font-bold">${promo.title} · Giảm ${Math.round(promo.discountRate * 100)}% tiền sân</div>
           </div>
         </div>
         <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] uppercase shadow-2xs">${promo.badge}</span>
@@ -109,15 +106,15 @@ function updateMonthlyPackage() {
       </div>
 
       <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2 mt-1 font-semibold">
-        <span>ðŸ’° Tá»•ng tÃ i trá»£ quÃ  táº·ng suá»‘t ${promo.weeks} tuáº§n: <b>${window.SanBongApp.formatVND(promo.totalGiftValue)}</b></span>
-        <span class="px-2 py-0.5 rounded bg-[#16A34A] text-white font-extrabold text-[11px]">TÃ€I TRá»¢ 100% (0Ä‘)</span>
+        <span>💰 Tổng tài trợ quà tặng suốt ${promo.weeks} tuần: <b>${window.SanBongApp.formatVND(promo.totalGiftValue)}</b></span>
+        <span class="px-2 py-0.5 rounded bg-[#16A34A] text-white font-extrabold text-[11px]">TÀI TRỢ 100% (0đ)</span>
       </div>
     `;
     giftCard.classList.remove('hidden');
   }
 
   if (countBadge) {
-    countBadge.textContent = `${monthlyWeeks} buá»•i thi Ä‘áº¥u (${promo ? promo.months + ' thÃ¡ng' : ''})`;
+    countBadge.textContent = `${monthlyWeeks} buổi thi đấu (${promo ? promo.months + ' tháng' : ''})`;
   }
 
   if (!selectedDate) {
@@ -137,7 +134,7 @@ function updateMonthlyPackage() {
     if (db && selectedPitchId && selectedSlotId) {
       const daySlots = db.getSlotsWithStatus(selectedPitchId, iso);
       const found = daySlots.find(s => s.id === selectedSlotId);
-      if (found && (found.status === 'ÄÃ£ Ä‘áº·t' || found.status === 'Äang Ä‘Ã¡' || found.status === 'Báº£o trÃ¬')) {
+      if (found && (found.status === 'Đã đặt' || found.status === 'Đang đá' || found.status === 'Bảo trì')) {
         isFree = false;
       }
     }
@@ -154,8 +151,8 @@ function updateMonthlyPackage() {
           ? 'bg-white border-emerald-300 text-[#15803D]'
           : 'bg-amber-50 border-amber-300 text-amber-800'
       }">
-        <span>Buá»•i ${item.index}: ${item.label}</span>
-        <span>${item.isFree ? 'âœ“ Trá»‘ng' : 'âš ï¸ Äá»•i giá» linh hoáº¡t'}</span>
+        <span>Buổi ${item.index}: ${item.label}</span>
+        <span>${item.isFree ? '✓ Trống' : '⚠️ Đổi giờ linh hoạt'}</span>
       </span>
     `).join('');
   }
@@ -176,24 +173,24 @@ function updatePackageServicesUI() {
     if (banner) {
       banner.classList.remove('hidden');
       if (monthlyWeeks >= 12) {
-        if (bannerTitle) bannerTitle.textContent = 'ÄÃƒ BAO Gá»’M TRá»ŒN GÃ“I: 2 THÃ™NG NÆ¯á»šC + 1 TRá»ŒNG TÃ€I Má»–I TRáº¬N';
-        if (bannerDesc) bannerDesc.innerHTML = 'GÃ³i 3 ThÃ¡ng cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c <b>Táº¶NG Sáº´N 2 THÃ™NG NÆ¯á»šC (48 CHAI) + 1 TRá»ŒNG TÃ€I CHUYÃŠN NGHIá»†P</b> cho má»—i tráº­n thi Ä‘áº¥u (0Ä‘). Báº¡n khÃ´ng cáº§n chá»n thÃªm dá»‹ch vá»¥ á»Ÿ dÆ°á»›i!';
+        if (bannerTitle) bannerTitle.textContent = 'ĐÃ BAO GỒM TRỌN GÓI: 2 THÙNG NƯỚC + 1 TRỌNG TÀI MỖI TRẬN';
+        if (bannerDesc) bannerDesc.innerHTML = 'Gói 3 Tháng của bạn đã được <b>TẶNG SẴN 2 THÙNG NƯỚC (48 CHAI) + 1 TRỌNG TÀI CHUYÊN NGHIỆP</b> cho mỗi trận thi đấu (0đ). Bạn không cần chọn thêm dịch vụ ở dưới!';
       } else if (monthlyWeeks >= 8) {
-        if (bannerTitle) bannerTitle.textContent = 'ÄÃƒ BAO Gá»’M TRá»ŒN GÃ“I: 1 THÃ™NG NÆ¯á»šC + 1 Bá»˜ ÃO BIB Má»–I TRáº¬N';
-        if (bannerDesc) bannerDesc.innerHTML = 'GÃ³i 2 ThÃ¡ng cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c <b>Táº¶NG Sáº´N 1 THÃ™NG NÆ¯á»šC (24 CHAI) + 1 Bá»˜ ÃO BIB</b> cho má»—i tráº­n thi Ä‘áº¥u (0Ä‘).';
+        if (bannerTitle) bannerTitle.textContent = 'ĐÃ BAO GỒM TRỌN GÓI: 1 THÙNG NƯỚC + 1 BỘ ÁO BIB MỖI TRẬN';
+        if (bannerDesc) bannerDesc.innerHTML = 'Gói 2 Tháng của bạn đã được <b>TẶNG SẴN 1 THÙNG NƯỚC (24 CHAI) + 1 BỘ ÁO BIB</b> cho mỗi trận thi đấu (0đ).';
       } else {
-        if (bannerTitle) bannerTitle.textContent = 'ÄÃƒ BAO Gá»’M TRá»ŒN GÃ“I: 1 Lá»C NÆ¯á»šC + MIá»„N PHÃ BÃ“NG ÄÃ Má»–I TRáº¬N';
-        if (bannerDesc) bannerDesc.innerHTML = 'GÃ³i 1 ThÃ¡ng cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c <b>Táº¶NG Sáº´N 1 Lá»C NÆ¯á»šC (12 CHAI) + BÃ“NG ÄÃ</b> cho má»—i tráº­n thi Ä‘áº¥u (0Ä‘).';
+        if (bannerTitle) bannerTitle.textContent = 'ĐÃ BAO GỒM TRỌN GÓI: 1 LỐC NƯỚC + MIỄN PHÍ BÓNG ĐÁ MỖI TRẬN';
+        if (bannerDesc) bannerDesc.innerHTML = 'Gói 1 Tháng của bạn đã được <b>TẶNG SẴN 1 LỐC NƯỚC (12 CHAI) + BÓNG ĐÁ</b> cho mỗi trận thi đấu (0đ).';
       }
     }
 
     if (wrapper) {
       if (extraServicesCollapsed) {
         wrapper.classList.add('hidden');
-        if (toggleBtnText) toggleBtnText.textContent = 'Gá»i thÃªm dá»‹ch vá»¥ phÃ¡t sinh khÃ¡c ngoÃ i gÃ³i';
+        if (toggleBtnText) toggleBtnText.textContent = 'Gọi thêm dịch vụ phát sinh khác ngoài gói';
       } else {
         wrapper.classList.remove('hidden');
-        if (toggleBtnText) toggleBtnText.textContent = 'Thu gá»n danh sÃ¡ch dá»‹ch vá»¥ ngoÃ i gÃ³i';
+        if (toggleBtnText) toggleBtnText.textContent = 'Thu gọn danh sách dịch vụ ngoài gói';
       }
     }
   } else {
@@ -226,7 +223,7 @@ function renderVoucherQuickList() {
   ];
 
   const esc = window.SanBongApp?.escapeHTML || (s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
-  container.innerHTML = '<span class="text-[11px] text-[#64748B]">Gá»£i Ã½ 1 cháº¡m:</span>' +
+  container.innerHTML = '<span class="text-[11px] text-[#64748B]">Gợi ý 1 chạm:</span>' +
     vouchers.map((v, idx) => {
       const cls = palettes[idx % palettes.length];
       const lbl = v.type === 'percent' ? `-${Number(v.value) || 0}%` : `-${Math.round((Number(v.value) || 0) / 1000)}k`;
@@ -262,7 +259,7 @@ function initBookingPage() {
     selectedPitchType = Number(paramType);
     const pitchesOfType = db.getPitches().filter(p => Number(p.type) === selectedPitchType);
     if (pitchesOfType.length > 0) {
-      const activeOne = pitchesOfType.find(p => p.status !== 'Báº£o trÃ¬') || pitchesOfType[0];
+      const activeOne = pitchesOfType.find(p => p.status !== 'Bảo trì') || pitchesOfType[0];
       selectedPitchId = activeOne.id;
     }
   } else {
@@ -415,20 +412,20 @@ function renderPitchTypeSelector() {
   if (!container) return;
 
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
-  const allPitches = (db ? db.getPitches() : []).filter(p => p.status !== 'áº¨n');
+  const allPitches = (db ? db.getPitches() : []).filter(p => p.status !== 'Ẩn');
   const getMinPriceLabel = (typeNum, fallbackNum) => {
     const matching = allPitches.filter(p => Number(p.type) === typeNum && Number(p.basePrice) > 0);
     const minVal = matching.length > 0
       ? Math.min(...matching.map(p => Number(p.basePrice)))
       : fallbackNum;
-    const fmt = window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(minVal) : (minVal.toLocaleString('vi-VN') + 'Ä‘');
-    return `Tá»« ${fmt}/h`;
+    const fmt = window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(minVal) : (minVal.toLocaleString('vi-VN') + 'đ');
+    return `Từ ${fmt}/h`;
   };
 
   const types = [
-    { type: 5, name: 'SÃ¢n 5 ngÆ°á»i', desc: 'Mini 5 vs 5 Â· 20m x 40m', price: getMinPriceLabel(5, 250000) },
-    { type: 7, name: 'SÃ¢n 7 ngÆ°á»i', desc: 'Chuáº©n 7 vs 7 Â· 30m x 50m', price: getMinPriceLabel(7, 280000) },
-    { type: 11, name: 'SÃ¢n 11 ngÆ°á»i', desc: 'Chuáº©n FIFA Â· 68m x 105m', price: getMinPriceLabel(11, 800000) }
+    { type: 5, name: 'Sân 5 người', desc: 'Mini 5 vs 5 · 20m x 40m', price: getMinPriceLabel(5, 250000) },
+    { type: 7, name: 'Sân 7 người', desc: 'Chuẩn 7 vs 7 · 30m x 50m', price: getMinPriceLabel(7, 280000) },
+    { type: 11, name: 'Sân 11 người', desc: 'Chuẩn FIFA · 68m x 105m', price: getMinPriceLabel(11, 800000) }
   ];
 
   container.innerHTML = types.map(t => {
@@ -459,10 +456,10 @@ window.selectPitchType = function(type) {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   if (!db) return;
 
-  const pitchesOfType = db.getPitches().filter(p => Number(p.type) === selectedPitchType && p.status !== 'áº¨n');
+  const pitchesOfType = db.getPitches().filter(p => Number(p.type) === selectedPitchType && p.status !== 'Ẩn');
   const stillValid = pitchesOfType.some(p => p.id === selectedPitchId);
   if (!stillValid && pitchesOfType.length > 0) {
-    const activeOne = pitchesOfType.find(p => p.status !== 'Báº£o trÃ¬') || pitchesOfType[0];
+    const activeOne = pitchesOfType.find(p => p.status !== 'Bảo trì') || pitchesOfType[0];
     selectedPitchId = activeOne.id;
   }
 
@@ -475,20 +472,20 @@ function initPitchSelect() {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   if (!db) return;
 
-  const allPitches = db.getPitches().filter(p => p.status !== 'áº¨n');
+  const allPitches = db.getPitches().filter(p => p.status !== 'Ẩn');
   const pitches = allPitches.filter(p => Number(p.type) === selectedPitchType);
   const select = document.getElementById('booking-pitch-select');
   if (!select) return;
 
   const typeBadge = document.getElementById('selected-type-badge');
   if (typeBadge) {
-    typeBadge.textContent = `(${pitches.length} sÃ¢n cÃ³ sáºµn)`;
+    typeBadge.textContent = `(${pitches.length} sân có sẵn)`;
   }
 
   const esc = window.SanBongApp?.escapeHTML || (s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
   select.innerHTML = pitches.map(p => `
-    <option value="${esc(p.id)}" ${p.id === selectedPitchId ? 'selected' : ''} ${p.status === 'Báº£o trÃ¬' ? 'disabled' : ''}>
-      ${esc(p.name)} - ${window.SanBongApp ? window.SanBongApp.formatVND(p.basePrice) : (Number(p.basePrice) || 0) + 'Ä‘'}/h ${p.status === 'Báº£o trÃ¬' ? ' [ÄANG Báº¢O TRÃŒ]' : ''}
+    <option value="${esc(p.id)}" ${p.id === selectedPitchId ? 'selected' : ''} ${p.status === 'Bảo trì' ? 'disabled' : ''}>
+      ${esc(p.name)} - ${window.SanBongApp ? window.SanBongApp.formatVND(p.basePrice) : (Number(p.basePrice) || 0) + 'đ'}/h ${p.status === 'Bảo trì' ? ' [ĐANG BẢO TRÌ]' : ''}
     </option>
   `).join('');
 }

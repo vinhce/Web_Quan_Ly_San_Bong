@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   'use strict';
   window.SanBongDB = window.SanBongDB || {};
   Object.assign(window.SanBongDB, {
@@ -29,11 +29,11 @@
 
       const newBooking = {
         code: bookingCode,
-        customerName: bookingInput.customerName || 'KhÃ¡ch vÃ£ng lai',
+        customerName: bookingInput.customerName || 'Khách vãng lai',
         phone: bookingInput.phone || '',
         email: bookingInput.email || '',
         pitchId: bookingInput.pitchId,
-        pitchName: pitch ? pitch.name : 'SÃ¢n bÃ³ng',
+        pitchName: pitch ? pitch.name : 'Sân bóng',
         date: bookingInput.date,
         slotId: bookingInput.slotId || '',
         slotTime: bookingInput.slotTime || '',
@@ -49,9 +49,9 @@
         totalPrice: pricing ? pricing.totalPrice : 0,
         depositAmount: pricing ? pricing.depositAmount : 0,
         remainingAmount: pricing ? pricing.remainingAmount : 0,
-        status: bookingInput.status || 'Chá» duyá»‡t cá»c',
-        paymentStatus: bookingInput.paymentStatus || 'Chá» cá»c 30%',
-        paymentMethod: bookingInput.paymentMethod || 'Chuyá»ƒn khoáº£n Ä‘áº·t cá»c',
+        status: bookingInput.status || 'Chờ duyệt cọc',
+        paymentStatus: bookingInput.paymentStatus || 'Chờ cọc 30%',
+        paymentMethod: bookingInput.paymentMethod || 'Chuyển khoản đặt cọc',
         createdAt: `${bookingInput.date} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
         note: bookingInput.note || ''
       };
@@ -82,10 +82,10 @@
       const booking = bookings.find(b => b.code === bookingCode);
       if (booking) {
         const oldStatus = booking.status;
-        booking.status = 'Äang Ä‘Ã¡';
+        booking.status = 'Đang đá';
         booking.checkinTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-        if (!booking.paymentStatus || booking.paymentStatus === 'Chá» duyá»‡t cá»c' || booking.paymentStatus === 'Chá» cá»c 30%') {
-          booking.paymentStatus = 'ÄÃ£ cá»c 30%';
+        if (!booking.paymentStatus || booking.paymentStatus === 'Chờ duyệt cọc' || booking.paymentStatus === 'Chờ cọc 30%') {
+          booking.paymentStatus = 'Đã cọc 30%';
         }
         if (typeof booking.remainingAmount !== 'number' || booking.remainingAmount <= 0) {
           const total = Number(booking.totalPrice || 0);
@@ -93,7 +93,7 @@
           booking.remainingAmount = Math.max(0, total - dep);
         }
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-        this.addAuditLog('CHECKIN', bookingCode, `Tráº¡ng thÃ¡i: ${oldStatus}`, `Tráº¡ng thÃ¡i: Äang Ä‘Ã¡ (${booking.checkinTime})`);
+        this.addAuditLog('CHECKIN', bookingCode, `Trạng thái: ${oldStatus}`, `Trạng thái: Đang đá (${booking.checkinTime})`);
         return booking;
       }
       return null;
@@ -109,7 +109,7 @@
       booking.overtimeFee = (Number(booking.overtimeFee) || 0) + extraFee;
       booking.totalPrice = (Number(booking.totalPrice) || 0) + extraFee;
       booking.remainingAmount = (Number(booking.remainingAmount) || 0) + extraFee;
-      booking.note = (booking.note ? booking.note + ' | ' : '') + `[ÄÃ¡ thÃªm ${mins}p: +${extraFee.toLocaleString('vi-VN')}Ä‘]`;
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đá thêm ${mins}p: +${extraFee.toLocaleString('vi-VN')}đ]`;
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
       return booking;
     },
@@ -137,10 +137,10 @@
         booking.totalPrice = Math.max(0, Number(booking.totalPrice || 0) + diff);
         booking.remainingAmount = Math.max(0, Number(booking.remainingAmount || 0) + diff);
       }
-      const diffNote = adjustPrice && diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff.toLocaleString('vi-VN')}Ä‘)` : ' (Giá»¯ nguyÃªn giÃ¡)';
-      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Äá»•i sÃ¢n: ${oldPitchName} -> ${newPitch.name}${diffNote}${reason ? ' - LÃ½ do: ' + reason : ''}]`;
+      const diffNote = adjustPrice && diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff.toLocaleString('vi-VN')}đ)` : ' (Giữ nguyên giá)';
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đổi sân: ${oldPitchName} -> ${newPitch.name}${diffNote}${reason ? ' - Lý do: ' + reason : ''}]`;
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-      this.addAuditLog('TRANSFER_PITCH', bookingCode, `SÃ¢n: ${oldPitchName}`, `SÃ¢n: ${newPitch.name}${diffNote}${reason ? ' (' + reason + ')' : ''}`);
+      this.addAuditLog('TRANSFER_PITCH', bookingCode, `Sân: ${oldPitchName}`, `Sân: ${newPitch.name}${diffNote}${reason ? ' (' + reason + ')' : ''}`);
       return booking;
     },
 
@@ -170,7 +170,7 @@
 
       booking.totalPrice = (Number(booking.totalPrice) || 0) + addedCost;
       booking.remainingAmount = (Number(booking.remainingAmount) || 0) + addedCost;
-      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Gá»i thÃªm: ${srvDef.name} x${qty} (+${addedCost.toLocaleString('vi-VN')}Ä‘)]`;
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Gọi thêm: ${srvDef.name} x${qty} (+${addedCost.toLocaleString('vi-VN')}đ)]`;
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
       this.deductServiceStock(srvDef.id, qty);
       return booking;
@@ -183,22 +183,22 @@
       const oldStatus = booking.status;
       const oldPay = booking.paymentStatus;
       const policyMap = {
-        'refund_100': 'ÄÃ£ hoÃ n cá»c 100%',
-        'reserve': 'Báº£o lÆ°u cá»c 30%',
-        'forfeit_50': 'Pháº¡t 50% cá»c'
+        'refund_100': 'Đã hoàn cọc 100%',
+        'reserve': 'Bảo lưu cọc 30%',
+        'forfeit_50': 'Phạt 50% cọc'
       };
-      booking.status = 'ÄÃ£ há»§y';
-      booking.paymentStatus = policyMap[policy] || 'ÄÃ£ hoÃ n cá»c 100%';
+      booking.status = 'Đã hủy';
+      booking.paymentStatus = policyMap[policy] || 'Đã hoàn cọc 100%';
       booking.remainingAmount = 0;
       booking.cancelPolicy = policy;
-      booking.cancelReason = reason || 'Há»§y lá»‹ch trÆ°á»›c thá»i háº¡n';
-      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Há»§y trÆ°á»›c háº¡n - ${booking.paymentStatus}${reason ? ': ' + reason : ''}]`;
+      booking.cancelReason = reason || 'Hủy lịch trước thời hạn';
+      booking.note = (booking.note ? booking.note + ' | ' : '') + `[Hủy trước hạn - ${booking.paymentStatus}${reason ? ': ' + reason : ''}]`;
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-      this.addAuditLog('CANCEL_BOOKING', bookingCode, `${oldStatus} (${oldPay})`, `ÄÃ£ há»§y (${booking.paymentStatus}) - LÃ½ do: ${booking.cancelReason}`);
+      this.addAuditLog('CANCEL_BOOKING', bookingCode, `${oldStatus} (${oldPay})`, `Đã hủy (${booking.paymentStatus}) - Lý do: ${booking.cancelReason}`);
       return booking;
     },
 
-    completeAndPayRemaining(bookingCode, payMethod = 'Tiá»n máº·t táº¡i quáº§y') {
+    completeAndPayRemaining(bookingCode, payMethod = 'Tiền mặt tại quầy') {
       const bookings = this.getAllBookings();
       const booking = bookings.find(b => b.code === bookingCode);
       if (!booking) return null;
@@ -211,14 +211,14 @@
       booking.paidRemainingAmount = paidRem;
       booking.remainingPaymentMethod = payMethod;
       booking.remainingAmount = 0;
-      booking.status = 'HoÃ n thÃ nh';
-      booking.paymentStatus = 'ÄÃ£ thanh toÃ¡n 100%';
+      booking.status = 'Hoàn thành';
+      booking.paymentStatus = 'Đã thanh toán 100%';
       booking.completedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-      if (!String(booking.note || '').includes('ÄÃ£ táº¥t toÃ¡n pháº§n cÃ²n láº¡i')) {
-        booking.note = (booking.note ? booking.note + ' | ' : '') + `[ÄÃ£ táº¥t toÃ¡n pháº§n cÃ²n láº¡i ${paidRem.toLocaleString('vi-VN')}Ä‘ qua ${payMethod}]`;
+      if (!String(booking.note || '').includes('Đã tất toán phần còn lại')) {
+        booking.note = (booking.note ? booking.note + ' | ' : '') + `[Đã tất toán phần còn lại ${paidRem.toLocaleString('vi-VN')}đ qua ${payMethod}]`;
       }
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-      this.addAuditLog('COLLECT_PAYMENT', bookingCode, `CÃ²n ná»£: ${calcRem.toLocaleString('vi-VN')}Ä‘`, `Thu Ä‘á»§ ${paidRem.toLocaleString('vi-VN')}Ä‘ (${payMethod})`);
+      this.addAuditLog('COLLECT_PAYMENT', bookingCode, `Còn nợ: ${calcRem.toLocaleString('vi-VN')}đ`, `Thu đủ ${paidRem.toLocaleString('vi-VN')}đ (${payMethod})`);
       return booking;
     },
 
@@ -227,11 +227,11 @@
       const booking = bookings.find(b => b.code === bookingCode);
       if (booking) {
         const oldStatus = booking.status;
-        booking.status = 'KhÃ¡ch chÆ°a Ä‘áº¿n';
-        booking.paymentStatus = 'Tá»‹ch thu cá»c 30%';
-        booking.note = (booking.note ? booking.note + ' | ' : '') + '[QuÃ¡ 15p khÃ¡ch chÆ°a Ä‘áº¿n - ÄÃ£ nháº£ sÃ¢n trá»‘ng]';
+        booking.status = 'Khách chưa đến';
+        booking.paymentStatus = 'Tịch thu cọc 30%';
+        booking.note = (booking.note ? booking.note + ' | ' : '') + '[Quá 15p khách chưa đến - Đã nhả sân trống]';
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-        this.addAuditLog('NOSHOW_RELEASE', bookingCode, `Tráº¡ng thÃ¡i: ${oldStatus}`, 'KhÃ¡ch chÆ°a Ä‘áº¿n (Tá»‹ch thu cá»c 30% & Nháº£ sÃ¢n)');
+        this.addAuditLog('NOSHOW_RELEASE', bookingCode, `Trạng thái: ${oldStatus}`, 'Khách chưa đến (Tịch thu cọc 30% & Nhả sân)');
         return booking;
       }
       return null;
@@ -242,12 +242,12 @@
       const booking = bookings.find(b => b.code === bookingCode);
       if (booking) {
         const oldStatus = booking.status;
-        booking.status = 'ÄÃ£ xÃ¡c nháº­n';
-        booking.paymentStatus = 'ÄÃ£ cá»c 30%';
+        booking.status = 'Đã xác nhận';
+        booking.paymentStatus = 'Đã cọc 30%';
         booking.remainingAmount = Math.max(0, Number(booking.totalPrice || 0) - Number(booking.depositAmount || 0));
-        booking.note = (booking.note ? booking.note + ' | ' : '') + '[ÄÃ£ khÃ´i phá»¥c láº¡i ca Ä‘Ã¡]';
+        booking.note = (booking.note ? booking.note + ' | ' : '') + '[Đã khôi phục lại ca đá]';
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-        this.addAuditLog('RESTORE_BOOKING', bookingCode, `Tráº¡ng thÃ¡i: ${oldStatus}`, 'ÄÃ£ xÃ¡c nháº­n (KhÃ´i phá»¥c ca Ä‘Ã¡)');
+        this.addAuditLog('RESTORE_BOOKING', bookingCode, `Trạng thái: ${oldStatus}`, 'Đã xác nhận (Khôi phục ca đá)');
         return booking;
       }
       return null;
@@ -268,17 +268,17 @@
         id: cleanId,
         name: String(pitchData.name || cleanId).trim(),
         type: pType,
-        typeLabel: `SÃ¢n ${pType} ngÆ°á»i`,
+        typeLabel: `Sân ${pType} người`,
         size: String(pitchData.size || (oldPitch ? oldPitch.size : '') || (pType === 11 ? '60m x 95m' : (pType === 7 ? '40m x 60m' : '22m x 42m'))).trim(),
-        grass: String(pitchData.grass || (oldPitch ? oldPitch.grass : '') || 'Cá» nhÃ¢n táº¡o FIFA Quality Â· ÄÃ¨n LED 400W').trim(),
+        grass: String(pitchData.grass || (oldPitch ? oldPitch.grass : '') || 'Cỏ nhân tạo FIFA Quality · Đèn LED 400W').trim(),
         basePrice,
         peakPrice,
         weekendPrice,
-        status: pitchData.status || (oldPitch ? oldPitch.status : 'Hoáº¡t Ä‘á»™ng'),
-        badge: oldPitch?.badge || `SÃ¢n ${pType} TiÃªu Chuáº©n`,
+        status: pitchData.status || (oldPitch ? oldPitch.status : 'Hoạt động'),
+        badge: oldPitch?.badge || `Sân ${pType} Tiêu Chuẩn`,
         rating: oldPitch?.rating || 4.9,
         reviews: oldPitch?.reviews || 20,
-        amenities: oldPitch?.amenities || ['ÄÃ¨n LED chá»‘ng chÃ³i', 'LÆ°á»›i cháº¯n má»›i', 'NÆ°á»›c uá»‘ng táº¡i sÃ¢n']
+        amenities: oldPitch?.amenities || ['Đèn LED chống chói', 'Lưới chắn mới', 'Nước uống tại sân']
       });
 
       if (existingIdx >= 0) {
@@ -290,8 +290,8 @@
       this.addAuditLog(
         'PITCH_UPSERT',
         cleanId,
-        oldPitch ? `${oldPitch.name} (${oldPitch.basePrice.toLocaleString('vi-VN')}Ä‘ / ${oldPitch.peakPrice.toLocaleString('vi-VN')}Ä‘) [${oldPitch.status}]` : 'Táº¡o sÃ¢n má»›i',
-        `${updatedPitch.name} (ThÆ°á»ng: ${basePrice.toLocaleString('vi-VN')}Ä‘ | Cao Ä‘iá»ƒm: ${peakPrice.toLocaleString('vi-VN')}Ä‘ | Cuá»‘i tuáº§n: ${weekendPrice.toLocaleString('vi-VN')}Ä‘) [${updatedPitch.status}]`
+        oldPitch ? `${oldPitch.name} (${oldPitch.basePrice.toLocaleString('vi-VN')}đ / ${oldPitch.peakPrice.toLocaleString('vi-VN')}đ) [${oldPitch.status}]` : 'Tạo sân mới',
+        `${updatedPitch.name} (Thường: ${basePrice.toLocaleString('vi-VN')}đ | Cao điểm: ${peakPrice.toLocaleString('vi-VN')}đ | Cuối tuần: ${weekendPrice.toLocaleString('vi-VN')}đ) [${updatedPitch.status}]`
       );
       return updatedPitch;
     },
@@ -305,10 +305,10 @@
         id: cleanId,
         name: String(srvData.name || cleanId).trim(),
         price: Math.max(0, Number(srvData.price) || 0),
-        unit: String(srvData.unit || 'cÃ¡i').trim(),
+        unit: String(srvData.unit || 'cái').trim(),
         stockQty: Math.max(0, parseInt(srvData.stockQty, 10) || 0),
         minStockWarning: Math.max(0, parseInt(srvData.minStockWarning, 10) || 5),
-        icon: srvData.icon || (idx >= 0 ? list[idx].icon : 'ðŸ¥¤')
+        icon: srvData.icon || (idx >= 0 ? list[idx].icon : '🥤')
       };
       if (idx >= 0) {
         list[idx] = item;
@@ -356,7 +356,7 @@
     },
 
     recordCounterSale({ serviceId, quantity, payMethod, paymentMethod, note }) {
-      const resolvedPayMethod = payMethod || paymentMethod || 'Tiá»n máº·t táº¡i quáº§y';
+      const resolvedPayMethod = payMethod || paymentMethod || 'Tiền mặt tại quầy';
       const list = this.getServices();
       const srv = list.find(s => String(s.id).toUpperCase() === String(serviceId).toUpperCase());
       if (!srv) return null;
@@ -381,7 +381,7 @@
         payMethod: resolvedPayMethod,
         note: note || '',
         createdAt: timestamp,
-        staffName: user ? user.name : 'NhÃ¢n viÃªn trá»±c sÃ¢n'
+        staffName: user ? user.name : 'Nhân viên trực sân'
       };
       const sales = this.getCounterSales();
       sales.unshift(sale);
@@ -389,8 +389,8 @@
       this.addAuditLog(
         'COUNTER_SALE',
         sale.id,
-        `Tá»“n kho ${srv.name}: ${oldStock} ${srv.unit}`,
-        `BÃ¡n ${qty} ${srv.unit} (${totalAmount.toLocaleString('vi-VN')}Ä‘ - ${sale.payMethod}) Â· Tá»“n cÃ²n: ${newStock}`
+        `Tồn kho ${srv.name}: ${oldStock} ${srv.unit}`,
+        `Bán ${qty} ${srv.unit} (${totalAmount.toLocaleString('vi-VN')}đ - ${sale.payMethod}) · Tồn còn: ${newStock}`
       );
       return { sale, service: srv };
     },
@@ -413,7 +413,7 @@
         const entry = {
           id: Date.now() + Math.floor(Math.random() * 1000),
           created_at: createdAt,
-          actor_name: user ? user.name : 'Quáº£n Trá»‹ ViÃªn',
+          actor_name: user ? user.name : 'Quản Trị Viên',
           actor_role: user ? user.role : 'admin',
           action: String(action || 'SYSTEM'),
           target_code: String(targetCode || '---'),
@@ -443,11 +443,11 @@
         if (!bPhone || (!bPhone.endsWith(clean.slice(-9)) && bPhone !== clean)) return;
         const st = String(b.status || '');
         const paySt = String(b.paymentStatus || '');
-        if (st === 'KhÃ¡ch chÆ°a Ä‘áº¿n' || st.includes('No-Show') || paySt === 'Tá»‹ch thu cá»c 30%') {
+        if (st === 'Khách chưa đến' || st.includes('No-Show') || paySt === 'Tịch thu cọc 30%') {
           noShowCount += 1;
         }
         const rem = Number(b.remainingAmount || 0);
-        if (rem > 0 && st !== 'ÄÃ£ há»§y' && st !== 'KhÃ¡ch chÆ°a Ä‘áº¿n' && !st.includes('No-Show') && st !== 'HoÃ n thÃ nh') {
+        if (rem > 0 && st !== 'Đã hủy' && st !== 'Khách chưa đến' && !st.includes('No-Show') && st !== 'Hoàn thành') {
           debtCount += 1;
           debtAmount += rem;
         }

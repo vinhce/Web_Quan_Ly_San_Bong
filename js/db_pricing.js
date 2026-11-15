@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   'use strict';
   window.SanBongDB = window.SanBongDB || {};
   Object.assign(window.SanBongDB, {
@@ -14,7 +14,7 @@
         const rawName = sessionUser ? (sessionUser.full_name || sessionUser.name || sessionUser.username) : '';
         if (sessionUser && rawName) {
           const customerTier = String(sessionUser.customer_tier || sessionUser.customerTier || sessionUser.tier || 'standard').trim().toLowerCase();
-          const tierLabels = { standard: 'Há»™i viÃªn', bronze: 'Há»™i viÃªn Äá»“ng', silver: 'Há»™i viÃªn Báº¡c', regular: 'KhÃ¡ch thÃ¢n thiáº¿t', gold: 'Há»™i viÃªn VÃ ng', vip: 'KhÃ¡ch VIP', diamond: 'Há»™i viÃªn Kim CÆ°Æ¡ng' };
+          const tierLabels = { standard: 'Hội viên', bronze: 'Hội viên Đồng', silver: 'Hội viên Bạc', regular: 'Khách thân thiết', gold: 'Hội viên Vàng', vip: 'Khách VIP', diamond: 'Hội viên Kim Cương' };
           return {
             id: sessionUser.id,
             name: rawName,
@@ -26,10 +26,10 @@
             role: sessionUser.role || 'user',
             customer_tier: customerTier,
             tier: sessionUser.role === 'admin'
-              ? 'Quáº£n trá»‹ viÃªn'
+              ? 'Quản trị viên'
               : (sessionUser.role === 'manager'
-                ? 'Quáº£n lÃ½ sÃ¢n'
-                : (sessionUser.role === 'staff' ? 'NhÃ¢n viÃªn trá»±c sÃ¢n' : (sessionUser.tier || tierLabels[customerTier] || 'Há»™i viÃªn'))),
+                ? 'Quản lý sân'
+                : (sessionUser.role === 'staff' ? 'Nhân viên trực sân' : (sessionUser.tier || tierLabels[customerTier] || 'Hội viên'))),
             points: Number(sessionUser.points) || 0,
             avatar: rawName.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() || 'VIP',
             totalBookings: 0,
@@ -81,29 +81,29 @@
     getSlots(pitchId, dateStr) {
       const slots = this.getTimeSlots();
       const pitch = this.getPitchById(pitchId);
-      const isPitchMaintenance = pitch && pitch.status === 'Báº£o trÃ¬';
+      const isPitchMaintenance = pitch && pitch.status === 'Bảo trì';
 
-      const bookings = this.getAllBookings().filter(b => b.pitchId === pitchId && b.date === dateStr && b.status !== 'ÄÃ£ há»§y' && b.status !== 'KhÃ¡ch chÆ°a Ä‘áº¿n' && b.status !== 'Váº¯ng máº·t (No-Show)' && b.paymentStatus !== 'Tá»‹ch thu cá»c 30%');
+      const bookings = this.getAllBookings().filter(b => b.pitchId === pitchId && b.date === dateStr && b.status !== 'Đã hủy' && b.status !== 'Khách chưa đến' && b.status !== 'Vắng mặt (No-Show)' && b.paymentStatus !== 'Tịch thu cọc 30%');
 
       return slots.map(slot => {
         if (isPitchMaintenance) {
-          return { ...slot, status: 'Báº£o trÃ¬', booking: null, maintenanceReason: pitch?.maintenanceReason || 'SÃ¢n Ä‘ang báº£o trÃ¬' };
+          return { ...slot, status: 'Bảo trì', booking: null, maintenanceReason: pitch?.maintenanceReason || 'Sân đang bảo trì' };
         }
         const mWin = this.findMaintenanceForSlot ? this.findMaintenanceForSlot(pitchId, dateStr, slot.time) : null;
         if (mWin) {
-          return { ...slot, status: 'Báº£o trÃ¬', booking: null, maintenanceReason: mWin.reason || 'Báº£o trÃ¬ Ä‘á»‹nh ká»³' };
+          return { ...slot, status: 'Bảo trì', booking: null, maintenanceReason: mWin.reason || 'Bảo trì định kỳ' };
         }
 
         const match = bookings.find(b => b.slotId === slot.id || b.slotTime === slot.time);
         if (match) {
           return {
             ...slot,
-            status: match.status === 'Äang Ä‘Ã¡' ? 'Äang Ä‘Ã¡' : 'ÄÃ£ Ä‘áº·t',
+            status: match.status === 'Đang đá' ? 'Đang đá' : 'Đã đặt',
             booking: match
           };
         }
 
-        return { ...slot, status: 'Trá»‘ng', booking: null };
+        return { ...slot, status: 'Trống', booking: null };
       });
     },
 
@@ -172,7 +172,7 @@
       const pitchPriceBeforeRule = Math.round(rawPitchTotal * (1 - monthlyDiscountRate));
       const monthlyDiscountAmount = Math.max(0, rawPitchTotal - pitchPriceBeforeRule);
 
-      // Quy táº¯c giÃ¡ giá» vÃ ng / tháº¥p Ä‘iá»ƒm (giá»‘ng resolve_golden_hour_adjustment á»Ÿ server)
+      // Quy tắc giá giờ vàng / thấp điểm (giống resolve_golden_hour_adjustment ở server)
       let netPitchPrice = pitchPriceBeforeRule;
       let goldenHourRule = null;
       let goldenHourDelta = 0;
@@ -226,30 +226,30 @@
           : new Date().toISOString().split('T')[0];
         const v = this.getVouchers().find(vc => vc.code.toUpperCase() === voucherCode.trim().toUpperCase() && vc.isActive !== false);
         if (!v) {
-          voucherError = 'MÃ£ giáº£m giÃ¡ khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ ngá»«ng Ã¡p dá»¥ng.';
+          voucherError = 'Mã giảm giá không tồn tại hoặc đã ngừng áp dụng.';
         } else if ((v.validFrom && todayLocal < v.validFrom) || (v.validTo && todayLocal > v.validTo)) {
-          voucherError = 'MÃ£ giáº£m giÃ¡ chÆ°a Ä‘áº¿n ngÃ y Ã¡p dá»¥ng hoáº·c Ä‘Ã£ háº¿t háº¡n.';
+          voucherError = 'Mã giảm giá chưa đến ngày áp dụng hoặc đã hết hạn.';
         } else if (v.pitchTypeLimit && Number(v.pitchTypeLimit) !== Number(pitch.type)) {
-          voucherError = `MÃ£ giáº£m giÃ¡ nÃ y chá»‰ Ã¡p dá»¥ng riÃªng cho SÃ¢n ${v.pitchTypeLimit} ngÆ°á»i.`;
+          voucherError = `Mã giảm giá này chỉ áp dụng riêng cho Sân ${v.pitchTypeLimit} người.`;
         } else if (Number(v.maxUsage || 0) > 0 && Number(v.usedCount || 0) >= Number(v.maxUsage)) {
-          voucherError = 'MÃ£ giáº£m giÃ¡ Ä‘Ã£ háº¿t lÆ°á»£t sá»­ dá»¥ng.';
+          voucherError = 'Mã giảm giá đã hết lượt sử dụng.';
         } else if (v.code.toUpperCase() === 'VIPGOLD' || (v.requiredTier || v.required_tier)) {
           const curUser = this.getUser ? this.getUser() : null;
           const requiredTier = String(v.requiredTier || v.required_tier || 'vip,regular').trim().toLowerCase();
           const unrestricted = requiredTier === 'standard' || requiredTier === 'all';
           if ((!curUser || !curUser.name) && !unrestricted) {
-            voucherError = 'Báº¡n chÆ°a Ä‘á»§ Ä‘iá»u kiá»‡n. Vui lÃ²ng Ä‘Äƒng nháº­p tÃ i khoáº£n thÃ nh viÃªn VÃ ng / Kim CÆ°Æ¡ng Ä‘á»ƒ dÃ¹ng mÃ£ nÃ y.';
+            voucherError = 'Bạn chưa đủ điều kiện. Vui lòng đăng nhập tài khoản thành viên Vàng / Kim Cương để dùng mã này.';
           } else {
             const rawTier = String(curUser?.customer_tier || curUser?.tier || 'standard').trim().toLowerCase();
-            const legacyTiers = { 'há»™i viÃªn vÃ ng': 'gold', 'há»™i viÃªn kim cÆ°Æ¡ng': 'diamond', 'khÃ¡ch vip': 'vip', 'khÃ¡ch thÃ¢n thiáº¿t': 'regular' };
+            const legacyTiers = { 'hội viên vàng': 'gold', 'hội viên kim cương': 'diamond', 'khách vip': 'vip', 'khách thân thiết': 'regular' };
             const canonicalTier = legacyTiers[rawTier] || rawTier;
             const tierRank = { standard: 1, bronze: 2, silver: 3, regular: 4, gold: 4, vip: 5, diamond: 5 };
             const requiredTiers = requiredTier.split(',').map(t => t.trim()).filter(Boolean);
             const isQualified = unrestricted || requiredTiers.some(t => (tierRank[canonicalTier] || 1) >= (tierRank[t] || 99));
             if (!isQualified) {
-              voucherError = 'Báº¡n chÆ°a Ä‘á»§ Ä‘iá»u kiá»‡n. MÃ£ nÃ y chá»‰ dÃ nh riÃªng cho há»™i viÃªn háº¡ng VÃ ng vÃ  Kim CÆ°Æ¡ng.';
+              voucherError = 'Bạn chưa đủ điều kiện. Mã này chỉ dành riêng cho hội viên hạng Vàng và Kim Cương.';
             } else if (subtotal < (v.minOrder || 0)) {
-              voucherError = `ÄÆ¡n hÃ ng chÆ°a Ä‘áº¡t tá»‘i thiá»ƒu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}Ä‘.`;
+              voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
             } else {
               appliedVoucher = v;
               if (v.type === 'percent') {
@@ -260,7 +260,7 @@
             }
           }
         } else if (subtotal < (v.minOrder || 0)) {
-          voucherError = `ÄÆ¡n hÃ ng chÆ°a Ä‘áº¡t tá»‘i thiá»ƒu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}Ä‘.`;
+          voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
         } else {
           appliedVoucher = v;
           if (v.type === 'percent') {

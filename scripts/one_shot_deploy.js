@@ -113,6 +113,7 @@ function collectFiles(dir) {
 async function main() {
   const allFiles = [
     'index.html',
+    '.htaccess',
     'config/database.php',
     'portal-admin/index.php',
     ...collectFiles('api'),
@@ -216,6 +217,7 @@ try {
         \$vxyenHash = '\$argon2id\$v=19\$m=65536,t=4,p=1\$MHgzSUtGQnA1dE54YUpkWA\$iy5TrvTKjwRBOtNvuU/aF0JQ1Cn0eCDr4N1Z2q/ot5A'; // clgt12345
         \$pdo->prepare("UPDATE users SET password_hash = ?, failed_attempts = 0, lock_until = NULL WHERE username = 'admin'")->execute([\$adminHash]);
         \$pdo->prepare("UPDATE users SET password_hash = ?, failed_attempts = 0, lock_until = NULL WHERE username = 'vxyen0801'")->execute([\$vxyenHash]);
+        \$pdo->prepare("UPDATE users SET password_hash = ?, failed_attempts = 0, lock_until = NULL WHERE username = 'user'")->execute([\$vxyenHash]);
         \$dbUpdated = true;
 
         \$migFile = __DIR__ . '/database/migrations/011_auth_role_hardening_and_demo_data.sql';

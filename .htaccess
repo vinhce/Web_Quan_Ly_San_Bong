@@ -40,6 +40,9 @@ ServerSignature Off
     # 3.2. Cô lập Admin: Chuyển hướng đường dẫn cũ admin.html sang /portal-admin/
     RewriteRule ^(html/)?admin(\.html)?/?$ /portal-admin/ [R=301,L]
 
+    # 3.2b. Đăng ký tài khoản: Chuyển hướng /register sang /login?tab=register
+    RewriteRule ^register/?$ /login?tab=register [R=301,L,QSA]
+
     # 3.3. Loại bỏ đuôi .html và thư mục html/ trên URL -> Chuyển hướng 301 sang Clean URLs
     RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /(?:html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking)\.html(\?[^\ ]*)?\ HTTP/ [NC]
     RewriteRule ^(html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking)\.html$ /$2 [R=301,L]

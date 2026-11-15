@@ -1,34 +1,34 @@
-﻿(function () {
+(function () {
   'use strict';
   window.SanBongDB = window.SanBongDB || {};
   Object.assign(window.SanBongDB, {
     getCurrentShiftStats() {
-      const startTime = localStorage.getItem('sb_active_shift_start') || 'HÃ´m nay, 06:00';
+      const startTime = localStorage.getItem('sb_active_shift_start') || 'Hôm nay, 06:00';
       const startDatePart = String(startTime).split(' ')[0];
       const bookings = this.getAllBookings();
       let cashTotal = 0;
       let transferTotal = 0;
 
       bookings.forEach(b => {
-        if (b.status === 'ÄÃ£ há»§y') return;
+        if (b.status === 'Đã hủy') return;
         const bDate = String(b.createdAt || b.date || '').split(' ')[0];
         if (startDatePart && bDate && bDate < startDatePart && b.date !== startDatePart) return;
 
         const dep = Number(b.depositAmount || 0);
         const payMethod = String(b.paymentMethod || '');
         const payStatus = String(b.paymentStatus || '');
-        if (dep > 0 && (payStatus.includes('ÄÃ£ cá»c') || payStatus.includes('ÄÃ£ thanh toÃ¡n') || payStatus.includes('Tá»‹ch thu cá»c'))) {
-          if (payMethod.includes('Tiá»n máº·t')) {
+        if (dep > 0 && (payStatus.includes('Đã cọc') || payStatus.includes('Đã thanh toán') || payStatus.includes('Tịch thu cọc'))) {
+          if (payMethod.includes('Tiền mặt')) {
             cashTotal += dep;
           } else {
             transferTotal += dep;
           }
         }
-        if (b.status === 'HoÃ n thÃ nh') {
+        if (b.status === 'Hoàn thành') {
           const paidRem = Number(b.paidRemainingAmount || 0);
-          const remMethod = String(b.remainingPaymentMethod || 'Tiá»n máº·t táº¡i quáº§y');
+          const remMethod = String(b.remainingPaymentMethod || 'Tiền mặt tại quầy');
           if (paidRem > 0) {
-            if (remMethod.includes('VietQR') || remMethod.includes('Chuyá»ƒn khoáº£n')) {
+            if (remMethod.includes('VietQR') || remMethod.includes('Chuyển khoản')) {
               transferTotal += paidRem;
             } else {
               cashTotal += paidRem;
@@ -42,7 +42,7 @@
         const sDate = String(s.createdAt || '').split(' ')[0];
         if (startDatePart && sDate && sDate < startDatePart) return;
         const amt = Number(s.totalAmount || 0);
-        if (String(s.payMethod || '').includes('VietQR') || String(s.payMethod || '').includes('Chuyá»ƒn khoáº£n')) {
+        if (String(s.payMethod || '').includes('VietQR') || String(s.payMethod || '').includes('Chuyển khoản')) {
           transferTotal += amt;
         } else {
           cashTotal += amt;
@@ -70,7 +70,7 @@
 
       const newShift = {
         id: shiftId,
-        staff_name: user ? user.name : 'NhÃ¢n viÃªn trá»±c sÃ¢n',
+        staff_name: user ? user.name : 'Nhân viên trực sân',
         staff_username: user ? (user.username || user.role) : 'staff',
         opened_at: stats.startTime,
         closed_at: nowStr,
@@ -90,8 +90,8 @@
       this.addAuditLog(
         'SHIFT_CLOSE',
         shiftId,
-        `Má»Ÿ ca: ${stats.startTime}`,
-        `Chá»‘t ca: TM ${stats.cashTotal.toLocaleString('vi-VN')}Ä‘ | CK ${stats.transferTotal.toLocaleString('vi-VN')}Ä‘${note ? ' (' + note + ')' : ''}`
+        `Mở ca: ${stats.startTime}`,
+        `Chốt ca: TM ${stats.cashTotal.toLocaleString('vi-VN')}đ | CK ${stats.transferTotal.toLocaleString('vi-VN')}đ${note ? ' (' + note + ')' : ''}`
       );
       return newShift;
     },
@@ -111,8 +111,8 @@
       this.addAuditLog(
         'SHIFT_CONFIRM',
         shift.id,
-        `Tiá»n máº·t kÃª khai: ${declared.toLocaleString('vi-VN')}Ä‘`,
-        `Thá»±c nháº­n: ${actual.toLocaleString('vi-VN')}Ä‘ Â· ChÃªnh lá»‡ch: ${diff === 0 ? 'Khá»›p 0Ä‘' : (diff > 0 ? '+' + diff.toLocaleString('vi-VN') + 'Ä‘' : diff.toLocaleString('vi-VN') + 'Ä‘')}`
+        `Tiền mặt kê khai: ${declared.toLocaleString('vi-VN')}đ`,
+        `Thực nhận: ${actual.toLocaleString('vi-VN')}đ · Chênh lệch: ${diff === 0 ? 'Khớp 0đ' : (diff > 0 ? '+' + diff.toLocaleString('vi-VN') + 'đ' : diff.toLocaleString('vi-VN') + 'đ')}`
       );
       return shift;
     },
@@ -137,11 +137,11 @@
 
       list = list.filter(item => !processed.includes(item.code));
 
-      const pendingBookings = this.getAllBookings().filter(b => b.paymentStatus === 'Chá» duyá»‡t cá»c' && b.status !== 'ÄÃ£ há»§y' && !processed.includes(b.code));
+      const pendingBookings = this.getAllBookings().filter(b => b.paymentStatus === 'Chờ duyệt cọc' && b.status !== 'Đã hủy' && !processed.includes(b.code));
       pendingBookings.forEach(pb => {
         if (!list.some(item => item.code === pb.code)) {
           list.push({
-            time: pb.createdAt ? pb.createdAt.split(' ')[1] || 'Vá»«a xong' : 'Vá»«a xong',
+            time: pb.createdAt ? pb.createdAt.split(' ')[1] || 'Vừa xong' : 'Vừa xong',
             code: pb.code,
             name: pb.customerName,
             amt: pb.depositAmount || Math.round(pb.totalPrice * 0.3),
@@ -153,7 +153,7 @@
     },
 
     approveDeposit(bookingCode) {
-      this.updateBookingStatus(bookingCode, 'ÄÃ£ xÃ¡c nháº­n', 'ÄÃ£ cá»c 30%');
+      this.updateBookingStatus(bookingCode, 'Đã xác nhận', 'Đã cọc 30%');
       let list = [];
       try {
         list = JSON.parse(localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS)) || [];
@@ -176,9 +176,9 @@
       const bookings = this.getAllBookings();
       const booking = bookings.find(b => b.code === bookingCode);
       if (booking) {
-        booking.status = 'ÄÃ£ há»§y';
-        booking.paymentStatus = 'ÄÃ£ há»§y';
-        booking.note = (booking.note ? booking.note + ' ' : '') + '[Admin tá»« chá»‘i duyá»‡t cá»c - ÄÃ£ giáº£i phÃ³ng sÃ¢n]';
+        booking.status = 'Đã hủy';
+        booking.paymentStatus = 'Đã hủy';
+        booking.note = (booking.note ? booking.note + ' ' : '') + '[Admin từ chối duyệt cọc - Đã giải phóng sân]';
         localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
       }
       let list = [];
@@ -268,20 +268,20 @@
           const amtIn = Number(tx.transfer_amount ?? tx.amount_in ?? tx.amount ?? 0);
           let targetPay = payload.target_payment_status || payload.target_status || 'auto';
           if (targetPay === 'auto') {
-            targetPay = amtIn >= Number(b.totalPrice || 0) ? 'ÄÃ£ thanh toÃ¡n 100%' : 'ÄÃ£ cá»c 30%';
+            targetPay = amtIn >= Number(b.totalPrice || 0) ? 'Đã thanh toán 100%' : 'Đã cọc 30%';
           }
-          if (targetPay === 'ÄÃ£ thanh toÃ¡n 100%') {
-            b.status = 'HoÃ n thÃ nh';
-            b.paymentStatus = 'ÄÃ£ thanh toÃ¡n 100%';
+          if (targetPay === 'Đã thanh toán 100%') {
+            b.status = 'Hoàn thành';
+            b.paymentStatus = 'Đã thanh toán 100%';
             b.remainingAmount = 0;
           } else {
-            b.status = b.status === 'Chá» duyá»‡t cá»c' ? 'ÄÃ£ xÃ¡c nháº­n' : (b.status || 'ÄÃ£ xÃ¡c nháº­n');
-            b.paymentStatus = 'ÄÃ£ cá»c 30%';
+            b.status = b.status === 'Chờ duyệt cọc' ? 'Đã xác nhận' : (b.status || 'Đã xác nhận');
+            b.paymentStatus = 'Đã cọc 30%';
             b.remainingAmount = Math.max(0, Number(b.totalPrice || 0) - amtIn);
           }
-          b.note = (b.note ? b.note + ' | ' : '') + `[Äá»‘i soÃ¡t GD ${tx.reference_code || tx.id}: +${amtIn.toLocaleString('vi-VN')}Ä‘${payload.note ? ' - ' + payload.note : ''}]`;
+          b.note = (b.note ? b.note + ' | ' : '') + `[Đối soát GD ${tx.reference_code || tx.id}: +${amtIn.toLocaleString('vi-VN')}đ${payload.note ? ' - ' + payload.note : ''}]`;
           localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
-          tx.expected_amount = targetPay === 'ÄÃ£ thanh toÃ¡n 100%' ? Number(b.totalPrice || 0) : Number(b.depositAmount || 0);
+          tx.expected_amount = targetPay === 'Đã thanh toán 100%' ? Number(b.totalPrice || 0) : Number(b.depositAmount || 0);
           tx.diff_amount = amtIn - tx.expected_amount;
         }
       }
@@ -289,14 +289,14 @@
       tx.status = payload.status || 'resolved';
       if (payload.note) tx.note = payload.note;
       tx.resolved_at = nowStr;
-      tx.resolved_by = user ? user.name : 'Quáº£n lÃ½';
+      tx.resolved_by = user ? user.name : 'Quản lý';
       list[idx] = tx;
       localStorage.setItem(STORAGE_KEYS.BANK_TRANSACTIONS, JSON.stringify(list));
       this.addAuditLog(
         payload.booking_code ? 'RECONCILE_MANUAL' : 'RECONCILE_RESOLVE',
         tx.booking_code || tx.id,
-        `GD ${tx.reference_code || tx.id} (${Number(tx.transfer_amount ?? tx.amount_in ?? 0).toLocaleString('vi-VN')}Ä‘)`,
-        tx.booking_code ? `Khá»›p Ä‘Æ¡n ${tx.booking_code} (${tx.note || 'ÄÃ£ Ä‘á»‘i soÃ¡t'})` : `${tx.status === 'ignored' ? 'Bá» qua' : 'ÄÃ£ xá»­ lÃ½'}: ${tx.note || tx.status}`
+        `GD ${tx.reference_code || tx.id} (${Number(tx.transfer_amount ?? tx.amount_in ?? 0).toLocaleString('vi-VN')}đ)`,
+        tx.booking_code ? `Khớp đơn ${tx.booking_code} (${tx.note || 'Đã đối soát'})` : `${tx.status === 'ignored' ? 'Bỏ qua' : 'Đã xử lý'}: ${tx.note || tx.status}`
       );
       return tx;
     },
