@@ -44,6 +44,19 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
             }
         }
 
+        $userPoints = [];
+        if (db_table_has_column($pdo, 'users', 'points')) {
+            $userStmt = $pdo->query("SELECT phone, points FROM users WHERE phone IS NOT NULL AND TRIM(phone) != ''");
+            if ($userStmt) {
+                foreach ($userStmt->fetchAll() as $ur) {
+                    $up = normalize_phone((string)$ur['phone']);
+                    if ($up !== '') {
+                        $userPoints[$up] = max($userPoints[$up] ?? 0, (int)($ur['points'] ?? 0));
+                    }
+                }
+            }
+        }
+
         $customersByPhone = [];
         foreach ($aggRows as $row) {
             $cp = normalize_phone((string)($row['clean_phone'] ?: $row['raw_phone']));
@@ -79,6 +92,7 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
                 'noShowCount'     => $noShowCount,
                 'totalSpent'      => $totalSpent,
                 'debtAmount'      => (int)$row['debt_amount'],
+                'points'          => (int)($userPoints[$cp] ?? 0),
                 'lastBookingDate' => (string)($row['last_booking_date'] ?? '')
             ];
         }
@@ -96,6 +110,7 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
                     'noShowCount'     => 0,
                     'totalSpent'      => 0,
                     'debtAmount'      => 0,
+                    'points'          => (int)($userPoints[$cp] ?? 0),
                     'lastBookingDate' => ''
                 ];
             }
@@ -208,6 +223,16 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
             }
         }
 
+        $userPoints = 0;
+        if (db_table_has_column($pdo, 'users', 'points')) {
+            $uStmt = $pdo->prepare("SELECT points FROM users WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? OR phone = ? ORDER BY points DESC LIMIT 1");
+            $uStmt->execute([$cleanPhone, $cleanPhone]);
+            $uRow = $uStmt->fetch();
+            if ($uRow) {
+                $userPoints = (int)($uRow['points'] ?? 0);
+            }
+        }
+
         json_response([
             'success' => true,
             'data'    => [
@@ -222,6 +247,7 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
                 'cancelledCount' => $cancelledCount,
                 'noShowCount'    => $noShowCount,
                 'debtAmount'     => $debtAmount,
+                'points'         => $userPoints,
                 'bookings'       => array_map('admin_map_booking', $bookings)
             ]
         ]);

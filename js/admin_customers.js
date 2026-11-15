@@ -66,7 +66,7 @@ async function renderAdminCustomers() {
       noShowCount: Number(c.noShowCount ?? c.no_show_count ?? 0),
       spend: Number(c.totalSpent ?? c.total_spent ?? 0),
       debtAmount: Number(c.debtAmount ?? c.debt_amount ?? 0),
-      points: Math.floor(Number(c.totalSpent ?? c.total_spent ?? 0) / 10000),
+      points: Number(c.points ?? c.loyalty_points ?? 0),
       lastBookingDate: c.lastBookingDate || ''
     }));
     if (currentCustomerFilter === 'noshow') {
@@ -100,7 +100,7 @@ async function renderAdminCustomers() {
       const paySt = String(b.paymentStatus || b.payment_status || '');
       customerMap[cleanP].matches += 1;
       if (st !== 'Đã hủy') customerMap[cleanP].spend += total;
-      customerMap[cleanP].points = Math.floor(customerMap[cleanP].spend / 10000);
+      customerMap[cleanP].points = Number(b.points ?? b.loyalty_points ?? Math.floor(customerMap[cleanP].spend / 10000));
       if (st === 'Khách chưa đến' || st.includes('No-Show') || paySt === 'Tịch thu cọc 30%') {
         customerMap[cleanP].noShowCount += 1;
       } else if (st !== 'Đã hủy' && st !== 'Hoàn thành') {
@@ -172,7 +172,7 @@ async function renderAdminCustomers() {
         <td class="py-3 px-4 font-mono font-medium text-[#475569]">${escapeSearchHTML(c.phone)}</td>
         <td class="py-3 px-4 whitespace-nowrap">${tierBadge}${blacklistBadge}</td>
         <td class="py-3 px-4 font-medium text-[#334155]">${Number(c.matches) || 0} trận</td>
-        <td class="py-3 px-4 font-bold text-[#16A34A]">${Number(c.points || 0).toLocaleString('vi-VN')} đ</td>
+        <td class="py-3 px-4 font-bold text-[#16A34A]">${Number(c.points || 0).toLocaleString('vi-VN')} điểm</td>
         <td class="py-3 px-4 text-center">${nsBadge}</td>
         <td class="py-3 px-4 text-right">${debtHtml}</td>
         <td class="py-3 px-4 text-right font-extrabold text-[#0F172A]">${Number(c.spend || 0).toLocaleString('vi-VN')}đ</td>
