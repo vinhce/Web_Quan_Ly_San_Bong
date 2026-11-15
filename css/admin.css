@@ -5,3 +5,47 @@
   background-image: repeating-linear-gradient(-45deg, #E2E8F0, #E2E8F0 6px, #F1F5F9 6px, #F1F5F9 12px);
   color: #475569;
 }
+
+/* Core Layout Safety for Admin Portal */
+body.admin-body {
+  display: flex !important;
+  flex-direction: row !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+  width: 100vw !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.admin-workspace-col {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
+.admin-header-bar {
+  height: 4rem !important;
+  min-height: 4rem !important;
+  max-height: 4rem !important;
+  width: 100% !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  box-sizing: border-box !important;
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+.admin-main-scroll {
+  flex: 1 1 0% !important;
+  width: 100% !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+  background-color: #F8FAFC !important;
+}

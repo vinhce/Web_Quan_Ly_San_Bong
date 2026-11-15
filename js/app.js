@@ -15,6 +15,7 @@
     }),
     getCsrfToken: helpers.getCsrfToken || (() => ''),
     setCsrfToken: helpers.setCsrfToken || (() => {}),
+    clearCsrfToken: helpers.clearCsrfToken || (() => {}),
     ensureCsrfToken: helpers.ensureCsrfToken || (() => Promise.resolve('')),
     secureFetch: helpers.secureFetch || fetch,
     getAuthFetchHeaders: helpers.getAuthFetchHeaders || ((extra) => Object.assign({ 'Content-Type': 'application/json' }, extra || {})),
@@ -33,7 +34,7 @@
     handleLogout: ui.handleLogout || (() => {}),
     showToast: ui.showToast || ((m) => console.log(m)),
     showModal: ui.showModal || ((cfg) => { if (confirm(cfg.message || cfg.title)) cfg.onConfirm && cfg.onConfirm(); }),
-    syncAuthMe: ui.syncAuthMe || syncAuthMe
+    syncAuthMe: ui.syncAuthMe || (typeof syncAuthMe !== 'undefined' ? syncAuthMe : (() => Promise.resolve(null)))
   });
 
   function renderShellNavbar() {

@@ -1,6 +1,26 @@
 ﻿(function () {
   'use strict';
+
+  const STORAGE_KEYS = {
+    PITCHES: 'sb_pitches_v2',
+    TIME_SLOTS: 'sb_slots_v1',
+    SERVICES: 'sb_services_v1',
+    VOUCHERS: 'sb_vouchers_v1',
+    GOLDEN_HOURS: 'sb_golden_hours_v1',
+    MAINTENANCE: 'sb_maintenance_v1',
+    USER: 'sb_user_v1',
+    BANK: 'sb_bank_v1',
+    BOOKINGS: 'sb_bookings_v1',
+    PENDING_PAYMENTS: 'sb_pending_payments_v3',
+    AUDIT_LOGS: 'sb_audit_logs_v1',
+    SHIFTS: 'sb_shifts_v1',
+    COUNTER_SALES: 'sb_counter_sales_v1',
+    BANK_TRANSACTIONS: 'sb_bank_transactions_v1'
+  };
+  window.STORAGE_KEYS = STORAGE_KEYS;
+
   window.SanBongDB = window.SanBongDB || {};
+  window.SanBongDB.STORAGE_KEYS = STORAGE_KEYS;
   Object.assign(window.SanBongDB, {
     init() {
       const data = window.SanBongData || {};

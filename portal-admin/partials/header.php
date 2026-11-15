@@ -1,4 +1,4 @@
-    <header class="h-16 bg-white border-b border-[#E2E8F0] px-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 select-none">
+    <header class="admin-header-bar h-16 bg-white border-b border-[#E2E8F0] px-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 select-none" style="height:4rem;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;flex-shrink:0;box-sizing:border-box;">
       <div class="flex items-center gap-2.5 min-w-0">
         <button type="button" id="admin-mobile-menu-btn" onclick="toggleAdminMobileDrawer()" class="md:hidden w-9 h-9 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-50 flex items-center justify-center text-[#0F172A] font-bold text-sm shrink-0 cursor-pointer" aria-label="Mở menu">☰</button>
         <div class="min-w-0 flex items-baseline gap-2">
