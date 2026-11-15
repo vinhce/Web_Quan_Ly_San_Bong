@@ -22,7 +22,10 @@ if (empty($action) && isset($data['action'])) {
 
 if ($method === 'GET' && $action === 'me') {
     loadEnv();
-    $siteKey = trim($_ENV['TURNSTILE_SITE_KEY'] ?? getenv('TURNSTILE_SITE_KEY') ?: '');
+    $turnstileEnabled = strtolower(trim((string)($_ENV['TURNSTILE_ENABLED'] ?? getenv('TURNSTILE_ENABLED') ?: 'true')));
+    $turnstileDisabled = in_array($turnstileEnabled, ['false', '0', 'off', 'no'], true);
+    $secretKey = trim((string)($_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY') ?: ''));
+    $siteKey = ($turnstileDisabled || $secretKey === '') ? '' : trim((string)($_ENV['TURNSTILE_SITE_KEY'] ?? getenv('TURNSTILE_SITE_KEY') ?: ''));
     $sessUserId = $_SESSION['user_id'] ?? $_SESSION['user']['id'] ?? null;
     if (!empty($sessUserId)) {
         $_SESSION['user_id'] = (int)$sessUserId;
@@ -60,7 +63,7 @@ if ($method === 'GET' && $action === 'me') {
                 $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
                 if ($uRow) {
                     $points = (int)($uRow['points'] ?? 0);
-                    $totpEnabled = !empty($uRow['totp_enabled']) && !empty($uRow['totp_secret']);
+                    $totpEnabled = false;
                     $uPhone = normalize_phone($uRow['phone'] ?? '');
                     if ($uPhone !== '') {
                         $crmStmt = $pdo->prepare("SELECT customer_tier FROM customer_crm WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? LIMIT 1");
@@ -190,9 +193,18 @@ if ($action === 'login') {
     }
 
     $cleanPhone = preg_replace('/[^0-9]/', '', $username);
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? OR (phone = ? AND phone != '') ORDER BY (role = 'admin') DESC, id DESC LIMIT 1");
-    $stmt->execute([$username, $username, $cleanPhone]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? OR (phone = ? AND phone != '') ORDER BY (role = 'admin') DESC, id DESC LIMIT 1");
+        $stmt->execute([$username, $username, $cleanPhone]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        error_log("[AUTH DB QUERY ERROR] " . $e->getMessage());
+        json_response([
+            'success'  => false,
+            'message'  => 'Hệ thống cơ sở dữ liệu tạm thời không khả dụng. Vui lòng thử lại sau.',
+            'ref_code' => 'ERR_DB_UNAVAILABLE'
+        ], 503);
+    }
 
     $now = time();
     $isLocked = false;
@@ -227,18 +239,6 @@ if ($action === 'login') {
         $resetStmt = $pdo->prepare("UPDATE users SET failed_attempts = 0, lock_until = NULL WHERE id = ?");
         $resetStmt->execute([$user['id']]);
 
-        // Kiểm tra 2FA
-        $totpActive = !empty($user['totp_enabled']) && !empty($user['totp_secret']);
-        if ($totpActive) {
-            $_SESSION['pending_2fa_user_id'] = (int)$user['id'];
-            $_SESSION['pending_2fa_expires'] = time() + 300;
-            json_response([
-                'success'     => true,
-                'require_2fa' => true,
-                'message'     => 'Tài khoản đã kích hoạt bảo mật 2 lớp (2FA). Vui lòng nhập mã OTP từ ứng dụng Authenticator.'
-            ]);
-        }
-
         session_regenerate_id(true);
         $_SESSION['created_at'] = time();
         $_SESSION['last_activity'] = time();
@@ -254,7 +254,8 @@ if ($action === 'login') {
             'phone'     => $user['phone'],
             'full_name' => $user['full_name'],
             'role'      => $assignedRole,
-            'must_change_password' => $mustChange
+            'must_change_password' => $mustChange,
+            'totp_enabled' => false
         ];
 
         $redirect = in_array($assignedRole, ['admin', 'manager', 'staff'], true) ? 'portal-admin/' : 'history';

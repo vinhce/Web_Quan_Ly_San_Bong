@@ -45,6 +45,39 @@ if (strpos($content, "action === 'change_password'") === false) {
     $errors[] = "LỖI: api/auth.php chưa có action change_password để cập nhật mật khẩu và gỡ cờ must_change_password.";
 }
 
+// 5. Kiểm tra refresh_session_user trong api/security_helper.php có query must_change_password
+$securityHelperFile = __DIR__ . '/../api/security_helper.php';
+if (!file_exists($securityHelperFile)) {
+    $errors[] = "LỖI: Không tìm thấy api/security_helper.php";
+} else {
+    $secHelperContent = file_get_contents($securityHelperFile);
+    if (!preg_match('/SELECT[^;]*must_change_password[^;]*FROM\s+users/i', $secHelperContent)) {
+        $errors[] = "LỖI: refresh_session_user trong api/security_helper.php chưa SELECT cột must_change_password từ bảng users.";
+    }
+    if (strpos($secHelperContent, "'must_change_password'") === false) {
+        $errors[] = "LỖI: refresh_session_user trong api/security_helper.php chưa lưu must_change_password vào \$_SESSION['user'].";
+    }
+}
+
+// 6. Kiểm tra portal-admin/index.php có chặn must_change_password
+$portalAdminFile = __DIR__ . '/../portal-admin/index.php';
+if (!file_exists($portalAdminFile)) {
+    $errors[] = "LỖI: Không tìm thấy portal-admin/index.php";
+} else {
+    $portalContent = file_get_contents($portalAdminFile);
+    if (strpos($portalContent, 'must_change_password') === false) {
+        $errors[] = "LỖI: portal-admin/index.php chưa kiểm tra cờ must_change_password.";
+    }
+    if (strpos($portalContent, 'force_change_password') === false) {
+        $errors[] = "LỖI: portal-admin/index.php chưa chuyển hướng người dùng chưa đổi mật khẩu với cờ force_change_password.";
+    }
+}
+
+// 7. Kiểm tra api/auth.php bọc truy vấn SELECT users trong try/catch trả về fail-closed 503 ERR_DB_UNAVAILABLE
+if (!preg_match('/try\s*\{\s*\$stmt\s*=\s*\$pdo->prepare\("SELECT \* FROM users WHERE username/', $content) || strpos($content, 'ERR_DB_UNAVAILABLE') === false) {
+    $errors[] = "LỖI: api/auth.php chưa bọc truy vấn SELECT users trong khối try/catch trả về fail-closed 503 ERR_DB_UNAVAILABLE.";
+}
+
 if (!empty($errors)) {
     echo "KẾT QUẢ: PHÁT HIỆN LỖI TỒN TẠI (" . count($errors) . " lỗi):\n";
     foreach ($errors as $idx => $err) {

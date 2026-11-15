@@ -67,21 +67,16 @@ function totp_provisioning_uri(string $accountName, string $secret, string $issu
     return "otpauth://totp/{$cleanIssuer}:{$cleanAccount}?secret={$cleanSecret}&issuer={$cleanIssuer}&algorithm=SHA1&digits=6&period=30";
 }
 
-function verify_turnstile_if_configured(?string $token): bool {
+function verifyTurnstile(?string $token, ?string $remoteIp = null): bool {
     if (function_exists('loadEnv')) {
         loadEnv();
     }
-    $appEnv = strtolower(trim((string)($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production')));
-    $allowLocalBypass = (strtolower(trim((string)($_ENV['ALLOW_LOCAL_TURNSTILE_BYPASS'] ?? getenv('ALLOW_LOCAL_TURNSTILE_BYPASS') ?: 'false'))) === 'true');
-    $allowBypass = (strtolower(trim((string)($_ENV['ALLOW_TURNSTILE_BYPASS'] ?? getenv('ALLOW_TURNSTILE_BYPASS') ?: 'false'))) === 'true');
+    $turnstileEnabled = strtolower(trim((string)($_ENV['TURNSTILE_ENABLED'] ?? getenv('TURNSTILE_ENABLED') ?: 'true')));
     $secretKey = trim((string)($_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY') ?: ''));
 
-    if ($secretKey === '') {
-        if ($allowBypass === true || ($appEnv === 'local' && $allowLocalBypass === true)) {
-            return true;
-        }
-        error_log('[SECURITY CRITICAL] TURNSTILE_SECRET_KEY chưa được cấu hình trên môi trường ' . $appEnv . '. Chặn xác thực (fail-closed) để phòng chống bot.');
-        return false;
+    if ($secretKey === '' || in_array($turnstileEnabled, ['false', '0', 'off', 'no'], true)) {
+        error_log('[TURNSTILE DEBUG] Turnstile is disabled or secret key is empty. Bypassing check.');
+        return true;
     }
 
     $cleanToken = trim((string)$token);
@@ -90,11 +85,11 @@ function verify_turnstile_if_configured(?string $token): bool {
     }
 
     $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-    $remoteIp = function_exists('get_client_ip') ? get_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+    $ip = $remoteIp ?: (function_exists('get_client_ip') ? get_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'));
     $postData = http_build_query([
         'secret'   => $secretKey,
         'response' => $cleanToken,
-        'remoteip' => $remoteIp
+        'remoteip' => $ip
     ]);
     try {
         $ch = curl_init($url);
@@ -124,28 +119,51 @@ function verify_turnstile_if_configured(?string $token): bool {
     }
 }
 
+function verify_turnstile_if_configured(?string $token): bool {
+    if (function_exists('loadEnv')) {
+        loadEnv();
+    }
+    $turnstileEnabled = strtolower(trim((string)($_ENV['TURNSTILE_ENABLED'] ?? getenv('TURNSTILE_ENABLED') ?: 'true')));
+    $secretKey = trim((string)($_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY') ?: ''));
+
+    // Nếu TURNSTILE_ENABLED === 'false' HOẶC thiếu TURNSTILE_SECRET_KEY (hoặc rỗng): luôn return true (không bao giờ chặn đăng nhập nữa)
+    if ($secretKey === '' || in_array($turnstileEnabled, ['false', '0', 'off', 'no'], true)) {
+        return true;
+    }
+
+    $cleanToken = trim((string)$token);
+    if ($cleanToken === '') {
+        return false;
+    }
+
+    return verifyTurnstile($cleanToken);
+}
+
 function check_turnstile_health(): array {
     if (function_exists('loadEnv')) {
         loadEnv();
     }
     $appEnv = strtolower(trim((string)($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production')));
-    $allowLocalBypass = (strtolower(trim((string)($_ENV['ALLOW_LOCAL_TURNSTILE_BYPASS'] ?? getenv('ALLOW_LOCAL_TURNSTILE_BYPASS') ?: 'false'))) === 'true');
-    $allowBypass = (strtolower(trim((string)($_ENV['ALLOW_TURNSTILE_BYPASS'] ?? getenv('ALLOW_TURNSTILE_BYPASS') ?: 'false'))) === 'true');
+    $turnstileEnabled = strtolower(trim((string)($_ENV['TURNSTILE_ENABLED'] ?? getenv('TURNSTILE_ENABLED') ?: 'true')));
+    $isDisabled = in_array($turnstileEnabled, ['false', '0', 'off', 'no'], true);
+    $allowLocalBypass = ($appEnv === 'local' && strtolower(trim((string)($_ENV['ALLOW_LOCAL_TURNSTILE_BYPASS'] ?? getenv('ALLOW_LOCAL_TURNSTILE_BYPASS') ?: 'false'))) === 'true');
     $secretKey = trim((string)($_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY') ?: ''));
     $siteKey = trim((string)($_ENV['TURNSTILE_SITE_KEY'] ?? getenv('TURNSTILE_SITE_KEY') ?: ''));
 
-    $configured = ($secretKey !== '');
+    $configured = (!$isDisabled && $secretKey !== '');
     $maskedSiteKey = '';
-    if ($siteKey !== '') {
+    if ($siteKey !== '' && !$isDisabled) {
         $maskedSiteKey = substr($siteKey, 0, min(4, strlen($siteKey))) . '****';
     }
 
     $warning = null;
-    if (!$configured) {
-        if ($allowBypass || ($appEnv === 'local' && $allowLocalBypass)) {
-            $warning = 'Thông báo: Đang bật cờ ALLOW_TURNSTILE_BYPASS (bỏ qua Turnstile do chưa cấu hình key).';
+    if ($isDisabled) {
+        $warning = 'Thông báo: Cloudflare Turnstile đang tắt (TURNSTILE_ENABLED=false).';
+    } elseif (!$configured) {
+        if ($allowLocalBypass) {
+            $warning = 'Thông báo: Đang bật cờ ALLOW_LOCAL_TURNSTILE_BYPASS trong môi trường local (bỏ qua Turnstile do chưa cấu hình key).';
         } else {
-            $warning = 'CẢNH BÁO BẢO MẬT: Chưa cấu hình TURNSTILE_SECRET_KEY trên môi trường ' . $appEnv . '. Hệ thống đang kích hoạt cơ chế Fail-Closed (chặn mọi request xác thực để phòng vệ bot). Vui lòng cấu hình khóa hợp lệ trong .env hoặc bật ALLOW_TURNSTILE_BYPASS=true.';
+            $warning = 'Thông báo: Chưa cấu hình TURNSTILE_SECRET_KEY trên môi trường ' . $appEnv . '. Hệ thống đang bỏ qua xác thực Turnstile.';
         }
     }
 

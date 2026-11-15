@@ -113,7 +113,19 @@ function check_rate_limit($pdo, $action, $maxAttempts = 5, $decaySeconds = 60, ?
         $file = get_rate_limit_file((string)$action, $identifier);
         if (!file_exists($file)) {
             $dbRes = _rate_limit_db_check($pdo, (string)$action, $identifier, $maxAttempts, $decaySeconds);
-            return $dbRes !== false;
+            if ($dbRes === false) {
+                return false;
+            }
+            if ($dbRes === null) {
+                $testFp = @fopen($file, 'c+');
+                if (!$testFp) {
+                    error_log("[SECURITY ERROR] Rate limiter file and DB both completely failed, enforcing fail-closed.");
+                    return false;
+                }
+                @fclose($testFp);
+                @unlink($file);
+            }
+            return true;
         }
         $fp = @fopen($file, 'c+');
         if (!$fp) {
@@ -138,17 +150,18 @@ function check_rate_limit($pdo, $action, $maxAttempts = 5, $decaySeconds = 60, ?
             @fclose($fp);
             if (!$allowed) return false;
             $dbRes = _rate_limit_db_check($pdo, (string)$action, $identifier, $maxAttempts, $decaySeconds);
-            return $dbRes !== false;
+            if ($dbRes === false) return false;
+            return true;
         }
     }
 
     error_log("[SECURITY WARNING] Rate limiter file inaccessible, falling back to DB...");
     $dbRes = _rate_limit_db_check($pdo, (string)$action, $identifier, $maxAttempts, $decaySeconds);
-    if ($dbRes === null) {
-        error_log("[SECURITY ERROR] Rate limiter completely failed, enforcing fail-closed.");
+    if ($dbRes === null || $dbRes === false) {
+        error_log("[SECURITY ERROR] Rate limiter completely failed or exceeded in DB, enforcing fail-closed.");
         return false;
     }
-    return $dbRes;
+    return true;
 }
 
 function increment_rate_limit($pdo, $action, $decayOrIdentifier = 60, ?string $identifier = null) {
@@ -322,9 +335,15 @@ function refresh_session_user($pdo = null) {
     if ($pdo === null) $pdo = getDBConnection(false);
     if (!$pdo) return $_SESSION['user'] ?? null;
     try {
-        $stmt = $pdo->prepare("SELECT id, username, email, phone, full_name, role, status FROM users WHERE id = ? LIMIT 1");
-        $stmt->execute([$_SESSION['user_id']]);
-        $fresh = $stmt->fetch();
+        try {
+            $stmt = $pdo->prepare("SELECT id, username, email, phone, full_name, role, status, must_change_password, totp_enabled FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([$_SESSION['user_id']]);
+            $fresh = $stmt->fetch();
+        } catch (Throwable $e) {
+            $stmt = $pdo->prepare("SELECT id, username, email, phone, full_name, role, status, must_change_password FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([$_SESSION['user_id']]);
+            $fresh = $stmt->fetch();
+        }
         if (!$fresh) {
             destroy_current_session();
             return null;
@@ -338,7 +357,9 @@ function refresh_session_user($pdo = null) {
             'id' => $fresh['id'], 'username' => $fresh['username'],
             'name' => $fresh['full_name'] ?? $fresh['username'],
             'email' => $fresh['email'], 'phone' => $fresh['phone'],
-            'full_name' => $fresh['full_name'], 'role' => $assignedRole
+            'full_name' => $fresh['full_name'], 'role' => $assignedRole,
+            'must_change_password' => (int)($fresh['must_change_password'] ?? 0),
+            'totp_enabled' => !empty($fresh['totp_enabled']) ? 1 : 0
         ];
         return $_SESSION['user'];
     } catch (Throwable $e) {
@@ -385,6 +406,13 @@ function require_admin($pdo = null) {
             'ref_code' => 'ERR_FORBIDDEN'
         ], 403);
     }
+    if (!empty($user['must_change_password'])) {
+        json_response([
+            'success'  => false,
+            'message'  => 'Bạn cần đổi mật khẩu khởi tạo trước khi tiếp tục thao tác.',
+            'ref_code' => 'ERR_MUST_CHANGE_PASSWORD'
+        ], 403);
+    }
     return $user;
 }
 
@@ -398,6 +426,13 @@ function require_staff_or_admin($pdo = null) {
             'ref_code' => 'ERR_FORBIDDEN'
         ], 403);
     }
+    if (!empty($user['must_change_password'])) {
+        json_response([
+            'success'  => false,
+            'message'  => 'Bạn cần đổi mật khẩu khởi tạo trước khi tiếp tục thao tác.',
+            'ref_code' => 'ERR_MUST_CHANGE_PASSWORD'
+        ], 403);
+    }
     return $user;
 }
 
@@ -409,6 +444,13 @@ function require_manager_or_admin($pdo = null) {
             'success'  => false,
             'message'  => 'Chức năng này chỉ dành cho Quản lý sân hoặc Chủ sân (Admin).',
             'ref_code' => 'ERR_FORBIDDEN'
+        ], 403);
+    }
+    if (!empty($user['must_change_password'])) {
+        json_response([
+            'success'  => false,
+            'message'  => 'Bạn cần đổi mật khẩu khởi tạo trước khi tiếp tục thao tác.',
+            'ref_code' => 'ERR_MUST_CHANGE_PASSWORD'
         ], 403);
     }
     return $user;

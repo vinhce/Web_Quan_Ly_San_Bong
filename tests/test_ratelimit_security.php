@@ -131,6 +131,33 @@ try {
 }
 
 // =========================================================================
+// TEST CASE 5: Cả File và DB đều lỗi -> BẮT BUỘC FAIL-CLOSED (return false)
+// =========================================================================
+echo "\n--- Test Case 5: Cả File và DB đều lỗi (Fail-Closed) ---\n";
+$actionBothFail = 'test_sec_both_fail';
+$fileBothFail = get_rate_limit_file($actionBothFail);
+if (file_exists($fileBothFail)) {
+    @unlink($fileBothFail);
+}
+@mkdir($fileBothFail, 0750, true); // Khóa file hoàn toàn
+
+// Mock đối tượng PDO bị lỗi query
+class BrokenPdoMock extends PDO {
+    public function __construct() {}
+    public function prepare($statement, $options = []): PDOStatement {
+        throw new PDOException("Simulated DB connection lost / query failed.");
+    }
+}
+$brokenPdo = new BrokenPdoMock();
+$bothFailedResult = check_rate_limit($brokenPdo, $actionBothFail, 3, 60);
+if ($bothFailedResult === true) {
+    $errors[] = "TC5: LỖI BẢO MẬT (FAIL-OPEN): Khi cả file và DB đều hỏng, check_rate_limit trả về true thay vì fail-closed!";
+} else {
+    echo "TC5: ĐẠT: Khi cả file và DB đều hỏng, check_rate_limit đã fail-closed (false).\n";
+}
+@rmdir($fileBothFail);
+
+// =========================================================================
 // TỔNG HỢP KẾT QUẢ
 // =========================================================================
 echo "\n=======================================================\n";
