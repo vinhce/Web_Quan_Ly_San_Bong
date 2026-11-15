@@ -126,7 +126,7 @@ async function savePricingTable() {
     initQuickBookingForm();
 
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('✓ Đã lưu cấu hình bảng giá mới vào CÆ¡ sở dữ liệu & đồng bộ sang trang Đặt sân!', 'success', 3500);
+      window.SanBongApp.showToast('✓ Đã lưu cấu hình bảng giá mới và đồng bộ sang trang Đặt sân!', 'success', 3500);
     }
   } finally {
     if (btn) {

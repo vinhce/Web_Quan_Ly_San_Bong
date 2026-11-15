@@ -412,7 +412,7 @@ async function loadBackupsList() {
       <td class="py-3 px-4 font-semibold text-[#475569]">${escapeSearchHTML(sizeLabel)}</td>
       <td class="py-3 px-4 font-mono text-[#64748B]">${escapeSearchHTML(b.created_at || '')}</td>
       <td class="py-3 px-4 text-right">
-        <button type="button" onclick="downloadBackupFile('${escapeJsAttr(fname)}')" class="px-3 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">â¬‡ï¸ Tải về</button>
+        <button type="button" onclick="downloadBackupFile('${escapeJsAttr(fname)}')" class="px-3 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">⬇️ Tải về</button>
       </td>
     </tr>`;
   }).join('');
