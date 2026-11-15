@@ -230,11 +230,6 @@ function calculateShiftDiscrepancy() {
     return;
   }
 
-  if (btnSubmit) {
-    btnSubmit.disabled = false;
-    btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
-  }
-
   const counted = parseInt(rawVal, 10);
   const curShift = window._currentActiveShift;
   const sysCash = Number(curShift?.cash_total ?? curShift?.cashTotal ?? 0);
@@ -248,16 +243,32 @@ function calculateShiftDiscrepancy() {
     badgeEl.textContent = '✓ Khớp 0đ';
     if (reasonBox) reasonBox.classList.add('hidden');
     if (reasonInput) reasonInput.required = false;
-  } else if (diff > 0) {
-    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-blue-200 bg-blue-50 flex items-center justify-center font-mono font-bold text-xs text-blue-700';
-    badgeEl.textContent = `+${formatCurrency(diff)} (Dư)`;
-    if (reasonBox) reasonBox.classList.remove('hidden');
-    if (reasonInput) reasonInput.required = true;
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
   } else {
-    badgeEl.className = 'h-[38px] px-3 rounded-lg border border-rose-200 bg-rose-50 flex items-center justify-center font-mono font-bold text-xs text-rose-700';
-    badgeEl.textContent = `${formatCurrency(diff)} (Thiếu)`;
+    if (diff > 0) {
+      badgeEl.className = 'h-[38px] px-3 rounded-lg border border-blue-200 bg-blue-50 flex items-center justify-center font-mono font-bold text-xs text-blue-700';
+      badgeEl.textContent = `+${formatCurrency(diff)} (Dư)`;
+    } else {
+      badgeEl.className = 'h-[38px] px-3 rounded-lg border border-rose-200 bg-rose-50 flex items-center justify-center font-mono font-bold text-xs text-rose-700';
+      badgeEl.textContent = `${formatCurrency(diff)} (Thiếu)`;
+    }
     if (reasonBox) reasonBox.classList.remove('hidden');
     if (reasonInput) reasonInput.required = true;
+
+    if (reasonInput && reasonInput.value.trim() !== '') {
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    } else {
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
   }
 }
 window.calculateShiftDiscrepancy = calculateShiftDiscrepancy;
@@ -364,6 +375,7 @@ async function handleCloseShift() {
       method: 'POST',
       body: JSON.stringify({
         sub_action: 'close_shift',
+        shift_id: Number(curShift.id || curShift.shift_id || 0),
         actual_cash_received: counted,
         discrepancy_reason: reason,
         note: (noteEl?.value || '').trim()

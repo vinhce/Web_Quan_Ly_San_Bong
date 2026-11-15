@@ -1,5 +1,6 @@
 <?php
 @header_remove('X-Powered-By');
+header('X-Robots-Tag: noindex, nofollow, noarchive');
 require_once __DIR__ . '/../api/security_helper.php';
 secure_session_start();
 
@@ -14,6 +15,11 @@ if (!empty($refreshedUser['_locked']) || empty($_SESSION['user']) || !in_array($
     header('Location: ' . $loginUrl, true, 302);
     exit;
 }
+if (!empty($_SESSION['user']['must_change_password'])) {
+    $forceChangeUrl = ($basePath !== '' ? $basePath : '') . '/login?force_change_password=1';
+    header('Location: ' . $forceChangeUrl, true, 302);
+    exit;
+}
 $currentUser = $_SESSION['user'];
 $portalRole = $currentUser['role'] ?? '';
 $isOwnerAdmin = ($portalRole === 'admin');
@@ -21,13 +27,14 @@ $isManagerOrAdmin = in_array($portalRole, ['admin', 'manager'], true);
 
 // Chuẩn bị payload an toàn để inject vào client-side sessionStorage
 $safeUserPayload = [
-    'id'        => $currentUser['id'] ?? null,
-    'username'  => $currentUser['username'] ?? '',
-    'name'      => $currentUser['full_name'] ?? $currentUser['name'] ?? $currentUser['username'] ?? 'Quản Trị Viên',
-    'full_name' => $currentUser['full_name'] ?? $currentUser['name'] ?? $currentUser['username'] ?? 'Quản Trị Viên',
-    'email'     => $currentUser['email'] ?? '',
-    'phone'     => $currentUser['phone'] ?? '',
-    'role'      => $currentUser['role'] ?? 'staff'
+    'id'           => $currentUser['id'] ?? null,
+    'username'     => $currentUser['username'] ?? '',
+    'name'         => $currentUser['full_name'] ?? $currentUser['name'] ?? $currentUser['username'] ?? 'Quản Trị Viên',
+    'full_name'    => $currentUser['full_name'] ?? $currentUser['name'] ?? $currentUser['username'] ?? 'Quản Trị Viên',
+    'email'        => $currentUser['email'] ?? '',
+    'phone'        => $currentUser['phone'] ?? '',
+    'role'         => $currentUser['role'] ?? 'staff',
+    'totp_enabled' => (int)($currentUser['totp_enabled'] ?? 0)
 ];
 $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 ?>
@@ -36,6 +43,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="csrf-token" content="<?php echo htmlspecialchars(generate_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
   <title>Bảng Điều Khiển Quản Trị – Sân Bóng Pro Admin</title>
   <!-- Favicon / Tab Icon -->
@@ -521,7 +529,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261116_v81"></script>
   <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v78"></script>
@@ -529,7 +537,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261116_v83"></script>
   <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v78"></script>

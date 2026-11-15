@@ -99,7 +99,7 @@
           </div>
           <div id="shift-discrepancy-reason-box" class="hidden">
             <label class="block font-bold text-red-700 mb-1">Lý do chênh lệch (bắt buộc khi thừa/thiếu) *</label>
-            <input type="text" id="shift-discrepancy-reason" placeholder="VD: Trả nhầm tiền thừa cho khách bàn 2..." class="input-field w-full bg-white text-xs border-red-300">
+            <input type="text" id="shift-discrepancy-reason" oninput="calculateShiftDiscrepancy()" placeholder="VD: Trả nhầm tiền thừa cho khách bàn 2..." class="input-field w-full bg-white text-xs border-red-300">
           </div>
           <div>
             <label class="block font-bold text-[#475569] mb-1">Ghi chú bàn giao ca trực</label>
