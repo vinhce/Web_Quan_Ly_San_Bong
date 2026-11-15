@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `must_change_password` TINYINT(1) NOT NULL DEFAULT 0,
     `points` INT NOT NULL DEFAULT 0,
     `customer_tier` VARCHAR(30) NOT NULL DEFAULT 'standard',
+    `admin_note` TEXT NULL DEFAULT NULL,
     `totp_secret` VARCHAR(64) NULL DEFAULT NULL,
     `totp_enabled` TINYINT(1) NOT NULL DEFAULT 0,
     `privacy_consent_at` DATETIME NULL DEFAULT NULL,
@@ -164,6 +165,8 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
     `actor_name` VARCHAR(100) NULL DEFAULT NULL,
     `actor_role` VARCHAR(20) NULL DEFAULT NULL,
     `action` VARCHAR(80) NOT NULL,
+    `target_type` VARCHAR(50) NULL DEFAULT NULL,
+    `target_id` VARCHAR(50) NULL DEFAULT NULL,
     `booking_id` VARCHAR(40) NULL DEFAULT NULL,
     `old_value` TEXT NULL DEFAULT NULL,
     `new_value` TEXT NULL DEFAULT NULL,
@@ -171,6 +174,7 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_audit_user` (`user_id`),
     INDEX `idx_audit_action` (`action`),
+    INDEX `idx_audit_target` (`target_type`, `target_id`),
     INDEX `idx_audit_booking` (`booking_id`),
     INDEX `idx_audit_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -565,6 +569,23 @@ CREATE TABLE IF NOT EXISTS `reviews` (
     INDEX `idx_reviews_pitch` (`pitch_id`, `status`),
     INDEX `idx_reviews_rating` (`rating`),
     INDEX `idx_reviews_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===============================================================
+-- 16. GIAI ĐOẠN 8: ĐIỂM THƯỞNG VÀ LỊCH SỬ TÍCH ĐIỂM (POINTS LOG)
+-- ===============================================================
+
+CREATE TABLE IF NOT EXISTS `points_log` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `booking_id` INT NULL DEFAULT NULL,
+    `delta` INT NOT NULL,
+    `reason` VARCHAR(255) NOT NULL,
+    `admin_id` INT NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_points_user` (`user_id`, `created_at`),
+    KEY `idx_points_admin` (`admin_id`),
+    CONSTRAINT `fk_points_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES

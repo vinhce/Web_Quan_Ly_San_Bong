@@ -121,7 +121,7 @@ function ensureIndexExists(PDO $pdo, string $table, string $indexName, string $c
 }
 
 function ensureSchemaInitialized(PDO $pdo) {
-    $markerFile = dirname(__DIR__) . '/logs/.schema_v14_shifts_ready';
+    $markerFile = dirname(__DIR__) . '/logs/.schema_v15_audit_points_ready';
     if (is_file($markerFile)) {
         return;
     }
@@ -176,7 +176,7 @@ function ensureSchemaInitialized(PDO $pdo) {
             "CREATE TABLE IF NOT EXISTS `expenses` (`id` INT AUTO_INCREMENT PRIMARY KEY, `expense_code` VARCHAR(40) NOT NULL UNIQUE, `category` VARCHAR(50) NOT NULL, `category_name` VARCHAR(100) NOT NULL, `amount` INT NOT NULL DEFAULT 0, `expense_date` DATE NOT NULL, `payer_name` VARCHAR(100) NOT NULL DEFAULT 'Ban Quản Trị Sân', `staff_id` INT NULL DEFAULT NULL, `receipt_note` TEXT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX `idx_expenses_date` (`expense_date`), INDEX `idx_expenses_cat` (`category`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
             "CREATE TABLE IF NOT EXISTS `reviews` (`id` INT AUTO_INCREMENT PRIMARY KEY, `booking_code` VARCHAR(40) NOT NULL UNIQUE, `pitch_id` VARCHAR(20) NOT NULL, `customer_name` VARCHAR(100) NOT NULL, `phone` VARCHAR(20) NOT NULL, `rating` TINYINT NOT NULL, `comment` TEXT NULL, `staff_reply` TEXT NULL, `reply_by` INT NULL DEFAULT NULL, `reply_at` DATETIME NULL DEFAULT NULL, `status` ENUM('published', 'hidden') NOT NULL DEFAULT 'published', `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX `idx_reviews_pitch` (`pitch_id`, `status`), INDEX `idx_reviews_rating` (`rating`), INDEX `idx_reviews_created` (`created_at`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
             "INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES ('waitlist_hold_minutes', '15'), ('matchmaking_enabled', '1'), ('matchmaking_require_approval', '0'), ('reminder_enabled', '1'), ('reminder_hours_before', '2'), ('customer_notify_enabled', '0'), ('customer_notify_webhook', ''), ('booking_confirm_template', 'Sân Bóng Pro xác nhận đơn {code}: Sân {pitch_name}, ngày {date} khung giờ {slot_time}. Tổng: {total_price}đ (Cọc: {deposit_amount}đ).'), ('reminder_template', 'Nhắc lịch đá bóng: Đội bạn có ca lúc {slot_time} hôm nay ({date}) tại {pitch_name}. Mã vé: {code}. Vui lòng đến trước 15 phút!'), ('telegram_notify_enabled', '0'), ('telegram_bot_token', ''), ('telegram_chat_id', ''), ('tg_event_new_booking', '1'), ('tg_event_cancel', '1'), ('tg_event_shift_diff', '1'), ('tg_event_unmatched_tx', '1'), ('tg_event_low_stock', '1'), ('tg_event_waitlist', '1'), ('tg_event_matchmaking', '1'), ('tg_event_review', '1'), ('loyalty_points_per_10k', '1'), ('loyalty_bottle_cost_points', '50'), ('privacy_policy_version', '1.0')",
-            "CREATE TABLE IF NOT EXISTS `points_log` (`id` INT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NOT NULL, `booking_id` INT NULL, `delta` INT NOT NULL, `reason` VARCHAR(100) NOT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY `uniq_booking_reason` (`booking_id`, `reason`), INDEX `idx_user_created` (`user_id`, `created_at`), CONSTRAINT `fk_points_log_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            "CREATE TABLE IF NOT EXISTS `points_log` (`id` INT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NOT NULL, `booking_id` INT NULL, `delta` INT NOT NULL, `reason` VARCHAR(255) NOT NULL, `admin_id` INT NULL DEFAULT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY `idx_points_user` (`user_id`, `created_at`), KEY `idx_points_admin` (`admin_id`), CONSTRAINT `fk_points_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         ];
         foreach ($migrationStmts as $migSql) {
             try {
@@ -280,6 +280,18 @@ function ensureSchemaInitialized(PDO $pdo) {
         ensureColumnExists($pdo, 'shifts', 'cash_discrepancy', 'DECIMAL(12,2) NOT NULL DEFAULT 0');
         ensureColumnExists($pdo, 'bookings', 'staff_id', 'INT NULL DEFAULT NULL');
         ensureIndexExists($pdo, 'bookings', 'idx_bookings_staff_id', '`staff_id`');
+
+        // 9. audit_logs, points_log, users expansion (Migration 015)
+        ensureColumnExists($pdo, 'audit_logs', 'target_type', 'VARCHAR(50) NULL DEFAULT NULL AFTER `action`');
+        ensureColumnExists($pdo, 'audit_logs', 'target_id', 'VARCHAR(50) NULL DEFAULT NULL AFTER `target_type`');
+        ensureIndexExists($pdo, 'audit_logs', 'idx_audit_target', '`target_type`, `target_id`');
+        ensureColumnExists($pdo, 'users', 'admin_note', 'TEXT NULL DEFAULT NULL AFTER `customer_tier`');
+        ensureColumnExists($pdo, 'points_log', 'admin_id', 'INT NULL DEFAULT NULL AFTER `reason`');
+        try {
+            $pdo->exec("ALTER TABLE `points_log` MODIFY COLUMN `reason` VARCHAR(255) NOT NULL");
+        } catch (Throwable $plModifyEx) {}
+        ensureIndexExists($pdo, 'points_log', 'idx_points_user', '`user_id`, `created_at`');
+        ensureIndexExists($pdo, 'points_log', 'idx_points_admin', '`admin_id`');
 
         $postUpdates = [
             "UPDATE `pitches` SET `weekend_price` = 380000 WHERE `type` = 5 AND `weekend_price` = 0",
