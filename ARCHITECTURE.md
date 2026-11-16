@@ -65,6 +65,8 @@ Quan_Ly_San_Bong/
 │   ├── app.js                        # File bundle được build tự động từ scripts/build_app_bundle.js
 │   ├── api.js                        # Lớp gọi Fetch API bất đồng bộ
 │   ├── booking.js, checkout.js, success.js, fields.js, field-detail.js, history.js, login.js
+│   ├── admin_customers.js            # Module CRM: tìm kiếm SĐT, bảng CRM 2 cột mới & sửa hội viên
+│   ├── admin_logs.js                 # Module Tab 11: Nhật ký Admin, 6 nhóm màu, legend, tooltip IP & lọc
 │   └── admin.js, admin_ops.js, admin_inplay.js, admin_crm.js, admin_finance.js # Module Portal Admin (Inline SVG Charts)
 │
 ├── html/                             # View giao diện khách hàng (được .htaccess phục vụ Clean URL)
@@ -79,16 +81,25 @@ Quan_Ly_San_Bong/
 │
 ├── portal-admin/                     # Phân hệ Quản trị viên (/portal-admin)
 │   ├── index.php                     # Cổng kiểm tra phiên RBAC, CSRF & nạp partials
-│   └── partials/                     # Các tab giao diện Tab 1 đến Tab 9
+│   └── partials/                     # Các tab giao diện Tab 1 đến Tab 11 (Audit Log)
+│
+├── .agents/                          # Hệ thống Agent Harness & Optimization (Google Antigravity 2.0 / ECC)
+│   ├── rules/                        # Quy chuẩn code review, bảo mật, coding style
+│   ├── workflows/                    # Quy trình tự động hóa tác vụ
+│   └── skills/                       # Thư viện 50+ skills chuyên sâu (tdd, verification-loop, eval-harness...)
 │
 ├── database/                         # Kịch bản CSDL
-│   └── schema.sql                    # Schema CSDL duy nhất và đầy đủ của toàn bộ hệ thống
+│   ├── schema.sql                    # Schema CSDL duy nhất và đầy đủ của toàn bộ hệ thống
+│   └── migrations/                   # 15 bản migration an toàn (001..015 mở rộng audit_logs & points_log)
 │
-├── scripts/                          # Script hỗ trợ phát triển
-│   └── build_app_bundle.js           # Build bundle cho js/app.js
+├── scripts/                          # Script hỗ trợ phát triển & deploy
+│   ├── build_app_bundle.js           # Build bundle cho js/app.js
+│   └── deploy_to_hosting.js          # Đồng bộ tự động mã nguồn lên máy chủ Production qua OnePanel API
 └── tests/                            # Bộ kiểm thử tự động
     ├── security_hardening_test.php   # Test bảo mật 25 kịch bản
-    └── test_pitches.php              # Kiểm tra kết nối và dữ liệu sân
+    ├── test_part_a_admin_log.php     # Kiểm thử luồng Audit Log & Diffing
+    ├── test_part_b_crm.php           # Kiểm thử tính toán ngày đặt gần nhất & số ca hoàn tất CRM
+    └── test_part_c_member_crm.php    # Kiểm thử chuẩn hóa SĐT, points_log & khóa dòng FOR UPDATE
 ```
 
 ---
@@ -123,7 +134,8 @@ Quan_Ly_San_Bong/
 - **`invoices`**: Hóa đơn thanh toán (`id`, `booking_id`, `subtotal`, `service_fee`, `discount_amount`, `final_amount`, `staff_id`, `created_at`).
 - **`shifts`**: Nhật ký ca trực nhân viên (`id`, `staff_id`, `start_time`, `end_time`, `initial_cash`, `total_cash_collected`, `status`).
 - **`vouchers`**: Mã giảm giá (`id`, `code`, `discount_type`, `discount_value`, `min_spend`, `usage_limit`, `used_count`, `expires_at`).
-- **`audit_logs`**: Nhật ký hành động nhạy cảm của quản trị viên (`id`, `user_id`, `action`, `entity`, `entity_id`, `old_value`, `new_value`, `ip_address`, `created_at`).
+- **`audit_logs`**: Nhật ký hành động nhạy cảm của quản trị viên (`id`, `user_id`, `actor_name`, `actor_role`, `action`, `target_type`, `target_id`, `booking_id`, `old_value`, `new_value`, `ip`, `created_at`).
+- **`points_log`**: Lịch sử cộng/trừ điểm hội viên minh bạch (`id`, `user_id`, `booking_id`, `delta`, `reason`, `admin_id`, `created_at`).
 
 ---
 
@@ -151,14 +163,17 @@ Trường hợp lỗi:
 ```
 
 ### Các Endpoint Chính:
-1. `POST /api/auth.php`: Xác thực tài khoản (hỗ trợ kèm mã `totp_code`), đăng ký, đăng xuất, kiểm tra session.
+1. `POST /api/auth.php`: Xác thực tài khoản, đăng ký, đăng xuất, kiểm tra session.
 2. `POST /api/bookings.php`: Đặt sân, tạo đơn đặt cọc, khóa slot an toàn qua transaction, tra cứu lịch sử và hủy/hoàn cọc.
 3. `GET /api/pitches.php`: Lấy danh sách 17 sân bóng, trạng thái slot theo ngày và bảng giá giờ vàng/cao điểm.
 4. `GET /api/check_payment.php`: Polling kiểm tra đối soát trạng thái thanh toán cọc VietQR.
 5. `POST /api/sepay_webhook.php`: Webhook nhận thông báo chuyển khoản SePay API v2, xác thực chữ ký/cross-check và kích hoạt đơn tự động.
-6. `POST /api/admin.php`: Router quản trị trung tâm: điều hành ca đá (nhận sân, bù giờ, đổi sân, hủy đơn), cấu hình và nhân sự.
-7. `POST /api/admin_ops.php`: Quản lý kho hàng & dịch vụ (bán nước giải khát, thuê áo pitch/bóng), chốt ca tiền mặt, đăng ký waitlist.
+6. `POST /api/admin.php`: Router quản trị trung tâm: điều hành ca đá (nhận sân, bù giờ, đổi sân, hủy đơn), cấu hình và nhân sự (chống cập nhật thừa).
+7. `POST /api/admin_ops.php`: Quản lý kho hàng & dịch vụ (bán nước giải khát, thuê áo pitch/bóng), chốt ca tiền mặt, bảng giá sân chống trùng log.
 8. `GET /api/admin_finance.php`: Báo cáo tài chính, biểu đồ doanh thu theo ngày/tháng, chỉ số KPI kinh doanh và sổ thu chi vận hành.
-9. `GET /api/admin_crm.php`: Tra cứu hồ sơ hội viên, điểm thưởng, quản lý công nợ và lịch sử đơn.
-10. `POST /api/matchmaking.php`: Đăng tin ghép kèo tìm đối giao lưu bóng đá và kiểm duyệt bài đăng.
-11. `POST /api/reviews.php`: Đánh giá sao, gửi bình luận và phản hồi đánh giá của quản lý/nhân viên.
+9. `GET /api/admin_crm.php`: Tra cứu hồ sơ hội viên, tìm SĐT chuẩn hóa (+84/0), lấy ngày đặt gần nhất và số ca hoàn tất.
+10. `POST /api/admin_crm.php?action=update_member`: Admin sửa thông tin hội viên (validate trùng phone/email, chống cập nhật thừa).
+11. `POST /api/admin_crm.php?action=adjust_points`: Điều chỉnh điểm hội viên kèm lý do bắt buộc, ghi nhận qua `points_log` trong transaction có khóa dòng `FOR UPDATE`.
+12. `GET /api/services/admin_settings.php?action=audit_logs`: Lấy danh sách nhật ký hệ thống kèm phân trang, lọc theo nhân viên, khoảng ngày, nhóm hành động 6 màu và tìm kiếm từ khóa.
+13. `POST /api/matchmaking.php`: Đăng tin ghép kèo tìm đối giao lưu bóng đá và kiểm duyệt bài đăng.
+14. `POST /api/reviews.php`: Đánh giá sao, gửi bình luận và phản hồi đánh giá của quản lý/nhân viên.
