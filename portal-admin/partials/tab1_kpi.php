@@ -75,7 +75,6 @@
               <button type="button" onclick="filterOverviewBookings('playing')" id="ov-filter-playing" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Đang chơi</button>
               <button type="button" onclick="filterOverviewBookings('confirmed')" id="ov-filter-confirmed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Chờ Check-in</button>
               <button type="button" onclick="filterOverviewBookings('completed')" id="ov-filter-completed" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Hoàn thành &amp; Thu đủ</button>
-              <button type="button" onclick="filterOverviewBookings('debt')" id="ov-filter-debt" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#DC2626] hover:bg-rose-50">Đơn đang nợ</button>
               <button type="button" onclick="filterOverviewBookings('noshow')" id="ov-filter-noshow" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200">Chưa đến / Đã hủy</button>
             </div>
             <button type="button" onclick="openQRScannerModal()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm">Quét QR Check-in</button>

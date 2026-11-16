@@ -388,10 +388,9 @@ async function checkWalkinPhoneNoShow(rawPhone) {
   const db = window.SanBongApp?.SanBongDB;
   const localStats = db && typeof db.getPhoneNoShowAndDebt === 'function'
     ? db.getPhoneNoShowAndDebt(clean)
-    : { noShowCount: 0, debtAmount: 0 };
+    : { noShowCount: 0 };
 
   let noShowCount = Number(localStats.noShowCount || 0);
-  let debtAmount = Number(localStats.debtAmount || 0);
   let isBlacklisted = false;
   let customerTier = 'standard';
   let adminNote = '';
@@ -399,7 +398,6 @@ async function checkWalkinPhoneNoShow(rawPhone) {
   const r = await adminFetchJson(`../api/bookings.php?action=check_phone_noshow&phone=${encodeURIComponent(clean)}`);
   if (r.ok && r.data) {
     noShowCount = Math.max(noShowCount, Number(r.data.noShowCount ?? r.data.no_show_count ?? 0));
-    debtAmount = Math.max(debtAmount, Number(r.data.debtAmount ?? r.data.debt_amount ?? 0));
     isBlacklisted = Boolean(r.data.isBlacklisted ?? r.data.is_blacklisted);
     customerTier = String(r.data.customerTier ?? r.data.customer_tier ?? 'standard');
     adminNote = String(r.data.adminNote ?? r.data.admin_note ?? '').trim();
@@ -417,7 +415,7 @@ async function checkWalkinPhoneNoShow(rawPhone) {
   const tierLabel = tierLabels[customerTier] || customerTier;
   const fmt = window.SanBongApp?.formatVND || (n => Number(n || 0).toLocaleString('vi-VN') + 'đ');
 
-  const showWarningBox = isBlacklisted || noShowCount >= 2 || debtAmount > 0 || adminNote || customerTier === 'vip' || customerTier === 'regular' || customerTier === 'warning_noshow';
+  const showWarningBox = isBlacklisted || noShowCount >= 2 || adminNote || customerTier === 'vip' || customerTier === 'regular' || customerTier === 'warning_noshow';
   if (!showWarningBox) {
     warnBox.classList.add('hidden');
     if (warnText) warnText.innerHTML = '';
@@ -430,9 +428,6 @@ async function checkWalkinPhoneNoShow(rawPhone) {
   }
   if (noShowCount >= 2) {
     parts.push(`<span>⚠️ Khách đã có <b>${Number(noShowCount)} lần No-Show</b>! Bắt buộc thu cọc trước khi giữ sân.</span>`);
-  }
-  if (debtAmount > 0) {
-    parts.push(`<span>💰 Đang còn công nợ chưa thu: <b>${escapeSearchHTML(fmt(debtAmount))}</b>.</span>`);
   }
   if (customerTier && customerTier !== 'standard') {
     parts.push(`<span class="inline-block px-1.5 py-0.5 rounded bg-slate-800 text-white text-[10px] font-bold">${escapeSearchHTML(tierLabel)}</span>`);

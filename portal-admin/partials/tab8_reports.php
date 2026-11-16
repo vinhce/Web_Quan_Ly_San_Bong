@@ -47,7 +47,7 @@
                 <span id="rpt-f1-status" class="text-emerald-600 font-extrabold">Khớp 100%</span>
               </div>
               <div class="text-[#475569] font-mono text-[11px] bg-slate-50 p-2 rounded border border-slate-100">
-                Tiền mặt (<span id="rpt-f1-cash" class="font-bold text-amber-700">0đ</span>) + Chuyển khoản (<span id="rpt-f1-transfer" class="font-bold text-purple-700">0đ</span>) + Còn nợ (<span id="rpt-f1-debt" class="font-bold text-rose-600">0đ</span>) = <span id="rpt-f1-total" class="font-extrabold text-[#16A34A]">0đ</span>
+                Tiền mặt (<span id="rpt-f1-cash" class="font-bold text-amber-700">0đ</span>) + Chuyển khoản (<span id="rpt-f1-transfer" class="font-bold text-purple-700">0đ</span>) = <span id="rpt-f1-total" class="font-extrabold text-[#16A34A]">0đ</span>
               </div>
             </div>
             <div id="rpt-formula-2-box" class="p-3 rounded-xl bg-white border border-emerald-200 shadow-sm space-y-1.5">
@@ -187,7 +187,7 @@
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#E2E8F0]">
             <div>
               <h3 class="font-heading font-bold text-sm text-[#0F172A]">Bảng kê chi tiết mọi ca đặt trong kỳ</h3>
-              <p class="text-xs text-[#64748B]">Liệt kê chi tiết từng ca đặt sân, tiền cọc, tiền nước, nợ và thanh toán</p>
+              <p class="text-xs text-[#64748B]">Liệt kê chi tiết từng ca đặt sân, tiền cọc, tiền nước và thanh toán</p>
             </div>
             <div class="flex items-center gap-2">
               <input type="text" id="rpt-ledger-search" oninput="handleReportLedgerSearch()" placeholder="Tìm mã đơn, khách, SĐT, sân..." class="h-8 px-3 rounded-lg border border-[#CBD5E1] bg-white text-xs w-60">
@@ -203,7 +203,7 @@
                   <th class="py-2.5 px-3">Khách hàng</th>
                   <th class="py-2.5 px-3 text-right">Tổng tiền</th>
                   <th class="py-2.5 px-3 text-right">Cọc</th>
-                  <th class="py-2.5 px-3 text-right">Còn nợ</th>
+                  <th class="py-2.5 px-3 text-right">Đã thanh toán</th>
                   <th class="py-2.5 px-3 text-right">Tiền nước</th>
                   <th class="py-2.5 px-3">Trạng thái ca</th>
                   <th class="py-2.5 px-3">Phương thức TT</th>

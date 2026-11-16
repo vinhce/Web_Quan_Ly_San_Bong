@@ -432,12 +432,10 @@
     getPhoneNoShowAndDebt(phone) {
       const clean = String(phone || '').replace(/\D+/g, '');
       if (clean.length < 9) {
-        return { phone: clean, noShowCount: 0, debtCount: 0, debtAmount: 0 };
+        return { phone: clean, noShowCount: 0 };
       }
       const bookings = this.getAllBookings();
       let noShowCount = 0;
-      let debtCount = 0;
-      let debtAmount = 0;
       bookings.forEach(b => {
         const bPhone = String(b.phone || '').replace(/\D+/g, '');
         if (!bPhone || (!bPhone.endsWith(clean.slice(-9)) && bPhone !== clean)) return;
@@ -446,13 +444,8 @@
         if (st === 'Khách chưa đến' || st.includes('No-Show') || paySt === 'Tịch thu cọc 30%') {
           noShowCount += 1;
         }
-        const rem = Number(b.remainingAmount || 0);
-        if (rem > 0 && st !== 'Đã hủy' && st !== 'Khách chưa đến' && !st.includes('No-Show') && st !== 'Hoàn thành') {
-          debtCount += 1;
-          debtAmount += rem;
-        }
       });
-      return { phone: clean, noShowCount, debtCount, debtAmount };
+      return { phone: clean, noShowCount };
     },
 
   });

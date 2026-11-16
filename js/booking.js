@@ -34,9 +34,8 @@ async function checkBookingPhoneNoShow(rawPhone) {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   const localStats = db && typeof db.getPhoneNoShowAndDebt === 'function'
     ? db.getPhoneNoShowAndDebt(clean)
-    : { noShowCount: 0, debtCount: 0, debtAmount: 0 };
+    : { noShowCount: 0 };
   let noShowCount = Number(localStats.noShowCount || 0);
-  let debtAmount = Number(localStats.debtAmount || 0);
   let isBlacklisted = false;
   let adminNote = '';
   if (_bookingNoShowTimer) clearTimeout(_bookingNoShowTimer);
@@ -53,10 +52,8 @@ async function checkBookingPhoneNoShow(rawPhone) {
             isBlacklisted = Boolean(json.data.isBlacklisted);
             adminNote = '';
             noShowCount = 0;
-            debtAmount = 0;
           } else {
             noShowCount = Math.max(noShowCount, Number(json.data.noShowCount ?? json.data.no_show_count ?? 0));
-            debtAmount = Math.max(debtAmount, Number(json.data.debtAmount ?? json.data.debt_amount ?? 0));
             isBlacklisted = Boolean(json.data.isBlacklisted);
             adminNote = String(json.data.adminNote || '');
           }
@@ -70,14 +67,10 @@ async function checkBookingPhoneNoShow(rawPhone) {
       warningEl.classList.remove('hidden');
       return;
     }
-    if (noShowCount >= 2 || debtAmount > 0) {
+    if (noShowCount >= 2) {
       const parts = [];
       if (noShowCount >= 2) {
         parts.push(`⚠️ CẢNH BÁO: SĐT này đã có ${noShowCount} lần đặt sân nhưng không đến (No-Show)! Bắt buộc thu cọc trước khi giữ sân.`);
-      }
-      if (debtAmount > 0) {
-        const fmtDebt = window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(debtAmount) : (debtAmount.toLocaleString('vi-VN') + 'đ');
-        parts.push(`💸 SĐT này hiện còn đơn nợ chưa thanh toán: ${fmtDebt}.`);
       }
       warningEl.textContent = parts.join(' ');
       warningEl.className = 'mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800';

@@ -151,7 +151,7 @@ function renderReportLedger() {
         </td>
         <td class="py-2.5 px-3 text-right font-extrabold text-[#0F172A]">${Number(b.total_price || 0).toLocaleString('vi-VN')}đ</td>
         <td class="py-2.5 px-3 text-right font-bold text-emerald-700">${Number(b.deposit_amount || 0).toLocaleString('vi-VN')}đ</td>
-        <td class="py-2.5 px-3 text-right font-bold ${Number(b.remaining_amount || 0) > 0 ? 'text-rose-600' : 'text-slate-400'}">${Number(b.remaining_amount || 0).toLocaleString('vi-VN')}đ</td>
+        <td class="py-2.5 px-3 text-right font-bold text-emerald-700">${Number(b.paid_amount ?? (Number(b.total_price || 0) - Number(b.remaining_amount || 0))).toLocaleString('vi-VN')}đ</td>
         <td class="py-2.5 px-3 text-right text-sky-700 font-semibold">${Number(b.service_price || 0).toLocaleString('vi-VN')}đ</td>
         <td class="py-2.5 px-3">${statusBadge}</td>
         <td class="py-2.5 px-3 text-xs text-[#475569] max-w-[150px] truncate" title="${escapeSearchHTML(b.payment_method || '')}">${escapeSearchHTML(b.payment_method || '')}</td>
@@ -397,7 +397,6 @@ async function renderAdminReports() {
   }
   setElText('rpt-f1-cash', Number(f1.cash ?? cashRev).toLocaleString('vi-VN') + 'đ');
   setElText('rpt-f1-transfer', Number(f1.transfer ?? vietqrRev).toLocaleString('vi-VN') + 'đ');
-  setElText('rpt-f1-debt', Number(f1.debt ?? 0).toLocaleString('vi-VN') + 'đ');
   setElText('rpt-f1-total', Number(f1.calculated ?? totalRev).toLocaleString('vi-VN') + 'đ');
   const f1Status = document.getElementById('rpt-f1-status');
   if (f1Status) {

@@ -24,7 +24,7 @@
                 </div>
               </div>
 
-              <!-- Hộp cảnh báo No-Show / Công nợ ngay dưới ô SĐT -->
+              <!-- Hộp cảnh báo No-Show ngay dưới ô SĐT -->
               <div id="walkin-noshow-warning" class="hidden p-3 rounded-xl bg-red-50 border-2 border-red-300 text-xs text-red-800 font-bold leading-relaxed">
                 <div id="walkin-noshow-warning-text"></div>
               </div>

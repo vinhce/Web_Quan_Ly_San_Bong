@@ -286,13 +286,11 @@ window.refreshAllAdminViews = refreshAllAdminViews;
 
 function filterOverviewBookings(filterType) {
   currentOverviewFilter = filterType || 'all';
-  ['all', 'upcoming', 'playing', 'confirmed', 'debt', 'completed', 'noshow', 'overdue'].forEach(f => {
+  ['all', 'upcoming', 'playing', 'confirmed', 'completed', 'noshow', 'overdue'].forEach(f => {
     const btn = document.getElementById('ov-filter-' + f);
     if (btn) {
       if (f === currentOverviewFilter) {
         btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white shadow-sm cursor-pointer';
-      } else if (f === 'debt') {
-        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer';
       } else {
         btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer';
       }
@@ -495,17 +493,6 @@ function renderOverviewTodayBookings() {
   } else if (currentOverviewFilter === 'confirmed') {
     filteredToday = todayBookings.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc');
     filteredPastOverdue = pastOverdueBookings.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc');
-  } else if (currentOverviewFilter === 'debt') {
-    const isDebt = b => {
-      const normStatus = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
-      if (normStatus === 'Đã hủy' || normStatus === 'Khách chưa đến' || normStatus === 'Hoàn thành') return false;
-      const total = Number(b.totalPrice || 0);
-      const deposit = Number(b.depositAmount || Math.round(total * 0.3));
-      const rem = typeof b.remainingAmount === 'number' ? b.remainingAmount : Math.max(0, total - deposit);
-      return rem > 0;
-    };
-    filteredToday = todayBookings.filter(isDebt);
-    filteredPastOverdue = pastOverdueBookings.filter(isDebt);
   } else if (currentOverviewFilter === 'completed') {
     filteredToday = todayBookings.filter(b => b.status === 'Hoàn thành');
     filteredPastOverdue = [];

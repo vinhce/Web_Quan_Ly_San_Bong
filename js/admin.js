@@ -461,7 +461,7 @@ function switchAdminTab(moduleKey) {
     'quick-booking': 'Bán lẻ & Đặt nhanh',
     'pitches': 'Sân & Tiện ích',
     'pricing': 'Bảng giá & Ưu đãi',
-    'customers': 'Hồ sơ & Công nợ',
+    'customers': 'Hồ sơ khách hàng',
     'payments': 'Duyệt cọc & Đối soát',
     'shifts': 'Chốt ca trực',
     'reports': 'Doanh thu & Chi phí',
