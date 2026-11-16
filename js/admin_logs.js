@@ -654,16 +654,146 @@ let adminLogCatalog = ADMIN_LOG_CATALOG;
 let adminLogActionTypes = [];
 const adminLogWarnedActionCodes = new Set();
 
+const ADMIN_LOG_ACTION_COLOR_MAP = {
+  // 1. XANH LÁ (green) - Tạo mới, mở ca, duyệt cọc, khớp tiền thành công
+  'WALKIN_BOOKING': 'green',
+  'RECURRING_CREATE': 'green',
+  'STAFF_CREATE': 'green',
+  'SAMPLE_DATA_SEED': 'green',
+  'ADD_SERVICE': 'green',
+  'ADD_OVERTIME': 'green',
+  'MAINTENANCE_ADD': 'green',
+  'INVENTORY_RESTOCK': 'green',
+  'SHIFT_OPEN': 'green',
+  'OPEN_SHIFT': 'green',
+  'APPROVE_DEPOSIT': 'green',
+  'CONFIRM_DEPOSIT': 'green',
+  'MATCHMAKING_MODERATE': 'green',
+  'RESTORE_BOOKING': 'green',
+  'SHIFT_CONFIRM': 'green',
+  'WAITLIST_ASSIGN': 'green',
+  'ENABLE_2FA': 'green',
+  'WEBHOOK_MATCH': 'green',
+  'RECONCILE_MANUAL': 'green',
+
+  // 2. ĐỎ (red) - Xóa, hủy, từ chối, tắt bảo mật, thiếu tiền, chi tiền ra
+  'VOUCHER_DELETE': 'red',
+  'GOLDEN_HOUR_DELETE': 'red',
+  'EXPENSE_DELETE': 'red',
+  'CANCEL_BOOKING': 'red',
+  'EARLY_CANCEL': 'red',
+  'RECURRING_CANCEL': 'red',
+  'MATCHMAKING_CANCEL': 'red',
+  'WAITLIST_CANCEL': 'red',
+  'REJECT_DEPOSIT': 'red',
+  'DISABLE_2FA': 'red',
+  'WEBHOOK_UNDERPAID': 'red',
+  'AUTO_CANCEL_EXPIRED': 'red',
+  'WAITLIST_HOLD_EXPIRED': 'red',
+  'ADMIN_RUN_AUTO_RELEASE': 'red',
+  'EXPENSE_ADD': 'red',
+
+  // 3. XANH DƯƠNG (blue) - Cập nhật cấu hình, sửa thông tin, vận hành sân
+  'UPDATE_PRICING': 'blue',
+  'UPDATE_PRICE': 'blue',
+  'PRICE_UPDATE': 'blue',
+  'EXPENSE_UPDATE': 'blue',
+  'UPDATE_PAYMENT': 'blue',
+  'CRM_UPDATE': 'blue',
+  'UPDATE_MEMBER': 'blue',
+  'UPDATE_FINANCE': 'blue',
+  'SERVICE_UPSERT': 'blue',
+  'PITCH_UPSERT': 'blue',
+  'GOLDEN_HOUR_SAVE': 'blue',
+  'VOUCHER_SAVE': 'blue',
+  'VOUCHER_CREATE': 'blue',
+  'VOUCHER_UPDATE': 'blue',
+  'VOUCHER_TOGGLE': 'blue',
+  'VOUCHER_TOGGLE_STATUS': 'blue',
+  'UPDATE_INFO': 'blue',
+  'USER_EDIT': 'blue',
+  'ADJUST_POINTS': 'blue',
+  'CHECKIN': 'blue',
+  'TRANSFER_PITCH': 'blue',
+  'RECURRING_BOOKING': 'blue',
+  'PITCH_STATUS': 'blue',
+  'PITCH_STATUS_TOGGLE': 'blue',
+  'TOGGLE_PITCH': 'blue',
+  'STAFF_STATUS_CHANGE': 'blue',
+  'REVIEW_STATUS': 'blue',
+  'REVIEW_REPLY': 'blue',
+  'WAITLIST_NOTIFIED': 'blue',
+  'MAINTENANCE_UPDATE': 'blue',
+  'UPDATE_SETTINGS': 'blue',
+  'SYSTEM_SETTINGS': 'blue',
+
+  // 4. CAM (orange) - Cảnh báo, lệch tiền, nhạy cảm, đóng/giao ca
+  'WEBHOOK_OVERPAID': 'orange',
+  'WEBHOOK_UNMATCHED': 'orange',
+  'RECONCILE_RESOLVE': 'orange',
+  'WALKIN_PAST_SLOT': 'orange',
+  'RECURRING_SKIP_DATE': 'orange',
+  'RECURRING_CONFLICT_SKIP': 'orange',
+  'NOSHOW_RELEASE_SLOT': 'orange',
+  'STAFF_ROLE_CHANGE': 'orange',
+  'CHANGE_PASSWORD': 'orange',
+  'STAFF_RESET_PASSWORD': 'orange',
+  'DB_BACKUP_DOWNLOAD': 'orange',
+  'SAMPLE_DATA_CLEAN': 'orange',
+  'SERVICE_DELETE': 'orange',
+  'SHIFT_CLOSE': 'orange',
+  'CLOSE_SHIFT': 'orange',
+  'SHIFT_HANDOVER': 'orange',
+
+  // 5. TÍM (purple) - Thu ngân, dòng tiền tại quầy
+  'COLLECT_PAYMENT': 'purple',
+  'COUNTER_SALE': 'purple',
+
+  // 6. XÁM (gray) - Hệ thống chạy ngầm, không cần chú ý
+  'RUN_REMINDERS': 'gray',
+  'RUN_RECURRING_GEN': 'gray',
+  'RECURRING_CRON_GENERATE': 'gray',
+  'CRON_COMPLETE_OVERDUE_IN_PLAY': 'gray',
+  'DATABASE_BACKUP': 'gray',
+  'DB_BACKUP': 'gray',
+  'TELEGRAM_TEST': 'gray'
+};
+
+const ADMIN_LOG_COLOR_EMOJI_MAP = {
+  green: '🟢',
+  red: '🔴',
+  blue: '🔵',
+  orange: '🟠',
+  purple: '🟣',
+  gray: '⚪'
+};
+
+function getAdminLogActionColor(action) {
+  const code = String(action || '').trim().toUpperCase();
+  if (Object.prototype.hasOwnProperty.call(ADMIN_LOG_ACTION_COLOR_MAP, code)) {
+    return ADMIN_LOG_ACTION_COLOR_MAP[code];
+  }
+  return 'gray'; // Mặc định là xám nếu chưa có trong map
+}
+
+function getAdminLogActionClass(action) {
+  const color = getAdminLogActionColor(action);
+  return `badge-action badge-${color}`;
+}
+
+function getAdminLogActionEmoji(action) {
+  const color = getAdminLogActionColor(action);
+  return ADMIN_LOG_COLOR_EMOJI_MAP[color] || '⚪';
+}
+
 const ADMIN_LOG_BADGE_CLASSES = {
-  pricing: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  payments: 'bg-teal-100 text-teal-800 border-teal-200',
-  booking: 'bg-blue-100 text-blue-800 border-blue-200',
-  shifts: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  members: 'bg-amber-100 text-amber-800 border-amber-200',
-  venues: 'bg-slate-200 text-slate-800 border-slate-300',
-  security: 'bg-rose-100 text-rose-800 border-rose-200',
-  automation: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-  other: 'bg-slate-100 text-slate-700 border-slate-200'
+  green: 'badge-action badge-green',
+  red: 'badge-action badge-red',
+  blue: 'badge-action badge-blue',
+  orange: 'badge-action badge-orange',
+  purple: 'badge-action badge-purple',
+  gray: 'badge-action badge-gray',
+  other: 'badge-action badge-gray'
 };
 
 const ADMIN_LOG_SCALAR_FIELD_LABELS = {
@@ -715,6 +845,9 @@ function getCatalogAction(action) {
 function getActionBadgeInfo(action) {
   const code = String(action || '').trim();
   const info = getCatalogAction(code);
+  const color = getAdminLogActionColor(code);
+  const colorClass = getAdminLogActionClass(code);
+
   if (!info) {
     if (code && !adminLogWarnedActionCodes.has(code)) {
       console.warn('[ADMIN LOG] Mã hành động chưa có mapping:', code);
@@ -724,7 +857,8 @@ function getActionBadgeInfo(action) {
       label: code || 'Thao tác khác',
       group: 'other',
       groupLabel: 'Khác',
-      class: ADMIN_LOG_BADGE_CLASSES.other
+      color: color,
+      class: colorClass
     };
   }
 
@@ -733,7 +867,8 @@ function getActionBadgeInfo(action) {
     label: info.label,
     group: info.group,
     groupLabel: group?.label || 'Khác',
-    class: ADMIN_LOG_BADGE_CLASSES[info.group] || ADMIN_LOG_BADGE_CLASSES.other
+    color: color,
+    class: colorClass
   };
 }
 
@@ -955,18 +1090,20 @@ function populateAdminLogFilters(staffList, actionTypes) {
         [...groupedByLabel.values()]
           .sort((a, b) => a.label.localeCompare(b.label, 'vi', { sensitivity: 'base' }))
           .forEach(action => {
+            const firstCode = action.codes[0] || '';
+            const emoji = getAdminLogActionEmoji(firstCode);
             const option = document.createElement('option');
             option.value = action.codes.join(',');
-            option.textContent = action.label;
+            option.textContent = `${emoji} ${action.label}`;
             options.push(option);
           });
       } else {
         unknownActions.sort((a, b) => a.localeCompare(b, 'vi', { sensitivity: 'base' }))
           .forEach(code => {
-            getActionBadgeInfo(code);
+            const emoji = getAdminLogActionEmoji(code);
             const option = document.createElement('option');
             option.value = code;
-            option.textContent = code;
+            option.textContent = `${emoji} ${code}`;
             options.push(option);
           });
       }

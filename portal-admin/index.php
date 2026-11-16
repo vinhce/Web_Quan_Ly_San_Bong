@@ -532,9 +532,9 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261116_v81"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261116_v92"></script>
   <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261116_v92"></script>
   <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261115_v78"></script>
@@ -545,7 +545,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261116_v91"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261116_v94"></script>
 </body>
 </html>
 
