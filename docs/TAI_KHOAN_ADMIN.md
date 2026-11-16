@@ -1,6 +1,6 @@
 # TÀI LIỆU QUẢN TRỊ VIÊN (ADMIN ACCOUNT & PORTAL) — SÂN BÓNG PRO
 
-Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viên (Admin), cơ chế bảo mật phân quyền (RBAC) và cách vận hành 9 phân hệ quản trị trên hệ thống **Sân Bóng Pro**.
+Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viên (Admin), cơ chế bảo mật phân quyền (RBAC) và cách vận hành 11 phân hệ quản trị trên hệ thống **Sân Bóng Pro**.
 
 ---
 
@@ -45,22 +45,24 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 
 ---
 
-## 2B. Bảng Phân Quyền 3 Cấp (`user` / `staff` / `admin`)
+## 2B. Bảng Phân Quyền Đa Cấp (`user` / `staff` / `manager` / `admin`)
 
-| Chức năng / Phân hệ | `user` (Khách hàng) | `staff` (Nhân viên trực sân) | `admin` (Chủ sân) |
-| :--- | :---: | :---: | :---: |
-| Đặt sân online, xem vé QR & lịch sử cá nhân | ✅ | ✅ | ✅ |
-| Hủy lịch trước hạn đơn của chính mình (chống IDOR) | ✅ | ✅ *(Mọi đơn)* | ✅ *(Mọi đơn)* |
-| Truy cập `/portal-admin/` (Cổng vận hành) | ❌ *(Bị chặn)* | ✅ *(5 tab vận hành)* | ✅ *(Toàn bộ 9 tab)* |
-| Tab 1: Tổng quan ca đá, check-in, in hóa đơn | ❌ | ✅ *(Ẩn KPI Doanh thu & Biểu đồ)* | ✅ *(Đầy đủ KPI tài chính)* |
-| Tab 2: Lịch đặt sân Timeline Gantt & Điều hành ca | ❌ | ✅ | ✅ |
-| Tab 3: Đặt sân tại quầy (khách vãng lai) | ❌ | ✅ | ✅ |
-| Tab 4: Quản lý sân & Bật/Tắt bảo trì | ❌ | ✅ | ✅ |
-| Tab 5: Cấu hình Bảng giá & Mã Voucher | ❌ | ❌ *(403 Forbidden)* | ✅ |
-| Tab 6: Danh sách Khách hàng & Hội viên | ❌ | ✅ | ✅ |
-| Tab 7: Duyệt / Từ chối cọc VietQR | ❌ | ❌ *(403 Forbidden)* | ✅ |
-| Tab 8: Báo cáo thống kê doanh thu | ❌ | ❌ *(Ẩn)* | ✅ |
-| Tab 9: Cài đặt VietQR & Quản lý Nhân viên (`staff`) | ❌ | ❌ *(403 Forbidden)* | ✅ |
+| Chức năng / Phân hệ | `user` (Khách) | `staff` (Trực sân) | `manager` (Quản lý) | `admin` (Chủ sân) |
+| :--- | :---: | :---: | :---: | :---: |
+| Đặt sân online, xem vé QR & lịch sử cá nhân | ✅ | ✅ | ✅ | ✅ |
+| Hủy lịch trước hạn đơn của chính mình (chống IDOR) | ✅ | ✅ *(Mọi đơn)* | ✅ *(Mọi đơn)* | ✅ *(Mọi đơn)* |
+| Truy cập `/portal-admin/` (Cổng vận hành) | ❌ *(Bị chặn)* | ✅ *(Vận hành)* | ✅ *(Vận hành)* | ✅ *(Toàn bộ 11 tab)* |
+| Tab 1: Tổng quan ca đá, check-in, in hóa đơn | ❌ | ✅ *(Ẩn KPI Doanh thu)* | ✅ *(Đầy đủ KPI)* | ✅ *(Đầy đủ KPI)* |
+| Tab 2: Lịch đặt sân Timeline Gantt & Điều hành ca | ❌ | ✅ | ✅ | ✅ |
+| Tab 3: Đặt sân tại quầy (khách vãng lai) | ❌ | ✅ | ✅ | ✅ |
+| Tab 4: Quản lý sân & Bật/Tắt bảo trì | ❌ | ✅ | ✅ | ✅ |
+| Tab 5: Cấu hình Bảng giá & Mã Voucher | ❌ | ❌ *(403 Forbidden)* | ❌ *(403 Forbidden)* | ✅ |
+| Tab 6: Danh sách Khách & CRM (2 cột mới, sửa hội viên) | ❌ | ✅ *(Chỉ xem)* | ✅ *(Chỉ xem)* | ✅ *(Xem & Sửa)* |
+| Tab 7: Ghép Kèo Giao Hữu (Đối soát & Ghép đội) | ❌ | ✅ | ✅ | ✅ |
+| Tab 8: Duyệt / Từ chối cọc VietQR | ❌ | ❌ *(403 Forbidden)* | ✅ | ✅ |
+| Tab 9: Báo cáo thống kê doanh thu | ❌ | ❌ *(Ẩn)* | ❌ *(Ẩn)* | ✅ |
+| Tab 10: Cài đặt VietQR & Cấu hình Hệ thống | ❌ | ❌ *(403 Forbidden)* | ❌ *(403 Forbidden)* | ✅ |
+| Tab 11: Nhật ký Hệ thống (Audit Log 6 nhóm màu) | ❌ | ❌ *(403 Forbidden)* | ❌ *(403 Forbidden)* | ✅ *(Toàn quyền)* |
 
 ---
 
@@ -96,11 +98,13 @@ Tài liệu hướng dẫn truy cập, thông tin tài khoản Quản trị viê
 2. **Lịch đặt sân Timeline:** Biểu đồ Gantt theo dõi trạng thái trực quan của toàn bộ các sân từ `05:30` đến `23:00`.
 3. **Đặt sân tại quầy:** Tạo nhanh đơn khóa sân cho khách vãng lai hoặc khách gọi điện đặt trực tiếp.
 4. **Quản lý sân & Bảo trì:** Bật/tắt chế độ **Bảo trì** theo thời gian thực cho từng sân (khóa ngay lập tức trên trang đặt sân của khách).
-5. **Bảng giá cấu hình:** Điều chỉnh giá giờ thường, giờ cao điểm (`17:30 - 21:00`) và cuối tuần cho Sân 5, Sân 7, Sân 11.
-6. **Khách & Hội viên:** Tra cứu danh sách hội viên, hạng thành viên (Đồng / Bạc / Vàng), điểm tích lũy và tổng chi tiêu.
-7. **Duyệt cọc VietQR:** Theo dõi các biên lai chuyển khoản SePay VietQR (`ASFF` = Sân 5, `ASFS` = Sân 7, `ASFE` = Sân 11) và duyệt cọc / hủy đơn.
-8. **Báo cáo doanh thu:** Thống kê doanh thu tháng, tỷ lệ hủy sân và doanh thu dịch vụ đi kèm (nước uống, áo bib, bóng, trọng tài).
-9. **Cài đặt hệ thống:** Cấu hình tỷ lệ cọc bắt buộc (`30%`), thông tin tài khoản ngân hàng thụ hưởng VietQR và hotline hỗ trợ.
+5. **Bảng giá & Voucher:** Điều chỉnh giá giờ thường, giờ cao điểm (`17:30 - 21:00`), cuối tuần cho Sân 5, Sân 7, Sân 11 và quản lý mã voucher giảm giá.
+6. **Khách hàng & CRM:** Bảng hội viên bổ sung 2 cột **Số điện thoại** & **Tổng nợ**, hỗ trợ tìm kiếm SĐT/tên tức thì, modal sửa hội viên (đổi họ tên, số điện thoại, hạng thành viên) và ghi nhận biến động điểm vào bảng `points_log`.
+7. **Ghép kèo giao hữu:** Quản lý đối soát tiền cọc ghép kèo, tìm đối thủ, bắt cặp trận giao hữu giữa các đội bóng.
+8. **Duyệt cọc VietQR:** Theo dõi các biên lai chuyển khoản SePay VietQR (`ASFF` = Sân 5, `ASFS` = Sân 7, `ASFE` = Sân 11), duyệt cọc tự động hoặc thủ công.
+9. **Báo cáo doanh thu:** Thống kê doanh thu tháng, tỷ lệ hủy sân và doanh thu dịch vụ đi kèm (nước uống, áo bib, bóng, trọng tài).
+10. **Cài đặt hệ thống (Chỉ Admin):** Cấu hình tỷ lệ cọc bắt buộc (`30%`), thông tin tài khoản ngân hàng thụ hưởng VietQR, hotline hỗ trợ và chống ghi log dư thừa khi lưu nguyên trạng thái.
+11. **Nhật ký Hệ thống - Audit Log (Chỉ Admin):** Bảng kiểm toán hoạt động quản trị toàn diện phân theo 6 nhóm màu (Giá sân, Cài đặt, Cọc VietQR, Hủy đơn, Hội viên, Bảo trì sân), hỗ trợ so sánh dữ liệu lồng nhau (nested JSON diff) giữa trước và sau khi thay đổi.
 
 ---
 
