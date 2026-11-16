@@ -37,12 +37,49 @@ function handle_admin_vouchers(PDO $pdo, array $data, string $method, array $act
         $validTo = !empty($data['valid_to']) ? sanitize_string($data['valid_to'], 15) : (!empty($data['validTo']) ? sanitize_string($data['validTo'], 15) : null);
         $rawPitchLimit = (int)($data['pitch_type_limit'] ?? $data['pitchTypeLimit'] ?? 0);
         $pitchTypeLimit = in_array($rawPitchLimit, [5, 7, 11], true) ? $rawPitchLimit : null;
-        $stmt = $pdo->prepare("INSERT INTO vouchers (code, description, discount_type, discount_value, min_order, max_usage, valid_from, valid_to, pitch_type_limit, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE description = VALUES(description), discount_type = VALUES(discount_type), discount_value = VALUES(discount_value), min_order = VALUES(min_order), max_usage = VALUES(max_usage), valid_from = VALUES(valid_from), valid_to = VALUES(valid_to), pitch_type_limit = VALUES(pitch_type_limit), is_active = 1");
-        $stmt->execute([$vCode, $desc, $type, $val, $minOrder, $maxUsage, $validFrom, $validTo, $pitchTypeLimit]);
 
         $maxPerUser = max(0, (int)($data['max_per_user'] ?? $data['maxPerUser'] ?? 0));
         $rawReqTier = strtolower(trim(sanitize_string($data['required_tier'] ?? $data['requiredTier'] ?? '', 20)));
         $requiredTier = in_array($rawReqTier, ['standard', 'bronze', 'silver', 'gold', 'diamond'], true) ? $rawReqTier : null;
+
+        $oldVStmt = $pdo->prepare("SELECT * FROM vouchers WHERE code = ? LIMIT 1");
+        $oldVStmt->execute([$vCode]);
+        $oldVoucher = $oldVStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($oldVoucher) {
+            $oldDataComp = [
+                'description'      => $oldVoucher['description'] ?? '',
+                'discount_type'    => $oldVoucher['discount_type'] ?? 'percent',
+                'discount_value'   => (int)($oldVoucher['discount_value'] ?? 0),
+                'min_order'        => (int)($oldVoucher['min_order'] ?? 0),
+                'max_usage'        => (int)($oldVoucher['max_usage'] ?? 0),
+                'valid_from'       => $oldVoucher['valid_from'] ? substr((string)$oldVoucher['valid_from'], 0, 10) : null,
+                'valid_to'         => $oldVoucher['valid_to'] ? substr((string)$oldVoucher['valid_to'], 0, 10) : null,
+                'pitch_type_limit' => $oldVoucher['pitch_type_limit'] !== null ? (int)$oldVoucher['pitch_type_limit'] : null,
+                'required_tier'    => $oldVoucher['required_tier'] ?? null,
+                'max_per_user'     => (int)($oldVoucher['max_per_user'] ?? 0)
+            ];
+            $newDataComp = [
+                'description'      => $desc,
+                'discount_type'    => $type,
+                'discount_value'   => $val,
+                'min_order'        => $minOrder,
+                'max_usage'        => $maxUsage,
+                'valid_from'       => $validFrom ? substr((string)$validFrom, 0, 10) : null,
+                'valid_to'         => $validTo ? substr((string)$validTo, 0, 10) : null,
+                'pitch_type_limit' => $pitchTypeLimit,
+                'required_tier'    => $requiredTier,
+                'max_per_user'     => $maxPerUser
+            ];
+            $changeCheck = logAdminChange($pdo, 'VOUCHER_SAVE', $oldDataComp, $newDataComp, "Voucher: {$vCode}", 'voucher', $admin);
+            if (!$changeCheck['has_change']) {
+                json_response(['success' => true, 'has_changed' => false, 'message' => "Không có thay đổi để lưu cho mã voucher {$vCode}."]);
+            }
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO vouchers (code, description, discount_type, discount_value, min_order, max_usage, valid_from, valid_to, pitch_type_limit, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE description = VALUES(description), discount_type = VALUES(discount_type), discount_value = VALUES(discount_value), min_order = VALUES(min_order), max_usage = VALUES(max_usage), valid_from = VALUES(valid_from), valid_to = VALUES(valid_to), pitch_type_limit = VALUES(pitch_type_limit), is_active = 1");
+        $stmt->execute([$vCode, $desc, $type, $val, $minOrder, $maxUsage, $validFrom, $validTo, $pitchTypeLimit]);
+
         $hasReqTier = db_table_has_column($pdo, 'vouchers', 'required_tier');
         $hasMaxUser = db_table_has_column($pdo, 'vouchers', 'max_per_user');
         if ($hasReqTier || $hasMaxUser) {
@@ -65,8 +102,10 @@ function handle_admin_vouchers(PDO $pdo, array $data, string $method, array $act
             }
         }
 
-        write_audit_log($pdo, 'VOUCHER_SAVE', $vCode, null, "Lưu voucher {$vCode}: {$val} ({$type}), Max: {$maxUsage}, Sân: " . ($pitchTypeLimit ?: 'Tất cả'), $admin);
-        json_response(['success' => true, 'message' => "Đã lưu mã voucher {$vCode}."]);
+        if (!$oldVoucher) {
+            write_audit_log($pdo, 'VOUCHER_SAVE', "Voucher: {$vCode}", null, "Tạo mới voucher {$vCode}: Giảm {$val} ({$type}), Max: {$maxUsage}, Sân: " . ($pitchTypeLimit ?: 'Tất cả'), $admin);
+        }
+        json_response(['success' => true, 'has_changed' => true, 'message' => "Đã lưu mã voucher {$vCode}."]);
     }
 }
 

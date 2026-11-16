@@ -37,6 +37,48 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
             json_error('Vui lòng điền mã và mô tả mã giảm giá.', 400, 'ERR_VOUCHER_PARAMS');
         }
 
+        $maxPerUser = max(0, (int)($data['max_per_user'] ?? $data['maxPerUser'] ?? 0));
+        $rawReqTier = strtolower(trim(sanitize_string($data['required_tier'] ?? $data['requiredTier'] ?? '', 20)));
+        $requiredTier = in_array($rawReqTier, ['standard', 'bronze', 'silver', 'gold', 'diamond'], true) ? $rawReqTier : null;
+
+        $oldVStmt = $pdo->prepare("SELECT * FROM vouchers WHERE code = ? LIMIT 1");
+        $oldVStmt->execute([$code]);
+        $oldVoucher = $oldVStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($oldVoucher) {
+            $oldDataComp = [
+                'description'      => $oldVoucher['description'] ?? '',
+                'discount_type'    => $oldVoucher['discount_type'] ?? 'percent',
+                'discount_value'   => (int)($oldVoucher['discount_value'] ?? 0),
+                'min_order'        => (int)($oldVoucher['min_order'] ?? 0),
+                'max_usage'        => (int)($oldVoucher['max_usage'] ?? 0),
+                'valid_from'       => $oldVoucher['valid_from'] ? substr((string)$oldVoucher['valid_from'], 0, 10) : null,
+                'valid_to'         => $oldVoucher['valid_to'] ? substr((string)$oldVoucher['valid_to'], 0, 10) : null,
+                'pitch_type_limit' => $oldVoucher['pitch_type_limit'] !== null ? (int)$oldVoucher['pitch_type_limit'] : null,
+                'is_active'        => (int)($oldVoucher['is_active'] ?? 1),
+                'required_tier'    => $oldVoucher['required_tier'] ?? null,
+                'max_per_user'     => (int)($oldVoucher['max_per_user'] ?? 0)
+            ];
+            $newDataComp = [
+                'description'      => $desc,
+                'discount_type'    => $type,
+                'discount_value'   => $val,
+                'min_order'        => $minOrder,
+                'max_usage'        => $maxUsage,
+                'valid_from'       => $validFrom ? substr((string)$validFrom, 0, 10) : null,
+                'valid_to'         => $validTo ? substr((string)$validTo, 0, 10) : null,
+                'pitch_type_limit' => $pitchTypeLimit,
+                'is_active'        => $isActive,
+                'required_tier'    => $requiredTier,
+                'max_per_user'     => $maxPerUser
+            ];
+            $changeCheck = logAdminChange($pdo, 'VOUCHER_SAVE', $oldDataComp, $newDataComp, "Voucher: {$code}", 'voucher', $admin);
+            if (!$changeCheck['has_change']) {
+                json_response(['success' => true, 'has_changed' => false, 'message' => "Không có thay đổi để lưu cho mã voucher {$code}."]);
+                return true;
+            }
+        }
+
         $stmt = $pdo->prepare("
             INSERT INTO vouchers (code, description, discount_type, discount_value, min_order, max_usage, valid_from, valid_to, pitch_type_limit, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -53,9 +95,6 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
         ");
         $stmt->execute([$code, $desc, $type, $val, $minOrder, $maxUsage, $validFrom, $validTo, $pitchTypeLimit, $isActive]);
 
-        $maxPerUser = max(0, (int)($data['max_per_user'] ?? $data['maxPerUser'] ?? 0));
-        $rawReqTier = strtolower(trim(sanitize_string($data['required_tier'] ?? $data['requiredTier'] ?? '', 20)));
-        $requiredTier = in_array($rawReqTier, ['standard', 'bronze', 'silver', 'gold', 'diamond'], true) ? $rawReqTier : null;
         $hasReqTier = db_table_has_column($pdo, 'vouchers', 'required_tier');
         $hasMaxUser = db_table_has_column($pdo, 'vouchers', 'max_per_user');
         if ($hasReqTier || $hasMaxUser) {
@@ -78,8 +117,10 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
             }
         }
 
-        write_audit_log($pdo, 'VOUCHER_SAVE', $code, null, "Lưu voucher {$code}: Giảm {$val} ({$type}), Max {$maxUsage} lượt", $admin);
-        json_response(['success' => true, 'message' => "Lưu voucher {$code} thành công!"]);
+        if (!$oldVoucher) {
+            write_audit_log($pdo, 'VOUCHER_SAVE', "Voucher: {$code}", null, "Tạo mới voucher {$code}: Giảm {$val} ({$type}), Max {$maxUsage} lượt", $admin);
+        }
+        json_response(['success' => true, 'has_changed' => true, 'message' => "Lưu voucher {$code} thành công!"]);
         return true;
     }
 
@@ -89,7 +130,7 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
         $code = strtoupper(sanitize_string($data['code'] ?? '', 30));
         $stmt = $pdo->prepare("DELETE FROM vouchers WHERE code = ?");
         $stmt->execute([$code]);
-        write_audit_log($pdo, 'VOUCHER_DELETE', $code, null, "Xóa voucher {$code}", $admin);
+        write_audit_log($pdo, 'VOUCHER_DELETE', "Voucher: {$code}", null, "Xóa voucher {$code}", $admin);
         json_response(['success' => true, 'message' => "Đã xóa voucher {$code}!"]);
         return true;
     }
@@ -130,6 +171,38 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
         }
 
         if ($id > 0) {
+            $oldRuleStmt = $pdo->prepare("SELECT * FROM golden_hour_rules WHERE id = ? LIMIT 1");
+            $oldRuleStmt->execute([$id]);
+            $oldRule = $oldRuleStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($oldRule) {
+                $oldRuleComp = [
+                    'rule_name'             => $oldRule['rule_name'] ?? '',
+                    'pitch_type'            => $oldRule['pitch_type'] !== null ? (int)$oldRule['pitch_type'] : null,
+                    'day_of_week'           => $oldRule['day_of_week'] !== null ? (int)$oldRule['day_of_week'] : null,
+                    'slot_id'               => $oldRule['slot_id'] ?? null,
+                    'price_adjustment_type' => $oldRule['price_adjustment_type'] ?? 'fixed',
+                    'adjustment_value'      => (int)($oldRule['adjustment_value'] ?? 0),
+                    'description'           => $oldRule['description'] ?? '',
+                    'is_active'             => (int)($oldRule['is_active'] ?? 1)
+                ];
+                $newRuleComp = [
+                    'rule_name'             => $ruleName,
+                    'pitch_type'            => $pitchType,
+                    'day_of_week'           => $dayOfWeek,
+                    'slot_id'               => $slotId,
+                    'price_adjustment_type' => $adjType,
+                    'adjustment_value'      => $adjVal,
+                    'description'           => $desc,
+                    'is_active'             => $isActive
+                ];
+                $ruleChangeCheck = logAdminChange($pdo, 'GOLDEN_HOUR_SAVE', $oldRuleComp, $newRuleComp, "Giờ vàng: {$ruleName}", 'pricing', $admin);
+                if (!$ruleChangeCheck['has_change']) {
+                    json_response(['success' => true, 'has_changed' => false, 'message' => "Không có thay đổi để lưu cho quy tắc giờ vàng '{$ruleName}'."]);
+                    return true;
+                }
+            }
+
             $stmt = $pdo->prepare("
                 UPDATE golden_hour_rules
                 SET rule_name = ?, pitch_type = ?, day_of_week = ?, slot_id = ?,
@@ -144,10 +217,10 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
             $stmt->execute([$ruleName, $pitchType, $dayOfWeek, $slotId, $adjType, $adjVal, $desc, $isActive]);
+            write_audit_log($pdo, 'GOLDEN_HOUR_SAVE', "Giờ vàng: {$ruleName}", null, "Tạo mới quy tắc giờ vàng: {$ruleName}", $admin);
         }
 
-        write_audit_log($pdo, 'GOLDEN_HOUR_SAVE', null, null, "Lưu quy tắc giờ vàng: {$ruleName}", $admin);
-        json_response(['success' => true, 'message' => "Lưu quy tắc giờ vàng '{$ruleName}' thành công!"]);
+        json_response(['success' => true, 'has_changed' => true, 'message' => "Lưu quy tắc giờ vàng '{$ruleName}' thành công!"]);
         return true;
     }
 
