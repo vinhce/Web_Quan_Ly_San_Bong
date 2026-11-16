@@ -69,3 +69,13 @@
 - [ ] **Task 6.8:** Tích hợp gửi thông báo Zalo ZNS / SMS Brandname tự động tới số điện thoại khách khi cọc thành công (`api/notification_helper.php`).
 - [ ] **Task 6.9:** Cấu hình Service Worker PWA để hỗ trợ chế độ quét vé offline tại quầy khi mất mạng chập chờn.
 - [ ] **Task 6.10:** Tối ưu biểu đồ phân tích xu hướng giờ lấp đầy và dự báo doanh thu tuần/tháng bằng Inline SVG Vector Charts thuần (thay thế Chart.js).
+
+---
+
+## GIAI ĐOẠN 7: TRIỂN KHAI AUDIT LOG, CRM NÂNG CẤP & CƠ CHẾ CHỐNG GHI LOG THỪA (ĐÃ HOÀN THÀNH 100%)
+- [x] **Task 7.1 (Phần A - Tab 11 Nhật ký Admin):** Xây dựng `AdminLogService.php` ghi log giao dịch trong cùng transaction; diffing Cũ → Mới; tự động che thông tin nhạy cảm (SĐT, STK, CCCD); giao diện Tab 11 có phân trang, bộ lọc 6 nhóm màu (Giá, Tiền cọc, Ca trực, Hội viên, Cài đặt, Bảo mật), thanh chú thích Legend, emoji và tooltip IP chống tràn ngang. [ĐÃ TEST 24/24 PASS]
+- [x] **Task 7.2 (Phần B - Bảng CRM Khách hàng):** Bỏ 2 cột cũ, thay bằng "Đặt gần nhất" (x ngày trước) và "Số lượt đặt" (chỉ tính ca hoàn tất); nhãn đỏ cảnh báo bùng sân (≥1 No-Show); tinh gọn thanh nút lọc chỉ giữ 3 nút: `[Tất cả khách]`, `[Hội viên VIP]`, `[Khách quen]`. [ĐÃ TEST 21/21 PASS]
+- [x] **Task 7.3 (Phần C - Tìm SĐT & Sửa hội viên):** Tìm kiếm SĐT chuẩn hóa (+84, 0 đầu, vài số cuối); form sửa hội viên có validate trùng phone/email; điều chỉnh điểm ghi nhận qua `points_log` kèm lý do bắt buộc, khóa dòng `FOR UPDATE` chống race condition và ghi Admin Log. [ĐÃ TEST 22/22 PASS]
+- [x] **Task 7.4 (Chống Cập Nhật Thừa & Sinh Log Rác):** Cơ chế so sánh diff trước khi ghi DB trên toàn bộ phân hệ: Bảng giá sân, Trạng thái sân, Voucher/Giờ vàng, Cài đặt hệ thống, Hồ sơ CRM; thêm cờ `isLoading` chống double-click click lặp. [ĐÃ KIỂM THỬ THÀNH CÔNG]
+- [x] **Task 7.5 (Migration 015 Idempotent):** Mở rộng bảng `audit_logs` (thêm `target_type`, `target_id`, `ip`), tạo bảng `points_log` có lưu `admin_id` người duyệt và thêm trường `admin_note` cho bảng `users`. [ĐÃ NẠP SCHEMA V15]
+- [x] **Task 7.6 (Tích hợp Hệ sinh thái ECC Harness):** Tích hợp 402 files quy chuẩn, workflows, custom agents và thư viện 50+ skills vào thư mục workspace `.agents/` chuẩn Google Antigravity 2.0 và global skills. [ĐÃ KÍCH HOẠT THÀNH CÔNG]
