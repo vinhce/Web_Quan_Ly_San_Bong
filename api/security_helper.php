@@ -497,28 +497,37 @@ function audit_log_decode_structured_value($value, &$isStructured) {
     return $value;
 }
 
+function audit_log_canonicalize_scalar($v) {
+    if ($v === null) {
+        return '';
+    }
+    if (is_bool($v)) {
+        return $v ? '1' : '0';
+    }
+    $str = trim((string)$v);
+    if ($str === '') {
+        return '';
+    }
+    if ($str === 'true' || $str === 'TRUE') {
+        return '1';
+    }
+    if ($str === 'false' || $str === 'FALSE') {
+        return '0';
+    }
+    if (is_numeric($str)) {
+        return (string)(float)$str;
+    }
+    return $str;
+}
+
 function audit_log_scalar_values_equal($left, $right) {
-    if ($left === null && $right === null) {
-        return true;
-    }
-    if ($left === null || $right === null) {
-        return false;
-    }
     if (is_object($left)) $left = get_object_vars($left);
     if (is_object($right)) $right = get_object_vars($right);
     if (is_array($left) || is_array($right)) {
         if (!is_array($left) || !is_array($right)) return false;
         return audit_log_values_equal($left, $right);
     }
-    $leftIsNumeric = !is_bool($left) && (is_int($left) || is_float($left) || (is_string($left) && is_numeric($left)));
-    $rightIsNumeric = !is_bool($right) && (is_int($right) || is_float($right) || (is_string($right) && is_numeric($right)));
-    if ($leftIsNumeric && $rightIsNumeric) {
-        return ((string)(float)$left === (string)(float)$right) || ((float)$left == (float)$right);
-    }
-    if (is_bool($left) || is_bool($right)) {
-        return ((bool)$left === (bool)$right);
-    }
-    return trim((string)$left) === trim((string)$right);
+    return audit_log_canonicalize_scalar($left) === audit_log_canonicalize_scalar($right);
 }
 
 function audit_log_values_equal($left, $right) {
@@ -625,25 +634,27 @@ function audit_log_extract_changes($oldValue, $newValue) {
         }
 
         if (empty($diffOld) && empty($diffNew)) {
-            return ['has_change' => false, 'diff_old' => [], 'diff_new' => []];
+            return ['has_change' => false, 'diff_old' => [], 'diff_new' => [], 'changed_keys' => []];
         }
 
         return [
-            'has_change' => true,
-            'diff_old'   => $diffOld,
-            'diff_new'   => $diffNew
+            'has_change'   => true,
+            'changed_keys' => array_keys($diffNew),
+            'diff_old'     => $diffOld,
+            'diff_new'     => $diffNew
         ];
     }
 
     // Case 2: Cả hai đều là scalar khác null (cặp cũ/mới trạng thái: A -> B)
     if ($oldValue !== null && $newValue !== null && !$oldIsStruct && !$newIsStruct) {
         if (audit_log_scalar_values_equal($oldValue, $newValue)) {
-            return ['has_change' => false, 'diff_old' => $oldValue, 'diff_new' => $newValue];
+            return ['has_change' => false, 'diff_old' => $oldValue, 'diff_new' => $newValue, 'changed_keys' => []];
         }
         return [
-            'has_change' => true,
-            'diff_old'   => $oldValue,
-            'diff_new'   => $newValue
+            'has_change'   => true,
+            'changed_keys' => ['status'],
+            'diff_old'     => $oldValue,
+            'diff_new'     => $newValue
         ];
     }
 
@@ -657,6 +668,59 @@ function audit_log_is_unchanged_structured_pair($oldValue, $newValue) {
         return $diff['has_change'] === false;
     }
     return false;
+}
+
+/**
+ * YÊU CẦU 5: Hàm dùng chung kiểm tra thay đổi dữ liệu và ghi nhật ký Admin
+ *
+ * @param PDO|null $pdo Kết nối CSDL
+ * @param string $action Mã hành động (vd: UPDATE_PRICING, UPDATE_SETTINGS, VOUCHER_SAVE, PITCH_STATUS, UPDATE_MEMBER, GOLDEN_HOUR_SAVE...)
+ * @param mixed $oldData Dữ liệu cũ trước khi update
+ * @param mixed $newData Dữ liệu mới người dùng gửi lên
+ * @param string|null $targetId Mã đối tượng
+ * @param string|null $targetType Loại đối tượng
+ * @param array|null $actor Người thực hiện
+ *
+ * @return array [
+ *   'has_change'   => bool, // Có thay đổi hay không
+ *   'changed_keys' => array, // Danh sách key thay đổi
+ *   'diff_old'     => array|string|null, // Chỉ gồm các trường thực sự đổi
+ *   'diff_new'     => array|string|null, // Chỉ gồm các trường thực sự đổi
+ *   'logged'       => bool // Đã ghi log hay chưa
+ * ]
+ */
+function logAdminChange($pdo, string $action, $oldData, $newData, $targetId = null, $targetType = null, $actor = null): array {
+    $diff = audit_log_extract_changes($oldData, $newData);
+
+    if ($diff !== null && !$diff['has_change']) {
+        // KHÔNG có trường nào khác nhau -> KHÔNG insert log
+        return [
+            'has_change'   => false,
+            'changed_keys' => [],
+            'diff_old'     => [],
+            'diff_new'     => [],
+            'logged'       => false
+        ];
+    }
+
+    // Có thay đổi thực sự
+    $diffOld = ($diff && array_key_exists('diff_old', $diff)) ? $diff['diff_old'] : $oldData;
+    $diffNew = ($diff && array_key_exists('diff_new', $diff)) ? $diff['diff_new'] : $newData;
+    $changedKeys = ($diff && isset($diff['changed_keys'])) ? $diff['changed_keys'] : (is_array($diffNew) ? array_keys($diffNew) : ['value']);
+
+    $logged = write_audit_log($pdo, $action, $targetId, $diffOld, $diffNew, $actor);
+
+    return [
+        'has_change'   => true,
+        'changed_keys' => $changedKeys,
+        'diff_old'     => $diffOld,
+        'diff_new'     => $diffNew,
+        'logged'       => (bool)$logged
+    ];
+}
+
+function log_admin_change($pdo, string $action, $oldData, $newData, $targetId = null, $targetType = null, $actor = null): array {
+    return logAdminChange($pdo, $action, $oldData, $newData, $targetId, $targetType, $actor);
 }
 
 function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $newValue = null, $actor = null) {
