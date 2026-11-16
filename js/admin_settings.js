@@ -297,7 +297,11 @@ async function saveAdminSettings(e) {
   await loadAdminSettings();
   window.dispatchEvent(new CustomEvent('sb-data-synced', { detail: { bankInfo: bank, settings: cfg } }));
 
-  if (window.SanBongApp?.showToast) {
+  if (r?.json?.has_changed === false || r?.json?.hasChanged === false) {
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Không có thay đổi để lưu (cài đặt giữ nguyên).', 'info', 3000);
+    }
+  } else if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast('✓ Đã lưu cài đặt hệ thống, chính sách cọc, thông báo & cấu hình VietQR thành công!', 'success', 3500);
   }
 }

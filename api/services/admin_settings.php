@@ -118,10 +118,6 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
                 }
             }
 
-            foreach ($pairs as $k => $v) {
-                $upsertStmt->execute([$k, $v]);
-            }
-
             $oldForAudit = [];
             foreach ($pairs as $k => $_) {
                 if (isset($oldSettings[$k])) {
@@ -133,12 +129,27 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
                 $newForAudit['telegram_bot_token'] = '********';
             }
 
-            write_audit_log($pdo, 'UPDATE_SETTINGS', null, $oldForAudit, $newForAudit, $admin);
+            // Yêu cầu 1, 2, 3: So sánh cũ/mới bằng logAdminChange TRƯỚC KHI UPDATE
+            $changeDiff = logAdminChange($pdo, 'UPDATE_SETTINGS', $oldForAudit, $newForAudit, 'Cài đặt hệ thống', 'settings', $admin);
+            if (!$changeDiff['has_change']) {
+                // KHÔNG insert log, KHÔNG chạy lệnh UPDATE thừa, vẫn trả về thành công
+                json_response([
+                    'success'     => true,
+                    'has_changed' => false,
+                    'message'     => 'Không có thay đổi để lưu (cài đặt giữ nguyên).',
+                    'data'        => admin_build_settings_response($pdo)
+                ]);
+            }
+
+            foreach ($pairs as $k => $v) {
+                $upsertStmt->execute([$k, $v]);
+            }
 
             json_response([
-                'success' => true,
-                'message' => 'Đã lưu cài đặt hệ thống và chính sách cọc/hủy vào DB thành công!',
-                'data'    => admin_build_settings_response($pdo)
+                'success'     => true,
+                'has_changed' => true,
+                'message'     => 'Đã lưu cài đặt hệ thống và chính sách cọc/hủy vào DB thành công!',
+                'data'        => admin_build_settings_response($pdo)
             ]);
         }
 
@@ -304,6 +315,9 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
                 } elseif (in_array($cleanAct, ['TELEGRAM_TEST'], true)) {
                     $rawTargetType = 'system';
                     $rawTargetId   = 'Bot Telegram';
+                } else {
+                    $rawTargetType = 'system';
+                    $rawTargetId   = 'Toàn hệ thống';
                 }
             }
 
