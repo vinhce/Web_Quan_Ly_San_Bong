@@ -40,3 +40,12 @@
   - Sân 5 người: `ASFF` + 6 số
   - Sân 7 người: `ASFS` + 6 số
   - Sân 11 người: `ASFE` + 6 số
+
+### 1.6. Quy Chuẩn Audit Log & Chống Sinh Log Rác
+- **Ghi log trong cùng Transaction:** Mọi thao tác nhạy cảm (sửa giá, sửa hội viên, chỉnh điểm, voucher, trạng thái sân, cài đặt) phải ghi qua `AdminLogService::record()` hoặc `logAdminChange()` trong cùng transaction với thay đổi; thao tác lỗi thì log bị rollback, log lỗi thì thao tác bị hủy.
+- **Cơ chế Chống Cập Nhật Thừa:** Bắt buộc so sánh diff giữa dữ liệu cũ và mới; nếu không có thay đổi giá trị thực tế thì TUYỆT ĐỐI KHÔNG ghi log rác vào DB.
+- **Bảo Vệ Dữ Liệu Nhạy Cảm:** Tuyệt đối không lưu mật khẩu, mã 2FA, token, secret. SĐT, CCCD, STK ngân hàng phải được che một phần (masking) trước khi lưu/hiển thị.
+- **Điều Chỉnh Điểm Hội Viên:** Không sửa trực tiếp `users.points`. Bắt buộc ghi nhận qua `points_log` kèm lý do bắt buộc và `admin_id` người duyệt trong transaction có khóa dòng `SELECT ... FOR UPDATE`. Chặn điểm âm.
+
+### 1.7. Quy Chuẩn Migration Cơ Sở Dữ Liệu
+- Mọi thay đổi cấu trúc bảng CSDL phải được viết dưới dạng Migration Idempotent (kiểm tra `INFORMATION_SCHEMA` trước khi thêm bảng/cột/chỉ mục), đảm bảo chạy lại nhiều lần không sinh lỗi. Cập nhật marker schema tương ứng (`logs/.schema_v15_audit_points_ready`).
