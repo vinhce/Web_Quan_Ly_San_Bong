@@ -38,11 +38,14 @@
 - [x] **Tab 2 - Lịch đặt sân Timeline:** Biểu đồ Gantt 05:30–23:00, điều hành trực tiếp ca đá (bù giờ, đổi sân, thêm nước, hủy ca, đánh dấu "Khách chưa đến").
 - [x] **Tab 3 - Đặt sân tại quầy & Kho nước:** Đặt tại quầy chống trùng slot, quản lý xuất nhập tồn kho nước/dịch vụ, chốt ca bàn giao tiền mặt cuối ngày.
 - [x] **Tab 4 - Quản lý sân & Bảo trì:** Thêm/sửa sân, bảng giá riêng, lên lịch bảo trì tự động chặn đặt sân trùng.
-- [x] **Tab 5 - Bảng giá & Voucher:** Cấu hình giá giờ thường/cao điểm/cuối tuần, chính sách gói tháng, quản lý mã voucher.
-- [x] **Tab 6 - CRM Khách hàng & Sổ nợ:** Hồ sơ khách theo SĐT, cảnh báo khách hay bùng cọc (≥2 lần), quản lý nợ chưa thu.
+- [x] **Tab 5 - Bảng giá & Voucher:** Cấu hình giá giờ thường/cao điểm/cuối tuần, chính sách gói tháng, quản lý mã voucher; cơ chế chống cập nhật thừa và nút Lưu có cờ loading chống gửi trùng request.
+- [x] **Tab 6 - CRM Khách hàng & Hội viên:** Tìm kiếm SĐT chuẩn hóa (+84, 0 đầu, vài số cuối); hiển thị 2 cột mới "Đặt gần nhất" (x ngày trước) & "Số lượt đặt" (chỉ tính ca hoàn tất); nhãn đỏ cảnh báo bùng sân (≥1 No-Show); 3 nút lọc tinh gọn: `[Tất cả khách]`, `[Hội viên VIP]`, `[Khách quen]`; Admin sửa thông tin hội viên & điều chỉnh điểm qua `points_log` kèm lý do bắt buộc, khóa dòng `FOR UPDATE` chống race condition.
 - [x] **Tab 7 - Duyệt cọc & Đối soát SePay API v2:** Hàng đợi đối soát giao dịch chuyển thiếu/thừa tiền, duyệt thủ công khi cần.
 - [x] **Tab 8 - Báo cáo tài chính & Sổ chi:** Thống kê doanh thu, bóc tách tiền cọc/tiền mặt/VietQR/dịch vụ, sổ chi phí, xuất báo cáo CSV UTF-8.
-- [x] **Tab 9 - Cài đặt hệ thống & Bảo mật:** Cấu hình tài khoản, bảo mật 2FA TOTP (RFC 6238), Audit Log append-only, sao lưu CSDL tự động.
+- [x] **Tab 9 - Cài đặt hệ thống & Bảo mật:** Cấu hình tài khoản nhân sự, bảo mật hệ thống, cấu hình VietQR/thông báo Telegram/Zalo, sao lưu CSDL tự động và chống cập nhật thừa cài đặt.
+- [x] **Tab 11 - Nhật ký hệ thống & Thao tác Quản trị (Admin Audit Log · `admin`):** Ghi nhận trong cùng transaction mọi thay đổi nhạy cảm (bảng giá, sửa hội viên, điểm thưởng, voucher, bảo trì sân, cài đặt, bảo mật); diffing trực quan Cũ → Mới; bộ lọc phân nhóm 6 màu (Giá, Tiền & Cọc, Ca trực, Hội viên & Điểm, Cài đặt, Bảo mật) kèm thanh chú thích (Legend) và Emoji trực quan; che dữ liệu nhạy cảm (SĐT/STK/CCCD, không lưu mật khẩu/token); tooltip IP chống vỡ giao diện; chặn quyền truy cập cứng đối với `staff`.
+- [x] **Cơ chế Chặn Cập Nhật Thừa & Chống Log Rác Toàn Diện:** Kiểm tra so sánh diff trước khi ghi DB trên toàn bộ phân hệ (Bảng giá, Trạng thái sân, Voucher, Cài đặt, CRM), chỉ ghi log khi có thay đổi thực tế.
+- [x] **Hệ thống Migration Idempotent (Schema v15):** Migration 015 mở rộng bảng `audit_logs` (thêm `target_type`, `target_id`, `ip`), tạo bảng `points_log` ghi lịch sử điểm có người duyệt và thêm trường `admin_note` cho bảng `users`.
 
 ---
 
