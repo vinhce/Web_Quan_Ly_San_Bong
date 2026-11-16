@@ -125,7 +125,11 @@ async function savePricingTable() {
     renderAdminPitches();
     initQuickBookingForm();
 
-    if (window.SanBongApp?.showToast) {
+    if (r?.json?.has_changed === false || r?.json?.hasChanged === false) {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast('Không có thay đổi để lưu (bảng giá giữ nguyên).', 'info', 3000);
+      }
+    } else if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast('✓ Đã lưu cấu hình bảng giá mới và đồng bộ sang trang Đặt sân!', 'success', 3500);
     }
   } finally {

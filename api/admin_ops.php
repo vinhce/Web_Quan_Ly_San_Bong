@@ -57,6 +57,18 @@ if ($action === 'save_pricing') {
         }
     }
 
+    $settingsPairs = [
+        'price_p5_base'     => (string)$p5Base,
+        'price_p5_peak'     => (string)$p5Peak,
+        'price_p5_weekend'  => (string)$p5Weekend,
+        'price_p7_base'     => (string)$p7Base,
+        'price_p7_peak'     => (string)$p7Peak,
+        'price_p7_weekend'  => (string)$p7Weekend,
+        'price_p11_base'    => (string)$p11Base,
+        'price_p11_peak'    => (string)$p11Peak,
+        'price_p11_weekend' => (string)$p11Weekend
+    ];
+
     $oldPricing = [];
     try {
         $oldSetStmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'price_%'");
@@ -64,6 +76,22 @@ if ($action === 'save_pricing') {
             $oldPricing[$r['setting_key']] = $r['setting_value'];
         }
     } catch (Exception $e) {}
+
+    // Yêu cầu 1, 2, 3: So sánh cũ/mới bằng logAdminChange trước khi UPDATE
+    $changeDiff = logAdminChange($pdo, 'UPDATE_PRICING', $oldPricing, $settingsPairs, 'Bảng giá sân', 'pricing', $admin);
+    if (!$changeDiff['has_change']) {
+        // KHÔNG insert log, KHÔNG chạy lệnh UPDATE thừa, vẫn trả về thành công
+        json_response([
+            'success'     => true,
+            'has_changed' => false,
+            'message'     => 'Không có thay đổi để lưu (bảng giá giữ nguyên).',
+            'data'        => [
+                'p5'  => ['base' => $p5Base, 'peak' => $p5Peak, 'weekend' => $p5Weekend],
+                'p7'  => ['base' => $p7Base, 'peak' => $p7Peak, 'weekend' => $p7Weekend],
+                'p11' => ['base' => $p11Base, 'peak' => $p11Peak, 'weekend' => $p11Weekend]
+            ]
+        ]);
+    }
 
     $pdo->beginTransaction();
     try {
@@ -73,17 +101,6 @@ if ($action === 'save_pricing') {
         $updPitchStmt->execute([$p11Base, $p11Peak, $p11Weekend, 11]);
 
         $upsertSetStmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
-        $settingsPairs = [
-            'price_p5_base'     => (string)$p5Base,
-            'price_p5_peak'     => (string)$p5Peak,
-            'price_p5_weekend'  => (string)$p5Weekend,
-            'price_p7_base'     => (string)$p7Base,
-            'price_p7_peak'     => (string)$p7Peak,
-            'price_p7_weekend'  => (string)$p7Weekend,
-            'price_p11_base'    => (string)$p11Base,
-            'price_p11_peak'    => (string)$p11Peak,
-            'price_p11_weekend' => (string)$p11Weekend
-        ];
         foreach ($settingsPairs as $k => $v) {
             $upsertSetStmt->execute([$k, $v]);
         }
@@ -101,18 +118,17 @@ if ($action === 'save_pricing') {
         $activeFutureBookingsCount = (int)$afbStmt->fetchColumn();
     } catch (Exception $e) {}
 
-    write_audit_log($pdo, 'UPDATE_PRICING', null, $oldPricing, $settingsPairs, $admin);
-
     $msg = 'Đã lưu cấu hình bảng giá vào cơ sở dữ liệu thành công!';
     if ($activeFutureBookingsCount > 0) {
         $msg .= " (Lưu ý: Có {$activeFutureBookingsCount} ca đặt trong tương lai giữ nguyên giá đã chốt)";
     }
 
     json_response([
-        'success' => true,
-        'message' => $msg,
-        'warning' => $activeFutureBookingsCount > 0 ? "Có {$activeFutureBookingsCount} ca đặt trong tương lai giữ nguyên đơn giá cũ" : null,
-        'data'    => [
+        'success'     => true,
+        'has_changed' => true,
+        'message'     => $msg,
+        'warning'     => $activeFutureBookingsCount > 0 ? "Có {$activeFutureBookingsCount} ca đặt trong tương lai giữ nguyên đơn giá cũ" : null,
+        'data'        => [
             'p5'  => ['base' => $p5Base, 'peak' => $p5Peak, 'weekend' => $p5Weekend],
             'p7'  => ['base' => $p7Base, 'peak' => $p7Peak, 'weekend' => $p7Weekend],
             'p11' => ['base' => $p11Base, 'peak' => $p11Peak, 'weekend' => $p11Weekend]
@@ -164,6 +180,54 @@ if (in_array($action, ['manage_pitch', 'upsert_pitch'], true) && $method === 'PO
         $oldStmt->execute([$pitchId]);
         $oldPitch = $oldStmt->fetch() ?: null;
 
+        $newPitchData = [
+            'id'           => $pitchId,
+            'name'         => $name,
+            'type'         => $type,
+            'typeName'     => $typeName,
+            'size'         => $size,
+            'grass'        => $grass,
+            'basePrice'    => $basePrice,
+            'peakPrice'    => $peakPrice,
+            'weekendPrice' => $weekendPrice,
+            'status'       => $status,
+            'description'  => $description
+        ];
+
+        if ($oldPitch) {
+            $oldCompare = [
+                'name'         => $oldPitch['name'] ?? '',
+                'type'         => (int)($oldPitch['type'] ?? 5),
+                'size'         => $oldPitch['size'] ?? '',
+                'grass'        => $oldPitch['grass'] ?? '',
+                'basePrice'    => (int)($oldPitch['base_price'] ?? 0),
+                'peakPrice'    => (int)($oldPitch['peak_price'] ?? 0),
+                'weekendPrice' => (int)($oldPitch['weekend_price'] ?? 0),
+                'status'       => $oldPitch['status'] ?? 'Hoạt động',
+                'description'  => $oldPitch['description'] ?? ''
+            ];
+            $newCompare = [
+                'name'         => $name,
+                'type'         => $type,
+                'size'         => $size,
+                'grass'        => $grass,
+                'basePrice'    => $basePrice,
+                'peakPrice'    => $peakPrice,
+                'weekendPrice' => $weekendPrice,
+                'status'       => $status,
+                'description'  => $description
+            ];
+            $pitchDiff = logAdminChange($pdo, 'PITCH_UPSERT', $oldCompare, $newCompare, $pitchId, 'pitch', $mgr);
+            if (!$pitchDiff['has_change']) {
+                json_response([
+                    'success'     => true,
+                    'has_changed' => false,
+                    'message'     => "Không có thay đổi để lưu cho sân {$name} ({$pitchId}).",
+                    'data'        => $newPitchData
+                ]);
+            }
+        }
+
         $amenitiesJson = $oldPitch['amenities_json'] ?? '["Đèn LED chống chói", "Bãi đỗ xe", "Nước uống miễn phí", "Phòng thay đồ", "Wifi"]';
         if (isset($data['amenities']) && is_array($data['amenities'])) {
             $amenitiesJson = json_encode($data['amenities'], JSON_UNESCAPED_UNICODE);
@@ -182,26 +246,15 @@ if (in_array($action, ['manage_pitch', 'upsert_pitch'], true) && $method === 'PO
             $amenitiesJson, $variant, $description
         ]);
 
-        $newPitchData = [
-            'id'           => $pitchId,
-            'name'         => $name,
-            'type'         => $type,
-            'typeName'     => $typeName,
-            'size'         => $size,
-            'grass'        => $grass,
-            'basePrice'    => $basePrice,
-            'peakPrice'    => $peakPrice,
-            'weekendPrice' => $weekendPrice,
-            'status'       => $status,
-            'description'  => $description
-        ];
-
-        write_audit_log($pdo, 'PITCH_UPSERT', $pitchId, $oldPitch, $newPitchData, $mgr);
+        if (!$oldPitch) {
+            write_audit_log($pdo, 'PITCH_UPSERT', $pitchId, null, $newPitchData, $mgr);
+        }
 
         json_response([
-            'success' => true,
-            'message' => $oldPitch ? "Đã cập nhật thông tin sân {$name} ({$pitchId})!" : "Đã thêm mới sân {$name} ({$pitchId}) thành công!",
-            'data'    => $newPitchData
+            'success'     => true,
+            'has_changed' => true,
+            'message'     => $oldPitch ? "Đã cập nhật thông tin sân {$name} ({$pitchId})!" : "Đã thêm mới sân {$name} ({$pitchId}) thành công!",
+            'data'        => $newPitchData
         ]);
     }
 
