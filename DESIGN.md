@@ -61,6 +61,26 @@
 - Giao diện Responsive tự co giãn theo container, hiển thị sắc nét tuyệt đối trên mọi độ phân giải (Retina, 4K, Mobile).
 - Tương tác vi mô (Micro-interactions): Tooltip hiển thị chi tiết doanh thu / số ca đá khi hover/touch vào các cột mốc dữ liệu mà không gây giật lag.
 
+### 3.6. Giao Diện Bảng Nhật Ký Admin (Admin Audit Log UI Spec)
+- **Hệ thống 6 Nhóm Màu Hành Động (Audit Action Groups):**
+  1. 🟢 **Giá (Price):** `bg-emerald-50 text-emerald-800 border-emerald-200` (Cập nhật bảng giá, giá giờ vàng, giá theo sân).
+  2. 🔵 **Tiền & Cọc (Deposit & Money):** `bg-teal-50 text-teal-800 border-teal-200` (Duyệt cọc VietQR, hủy cọc, thanh toán tại quầy).
+  3. 🟣 **Ca trực & Điều hành (Shift & Ops):** `bg-indigo-50 text-indigo-800 border-indigo-200` (Mở ca, chốt ca, xác nhận bàn giao tiền mặt, đổi sân, bù giờ).
+  4. 🟡 **Hội viên & Điểm (Member & Loyalty):** `bg-amber-50 text-amber-800 border-amber-200` (Sửa thông tin hội viên, cộng/trừ điểm kèm lý do bắt buộc).
+  5. ⚪ **Cài đặt & Vận hành (Settings):** `bg-slate-100 text-slate-800 border-slate-300` (Cài đặt hệ thống, voucher, kho hàng).
+  6. 🔴 **Bảo mật & Hệ thống (Security & Access):** `bg-rose-50 text-rose-800 border-rose-200` (Đổi vai trò, trạng thái nhân viên, reset mật khẩu, sao lưu CSDL).
+- **Thanh Chú Thích Trực Quan (Legend):** Đặt ngay trên đầu bảng, hiển thị đầy đủ 6 nhóm màu giúp admin nhận diện nhanh thao tác.
+- **Tooltip IP Chống Tràn Bảng:** Thông tin địa chỉ IP được tích hợp dưới dạng tooltip khi hover vào cột thời gian thay vì tạo cột riêng biệt, giữ bảng luôn hiển thị vừa vặn, không cuộn ngang.
+- **Trình Diễn Diffing Cũ → Mới Trực Quan:** Thẻ gạch ngang màu đỏ nhạt `<span class="line-through text-rose-700 bg-rose-50">` cho giá trị cũ và thẻ xanh lá `<span class="text-emerald-800 bg-emerald-50">` cho giá trị mới; tự động parse JSON lồng nhau và che số điện thoại (`0912xxx678`).
+- **Dropdown Phân Nhóm Emoji:** Dropdown bộ lọc hành động tích hợp emoji nhận diện theo nhóm (💰, 💳, ⏱️, ⭐, ⚙️, 🛡️).
+
+### 3.7. Giao Diện Bảng CRM Khách Hàng (Customer Management UI Spec)
+- **Cấu trúc 2 cột mới:**
+  - *"Đặt gần nhất"*: Hiển thị dạng "x ngày trước", "Hôm nay", hoặc "—" (nếu chưa từng đặt).
+  - *"Số lượt đặt"*: Tổng số ca đá đã hoàn tất thành công.
+- **Nhãn Cảnh Báo Bùng Sân (No-Show Badge):** Huy hiệu màu đỏ `bg-red-50 text-red-700 border border-red-200` hiển thị ngay cạnh tên khách khi $N \ge 1$ lượt bùng (bằng 0 thì ẩn hoàn toàn).
+- **Thanh Lọc Tinh Gọn:** 3 nút bấm chuẩn mực `[Tất cả khách]`, `[Hội viên VIP]`, `[Khách quen]` với hiệu ứng active nền xanh `bg-emerald-600 text-white`.
+
 ---
 
 ## 4. QUY TẮC RESPONSIVE & 4 TRẠNG THÁI UI
