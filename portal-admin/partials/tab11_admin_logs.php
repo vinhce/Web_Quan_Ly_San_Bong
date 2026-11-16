@@ -9,6 +9,82 @@
 ?>
 <!-- TAB 11: NHẬT KÝ ADMIN & AUDIT LOG -->
 <!-- ========================================== -->
+<style>
+  :root {
+    --badge-green-bg: #DCFCE7;
+    --badge-green-text: #166534;
+    --badge-green-border: #BBF7D0;
+
+    --badge-red-bg: #FEE2E2;
+    --badge-red-text: #991B1B;
+    --badge-red-border: #FECACA;
+
+    --badge-blue-bg: #DBEAFE;
+    --badge-blue-text: #1E40AF;
+    --badge-blue-border: #BFDBFE;
+
+    --badge-orange-bg: #FFEDD5;
+    --badge-orange-text: #9A3412;
+    --badge-orange-border: #FED7AA;
+
+    --badge-purple-bg: #F3E8FF;
+    --badge-purple-text: #6B21A8;
+    --badge-purple-border: #E9D5FF;
+
+    --badge-gray-bg: #F1F5F9;
+    --badge-gray-text: #334155;
+    --badge-gray-border: #CBD5E1;
+  }
+
+  .badge-action {
+    white-space: nowrap !important;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    border-width: 1px;
+    border-style: solid;
+    line-height: 1.25rem;
+  }
+
+  .badge-green {
+    background-color: var(--badge-green-bg) !important;
+    color: var(--badge-green-text) !important;
+    border-color: var(--badge-green-border) !important;
+  }
+
+  .badge-red {
+    background-color: var(--badge-red-bg) !important;
+    color: var(--badge-red-text) !important;
+    border-color: var(--badge-red-border) !important;
+  }
+
+  .badge-blue {
+    background-color: var(--badge-blue-bg) !important;
+    color: var(--badge-blue-text) !important;
+    border-color: var(--badge-blue-border) !important;
+  }
+
+  .badge-orange {
+    background-color: var(--badge-orange-bg) !important;
+    color: var(--badge-orange-text) !important;
+    border-color: var(--badge-orange-border) !important;
+  }
+
+  .badge-purple {
+    background-color: var(--badge-purple-bg) !important;
+    color: var(--badge-purple-text) !important;
+    border-color: var(--badge-purple-border) !important;
+  }
+
+  .badge-gray {
+    background-color: var(--badge-gray-bg) !important;
+    color: var(--badge-gray-text) !important;
+    border-color: var(--badge-gray-border) !important;
+  }
+</style>
 <div id="tab-content-logs" class="space-y-4 hidden">
   <!-- 1. Header Card -->
   <div class="ui-card p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -109,6 +185,22 @@
       <button type="button" id="admin-log-search-clear" onclick="clearAdminLogSearch()" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 cursor-pointer">
         ✕
       </button>
+    </div>
+
+    <!-- Chú thích nhóm màu hành động (Legend) -->
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-[#64748B] pt-2 border-t border-slate-100">
+      <span class="font-bold text-[#0F172A] flex items-center gap-1">
+        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+        </svg>
+        Quy ước màu:
+      </span>
+      <span class="inline-flex items-center gap-1 font-medium bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">🟢 Tạo / Duyệt</span>
+      <span class="inline-flex items-center gap-1 font-medium bg-rose-50 text-rose-800 px-2 py-0.5 rounded border border-rose-200">🔴 Xóa / Hủy / Chi tiền</span>
+      <span class="inline-flex items-center gap-1 font-medium bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200">🔵 Cập nhật</span>
+      <span class="inline-flex items-center gap-1 font-medium bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200">🟠 Cảnh báo</span>
+      <span class="inline-flex items-center gap-1 font-medium bg-purple-50 text-purple-800 px-2 py-0.5 rounded border border-purple-200">🟣 Tiền quầy</span>
+      <span class="inline-flex items-center gap-1 font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">⚪ Tự động</span>
     </div>
   </div>
 
