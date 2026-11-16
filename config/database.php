@@ -121,13 +121,13 @@ function ensureIndexExists(PDO $pdo, string $table, string $indexName, string $c
 }
 
 function ensureSchemaInitialized(PDO $pdo) {
-    $markerFile = dirname(__DIR__) . '/logs/.schema_v15_audit_points_ready';
+    $markerFile = dirname(__DIR__) . '/logs/.schema_v16_crm_backend_ready';
     if (is_file($markerFile)) {
         return;
     }
     try {
         try {
-            $pdo->exec("ALTER TABLE users MODIFY COLUMN role ENUM('user', 'staff', 'manager', 'admin') NOT NULL DEFAULT 'user'");
+            $pdo->exec("ALTER TABLE users MODIFY COLUMN role ENUM('user', 'staff', 'manager', 'admin', 'walkin') NOT NULL DEFAULT 'user'");
         } catch (PDOException $preMigEx) {
             error_log("[SCHEMA PRE-MIGRATION ERROR] " . $preMigEx->getMessage());
         }
@@ -293,7 +293,24 @@ function ensureSchemaInitialized(PDO $pdo) {
         ensureIndexExists($pdo, 'points_log', 'idx_points_user', '`user_id`, `created_at`');
         ensureIndexExists($pdo, 'points_log', 'idx_points_admin', '`admin_id`');
 
+        // 10. walkin role, walkin guest user & version (Migration 016)
+        ensureColumnExists($pdo, 'users', 'version', 'INT NOT NULL DEFAULT 1 AFTER `updated_at`');
+        try {
+            $pdo->exec("INSERT INTO `users` (`username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
+SELECT 'khachle', 'khachle@sanbongpro.local', '0000000000', 'Khách lẻ', '\$argon2id\$v=19\$m=65536,t=4,p=1\$DISABLED_NON_LOGIN\$disabled', 'walkin', 'active'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `users` WHERE `role` = 'walkin' OR `username` = 'khachle')");
+        } catch (Throwable $walkinEx) {}
+
         $postUpdates = [
+            "UPDATE `bookings` SET `status` = 'completed' WHERE `status` = 'Hoàn thành'",
+            "UPDATE `bookings` b
+INNER JOIN `users` u ON (b.user_id = u.id AND u.role IN ('admin', 'manager', 'staff'))
+LEFT JOIN `users` real_u ON (
+    REPLACE(REPLACE(REPLACE(real_u.phone, ' ', ''), '.', ''), '-', '') = REPLACE(REPLACE(REPLACE(b.phone, ' ', ''), '.', ''), '-', '')
+    AND real_u.role = 'user'
+)
+SET b.user_id = COALESCE(real_u.id, (SELECT id FROM (SELECT id FROM `users` WHERE `role` = 'walkin' LIMIT 1) w))
+WHERE b.user_id IS NOT NULL",
             "UPDATE `pitches` SET `weekend_price` = 380000 WHERE `type` = 5 AND `weekend_price` = 0",
             "UPDATE `pitches` SET `weekend_price` = 700000 WHERE `type` = 7 AND `weekend_price` = 0",
             "UPDATE `pitches` SET `weekend_price` = 1400000 WHERE `type` = 11 AND `weekend_price` = 0",
