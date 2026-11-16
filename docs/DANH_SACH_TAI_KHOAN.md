@@ -16,24 +16,26 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 ## 2. Danh sách Tài khoản & Mật khẩu
 
 ### 2.1. Tài khoản Quản trị viên Chính (Admin - Toàn quyền)
-> Dùng để vận hành sân, duyệt cọc VietQR, khóa sân bảo trì, xem doanh thu và đặt sân tại quầy.
+> Dùng để vận hành sân, duyệt cọc VietQR, khóa sân bảo trì, xem doanh thu, cấu hình hệ thống, quản lý hội viên và kiểm toán toàn bộ thao tác qua Tab 11 Audit Log.
 
 - **Tên đăng nhập (Username):** `vxyen0801`
 - **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Mật khẩu quản trị viên)*
 - **Email quản trị:** `vxyen0801@sanbongpro.vn`
 - **Số điện thoại:** `0352313548`
-- **Vai trò (Role):** `admin` (Chủ sân · Toàn quyền)
+- **Vai trò (Role):** `admin` (Chủ sân · Toàn quyền 11 phân hệ)
+- **Quyền hạn đặc biệt:** Toàn quyền truy cập Tab 10 (Cài đặt hệ thống) và Tab 11 (Nhật ký kiểm toán Audit Log 6 nhóm hành động: Giá sân, Cài đặt, Cọc VietQR, Hủy đơn, Hội viên, Bảo trì sân).
 - **Ghi chú:** Sau khi đăng nhập thành công, hệ thống tự động chuyển thẳng vào `/portal-admin/` và mở menu quản trị.
 
 ---
 
 ### 2.2. Tài khoản Quản trị viên (Admin)
-> Dùng để đăng nhập quản trị hệ thống, duyệt cọc, bảo trì sân, xem doanh thu và đặt sân tại quầy.
+> Dùng để đăng nhập quản trị hệ thống, duyệt cọc, bảo trì sân, xem doanh thu, đặt sân tại quầy và tra cứu nhật ký kiểm toán Tab 11.
 
 - **Tên đăng nhập (Username):** `admin`
 - **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
 - **Email:** `admin@sanbongpro.vn`
 - **Vai trò (Role):** `admin` (Quản trị viên)
+- **Quyền hạn:** Toàn quyền truy cập 11 tab vận hành và quản trị, bao gồm Cài đặt và Audit Log.
 
 ---
 
@@ -46,7 +48,7 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 - **Số điện thoại:** `0352000222`
 - **Họ và tên:** Nguyễn Hoàng Minh (Quản Lý Sân)
 - **Vai trò (Role):** `manager` (Quản lý vận hành)
-- **Quyền hạn:** Truy cập các tab điều hành vận hành, duyệt ghép kèo, kiểm tra kho nước, xử lý đối soát cọc; giới hạn cấu hình nhân sự cấp cao.
+- **Quyền hạn:** Truy cập các tab điều hành vận hành (Tab 1, 2, 3, 4, 6, 7, 8); **bị chặn truy cập Tab 10 (Cài đặt hệ thống) và Tab 11 (Audit Log)** theo chính sách RBAC bảo vệ dữ liệu nhạy cảm.
 
 ---
 
@@ -59,7 +61,7 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 - **Số điện thoại:** `0352000111`
 - **Họ và tên:** Nhân Viên Trực Sân Ca 1
 - **Vai trò (Role):** `staff` (Nhân viên vận hành trực sân)
-- **Quyền hạn:** Quét vé QR check-in, bán nước/dịch vụ, chốt ca bàn giao tiền mặt, đặt sân tại quầy; ẩn toàn bộ KPI doanh thu nhạy cảm và tab cấu hình hệ thống.
+- **Quyền hạn:** Quét vé QR check-in, bán nước/dịch vụ, chốt ca bàn giao tiền mặt, đặt sân tại quầy; ẩn toàn bộ KPI doanh thu nhạy cảm, **bị chặn truy cập Tab 10 (Cài đặt hệ thống) và Tab 11 (Audit Log)**.
 
 ---
 
@@ -74,6 +76,24 @@ Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập v�
 - **Điểm tích lũy:** Có sẵn điểm thưởng để kiểm thử tính năng đổi nước suối (100 điểm = 1 chai Aquafina).
 
 > Quyền truy cập được xác định từ trường `role` trong cơ sở dữ liệu; tên đăng nhập và số điện thoại không tự cấp quyền admin.
+
+---
+
+### 2.6. Ma trận Phân quyền Cổng Quản trị (11 Phân hệ Portal Admin)
+
+| Phân hệ / Tab | Quyền `staff` (Trực sân) | Quyền `manager` (Quản lý) | Quyền `admin` (Chủ sân) | Ghi chú bảo mật |
+| :--- | :---: | :---: | :---: | :--- |
+| **Tab 1: Tổng quan KPI** | Ẩn doanh thu | ✅ Toàn phần | ✅ Toàn phần | `staff` chỉ thấy ca đá, ẩn biểu đồ & doanh thu |
+| **Tab 2: Lịch Timeline Gantt** | ✅ | ✅ | ✅ | Điều hành và xem trạng thái sân trực quan |
+| **Tab 3: Đặt sân tại quầy** | ✅ | ✅ | ✅ | Đặt sân khách vãng lai, in phiếu nhận sân |
+| **Tab 4: Quản lý sân & Bảo trì** | ✅ | ✅ | ✅ | Bật/tắt bảo trì tức thì |
+| **Tab 5: Bảng giá & Voucher** | ❌ (Chặn) | ❌ (Chặn) | ✅ | Cấu hình giá giờ vàng, cuối tuần, mã giảm giá |
+| **Tab 6: Khách hàng & CRM** | ✅ (Xem) | ✅ (Xem) | ✅ (Xem & Sửa) | Tìm kiếm SĐT, xem nợ/điểm, chỉ `admin` được sửa hội viên |
+| **Tab 7: Ghép kèo giao hữu** | ✅ | ✅ | ✅ | Hỗ trợ bắt đối, duyệt ghép đội |
+| **Tab 8: Duyệt cọc VietQR** | ❌ (Chặn) | ✅ | ✅ | Duyệt cọc SePay, hoàn tiền hoặc hủy cọc |
+| **Tab 9: Báo cáo thống kê** | ❌ (Ẩn) | ❌ (Ẩn) | ✅ | Báo cáo tài chính, doanh thu chi tiết |
+| **Tab 10: Cài đặt hệ thống** | ❌ (Ẩn/403) | ❌ (Ẩn/403) | ✅ | Tỷ lệ cọc, tài khoản ngân hàng thụ hưởng, hotline |
+| **Tab 11: Nhật ký Audit Log** | ❌ (Ẩn/403) | ❌ (Ẩn/403) | ✅ | Kiểm toán thao tác 6 nhóm màu, chống sinh log thừa |
 
 ---
 
