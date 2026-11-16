@@ -1,6 +1,20 @@
 # PROGRESS — NHẬT KÝ TIẾN ĐỘ & TRẠNG THÁI DỰ ÁN (SÂN BÓNG PRO)
 
 ## 1. VIỆC ĐÃ HOÀN THÀNH GẦN NHẤT
+- [x] **Triển khai thành công 3 Phân hệ lớn A → B → C (Audit Log, CRM Nâng Cấp, Quản lý Hội viên):**
+  - **Phần A (Tab 11 - Nhật ký Admin):** Xây dựng `AdminLogService.php` ghi log giao dịch trong cùng transaction; diffing Cũ → Mới; tự động che SĐT, STK, CCCD và không lưu mật khẩu/secret; giao diện Tab 11 có phân trang, bộ lọc 6 nhóm màu (Giá, Tiền cọc, Ca trực, Hội viên, Cài đặt, Bảo mật), thanh chú thích Legend, emoji trực quan và tooltip IP chống tràn ngang.
+  - **Phần B (Bảng CRM Khách hàng):** Bỏ 2 cột cũ, thay bằng "Đặt gần nhất" (x ngày trước) và "Số lượt đặt" (chỉ tính ca hoàn tất); nhãn đỏ cảnh báo bùng sân (≥1 No-Show); tinh gọn thanh nút lọc chỉ giữ 3 nút: `[Tất cả khách]`, `[Hội viên VIP]`, `[Khách quen]`.
+  - **Phần C (Tìm SĐT & Sửa hội viên):** Tìm kiếm SĐT chuẩn hóa (+84, 0 đầu, vài số cuối); form sửa hội viên có validate trùng phone/email; điều chỉnh điểm ghi nhận qua `points_log` kèm lý do bắt buộc, khóa dòng `FOR UPDATE` chống race condition và ghi Admin Log.
+  - **Migration 015:** Mở rộng bảng `audit_logs` (thêm `target_type`, `target_id`, `ip`), tạo bảng `points_log` có lưu `admin_id` người duyệt và thêm trường `admin_note` cho bảng `users`.
+- [x] **Cơ chế Chặn Cập Nhật Thừa & Chống Log Rác Toàn Diện:**
+  - So sánh diff trước khi ghi DB trên toàn bộ phân hệ: Bảng giá sân, Trạng thái sân, Voucher/Giờ vàng, Cài đặt hệ thống, Hồ sơ CRM.
+  - Thêm cờ `isLoading` chống double-click click lặp nhiều lần (giải quyết triệt để lỗi ghi trùng log lúc 02:50).
+- [x] **Tích hợp Hệ sinh thái ECC (Agent Harness & Optimization):**
+  - Cài đặt 402 files quy chuẩn, workflows, custom agents và thư viện 50+ skills vào thư mục workspace `.agents/` chuẩn Google Antigravity 2.0.
+  - Kích hoạt các Core Skills toàn cục (`autonomous-agent-harness`, `eval-harness`, `verification-loop`, `unified-memory`, `ecc-guide`...) cho môi trường Antigravity.
+- [x] **Đồng bộ Hosting & Quản lý Mã Nguồn:**
+  - Đồng bộ và deploy thành công 84/84 file lên máy chủ hosting production (`https://lxzioyr.id.vn/portal-admin/`).
+  - Hoàn thiện chuỗi commit tách bạch theo từng chức năng và push đầy đủ lên GitHub.
 - [x] **Triển khai thành công lên OnePanel Web Hosting Live (`https://fxzioyr.id.vn`):**
   - Đồng bộ toàn bộ 18 file mã nguồn mới nhất lên thư mục `public_html/` qua OnePanel MCP Tool (`scripts/deploy_all_to_hosting.js`).
   - Cấu hình VirtualHost Apache, ép Clean URLs và HTTPS 301 tự động qua `.htaccess`.
