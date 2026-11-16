@@ -11,6 +11,7 @@
 - [x] V8. BẢO MẬT & HIỆU NĂNG TOÀN PORTAL (Phân quyền server, CSRF, escape, audit logs) (Test: 11/11 pass)
 - [x] V9. HỒI QUY CUỐI (Syntax check, acceptance_test, kiểm tra 10 tab, chốt số liệu) (Test: 56/56 file syntax + 150/150 test pass)
 - [x] V10. MODULAR HÓA <= 666 DÒNG & ĐỒNG BỘ HOSTING (Tất cả file <= 666 dòng, cấp full quyền Admin vxyen0801, sửa lỗi UI Header/Tab 7/History, deploy public_html) (Test: 100% pass)
+- [x] V11. NÂNG CẤP TAB 11 "NHẬT KÝ ADMIN", CRM 2 CỘT MỚI & POINTS LOG (Tab 11 Audit Log 6 nhóm màu, legend, diffing Cũ → Mới; CRM bỏ cột cũ thêm 2 cột mới "Đặt gần nhất" & "Số lượt đặt", nhãn bùng sân, tinh gọn 3 nút lọc; form sửa hội viên và points_log có lý do bắt buộc với FOR UPDATE; chống log rác) (Test: 67/67 pass: Part A 24/24, Part B 21/21, Part C 22/22)
 
 ## Quyết định kỹ thuật
 - Môi trường: MySQL 8.0.30 Local (127.0.0.1:3306), PHP 8.1.10.
@@ -22,12 +23,14 @@
   + Tab 5: Bảng giá & Voucher (pricing)
   + Tab 6: Khách & Hội viên (customers)
   + Tab 7: Duyệt cọc VietQR (deposits)
-  + Tab 8: Chốt ca / Giao ca (shifts) [MỚI]
+  + Tab 8: Chốt ca / Giao ca (shifts)
   + Tab 9: Báo cáo doanh thu (reports)
   + Tab 10: Cài đặt hệ thống (settings)
+  + Tab 11: Nhật ký hệ thống (logs) [MỚI - ADMIN ONLY]
 
 ## Migration đã chạy
 - 010_shifts_management_upgrade.sql (Thêm initial_cash, discrepancy_reason vào shifts; staff_id vào bookings).
+- 015_audit_and_points_log_expansion.sql (Mở rộng audit_logs thêm target_type, target_id, ip; tạo points_log; thêm admin_note vào users).
 
 ## Dữ liệu [TEST] đã thêm
 - 9 ca Sân 5 (P5-C, P5-D, P5-E trải dài 3 ngày qua-nay-mai, giờ thường và giờ vàng).
