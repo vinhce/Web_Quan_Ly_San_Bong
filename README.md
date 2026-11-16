@@ -38,11 +38,12 @@ Giao diện điều khiển responsive (hỗ trợ Drawer trên Mobile & Desktop
 - **Tab 2 - Lịch đặt sân Timeline:** Bộ chọn ngày linh hoạt + biểu đồ Gantt 05:30–23:00; điều hành ca tại chỗ (đá bù giờ, đổi sân, gọi nước), danh sách chờ (Waitlist), lịch cố định hàng tuần (Recurring) và kiểm duyệt tin tìm đối.
 - **Tab 3 - Đặt sân tại quầy, Kho nước & Chốt ca:** Đặt tại quầy khóa slot trùng phía server (hỗ trợ gói tháng), quản lý kho nước/dịch vụ kèm cảnh báo sắp hết hàng, chốt ca & đối soát tiền mặt bàn giao cuối ca.
 - **Tab 4 - Quản lý sân bóng, Bảo trì & Đánh giá:** Thêm/sửa/ẩn sân với giá riêng từng sân, lên lịch bảo trì định kỳ (cảnh báo đơn trùng), theo dõi điểm đánh giá và phản hồi góp ý.
-- **Tab 5 - Bảng giá & Voucher (`admin`):** Cấu hình khung giá thường/cao điểm/cuối tuần lưu DB, chính sách gói tháng, quản lý mã khuyến mãi và quy tắc giờ vàng/thấp điểm.
-- **Tab 6 - Khách & Hội viên CRM:** Hồ sơ khách hàng theo SĐT, nhãn VIP/Khách quen/Hay bùng sân (≥2 No-Show), bộ lọc công nợ chưa thu và lịch sử chi tiêu.
+- **Tab 5 - Bảng giá & Voucher (`admin`):** Cấu hình khung giá thường/cao điểm/cuối tuần lưu DB, chính sách gói tháng, quản lý mã khuyến mãi và quy tắc giờ vàng/thấp điểm; chặn cập nhật thừa khi giá không đổi, nút Lưu có cờ loading chống gửi lặp request.
+- **Tab 6 - Khách & Hội viên CRM:** Hồ sơ khách hàng theo SĐT chuẩn hóa (+84, 0 đầu, vài số cuối); hiển thị 2 cột mới "Đặt gần nhất" (x ngày trước) & "Số lượt đặt" (chỉ tính ca hoàn tất); nhãn đỏ cảnh báo bùng sân (≥1 No-Show); 3 nút lọc tinh gọn: `[Tất cả khách]`, `[Hội viên VIP]`, `[Khách quen]`; Admin sửa thông tin hội viên & điều chỉnh điểm qua `points_log` kèm lý do bắt buộc, khóa dòng `FOR UPDATE` chống xung đột đồng thời.
 - **Tab 7 - Duyệt cọc VietQR & Đối soát Webhook (`manager`, `admin`):** Hàng chờ biên lai chuyển khoản + đối soát giao dịch SePay chưa khớp / chuyển thiếu hoặc thừa tiền.
 - **Tab 8 - Báo cáo doanh thu & Sổ chi (`manager`, `admin`):** Lọc `Từ ngày – Đến ngày`, bóc tách tiền cọc / thu 70% / tiền mặt / VietQR / dịch vụ, quản lý chi phí vận hành, lãi ròng và xuất Excel CSV (UTF-8 BOM).
-- **Tab 9 - Cài đặt hệ thống (`admin`):** Cấu hình VietQR, chính sách giữ chỗ/hoàn cọc, quản lý tài khoản nhân sự, bật 2FA TOTP (RFC 6238), Audit Log append-only, nhật ký thông báo (Zalo/SMS & Telegram) và sao lưu/khôi phục CSDL.
+- **Tab 9 - Cài đặt hệ thống (`admin`):** Cấu hình VietQR, chính sách giữ chỗ/hoàn cọc, quản lý tài khoản nhân sự, bật/tắt chính sách hệ thống, nhật ký thông báo (Zalo/SMS & Telegram), sao lưu/khôi phục CSDL và cơ chế chống cập nhật thừa cài đặt.
+- **Tab 11 - Nhật ký hệ thống & Thao tác Quản trị (Admin Audit Log · `admin`):** Phân hệ kiểm soát gian lận & hậu kiểm toàn diện; ghi nhận trong cùng transaction mọi thay đổi nhạy cảm (bảng giá, sửa hội viên, điểm thưởng, voucher, bảo trì sân, cài đặt, bảo mật); diffing trực quan Cũ → Mới; bộ lọc phân nhóm 6 màu (Giá, Tiền & Cọc, Ca trực, Hội viên & Điểm, Cài đặt, Bảo mật) kèm thanh chú thích (Legend) và Emoji trực quan; bảo mật thông tin nhạy cảm (che SĐT/STK/CCCD, không lưu mật khẩu/token); tooltip IP chống vỡ giao diện; chặn quyền truy cập cứng đối với `staff`.
 
 ---
 
@@ -73,6 +74,8 @@ Web_Quan_Ly_San_Bong/
 │   ├── api.js                        # Lớp gọi API bất đồng bộ (Fetch API, Open-Meteo, VietQR, SePay)
 │   ├── index.js, fields.js, field-detail.js, booking.js, checkout.js, success.js, history.js, login.js
 │   ├── matchmaking.js                # Logic trang ghép kèo / tìm đối (/matchmaking)
+│   ├── admin_customers.js            # Logic tìm kiếm SĐT, bảng CRM 2 cột mới & sửa hội viên
+│   ├── admin_logs.js                 # Xử lý Tab 11: Nhật ký Admin, 6 nhóm màu, legend, tooltip IP & lọc
 │   └── admin.js + admin_catalog.js + admin_ops.js + admin_inplay.js + admin_crm.js + admin_finance.js
 ├── html/                             # Giao diện trang chức năng (Clean URLs)
 │   ├── fields.html                   # /fields: Danh sách và bộ lọc sân bóng
@@ -82,22 +85,25 @@ Web_Quan_Ly_San_Bong/
 │   ├── success.html                  # /success: Vé điện tử QR Check-in & đánh giá sau trận
 │   ├── history.html                  # /history: Tra cứu lịch sử ca đá, đổi điểm & đánh giá sân
 │   ├── matchmaking.html              # /matchmaking: Đăng tin ghép kèo / tìm đối
-│   ├── login.html                    # /login: Đăng nhập (hỗ trợ 2FA TOTP) & Đăng ký tài khoản
+│   ├── login.html                    # /login: Đăng nhập & Đăng ký tài khoản
 │   └── admin.html                    # Điều hướng an toàn về /portal-admin/
 ├── portal-admin/                     # Phân hệ Quản trị viên (/portal-admin)
 │   ├── index.php                     # Cổng kiểm tra phiên RBAC (admin/manager/staff), CSRF & layout responsive
 │   ├── index.html                    # Bản shell dự phòng (được .htaccess rewrite về index.php)
-│   └── partials/                     # Module quản trị: header, sidebar, tab1_kpi..tab9_settings
+│   └── partials/                     # Module quản trị: header, sidebar, tab1_kpi..tab11_admin_logs
 ├── api/                              # Backend API RESTful chuẩn mực (PDO + CSRF + RBAC + Audit)
-│   ├── security_helper.php           # Rate limit, Session 2h, CSRF, Sanitization, RBAC, 2FA TOTP
+│   ├── security_helper.php           # Rate limit, Session 2h, CSRF, Sanitization, RBAC, logAdminChange()
+│   ├── services/
+│   │   ├── AdminLogService.php       # Service Audit Log nghiệp vụ dùng chung, diffing Cũ → Mới
+│   │   └── admin_settings.php        # Dịch vụ quản trị cài đặt & endpoint audit_logs
 │   ├── sepay_helper.php              # Kết nối SePay API v2 (Sandbox/Production) & đối soát giao dịch
 │   ├── notification_helper.php       # Dịch vụ gửi thông báo Zalo/SMS webhook & cảnh báo Telegram
-│   ├── auth.php                      # Đăng nhập (Argon2id + 2FA), Đăng ký, Đăng xuất, Khôi phục/Quản lý phiên
+│   ├── auth.php                      # Đăng nhập (Argon2id), Đăng ký, Đăng xuất, Khôi phục/Quản lý phiên
 │   ├── bookings.php                  # Tạo đơn, kiểm tra trùng transaction, giữ chỗ, hủy & áp dụng chính sách hoàn cọc
 │   ├── pitches.php                   # Danh sách sân, bảng giá, giờ vàng, lịch bảo trì & cấu hình hệ thống
 │   ├── admin.php                     # Router chính quản trị: điều hành ca, đặt quầy, sân, giá, cài đặt, nhân sự
-│   ├── admin_ops.php                 # API vận hành: kho dịch vụ, chốt ca, lịch lặp, waitlist, bảo trì, matchmaking
-│   ├── admin_crm.php                 # API CRM khách hàng, nợ chưa thu, lịch sử đặt & audit log
+│   ├── admin_ops.php                 # API vận hành: kho dịch vụ, chốt ca, lịch lặp, waitlist, bảng giá chống trùng log
+│   ├── admin_crm.php                 # API CRM khách hàng: tìm SĐT chuẩn hóa, điểm thưởng points_log, sửa hội viên
 │   ├── admin_finance.php             # API báo cáo doanh thu, sổ chi phí, đối soát bank_transactions & sao lưu DB
 │   ├── matchmaking.php               # API công khai đăng/tìm kèo giao hữu
 │   ├── reviews.php                   # API gửi và xem đánh giá sân sau trận
@@ -105,7 +111,7 @@ Web_Quan_Ly_San_Bong/
 │   └── sepay_webhook.php             # Endpoint tiếp nhận Webhook ngân hàng (HMAC / Secret + idempotent)
 ├── config/
 │   ├── .htaccess                     # Chặn mọi truy cập HTTP trực tiếp vào config/
-│   └── database.php                  # Đọc .env (ưu tiên ngoài webroot), kết nối PDO MySQL & auto-migration kiểm chuẩn
+│   └── database.php                  # Đọc .env, kết nối PDO MySQL & auto-migration kiểm chuẩn (Schema v15)
 ├── cron/                             # Tác vụ tự động định kỳ (chạy CLI hoặc HTTP có X-CRON-SECRET + file lock)
 │   ├── .htaccess                     # Chặn truy cập web thông thường vào thư mục cron/
 │   ├── auto_release_expired.php      # Tự động nhả đơn quá hạn giữ chỗ chưa cọc
@@ -115,7 +121,11 @@ Web_Quan_Ly_San_Bong/
 ├── database/
 │   ├── .htaccess                     # Chặn truy cập web vào thư mục SQL
 │   ├── schema.sql                    # Kịch bản khởi tạo CSDL MySQL (quan_ly_san_bong)
-│   └── migrations/                   # 8 bản migration an toàn 001..008 (Stage 1–7, Hardening & Hotfix bookings.status)
+│   └── migrations/                   # 15 bản migration an toàn (001..015 mở rộng audit_logs, points_log, admin_note)
+├── .agents/                          # Hệ thống Agent Harness & Optimization (chuẩn Google Antigravity 2.0 / ECC)
+│   ├── rules/                        # Quy chuẩn code review, bảo mật, phong cách lập trình (KISS, DRY, Immutability)
+│   ├── workflows/                    # Quy trình tự động hóa tác vụ
+│   └── skills/                       # Thư viện 50+ skills chuyên sâu (tdd-workflow, verification-loop, eval-harness...)
 ├── docs/                             # Tài liệu vận hành nội bộ (bị chặn HTTP qua .htaccess)
 ├── tests/
 │   └── security_hardening_test.php   # Bộ kiểm thử an ninh & cú pháp toàn bộ PHP/JS (RFC 6238, XSS, API, Lint)
