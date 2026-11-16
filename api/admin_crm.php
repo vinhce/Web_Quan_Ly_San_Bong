@@ -342,6 +342,33 @@ if (!function_exists('admin_map_booking')) {
             json_error('Phân hạng khách hàng không hợp lệ.', 400, 'ERR_INVALID_TIER');
         }
 
+        $oldStmt = $pdo->prepare("SELECT full_name, customer_tier, admin_note, is_blacklisted FROM customer_crm WHERE phone = ? LIMIT 1");
+        $oldStmt->execute([$cleanPhone]);
+        $oldCrm = $oldStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($oldCrm) {
+            $oldComp = [
+                'full_name'      => $oldCrm['full_name'] ?? '',
+                'customer_tier'  => $oldCrm['customer_tier'] ?? 'standard',
+                'admin_note'     => $oldCrm['admin_note'] ?? '',
+                'is_blacklisted' => (int)($oldCrm['is_blacklisted'] ?? 0)
+            ];
+            $newComp = [
+                'full_name'      => $customerName,
+                'customer_tier'  => $tier,
+                'admin_note'     => $adminNote,
+                'is_blacklisted' => $isBlacklisted
+            ];
+            $crmDiff = logAdminChange($pdo, 'CRM_UPDATE', $oldComp, $newComp, $cleanPhone, 'customer', $actor);
+            if (!$crmDiff['has_change']) {
+                json_response([
+                    'success'     => true,
+                    'has_changed' => false,
+                    'message'     => "Không có thay đổi để lưu cho khách hàng {$cleanPhone}."
+                ]);
+            }
+        }
+
         $stmt = $pdo->prepare("
             INSERT INTO customer_crm (phone, full_name, customer_tier, admin_note, is_blacklisted, updated_at)
             VALUES (?, ?, ?, ?, ?, NOW())
@@ -354,18 +381,21 @@ if (!function_exists('admin_map_booking')) {
         ");
         $stmt->execute([$cleanPhone, $customerName, $tier, $adminNote, $isBlacklisted]);
 
-        write_audit_log(
-            $pdo,
-            'CRM_UPDATE',
-            $cleanPhone,
-            null,
-            "Cập nhật hồ sơ KH {$cleanPhone} ({$customerName}): Hạng={$tier}, Blacklist=" . ($isBlacklisted ? 'Có' : 'Không') . " | Note: {$adminNote}",
-            $actor
-        );
+        if (!$oldCrm) {
+            write_audit_log(
+                $pdo,
+                'CRM_UPDATE',
+                $cleanPhone,
+                null,
+                "Tạo mới hồ sơ KH {$cleanPhone} ({$customerName}): Hạng={$tier}, Blacklist=" . ($isBlacklisted ? 'Có' : 'Không') . " | Note: {$adminNote}",
+                $actor
+            );
+        }
 
         json_response([
-            'success' => true,
-            'message' => 'Cập nhật hồ sơ khách hàng thành công!'
+            'success'     => true,
+            'has_changed' => true,
+            'message'     => 'Cập nhật hồ sơ khách hàng thành công!'
         ]);
     }
 
@@ -719,6 +749,48 @@ if (!function_exists('admin_map_booking')) {
             }
             $delta = $newPoints - $currentPoints;
 
+            $oldValues = [
+                'full_name'  => (string)($currentUser['full_name'] ?? ''),
+                'phone'      => (string)($currentUser['phone'] ?? ''),
+                'email'      => (string)($currentUser['email'] ?? ''),
+                'admin_note' => (string)($currentUser['admin_note'] ?? ''),
+                'points'     => $currentPoints
+            ];
+            $newValues = [
+                'full_name'  => $fullName,
+                'phone'      => $cleanPhone,
+                'email'      => $finalEmail,
+                'admin_note' => $adminNote,
+                'points'     => $newPoints
+            ];
+            if ($delta !== 0) {
+                $newValues['points_reason'] = $pointsReason;
+            }
+
+            // Yêu cầu 1, 2, 3: Kiểm tra thay đổi trước khi UPDATE DB
+            $memberDiff = audit_log_extract_changes($oldValues, $newValues);
+            if ($memberDiff !== null && !$memberDiff['has_change']) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_response([
+                    'success'     => true,
+                    'has_changed' => false,
+                    'message'     => "Không có thay đổi để lưu cho hội viên {$cleanPhone}.",
+                    'data'        => [
+                        'id'         => $userId,
+                        'user_id'    => $userId,
+                        'full_name'  => $fullName,
+                        'phone'      => $cleanPhone,
+                        'email'      => $finalEmail,
+                        'admin_note' => $adminNote,
+                        'points'     => $currentPoints,
+                        'delta'      => 0,
+                        'updated_at' => (string)($currentUser['updated_at'] ?? '')
+                    ]
+                ]);
+            }
+
             if ($delta !== 0) {
                 if ($pointsReason === '') {
                     if ($pdo->inTransaction()) {
@@ -789,23 +861,6 @@ if (!function_exists('admin_map_booking')) {
 
             // Ghi đúng một dòng nhật ký qua AdminLogService::record
             require_once __DIR__ . '/services/AdminLogService.php';
-            $oldValues = [
-                'full_name'  => (string)($currentUser['full_name'] ?? ''),
-                'phone'      => (string)($currentUser['phone'] ?? ''),
-                'email'      => (string)($currentUser['email'] ?? ''),
-                'admin_note' => (string)($currentUser['admin_note'] ?? ''),
-                'points'     => $currentPoints
-            ];
-            $newValues = [
-                'full_name'  => $fullName,
-                'phone'      => $cleanPhone,
-                'email'      => $finalEmail,
-                'admin_note' => $adminNote,
-                'points'     => $newPoints
-            ];
-            if ($delta !== 0) {
-                $newValues['points_reason'] = $pointsReason;
-            }
 
             AdminLogService::record(
                 $pdo,
@@ -822,9 +877,10 @@ if (!function_exists('admin_map_booking')) {
             $pdo->commit();
 
             json_response([
-                'success' => true,
-                'message' => 'Cập nhật thông tin hội viên thành công!',
-                'data'    => [
+                'success'     => true,
+                'has_changed' => true,
+                'message'     => 'Cập nhật thông tin hội viên thành công!',
+                'data'        => [
                     'id'         => $userId,
                     'user_id'    => $userId,
                     'full_name'  => $fullName,
