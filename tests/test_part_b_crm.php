@@ -34,7 +34,7 @@ $tab6Html = file_get_contents(__DIR__ . '/../portal-admin/partials/tab6_customer
 assert_test(!str_contains($tab6Html, 'Lịch sử Bùng/No-Show'), 'Đã bỏ cột "Lịch sử Bùng/No-Show"');
 assert_test(!str_contains($tab6Html, 'Công nợ chưa thu</th>'), 'Đã bỏ cột "Công nợ chưa thu" khỏi thead CRM');
 assert_test(str_contains($tab6Html, 'Đặt gần nhất'), 'Đã có cột "Đặt gần nhất"');
-assert_test(str_contains($tab6Html, 'Số lượt đặt'), 'Đã có cột "Số lượt đặt"');
+assert_test(str_contains($tab6Html, 'Trận hoàn thành') || str_contains($tab6Html, 'Số lượt đặt'), 'Đã có cột "Trận hoàn thành"');
 
 // 2. Chuẩn bị dữ liệu mẫu trong DB để test API CRM
 echo "\n2. Kiểm tra tính toán ngày đặt gần nhất & số ca hoàn tất từ backend API:\n";

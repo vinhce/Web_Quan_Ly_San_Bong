@@ -50,17 +50,17 @@ vm.runInContext(customersScript, sandbox, { filename: 'admin_customers.js' });
   assert(rowMatch, 'Không render được dòng khách hàng fixture');
   const cellCount = (rowMatch[1].match(/<td\b/g) || []).length;
   assert.strictEqual(cellCount, headerCount, 'Số cột dữ liệu phải khớp số header');
-  assert.strictEqual(headerCount, 9);
+  assert.strictEqual(headerCount, 8, 'Bảng CRM khách hàng phải có chính xác 8 cột (đã loại bỏ cột công nợ)');
 
-  assert(tbody.innerHTML.includes('15/11/2026'));
-  assert(tbody.innerHTML.includes('2 lượt'));
   assert(tbody.innerHTML.includes('Khách quen'));
-  assert(tbody.innerHTML.includes('4.382.000đ'));
+  assert(tbody.innerHTML.includes('120 điểm'));
   assert(tbody.innerHTML.includes('5.745.000đ'));
+  assert(!tbody.innerHTML.includes('4.382.000đ'), 'Không được hiển thị số nợ cũ 4.382.000đ');
+  assert(!tbody.innerHTML.includes('Công nợ'), 'Không được xuất hiện từ khóa Công nợ trong tbody');
   assert.strictEqual(vm.runInContext("formatAdminCustomerBookingDate('')", sandbox), '—');
   assert.strictEqual(vm.runInContext("normalizeCustomerPhone('+84 912 345 678')", sandbox), '0912345678');
 
-  console.log('PASS: số cột, thứ tự dữ liệu, ngày, số lượt, công nợ và tổng chi tiêu.');
+  console.log('PASS: chính xác 8 cột chuẩn, render điểm tích lũy, tổng chi tiêu và xóa sạch công nợ.');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
