@@ -544,6 +544,21 @@ try {
         $oldStmt->execute([$pitchId]);
         $oldStatus = (string)($oldStmt->fetchColumn() ?: 'Hoạt động');
 
+        $detail = $status;
+        if ($reason !== '') {
+            $detail .= " (Lý do: {$reason})";
+        }
+
+        // Yêu cầu 1, 2, 3: So sánh trạng thái cũ/mới bằng logAdminChange
+        $statusDiff = logAdminChange($pdo, 'PITCH_STATUS', $oldStatus, $detail, $pitchId, 'pitch', $actor);
+        if (!$statusDiff['has_change']) {
+            json_response([
+                'success'     => true,
+                'has_changed' => false,
+                'message'     => "Không có thay đổi trạng thái cho sân {$pitchId} (trạng thái hiện tại: {$status})."
+            ]);
+        }
+
         if ($status === 'Ẩn' || $oldStatus === 'Ẩn') {
             $actor = require_manager_or_admin($pdo);
         }
@@ -551,15 +566,10 @@ try {
         $stmt = $pdo->prepare("UPDATE pitches SET status = ? WHERE id = ?");
         $stmt->execute([$status, $pitchId]);
 
-        $detail = $status;
-        if ($reason !== '') {
-            $detail .= " (Lý do: {$reason})";
-        }
-        write_audit_log($pdo, 'PITCH_STATUS', $pitchId, $oldStatus, $detail, $actor);
-
         json_response([
-            'success' => true,
-            'message' => "Đã chuyển trạng thái sân {$pitchId} sang: {$status}" . ($reason !== '' ? " (Lý do: {$reason})" : '')
+            'success'     => true,
+            'has_changed' => true,
+            'message'     => "Đã chuyển trạng thái sân {$pitchId} sang: {$status}" . ($reason !== '' ? " (Lý do: {$reason})" : '')
         ]);
     }
 
