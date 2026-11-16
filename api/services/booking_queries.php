@@ -16,7 +16,7 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                 'success' => true,
                 'data'    => [
                     'phone' => $cleanPhone, 'noShowCount' => 0, 'warning' => false, 'restricted' => true,
-                    'debtCount' => 0, 'debtAmount' => 0, 'totalBookings' => 0
+                    'totalBookings' => 0
                 ]
             ]);
         }
@@ -25,23 +25,19 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                 'success' => true,
                 'data'    => [
                     'phone' => $cleanPhone, 'noShowCount' => 0, 'warning' => false, 'isBlacklisted' => false,
-                    'customerTier' => 'standard', 'adminNote' => '', 'debtCount' => 0, 'debtAmount' => 0, 'totalBookings' => 0
+                    'customerTier' => 'standard', 'adminNote' => '', 'totalBookings' => 0
                 ]
             ]);
         }
         try {
             $stmt = $pdo->prepare("SELECT
                 COUNT(*) AS total_bookings,
-                COALESCE(SUM(CASE WHEN status = 'Khách chưa đến' OR payment_status = 'Tịch thu cọc 30%' THEN 1 ELSE 0 END), 0) AS noshow_count,
-                COALESCE(SUM(CASE WHEN remaining_amount > 0 AND status NOT IN ('Đã hủy', 'Khách chưa đến') AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc') THEN 1 ELSE 0 END), 0) AS debt_count,
-                COALESCE(SUM(CASE WHEN remaining_amount > 0 AND status NOT IN ('Đã hủy', 'Khách chưa đến') AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc') THEN remaining_amount ELSE 0 END), 0) AS debt_amount
+                COALESCE(SUM(CASE WHEN status = 'Khách chưa đến' OR payment_status = 'Tịch thu cọc 30%' THEN 1 ELSE 0 END), 0) AS noshow_count
                 FROM bookings
                 WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ?");
             $stmt->execute([$cleanPhone]);
             $stats = $stmt->fetch();
             $noShowCount   = (int)($stats['noshow_count'] ?? 0);
-            $debtCount     = (int)($stats['debt_count'] ?? 0);
-            $debtAmount    = (int)($stats['debt_amount'] ?? 0);
             $totalBookings = (int)($stats['total_bookings'] ?? 0);
 
             $isBlacklisted = is_phone_blacklisted($pdo, $cleanPhone);
@@ -69,8 +65,6 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                     'isBlacklisted' => $isBlacklisted,
                     'customerTier'  => $customerTier,
                     'adminNote'     => $adminNote,
-                    'debtCount'     => $debtCount,
-                    'debtAmount'    => $debtAmount,
                     'totalBookings' => $totalBookings
                 ]
             ]);
@@ -80,7 +74,7 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                 'success' => true,
                 'data'    => [
                     'phone' => $cleanPhone, 'noShowCount' => 0, 'warning' => false, 'isBlacklisted' => false,
-                    'customerTier' => 'standard', 'adminNote' => '', 'debtCount' => 0, 'debtAmount' => 0, 'totalBookings' => 0
+                    'customerTier' => 'standard', 'adminNote' => '', 'totalBookings' => 0
                 ]
             ]);
         }

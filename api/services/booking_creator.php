@@ -292,7 +292,7 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 $depositAmount = 0;
                 $remainingAmount = $totalPrice;
             } elseif ($payFull) {
-                $bookingStatus = 'Hoàn thành';
+                $bookingStatus = 'completed';
                 $paymentStatus = 'Đã thanh toán 100%';
                 $depositAmount = $totalPrice;
                 $paidAmount = $totalPrice;
@@ -460,7 +460,38 @@ function handle_create_booking(?PDO $pdo, array $data): void {
             }
         }
 
-        $userId = $_SESSION['user_id'] ?? null;
+        if ($isWalkin) {
+            $cleanCustPhone = normalize_phone($phone);
+            if ($cleanCustPhone !== '') {
+                $uStmt = $pdo->prepare("SELECT id FROM users WHERE phone = ? OR REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? LIMIT 1");
+                $uStmt->execute([$cleanCustPhone, $cleanCustPhone]);
+                $foundUser = $uStmt->fetch(PDO::FETCH_ASSOC);
+                if ($foundUser) {
+                    $userId = (int)$foundUser['id'];
+                } else {
+                    $uname = 'kh_' . $cleanCustPhone;
+                    $cName = $customerName ?: ('Khách hàng ' . substr($cleanCustPhone, -4));
+                    $cEmail = $email ?: ($cleanCustPhone . '@sanbongpro.local');
+                    $pwdHash = '$argon2id$v=19$m=65536,t=4,p=1$DISABLED_NON_LOGIN$disabled';
+                    $newUStmt = $pdo->prepare("INSERT INTO users (username, full_name, phone, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?, 'user', 'active')");
+                    $newUStmt->execute([$uname, $cName, $cleanCustPhone, $cEmail, $pwdHash]);
+                    $userId = (int)$pdo->lastInsertId();
+                }
+            } else {
+                $wStmt = $pdo->prepare("SELECT id FROM users WHERE role = 'walkin' LIMIT 1");
+                $wStmt->execute();
+                $walkinUser = $wStmt->fetch(PDO::FETCH_ASSOC);
+                if ($walkinUser) {
+                    $userId = (int)$walkinUser['id'];
+                } else {
+                    $insW = $pdo->prepare("INSERT INTO users (username, full_name, phone, email, password_hash, role, status) VALUES ('khachle', 'Khách lẻ', '0000000000', 'khachle@sanbongpro.local', 'disabled', 'walkin', 'active')");
+                    $insW->execute();
+                    $userId = (int)$pdo->lastInsertId();
+                }
+            }
+        } else {
+            $userId = $_SESSION['user_id'] ?? null;
+        }
         $redeemedBottles = max(0, min(20, (int)($data['redeemedBottles'] ?? $data['redeemed_bottles'] ?? 0)));
         $pointsUsed = 0;
         if ($redeemedBottles > 0) {
@@ -574,7 +605,7 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 $paidAmount = 0;
                 $remainingAmount = $totalPrice;
             } elseif ($payFull) {
-                $bookingStatus = 'Hoàn thành';
+                $bookingStatus = 'completed';
                 $paymentStatus = 'Đã thanh toán 100%';
                 $depositAmount = $totalPrice;
                 $paidAmount = $totalPrice;

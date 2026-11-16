@@ -69,6 +69,34 @@ if ($method === 'POST') {
         handle_booking_operation($action, $pdo, $data);
         exit;
     }
+    if ($action === 'adjust_discount') {
+        require_once __DIR__ . '/services/admin_bookings_manage.php';
+        $actor = require_staff_or_admin($pdo);
+        handle_admin_adjust_discount($pdo, $data, $method, $actor);
+        exit;
+    }
+    if ($action === 'complete' || $action === 'complete_order') {
+        require_once __DIR__ . '/services/admin_bookings_manage.php';
+        $actor = require_staff_or_admin($pdo);
+        $code = sanitize_string($data['code'] ?? '', 40);
+        $stmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1");
+        $stmt->execute([$code]);
+        $oldBooking = $stmt->fetch();
+        if (!$oldBooking) {
+            json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
+        }
+        $totPrice = (int)($oldBooking['total_price'] ?? 0);
+        $paidAmt  = (int)($oldBooking['paid_amount'] ?? 0);
+        if ($totPrice > $paidAmt) {
+            $diff = $totPrice - $paidAmt;
+            json_error("Không thể hoàn tất đơn đặt sân khi chưa thanh toán đủ (Còn thiếu: " . number_format($diff, 0, ',', '.') . "đ). Vui lòng thu đủ hoặc Điều chỉnh giảm trước khi hoàn tất.", 400, 'ERR_UNPAID_COMPLETION');
+        }
+        $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = GREATEST(0, total_price - paid_amount) WHERE code = ?");
+        $stmt->execute([$code]);
+        write_audit_log($pdo, 'COMPLETE_BOOKING', $code, (string)($oldBooking['status'] ?? ''), 'completed', $actor);
+        json_response(['success' => true, 'message' => "Đã chuyển đơn {$code} sang trạng thái hoàn tất."]);
+        exit;
+    }
     if ($action === 'create' || empty($action)) {
         handle_create_booking($pdo, $data);
         exit;

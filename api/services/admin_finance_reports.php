@@ -71,7 +71,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
     $totalBookingsCount     = count($bookingsRows);
     $completedBookingsCount = 0;
     $cancelledBookingsCount = 0;
-    $debtRevenue            = 0;
+    $uncollectedRevenue     = 0;
     $detailedBookings       = [];
     $dailyMap               = [];
 
@@ -110,7 +110,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
         $orderDeposit = 0;
         $orderRemaining = 0;
         $orderServices = 0;
-        $orderDebt = 0;
+        $orderUncollected = 0;
         $orderPaid = 0;
         $isMatchCounted = false;
         $isDepositConfirmed = true;
@@ -150,19 +150,19 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
                 }
                 $orderRemaining = max(0, $pitchNet - $orderDeposit);
 
-                if ($bStatus === 'Hoàn thành' || in_array($payStatus, ['Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid'], true)) {
+                if ($bStatus === 'Hoàn thành' || $bStatus === 'completed' || in_array($payStatus, ['Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid'], true)) {
                     $orderPaid = $totPrice;
-                    $orderDebt = 0;
+                    $orderUncollected = 0;
                 } else {
                     $orderPaid = ($paidAmt > 0) ? min($totPrice, $paidAmt) : $orderDeposit;
-                    $orderDebt = max(0, $totPrice - $orderPaid);
+                    $orderUncollected = max(0, $totPrice - $orderPaid);
                 }
             } else {
                 // Trạng thái 'Chờ duyệt cọc', 'pending_deposit', 'unpaid', v.v. - Không tính cọc ảo vào doanh thu thực thu
                 $orderDeposit   = 0;
                 $orderRemaining = $pitchNet;
                 $orderPaid      = ($paidAmt > 0) ? min($totPrice, $paidAmt) : 0;
-                $orderDebt      = max(0, $totPrice - $orderPaid);
+                $orderUncollected = max(0, $totPrice - $orderPaid);
             }
         }
 
@@ -170,7 +170,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
         $depositRevenue     += $orderDeposit;
         $remaining70Revenue += $orderRemaining;
         $servicesRevenue    += $orderServices;
-        $debtRevenue        += $orderDebt;
+        $uncollectedRevenue += $orderUncollected;
 
         $isCash = (mb_stripos($payMethod, 'Tiền mặt') !== false);
         if ($isCash) {
@@ -217,7 +217,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
             'total_price'         => $totPrice,
             'deposit_amount'      => $orderDeposit,
             'unconfirmed_deposit' => (!$isDepositConfirmed ? $depAmt : 0),
-            'remaining_amount'    => $orderDebt,
+            'remaining_amount'    => $orderUncollected,
             'service_price'    => $orderServices,
             'status'           => $bStatus,
             'payment_status'   => $payStatus,
@@ -416,16 +416,16 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
     $collectedRevenue = $cashRevenue + $vietqrRevenue;
     $grossProfit = $collectedRevenue - $totalExpenses;
 
-    $f1Sum = $cashRevenue + $vietqrRevenue + $debtRevenue;
+    $f1Sum = $cashRevenue + $vietqrRevenue + $uncollectedRevenue;
     $f1Diff = abs($f1Sum - $totalRevenue);
     $formula1 = [
-        'cash'       => $cashRevenue,
-        'transfer'   => $vietqrRevenue,
-        'debt'       => $debtRevenue,
-        'calculated' => $f1Sum,
-        'target'     => $totalRevenue,
-        'diff'       => $f1Diff,
-        'isMatched'  => ($f1Diff === 0)
+        'cash'        => $cashRevenue,
+        'transfer'    => $vietqrRevenue,
+        'uncollected' => $uncollectedRevenue,
+        'calculated'  => $f1Sum,
+        'target'      => $totalRevenue,
+        'diff'        => $f1Diff,
+        'isMatched'   => ($f1Diff === 0)
     ];
 
     $f2Sum = $depositRevenue + $remaining70Revenue + $servicesRevenue;
@@ -434,7 +434,6 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
         'deposit'    => $depositRevenue,
         'remaining'  => $remaining70Revenue,
         'services'   => $servicesRevenue,
-        'debt'       => $debtRevenue,
         'calculated' => $f2Sum,
         'target'     => $totalRevenue,
         'diff'       => $f2Diff,
@@ -449,7 +448,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
             'netProfit'           => $netProfit,
             'grossProfit'         => $grossProfit,
             'collectedRevenue'    => $collectedRevenue,
-            'debtRevenue'         => $debtRevenue,
+            'uncollectedRevenue'  => $uncollectedRevenue,
             'formula1'            => $formula1,
             'formula2'            => $formula2,
             'dailyRevenue'        => $dailyRevenue,
@@ -476,7 +475,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
                 'netProfit'           => $netProfit,
                 'grossProfit'         => $grossProfit,
                 'collectedRevenue'    => $collectedRevenue,
-                'debtRevenue'         => $debtRevenue,
+                'uncollectedRevenue'  => $uncollectedRevenue,
                 'depositRevenue'      => $depositRevenue,
                 'remainingRevenue'    => $remaining70Revenue,
                 'remaining70Revenue'  => $remaining70Revenue,

@@ -12,7 +12,7 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
     $allowedStatuses = [
         'Chờ duyệt cọc', 'Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%',
         'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc', 'Đã hủy',
-        'Tịch thu cọc 30%', 'Chưa cọc (Khách quen)'
+        'Tịch thu cọc 30%', 'Chưa cọc (Khách quen)', 'completed', 'Hoàn thành'
     ];
     if (!in_array($status, $allowedStatuses, true)) {
         json_response(['success' => false, 'message' => 'Trạng thái thanh toán không hợp lệ.'], 400);
@@ -89,8 +89,18 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
             $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = 'Đã hủy', remaining_amount = 0, cancel_policy_applied = COALESCE(cancel_policy_applied, 'admin_reject'), refund_amount = 0 WHERE code = ?");
             $stmt->execute([$status, $code]);
         } elseif ($status === 'Đã thanh toán 100%' || $status === 'Đã thanh toán đủ') {
-            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = 'Hoàn thành', paid_amount = total_price, remaining_amount = 0 WHERE code = ?");
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = 'completed', paid_amount = total_price, remaining_amount = 0 WHERE code = ?");
             $stmt->execute([$status, $code]);
+        } elseif ($status === 'completed' || $status === 'Hoàn thành') {
+            $totPrice = (int)($oldRow['total_price'] ?? 0);
+            $paidAmt  = (int)($oldRow['paid_amount'] ?? 0);
+            if ($totPrice > $paidAmt) {
+                $pdo->rollBack();
+                $diff = $totPrice - $paidAmt;
+                json_error("Không thể hoàn tất đơn đặt sân khi chưa thanh toán đủ (Còn thiếu: " . number_format($diff, 0, ',', '.') . "đ). Vui lòng thu đủ hoặc Điều chỉnh giảm trước khi hoàn tất.", 400, 'ERR_UNPAID_COMPLETION');
+            }
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = GREATEST(0, total_price - paid_amount) WHERE code = ?");
+            $stmt->execute([$code]);
         } else {
             $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ? WHERE code = ?");
             $stmt->execute([$status, $code]);
@@ -508,7 +518,7 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
         $payMethod = sanitize_string($data['pay_method'] ?? 'Tiền mặt tại quầy', 60);
         $noteAdd = " [Đã tất toán 100% qua {$payMethod}]";
         $remAmount = (int)($oldBooking['remaining_amount'] ?? 0);
-        $stmt = $pdo->prepare("UPDATE bookings SET status = 'Hoàn thành', payment_status = 'Đã thanh toán 100%', paid_amount = total_price, remaining_amount = 0, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+        $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', payment_status = 'Đã thanh toán 100%', paid_amount = total_price, remaining_amount = 0, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
         $stmt->execute([$noteAdd, $code]);
 
         write_audit_log($pdo, 'COLLECT_PAYMENT', $code, (string)$remAmount, "Đã thu đủ 100% qua {$payMethod} (Số tiền: {$remAmount}đ)", $actor);
@@ -516,5 +526,118 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
         json_response(['success' => true, 'message' => "Đã hoàn tất thu tiền 100% cho đơn {$code}."]);
     }
 
+    if ($subAction === 'complete' || $subAction === 'complete_order') {
+        $totPrice = (int)($oldBooking['total_price'] ?? 0);
+        $paidAmt  = (int)($oldBooking['paid_amount'] ?? 0);
+        if ($totPrice > $paidAmt) {
+            $diff = $totPrice - $paidAmt;
+            json_error("Không thể hoàn tất đơn đặt sân khi chưa thanh toán đủ (Còn thiếu: " . number_format($diff, 0, ',', '.') . "đ). Vui lòng thu đủ hoặc Điều chỉnh giảm trước khi hoàn tất.", 400, 'ERR_UNPAID_COMPLETION');
+        }
+        $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = GREATEST(0, total_price - paid_amount) WHERE code = ?");
+        $stmt->execute([$code]);
+        write_audit_log($pdo, 'COMPLETE_BOOKING', $code, (string)($oldBooking['status'] ?? ''), 'completed', $actor);
+        json_response(['success' => true, 'message' => "Đã chuyển đơn {$code} sang trạng thái hoàn tất."]);
+    }
+
     json_response(['success' => false, 'message' => 'Hành động con không hợp lệ.'], 400);
+}
+
+function handle_admin_adjust_discount(PDO $pdo, array $data, string $method, array $actor): void {
+    if ($method !== 'POST') {
+        json_error('Phương thức không được hỗ trợ.', 405, 'ERR_METHOD_NOT_ALLOWED');
+    }
+    // Bắt buộc quyền Quản trị viên (Admin)
+    $admin = require_admin($pdo);
+
+    $code = trim(sanitize_string($data['code'] ?? $data['booking_code'] ?? '', 40));
+    if ($code === '') {
+        json_error('Thiếu mã đơn đặt sân (code).', 400, 'ERR_MISSING_BOOKING_CODE');
+    }
+
+    $reason = trim(sanitize_string($data['reason'] ?? '', 500));
+    if ($reason === '') {
+        json_error('Bắt buộc nhập lý do điều chỉnh giảm giá đơn đặt sân.', 400, 'ERR_MISSING_REASON');
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+        $stmt->execute([$code]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$booking) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            json_error('Không tìm thấy đơn đặt sân tương ứng.', 404, 'ERR_BOOKING_NOT_FOUND');
+        }
+
+        $oldTotal = (int)($booking['total_price'] ?? 0);
+        $paidAmt  = (int)($booking['paid_amount'] ?? 0);
+
+        if (isset($data['new_total_price'])) {
+            $newTotal = max(0, (int)$data['new_total_price']);
+            $diffDiscount = max(0, $oldTotal - $newTotal);
+        } elseif (isset($data['discount_amount']) || isset($data['discount']) || isset($data['amount'])) {
+            $diffDiscount = max(0, (int)($data['discount_amount'] ?? $data['discount'] ?? $data['amount'] ?? 0));
+            if ($diffDiscount <= 0) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Số tiền điều chỉnh giảm phải lớn hơn 0.', 400, 'ERR_INVALID_DISCOUNT');
+            }
+            $newTotal = max(0, $oldTotal - $diffDiscount);
+        } else {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            json_error('Thiếu số tiền giảm giá (discount_amount hoặc new_total_price).', 400, 'ERR_MISSING_AMOUNT');
+        }
+
+        $newRemaining = max(0, $newTotal - $paidAmt);
+        $noteAdd = " [Điều chỉnh giảm " . number_format($diffDiscount, 0, ',', '.') . "đ. Lý do: {$reason}]";
+
+        $updStmt = $pdo->prepare("UPDATE bookings SET total_price = ?, remaining_amount = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+        $updStmt->execute([$newTotal, $newRemaining, $noteAdd, $code]);
+
+        $ip = get_client_ip();
+        $adminId = (int)$admin['id'];
+        $oldVal = "total_price: {$oldTotal}";
+        $newVal = "total_price: {$newTotal} | discount: {$diffDiscount} | Lý do: {$reason}";
+
+        write_audit_log($pdo, 'ADJUST_DISCOUNT', $code, $oldVal, $newVal, $admin);
+
+        require_once __DIR__ . '/AdminLogService.php';
+        AdminLogService::record(
+            $pdo,
+            $adminId,
+            'ADJUST_DISCOUNT',
+            'booking',
+            $code,
+            ['total_price' => $oldTotal, 'remaining_amount' => (int)($booking['remaining_amount'] ?? 0)],
+            ['total_price' => $newTotal, 'remaining_amount' => $newRemaining, 'reason' => $reason],
+            $ip
+        );
+
+        $pdo->commit();
+
+        json_response([
+            'success' => true,
+            'message' => "Đã điều chỉnh giảm tổng tiền đơn {$code} từ " . number_format($oldTotal, 0, ',', '.') . "đ xuống " . number_format($newTotal, 0, ',', '.') . "đ.",
+            'data'    => [
+                'code'            => $code,
+                'old_total_price' => $oldTotal,
+                'new_total_price' => $newTotal,
+                'discount_amount' => $diffDiscount,
+                'paid_amount'     => $paidAmt,
+                'remaining_amount'=> $newRemaining,
+                'reason'          => $reason
+            ]
+        ]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("[ADJUST_DISCOUNT ERROR] " . $e->getMessage());
+        json_error('Lỗi khi điều chỉnh giảm giá đơn: ' . $e->getMessage(), 500, 'ERR_ADJUST_DISCOUNT_FAILED');
+    }
 }

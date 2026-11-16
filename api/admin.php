@@ -29,9 +29,9 @@ if (!in_array(strtoupper($method), ['GET', 'HEAD', 'OPTIONS'], true)) {
     require_csrf_if_session_authenticated($data);
 }
 $postOnlyActions = [
-    'update_payment', 'manage_booking', 'toggle_pitch', 'save_pricing',
+    'update_payment', 'manage_booking', 'adjust_discount', 'toggle_pitch', 'save_pricing',
     'upsert_pitch', 'manage_pitch', 'counter_sale', 'run_auto_release',
-    'update_customer_crm', 'create_recurring_schedule', 'cancel_recurring_schedule',
+    'update_customer_crm', 'update_customer', 'adjust_points', 'create_recurring_schedule', 'cancel_recurring_schedule',
     'skip_recurring_booking', 'assign_waitlist', 'notify_waitlist', 'cancel_waitlist',
     'save_voucher', 'delete_voucher', 'save_golden_hour', 'delete_golden_hour',
     'save_maintenance', 'update_maintenance', 'add_expense', 'delete_expense',
@@ -521,6 +521,11 @@ try {
 
     if ($action === 'manage_booking') {
         handle_admin_manage_booking($pdo, $data, $method, $actor);
+    }
+
+    if ($action === 'adjust_discount') {
+        handle_admin_adjust_discount($pdo, $data, $method, $actor);
+        exit;
     }
 
     if ($action === 'vouchers') {
