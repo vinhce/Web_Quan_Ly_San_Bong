@@ -1,81 +1,70 @@
 # TASKS — KẾ HOẠCH THỰC THI TỪNG BƯỚC (SÂN BÓNG PRO)
 
-> **Quy tắc:** Chỉ thực hiện 1 task tại 1 thời điểm. Hoàn thành task nào đánh dấu `[x]` task đó kèm bằng chứng kiểm thử pass.
+> **Quy tắc:** Chỉ thực hiện 1 task tại 1 thời điểm; đánh dấu `[x]` kèm bằng chứng kiểm thử. Chi tiết tiến độ phát hành xem [PROGRESS.md](PROGRESS.md); chi tiết mốc `V1 -> V11` xem [docs/TIEN_DO.md](docs/TIEN_DO.md).
 
 ---
 
 ## GIAI ĐOẠN 1: CƠ SỞ HẠ TẦNG & CƠ SỞ DỮ LIỆU
-- [x] **Task 1.1:** Thiết kế cấu trúc bảng CSDL chuẩn mực (`database/schema.sql`).
+- [x] **Task 1.1:** Thiết kế cấu trúc bảng CSDL chuẩn mực (`database/schema.sql`, hỗ trợ 26 sân: 9 sân 5, 10 sân 7, 7 sân 11).
 - [x] **Task 1.2:** Thiết lập kết nối PDO Singleton, đọc cấu hình từ `.env` (`config/database.php`).
-- [x] **Task 1.3:** Tạo cơ chế auto-migration an toàn kiểm tra marker (`001..008_hotfix_bookings_status.sql`).
-- [x] **Task 1.4:** Thiết lập cấu trúc thư mục Clean URLs và bảo vệ file nhạy cảm qua `.htaccess`.
+- [x] **Task 1.3:** Hoàn thiện **17 bản migration (`001`..`017`)** và cơ chế auto-check schema (`ensureSchemaInitialized()`).
+- [x] **Task 1.4:** Thiết lập cấu trúc Clean URLs và bảo vệ thư mục/file nhạy cảm qua `.htaccess`.
 
 ---
 
 ## GIAI ĐOẠN 2: PHÂN HỆ ĐẶT SÂN & TÍCH HỢP VIETQR SEPAY
-- [x] **Task 2.1:** Xây dựng danh mục sân trực quan và tích hợp dự báo thời tiết Open-Meteo (`html/fields.html`, `js/fields.js`).
-- [x] **Task 2.2:** Xây dựng ma trận 18 khung giờ đặt sân chống trùng slot bằng MySQL Transaction (`html/booking.html`, `api/bookings.php`).
-- [x] **Task 2.3:** Hỗ trợ đặt gói cố định theo tháng (1, 2, 3 tháng) giảm giá 5%–15% và tặng nước/trọng tài.
-- [x] **Task 2.4:** Tích hợp sinh mã VietQR động theo chuẩn SePay (`ASFF`, `ASFS`, `ASFE`) với tiền cọc 30% (`html/checkout.html`).
-- [x] **Task 2.5:** Xử lý Webhook SePay tự động kích hoạt đơn và ghi nhận đối soát thanh toán (`api/sepay_webhook.php`).
-- [x] **Task 2.6:** Sinh vé điện tử kèm mã QR check-in sau khi đặt cọc thành công (`html/success.html`).
-- [x] **Task 2.7:** Hệ thống tích điểm hội viên, hạng thành viên và áp dụng mã voucher giảm giá (`html/history.html`).
-- [x] **Task 2.8:** Trang ghép kèo / tìm đối giao lưu bóng đá (`html/matchmaking.html`).
+- [x] **Task 2.1:** Danh mục sân trực quan (26 sân, 25–26 hoạt động) & dự báo thời tiết Open-Meteo (`html/fields.html`, `js/fields.js`).
+- [x] **Task 2.2:** Ma trận 18 khung giờ (05:30–23:00) chống trùng slot bằng MySQL Transaction (`html/booking.html`, `api/bookings.php`).
+- [x] **Task 2.3:** Gói cố định theo tháng (1, 2, 3 tháng) giảm 5%–15% kèm quà tài trợ.
+- [x] **Task 2.4:** Sinh mã VietQR động chuẩn SePay (`ASFF`, `ASFS`, `ASFE`) cọc 30% (`html/checkout.html`).
+- [x] **Task 2.5:** Webhook SePay idempotent tự động kích hoạt đơn và ghi nhận đối soát (`api/sepay_webhook.php`).
+- [x] **Task 2.6:** Vé điện tử QR Check-in và đánh giá sau trận (`html/success.html`, `api/reviews.php`).
+- [x] **Task 2.7:** Hệ thống tích điểm hội viên, hạng thành viên và voucher (`html/history.html`).
+- [x] **Task 2.8:** Trang ghép kèo / tìm đối giao hữu (`html/matchmaking.html`, `api/matchmaking.php`).
 
 ---
 
-## GIAI ĐOẠN 3: PHÂN HỆ QUẢN TRỊ VIÊN (PORTAL-ADMIN)
-- [x] **Task 3.1:** Cổng đăng nhập phân quyền RBAC 3 cấp (`staff`, `manager`, `admin`) băm Argon2id (`portal-admin/index.php`, `api/auth.php`).
-- [x] **Task 3.2:** Tab 1 - Dashboard KPI doanh thu thực và quét QR check-in qua camera trực tiếp (`jsQR`).
-- [x] **Task 3.3:** Tab 2 - Biểu đồ Gantt Timeline điều hành ca đá 05:30–23:00 tích hợp trung tâm bù giờ / đổi sân / thêm nước.
-- [x] **Task 3.4:** Tab 3 - Đặt sân trực tiếp tại quầy, quản lý xuất nhập tồn kho nước và chốt ca tiền mặt.
-- [x] **Task 3.5:** Tab 4 - Quản lý danh mục sân, giá riêng từng sân và lên lịch bảo trì tự động chặn slot.
-- [x] **Task 3.6:** Tab 5 - Quản lý cấu hình giá giờ vàng, cuối tuần và mã voucher khuyến mãi.
-- [x] **Task 3.7:** Tab 6 - CRM hồ sơ khách hàng, gắn nhãn VIP / cảnh báo bùng ca (≥2 lần) và theo dõi công nợ.
-- [x] **Task 3.8:** Tab 7 - Đối soát cọc VietQR SePay, xử lý giao dịch chuyển thiếu/thừa tiền.
-- [x] **Task 3.9:** Tab 8 - Báo cáo tài chính bóc tách các dòng tiền, sổ chi phí vận hành và xuất CSV UTF-8 BOM.
-- [x] **Task 3.10:** Tab 9 - Quản lý nhân sự, bảo mật 2FA TOTP (RFC 6238), Audit Log và sao lưu CSDL.
+## GIAI ĐOẠN 3: PHÂN HỆ QUẢN TRỊ VIÊN 11 TAB (`/portal-admin`)
+- [x] **Task 3.1:** Cổng đăng nhập RBAC 3 cấp (`staff`, `manager`, `admin`) băm Argon2id (`portal-admin/index.php`, `api/auth.php`).
+- [x] **Task 3.2:** **Tab 1 – `1. Tổng quan & Đang chơi`** (`overview`): KPI doanh thu thực, tỷ lệ lấp đầy & quét QR check-in (`jsQR`).
+- [x] **Task 3.3:** **Tab 2 – `2. Lịch đặt sân Timeline`** (`timeline`): Biểu đồ Gantt 05:30–23:00, điều hành ca, Waitlist, lịch lặp & duyệt ghép kèo.
+- [x] **Task 3.4:** **Tab 3 – `3. Đặt sân tại quầy`** (`quick-booking`): Đặt tại quầy khóa trùng slot & quản lý kho nước/dịch vụ.
+- [x] **Task 3.5:** **Tab 4 – `4. Quản lý sân bóng`** (`pitches`): Quản lý 26 sân, giá riêng, lịch bảo trì & đánh giá.
+- [x] **Task 3.6:** **Tab 5 – `5. Bảng giá & Voucher`** (`pricing` · `admin`): Giá giờ thường/cao điểm/cuối tuần, giờ vàng & voucher.
+- [x] **Task 3.7:** **Tab 6 – `6. Khách & Hội viên`** (`customers`): CRM SĐT chuẩn hóa, "Đặt gần nhất", "Số lượt đặt", cảnh báo bùng sân (≥1 No-Show) & `points_log` (`FOR UPDATE`).
+- [x] **Task 3.8:** **Tab 7 – `7. Duyệt cọc VietQR`** (`payments` · `manager`/`admin`): Duyệt biên lai cọc & đối soát `bank_transactions` SePay.
+- [x] **Task 3.9:** **Tab 8 – `8. Chốt ca / Giao ca`** (`shifts`): Mở/đóng ca, kiểm kê tiền mặt & đối soát chênh lệch bàn giao.
+- [x] **Task 3.10:** **Tab 9 – `9. Báo cáo doanh thu`** (`reports` · `manager`/`admin`): Bóc tách dòng tiền, sổ chi phí, biểu đồ SVG & xuất CSV UTF-8 BOM.
+- [x] **Task 3.11:** **Tab 10 – `10. Cài đặt hệ thống`** (`settings` · `admin`): Cấu hình VietQR, chính sách cọc, nhân sự, thông báo & backup `.sql.gz`.
+- [x] **Task 3.12:** **Tab 11 – `11. Nhật ký Admin`** (`logs` · `admin`): Hợp nhất Audit Log (`AdminLogService.php`, **95 mã hành động / 9 nhóm**), gỡ `#admin-audit-tbody` trùng ở Tab 10.
 
 ---
 
-## GIAI ĐOẠN 4: BẢO MẬT & TỐI ƯU GO-LIVE (SECURITY HARDENING)
-- [x] **Task 4.1:** Bảo vệ phiên làm việc 2 giờ tuyệt đối, chống session fixation.
-- [x] **Task 4.2:** Triển khai cơ chế xác thực `X-CSRF-Token` cho toàn bộ thao tác ghi dữ liệu.
-- [x] **Task 4.3:** Thiết lập Content-Security-Policy (CSP) và các tiêu đề bảo mật HTTP Security Headers chuẩn OWASP.
-- [x] **Task 4.4:** Đóng gói bundle `js/app.js` bằng `node scripts/build_app_bundle.js`.
-- [x] **Task 4.5:** Chạy kiểm thử tự động toàn diện: `tests/security_hardening_test.php` đạt 25 PASS / 0 FAIL.
+## GIAI ĐOẠN 4: BẢO MẬT, KIỂM THỬ & PHÁT HÀNH (`v20261118_v95`)
+- [x] **Task 4.1:** Triển khai **25 hạng mục security hardening** (Session 2h, `X-CSRF-Token`, CSP/OWASP headers, `refresh_session_user()` fail-closed, 2FA TOTP RFC 6238).
+- [x] **Task 4.2:** Đóng gói `js/app.js` (`node scripts/build_app_bundle.js`) và bump cache-busting `20261118_v95` (`node scripts/bump_version.js 20261118_v95`).
+- [x] **Task 4.3:** Chạy toàn bộ **17/17 local test suites PASS** (bao gồm `tests/security_hardening_test.php`).
 
 ---
 
-## GIAI ĐOẠN 5: TRIỂN KHAI LIVE HOSTING ONEPANEL (PRODUCTION DEPLOY)
-- [x] **Task 5.1:** Cấu hình VirtualHost Apache trên OnePanel, kích hoạt chứng chỉ SSL/HTTPS và thiết lập Clean URLs qua `.htaccess` (`https://fxzioyr.id.vn`).
-- [x] **Task 5.2:** Triển khai tự động và đồng bộ mã nguồn lên Web Hosting OnePanel qua OnePanel MCP Tool (`scripts/deploy_all_to_hosting.js`).
-- [x] **Task 5.3:** Cấu hình môi trường `.env` production, cấu hình kết nối CSDL MySQL và webhook đối soát SePay API v2.
-- [x] **Task 5.4:** Kiểm tra nghiệm thu trực tiếp trên Production Live: 18 endpoints HTTP 200, phân quyền RBAC chuyển hướng chuẩn xác, kiểm thử bảo mật live đạt tiêu chuẩn.
+## GIAI ĐOẠN 5: TRIỂN KHAI LIVE HOSTING (`https://fxzioyr.id.vn`)
+- [x] **Task 5.1:** Cấu hình VirtualHost Apache, SSL/HTTPS và Clean URLs qua `.htaccess`.
+- [x] **Task 5.2:** Triển khai **49/49 file production** lên hosting (`https://fxzioyr.id.vn`, bản `v20261118_v95`).
+- [x] **Task 5.3:** Nghiệm thu E2E live trên `https://fxzioyr.id.vn` với **0 console errors / 0 HTTP errors** và hoàn tất kiểm thử bảo mật live.
 
 ---
 
-## GIAI ĐOẠN 6: KẾ HOẠCH XỬ LÝ BACKLOG & NÂNG CẤP HỆ THỐNG
-### 6.1. Kế Hoạch Xử Lý 6 Lỗi Mã Nguồn (SRC-01 đến SRC-06):
-- [x] **Task 6.1 (SRC-01 - Mức độ Cao):** Xác thực quyền sở hữu SĐT khi xem lịch sử và hủy đơn; phân quyền chặt chẽ theo `user_id`, tách riêng cơ chế tra cứu cho khách vãng lai (`api/auth.php`, `api/bookings.php`). [ĐÃ VÁ & QA PASS]
-- [x] **Task 6.2 (SRC-02 - Mức độ Cao):** Đảm bảo tính nguyên tử trong luồng hủy đơn (`early_cancel`); bọc toàn bộ thao tác hoàn điểm tích lũy, hoàn lượt voucher và cập nhật trạng thái đơn trong cùng một MySQL Transaction có `SELECT ... FOR UPDATE` (`api/bookings.php`). [ĐÃ VÁ & QA PASS]
-- [x] **Task 6.3 (SRC-03 - Mức độ Cao):** Sửa lỗi tính toán số tiền trong polling kiểm tra thanh toán; đọc lại `paid_amount` và trạng thái mới nhất từ DB sau khi đã khóa bản ghi `SELECT ... FOR UPDATE` trước khi cập nhật (`api/check_payment.php`). [ĐÃ VÁ & QA PASS]
-- [x] **Task 6.4 (SRC-04 - Mức độ Cao):** Thu hồi phiên đăng nhập khi tài khoản không còn tồn tại trong DB; nếu truy vấn user trả về rỗng trong `refresh_session_user()`, lập tức hủy session và từ chối xác thực (`api/security_helper.php`). [ĐÃ VÁ & QA PASS]
-- [x] **Task 6.5 (SRC-05 - Mức độ Thấp):** Chuẩn hóa biểu thức chính quy số điện thoại, sửa lỗi regex `/^(0[3|5|7|8|9])[0-9]{8}$/` loại bỏ ký tự `|` trong character class thành `/^(0[35789])[0-9]{8}$/` (`api/auth.php`). [ĐÃ VÁ & QA PASS]
-- [x] **Task 6.6 (SRC-06 - Mức độ Trung bình):** Xử lý an toàn khi mất kết nối DB ở nhánh đăng ký; trả lỗi HTTP 503 fail-closed thay vì tạo session giả định khi chưa INSERT thành công vào DB (`api/auth.php`). [ĐÃ VÁ & QA PASS]
+## GIAI ĐOẠN 6: XỬ LÝ LỖI MÃ NGUỒN & BACKLOG VẬN HÀNH
+### 6.1. Đã vá 6 lỗi bảo mật/logic (`SRC-01` → `SRC-06`) — `[QA PASS]` *(chi tiết tại [PROGRESS.md](PROGRESS.md))*
+- [x] **Task 6.1 (`SRC-01`):** Khóa IDOR tra cứu/hủy đơn theo `user_id` hoặc session guest hợp lệ (`api/bookings.php`).
+- [x] **Task 6.2 (`SRC-02`):** Đưa `early_cancel` (hoàn điểm, voucher, hủy đơn) vào transaction `SELECT ... FOR UPDATE` (`api/bookings.php`).
+- [x] **Task 6.3 (`SRC-03`):** Đọc lại `paid_amount` trong transaction `FOR UPDATE` chống Lost Update (`api/check_payment.php`).
+- [x] **Task 6.4 (`SRC-04`):** `refresh_session_user()` fail-closed gọi `destroy_current_session()` khi user không tồn tại/bị khóa (`api/security_helper.php`).
+- [x] **Task 6.5 (`SRC-05`):** Chuẩn hóa regex SĐT `/^0[35789]\d{8}$/` (`api/auth.php`).
+- [x] **Task 6.6 (`SRC-06`):** Trả HTTP 503 fail-closed khi mất kết nối DB lúc đăng ký (`api/auth.php`).
 
-### 6.2. Nâng Cấp Vận Hành & Tính Năng Kế Tiếp:
-- [ ] **Task 6.7:** Cập nhật biến môi trường SePay sang chế độ Live (`SEPAY_ENV=production`, `SEPAY_ALLOW_API_CROSSCHECK=false`) khi chủ sân kích hoạt key thật.
-- [ ] **Task 6.8:** Tích hợp gửi thông báo Zalo ZNS / SMS Brandname tự động tới số điện thoại khách khi cọc thành công (`api/notification_helper.php`).
-- [ ] **Task 6.9:** Cấu hình Service Worker PWA để hỗ trợ chế độ quét vé offline tại quầy khi mất mạng chập chờn.
-- [ ] **Task 6.10:** Tối ưu biểu đồ phân tích xu hướng giờ lấp đầy và dự báo doanh thu tuần/tháng bằng Inline SVG Vector Charts thuần (thay thế Chart.js).
-
----
-
-## GIAI ĐOẠN 7: TRIỂN KHAI AUDIT LOG, CRM NÂNG CẤP & CƠ CHẾ CHỐNG GHI LOG THỪA (ĐÃ HOÀN THÀNH 100%)
-- [x] **Task 7.1 (Phần A - Tab 11 Nhật ký Admin):** Xây dựng `AdminLogService.php` ghi log giao dịch trong cùng transaction; diffing Cũ → Mới; tự động che thông tin nhạy cảm (SĐT, STK, CCCD); giao diện Tab 11 có phân trang, bộ lọc 6 nhóm màu (Giá, Tiền cọc, Ca trực, Hội viên, Cài đặt, Bảo mật), thanh chú thích Legend, emoji và tooltip IP chống tràn ngang. [ĐÃ TEST 24/24 PASS]
-- [x] **Task 7.2 (Phần B - Bảng CRM Khách hàng):** Bỏ 2 cột cũ, thay bằng "Đặt gần nhất" (x ngày trước) và "Số lượt đặt" (chỉ tính ca hoàn tất); nhãn đỏ cảnh báo bùng sân (≥1 No-Show); tinh gọn thanh nút lọc chỉ giữ 3 nút: `[Tất cả khách]`, `[Hội viên VIP]`, `[Khách quen]`. [ĐÃ TEST 21/21 PASS]
-- [x] **Task 7.3 (Phần C - Tìm SĐT & Sửa hội viên):** Tìm kiếm SĐT chuẩn hóa (+84, 0 đầu, vài số cuối); form sửa hội viên có validate trùng phone/email; điều chỉnh điểm ghi nhận qua `points_log` kèm lý do bắt buộc, khóa dòng `FOR UPDATE` chống race condition và ghi Admin Log. [ĐÃ TEST 22/22 PASS]
-- [x] **Task 7.4 (Chống Cập Nhật Thừa & Sinh Log Rác):** Cơ chế so sánh diff trước khi ghi DB trên toàn bộ phân hệ: Bảng giá sân, Trạng thái sân, Voucher/Giờ vàng, Cài đặt hệ thống, Hồ sơ CRM; thêm cờ `isLoading` chống double-click click lặp. [ĐÃ KIỂM THỬ THÀNH CÔNG]
-- [x] **Task 7.5 (Migration 015 Idempotent):** Mở rộng bảng `audit_logs` (thêm `target_type`, `target_id`, `ip`), tạo bảng `points_log` có lưu `admin_id` người duyệt và thêm trường `admin_note` cho bảng `users`. [ĐÃ NẠP SCHEMA V15]
-- [x] **Task 7.6 (Tích hợp Hệ sinh thái ECC Harness):** Tích hợp 402 files quy chuẩn, workflows, custom agents và thư viện 50+ skills vào thư mục workspace `.agents/` chuẩn Google Antigravity 2.0 và global skills. [ĐÃ KÍCH HOẠT THÀNH CÔNG]
+### 6.2. Backlog nâng cấp mở
+- [ ] **Task 6.7:** Chuyển biến môi trường SePay sang chế độ Live (`SEPAY_ENV=production`, `SEPAY_ALLOW_API_CROSSCHECK=false`) khi kích hoạt key thật.
+- [ ] **Task 6.8:** Tích hợp gửi thông báo Zalo ZNS / SMS Brandname tự động khi cọc thành công (`api/notification_helper.php`).
+- [ ] **Task 6.9:** Cấu hình Service Worker PWA hỗ trợ quét vé offline tại quầy khi mất mạng chập chờn.
+- [ ] **Task 6.10:** Mở rộng biểu đồ SVG phân tích xu hướng giờ lấp đầy và dự báo doanh thu tuần/tháng.

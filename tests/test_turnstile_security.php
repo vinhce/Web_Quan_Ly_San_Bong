@@ -11,55 +11,95 @@ require_once __DIR__ . '/../api/services/totp_turnstile_helper.php';
 
 $errors = [];
 
-// 1. Kiểm tra kịch bản Production thiếu secret key: BẮT BUỘC FAIL-CLOSED (trả về false)
-$_ENV['APP_ENV'] = 'production';
-putenv('APP_ENV=production');
-$_ENV['TURNSTILE_SECRET_KEY'] = '';
-putenv('TURNSTILE_SECRET_KEY=');
-unset($_ENV['ALLOW_LOCAL_TURNSTILE_BYPASS']);
-
-$prodResultNull = verify_turnstile_if_configured(null);
-$prodResultToken = verify_turnstile_if_configured('dummy_token_123');
-
-if ($prodResultNull === true || $prodResultToken === true) {
-    $errors[] = "LỖI NGUY HIỂM: verify_turnstile_if_configured() trả về TRUE khi thiếu TURNSTILE_SECRET_KEY trên production (Bypass chống bot!).";
+$envKeys = ['APP_ENV', 'TURNSTILE_ENABLED', 'TURNSTILE_SECRET_KEY', 'ALLOW_LOCAL_TURNSTILE_BYPASS'];
+$envBackup = [];
+foreach ($envKeys as $k) {
+    $envBackup[$k] = [
+        'has_env' => array_key_exists($k, $_ENV),
+        'env'     => $_ENV[$k] ?? null,
+        'has_srv' => array_key_exists($k, $_SERVER),
+        'srv'     => $_SERVER[$k] ?? null,
+        'getenv'  => getenv($k),
+    ];
 }
 
-// 2. Kiểm tra kịch bản Local có bật cờ bypass: Cho phép dev local
-$_ENV['APP_ENV'] = 'local';
-putenv('APP_ENV=local');
-$_ENV['ALLOW_LOCAL_TURNSTILE_BYPASS'] = 'true';
-putenv('ALLOW_LOCAL_TURNSTILE_BYPASS=true');
-$_ENV['TURNSTILE_SECRET_KEY'] = '';
-putenv('TURNSTILE_SECRET_KEY=');
-
-$localResult = verify_turnstile_if_configured(null);
-if ($localResult !== true) {
-    $errors[] = "LỖI: verify_turnstile_if_configured() không cho phép bypass khi APP_ENV=local và ALLOW_LOCAL_TURNSTILE_BYPASS=true.";
-}
-
-// 3. Kiểm tra kịch bản Production có cấu hình nhưng token rỗng: BẮT BUỘC false
-$_ENV['APP_ENV'] = 'production';
-putenv('APP_ENV=production');
-$_ENV['TURNSTILE_SECRET_KEY'] = '0x4AAAAAAABBBBBBCCCCCCDDDDDD';
-putenv('TURNSTILE_SECRET_KEY=0x4AAAAAAABBBBBBCCCCCCDDDDDD');
-
-$emptyTokenResult = verify_turnstile_if_configured('');
-if ($emptyTokenResult !== false) {
-    $errors[] = "LỖI: verify_turnstile_if_configured() không trả về false khi token rỗng.";
-}
-
-// 4. Kiểm tra hàm cảnh báo cấu hình cho admin
-if (!function_exists('check_turnstile_health')) {
-    $errors[] = "LỖI: Thiếu hàm check_turnstile_health() để cảnh báo lỗi cấu hình khi khởi động hoặc trong cài đặt admin.";
-} else {
+try {
+    // 1. Kịch bản 1: TURNSTILE_ENABLED=false hoặc TURNSTILE_SECRET_KEY='' trên production -> trả true để không chặn login
     $_ENV['APP_ENV'] = 'production';
     putenv('APP_ENV=production');
+    $_ENV['TURNSTILE_ENABLED'] = 'false';
+    putenv('TURNSTILE_ENABLED=false');
+    $_ENV['TURNSTILE_SECRET_KEY'] = '0x4AAAAAAABBBBBBCCCCCCDDDDDD';
+    putenv('TURNSTILE_SECRET_KEY=0x4AAAAAAABBBBBBCCCCCCDDDDDD');
+    $_ENV['ALLOW_LOCAL_TURNSTILE_BYPASS'] = 'false';
+    putenv('ALLOW_LOCAL_TURNSTILE_BYPASS=false');
+
+    if (verify_turnstile_if_configured(null) !== true || verify_turnstile_if_configured('dummy_token_123') !== true) {
+        $errors[] = "LỖI: verify_turnstile_if_configured() phải trả về TRUE khi TURNSTILE_ENABLED=false trên production.";
+    }
+
+    $_ENV['TURNSTILE_ENABLED'] = 'true';
+    putenv('TURNSTILE_ENABLED=true');
     $_ENV['TURNSTILE_SECRET_KEY'] = '';
     putenv('TURNSTILE_SECRET_KEY=');
-    $health = check_turnstile_health();
-    if (empty($health['warning'])) {
-        $errors[] = "LỖI: check_turnstile_health() không đưa ra cảnh báo khi thiếu key trên production.";
+
+    if (verify_turnstile_if_configured(null) !== true || verify_turnstile_if_configured('dummy_token_123') !== true) {
+        $errors[] = "LỖI: verify_turnstile_if_configured() phải trả về TRUE khi TURNSTILE_SECRET_KEY rỗng trên production.";
+    }
+
+    // 2. Kịch bản 2: Bật TURNSTILE_ENABLED=true kèm secret key trên production, token rỗng -> BẮT BUỘC false
+    $_ENV['APP_ENV'] = 'production';
+    putenv('APP_ENV=production');
+    $_ENV['TURNSTILE_ENABLED'] = 'true';
+    putenv('TURNSTILE_ENABLED=true');
+    $_ENV['TURNSTILE_SECRET_KEY'] = '0x4AAAAAAABBBBBBCCCCCCDDDDDD';
+    putenv('TURNSTILE_SECRET_KEY=0x4AAAAAAABBBBBBCCCCCCDDDDDD');
+
+    if (verify_turnstile_if_configured('') !== false) {
+        $errors[] = "LỖI: verify_turnstile_if_configured() không trả về false khi bật Turnstile và token rỗng.";
+    }
+
+    // 3. Kịch bản 3: Kiểm tra check_turnstile_health() cảnh báo khi tắt hoặc thiếu secret key trên production
+    if (!function_exists('check_turnstile_health')) {
+        $errors[] = "LỖI: Thiếu hàm check_turnstile_health() để cảnh báo lỗi cấu hình khi khởi động hoặc trong cài đặt admin.";
+    } else {
+        $_ENV['APP_ENV'] = 'production';
+        putenv('APP_ENV=production');
+        $_ENV['TURNSTILE_ENABLED'] = 'false';
+        putenv('TURNSTILE_ENABLED=false');
+        $_ENV['TURNSTILE_SECRET_KEY'] = '0x4AAAAAAABBBBBBCCCCCCDDDDDD';
+        putenv('TURNSTILE_SECRET_KEY=0x4AAAAAAABBBBBBCCCCCCDDDDDD');
+        $healthDisabled = check_turnstile_health();
+        if (!is_array($healthDisabled) || trim((string)($healthDisabled['warning'] ?? '')) === '') {
+            $errors[] = "LỖI: check_turnstile_health() không đưa ra cảnh báo khi TURNSTILE_ENABLED=false trên production.";
+        }
+
+        $_ENV['TURNSTILE_ENABLED'] = 'true';
+        putenv('TURNSTILE_ENABLED=true');
+        $_ENV['TURNSTILE_SECRET_KEY'] = '';
+        putenv('TURNSTILE_SECRET_KEY=');
+        $healthMissingKey = check_turnstile_health();
+        if (!is_array($healthMissingKey) || trim((string)($healthMissingKey['warning'] ?? '')) === '') {
+            $errors[] = "LỖI: check_turnstile_health() không đưa ra cảnh báo khi thiếu TURNSTILE_SECRET_KEY trên production.";
+        }
+    }
+} finally {
+    foreach ($envBackup as $k => $orig) {
+        if ($orig['has_env']) {
+            $_ENV[$k] = $orig['env'];
+        } else {
+            unset($_ENV[$k]);
+        }
+        if ($orig['has_srv']) {
+            $_SERVER[$k] = $orig['srv'];
+        } else {
+            unset($_SERVER[$k]);
+        }
+        if ($orig['getenv'] !== false) {
+            putenv($k . '=' . $orig['getenv']);
+        } else {
+            putenv($k);
+        }
     }
 }
 

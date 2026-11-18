@@ -32,7 +32,7 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                 FROM bookings
                 WHERE created_at >= :start_time AND created_at <= :end_bound
                   AND status != 'Đã hủy'
-                  AND (payment_method LIKE '%Tiền mặt%' OR note LIKE '%tại quầy%')
+                  AND payment_method LIKE '%Tiền mặt%'
                   AND {$staffCondition}");
             $stmtWalkin->execute($walkinParams);
             $walkinCash = (int)$stmtWalkin->fetchColumn();
@@ -58,7 +58,8 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                 FROM service_sales
                 WHERE created_at >= :start_time AND created_at <= :end_bound
                   AND payment_method LIKE '%Tiền mặt%'
-                  AND (staff_id = :staff_id OR staff_id IS NULL)");
+                  AND (booking_code IS NULL OR booking_code = '')
+                  AND staff_id = :staff_id");
             $stmtSales->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
             $serviceCash = (int)$stmtSales->fetchColumn();
 

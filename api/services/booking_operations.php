@@ -113,8 +113,8 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
         $queueStmt->execute([$pitchId, $date, $slotId]);
         $queuePos = (int)$queueStmt->fetchColumn() + 1;
 
-        $insStmt = $pdo->prepare("INSERT INTO waitlist (user_id, pitch_id, booking_date, slot_id, slot_time, customer_name, phone, status, queue_position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'waiting', ?, NOW())");
-        $insStmt->execute([$userId, $pitchId, $date, $slotId, $slotTime, $customerName, $phone, $queuePos]);
+        $insStmt = $pdo->prepare("INSERT INTO waitlist (user_id, pitch_id, booking_date, slot_id, customer_name, phone, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'waiting', NOW())");
+        $insStmt->execute([$userId, $pitchId, $date, $slotId, $customerName, $phone]);
 
         json_response([
             'success' => true,
@@ -136,68 +136,93 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
             json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
         }
 
-        $stmt = $pdo->prepare("SELECT b.*, p.name AS pitch_name FROM bookings b JOIN pitches p ON b.pitch_id = p.id WHERE b.code = ? LIMIT 1");
-        $stmt->execute([$code]);
-        $booking = $stmt->fetch();
-        if (!$booking) {
-            json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
-        }
-
         $currentUser = get_authenticated_user($pdo);
         $isOperator = is_portal_operator($currentUser);
-        $isOwner = $currentUser && !empty($booking['user_id']) && (int)$currentUser['id'] === (int)$booking['user_id'];
-        if (!$isOperator && !$isOwner) {
-            json_error('Bạn không có quyền hủy đơn đặt sân này.', 403, 'ERR_FORBIDDEN');
-        }
-
-        if (in_array((string)$booking['status'], ['Đã hủy', 'Khách chưa đến', 'Hoàn thành'], true)) {
-            json_error('Đơn đặt sân này không thể hủy do trạng thái hiện tại là: ' . $booking['status'], 400, 'ERR_INVALID_STATUS');
-        }
-
-        $now = new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh'));
-        $slotStartStr = $booking['booking_date'] . ' ' . explode(' - ', $booking['slot_time'])[0];
-        $matchStart = DateTime::createFromFormat('Y-m-d H:i', $slotStartStr, new DateTimeZone('Asia/Ho_Chi_Minh'));
-        if (!$matchStart) {
-            $matchStart = new DateTime($booking['booking_date'] . ' 00:00:00', new DateTimeZone('Asia/Ho_Chi_Minh'));
-        }
-
-        $hoursUntil = ($matchStart->getTimestamp() - $now->getTimestamp()) / 3600;
-        $deposit = (int)$booking['deposit_amount'];
-        $policyApplied = '';
-        $refundAmount = 0;
-        $paymentStatus = 'Đã hủy';
-
-        if ($hoursUntil >= 24) {
-            $policyApplied = 'Hủy trước 24h: Hoàn 100% tiền cọc';
-            $refundAmount = $deposit;
-            $paymentStatus = 'Đã hoàn cọc 100%';
-        } elseif ($hoursUntil >= 4) {
-            $policyApplied = 'Hủy trước 4h - 24h: Hoàn 50% tiền cọc (Phạt 50%)';
-            $refundAmount = (int)round($deposit * 0.5);
-            $paymentStatus = 'Phạt 50% cọc';
-        } else {
-            $policyApplied = 'Hủy sát giờ dưới 4h: Không hoàn cọc theo quy định';
-            $refundAmount = 0;
-            $paymentStatus = 'Tịch thu cọc 30%';
-        }
 
         $pdo->beginTransaction();
         try {
-            $upd = $pdo->prepare("UPDATE bookings SET status = 'Đã hủy', payment_status = ?, cancel_policy_applied = ?, refund_amount = ?, note = CONCAT(IFNULL(note,''), ' [Hủy lúc: ', NOW(), ' - ', ?, ']') WHERE id = ?");
-            $upd->execute([$paymentStatus, $policyApplied, $refundAmount, $reason, $booking['id']]);
-
-            if ($refundAmount > 0 && !empty($booking['user_id'])) {
-                $refCode = 'REFUND-' . $booking['code'];
-                $insRef = $pdo->prepare("INSERT INTO refunds (booking_id, booking_code, user_id, amount, status, reason, policy_applied, created_at) VALUES (?, ?, ?, ?, 'pending', ?, ?, NOW())");
-                $insRef->execute([$booking['id'], $booking['code'], $booking['user_id'], $refundAmount, $reason, $policyApplied]);
+            $stmt = $pdo->prepare("SELECT b.*, p.name AS pitch_name FROM bookings b LEFT JOIN pitches p ON b.pitch_id = p.id WHERE b.code = ? LIMIT 1 FOR UPDATE");
+            $stmt->execute([$code]);
+            $booking = $stmt->fetch();
+            if (!$booking) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
             }
+
+            $isOwner = $currentUser && !empty($booking['user_id']) && (int)$currentUser['id'] === (int)$booking['user_id'];
+            if (!$isOperator && !$isOwner) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Bạn không có quyền hủy đơn đặt sân này.', 403, 'ERR_FORBIDDEN');
+            }
+
+            if (in_array((string)$booking['status'], ['Đã hủy', 'Khách chưa đến', 'Đang đá', 'completed', 'Hoàn thành'], true)) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Đơn đặt sân này không thể hủy do trạng thái hiện tại là: ' . $booking['status'], 400, 'ERR_INVALID_STATUS');
+            }
+
+            $now = new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh'));
+            $slotStartStr = trim($booking['booking_date'] . ' ' . explode(' - ', (string)$booking['slot_time'])[0]);
+            $matchStart = DateTime::createFromFormat('Y-m-d H:i', $slotStartStr, new DateTimeZone('Asia/Ho_Chi_Minh'));
+            if (!$matchStart) {
+                $matchStart = new DateTime($booking['booking_date'] . ' 00:00:00', new DateTimeZone('Asia/Ho_Chi_Minh'));
+            }
+
+            $hoursUntil = ($matchStart->getTimestamp() - $now->getTimestamp()) / 3600;
+            $paidAmount = max(0, (int)($booking['paid_amount'] ?? 0));
+            $sysSettings = get_system_settings_map($pdo);
+            $refundFullHours = max(1, (int)($sysSettings['refund_full_hours'] ?? 24));
+            $refundPartialHours = max(0, min($refundFullHours, (int)($sysSettings['refund_partial_hours'] ?? 4)));
+
+            if ($paidAmount <= 0) {
+                $policyApplied = 'Hủy đơn chưa thanh toán cọc';
+                $cancelPolicyCode = 'unpaid_free_cancel';
+                $refundAmount = 0;
+                $paymentStatus = 'Đã hủy';
+            } elseif ($hoursUntil >= $refundFullHours) {
+                $policyApplied = "Hủy trước {$refundFullHours}h: Hoàn 100% số tiền đã thanh toán";
+                $cancelPolicyCode = 'refund_100';
+                $refundAmount = $paidAmount;
+                $paymentStatus = 'Đã hoàn cọc 100%';
+            } elseif ($hoursUntil >= $refundPartialHours) {
+                $policyApplied = "Hủy trước {$refundPartialHours}h - {$refundFullHours}h: Hoàn 50% số tiền đã thanh toán (Phạt 50%)";
+                $cancelPolicyCode = 'forfeit_50';
+                $refundAmount = (int)round($paidAmount * 0.5);
+                $paymentStatus = 'Phạt 50% cọc';
+            } else {
+                $policyApplied = "Hủy sát giờ dưới {$refundPartialHours}h: Không hoàn tiền theo quy định";
+                $cancelPolicyCode = 'forfeit_100';
+                $refundAmount = 0;
+                $paymentStatus = 'Tịch thu cọc 30%';
+            }
+
+            $upd = $pdo->prepare("UPDATE bookings SET status = 'Đã hủy', payment_status = ?, remaining_amount = 0, cancel_policy_applied = ?, refund_amount = ?, note = CONCAT(IFNULL(note,''), ' [Hủy lúc: ', NOW(), ' - ', ?, ']') WHERE id = ?");
+            $upd->execute([$paymentStatus, $cancelPolicyCode, $refundAmount, $reason, (int)$booking['id']]);
+
+            if (!function_exists('restore_booking_resources_on_cancel')) {
+                require_once __DIR__ . '/cancellation_helper.php';
+            }
+            restore_booking_resources_on_cancel($pdo, $booking, true);
 
             write_audit_log($pdo, 'EARLY_CANCEL', $booking['code'], $booking['status'], 'Đã hủy (' . $paymentStatus . ')', $currentUser);
             $pdo->commit();
 
             try {
-                trigger_waitlist_notification($pdo, $booking['pitch_id'], $booking['booking_date'], $booking['slot_id'], $booking['slot_time'], $booking['pitch_name']);
-            } catch (Exception $wEx) {
+                trigger_waitlist_notification(
+                    $pdo,
+                    (string)$booking['pitch_id'],
+                    (string)$booking['booking_date'],
+                    (string)$booking['slot_id'],
+                    (string)($booking['slot_time'] ?? ''),
+                    is_array($currentUser) ? $currentUser : null,
+                    (string)$booking['code']
+                );
+            } catch (Throwable $wEx) {
                 error_log("[WAITLIST NOTIFY WARN] " . $wEx->getMessage());
             }
 
@@ -212,8 +237,10 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                     'policy_applied' => $policyApplied
                 ]
             ]);
-        } catch (Exception $e) {
-            $pdo->rollBack();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log("[CANCEL ERROR] " . $e->getMessage());
             json_error('Lỗi hệ thống khi hủy đơn. Vui lòng liên hệ hotline.', 500, 'ERR_CANCEL_FAILED');
         }
@@ -233,20 +260,52 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                 'data'    => ['code' => $code, 'status' => 'Khách chưa đến', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
             ]);
         }
-        $oldStmt = $pdo->prepare("SELECT status, payment_status, phone FROM bookings WHERE code = ? LIMIT 1");
-        $oldStmt->execute([$code]);
-        $oldRow = $oldStmt->fetch();
-        $oldStatus = $oldRow ? ($oldRow['status'] . ' (' . $oldRow['payment_status'] . ')') : 'Đã xác nhận';
 
-        $stmt = $pdo->prepare("UPDATE bookings SET status = 'Khách chưa đến', payment_status = 'Tịch thu cọc 30%', remaining_amount = 0, note = CONCAT(IFNULL(note,''), ' [Quá 15p khách chưa đến - Tịch thu cọc 30% & Nhả sân trống]') WHERE code = ?");
-        $stmt->execute([$code]);
+        $pdo->beginTransaction();
+        try {
+            $oldStmt = $pdo->prepare("SELECT id, code, pitch_id, booking_date, slot_id, slot_time, status, payment_status, phone FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+            $oldStmt->execute([$code]);
+            $oldRow = $oldStmt->fetch();
+            if (!$oldRow) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
+            }
+            if (in_array((string)$oldRow['status'], ['Đã hủy', 'Khách chưa đến', 'completed', 'Hoàn thành'], true)) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Đơn đặt sân này không thể đánh dấu quá giờ do trạng thái hiện tại là: ' . $oldRow['status'], 400, 'ERR_INVALID_STATUS');
+            }
+            $oldStatus = $oldRow['status'] . ' (' . $oldRow['payment_status'] . ')';
 
-        if (!empty($oldRow['phone'])) {
-            $crmStmt = $pdo->prepare("UPDATE customers SET noshow_count = noshow_count + 1 WHERE phone = ?");
-            $crmStmt->execute([$oldRow['phone']]);
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Khách chưa đến', payment_status = 'Tịch thu cọc 30%', remaining_amount = 0, note = CONCAT(IFNULL(note,''), ' [Quá 15p khách chưa đến - Tịch thu cọc 30% & Nhả sân trống]') WHERE id = ?");
+            $stmt->execute([(int)$oldRow['id']]);
+
+            write_audit_log($pdo, 'NOSHOW_RELEASE_SLOT', $code, $oldStatus, 'Khách chưa đến (Tịch thu cọc 30% & Nhả sân)', $actor);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("[NOSHOW RELEASE ERROR] " . $e->getMessage());
+            json_error('Lỗi hệ thống khi đánh dấu khách chưa đến.', 500, 'ERR_NOSHOW_FAILED');
         }
 
-        write_audit_log($pdo, 'NOSHOW_RELEASE_SLOT', $code, $oldStatus, 'Khách chưa đến (Tịch thu cọc 30% & Nhả sân)', $actor);
+        try {
+            trigger_waitlist_notification(
+                $pdo,
+                (string)$oldRow['pitch_id'],
+                (string)$oldRow['booking_date'],
+                (string)$oldRow['slot_id'],
+                (string)($oldRow['slot_time'] ?? ''),
+                is_array($actor) ? $actor : null,
+                (string)$oldRow['code']
+            );
+        } catch (Throwable $wEx) {
+            error_log("[WAITLIST NOTIFY WARN] " . $wEx->getMessage());
+        }
 
         json_response([
             'success' => true,

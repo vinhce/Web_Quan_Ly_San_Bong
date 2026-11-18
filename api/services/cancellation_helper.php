@@ -61,6 +61,99 @@ function evaluate_cancellation_policy(array $bookingRow, array $settings = []): 
     ];
 }
 
+/**
+ * Hoàn trả tồn kho dịch vụ, lượt dùng voucher, điểm đã tiêu và thu hồi điểm đã tặng khi hủy đơn.
+ */
+function restore_booking_resources_on_cancel(PDO $pdo, array $booking, bool $revokeAwardedPoints = true): void {
+    $bookingId = (int)($booking['id'] ?? 0);
+    $userId = (int)($booking['user_id'] ?? 0);
+    $hasVoucherUsed = db_table_has_column($pdo, 'vouchers', 'used_count');
+    $hasUserPoints = db_table_has_column($pdo, 'users', 'points');
+    $restoreInv = $pdo->prepare("UPDATE extra_services SET stock_qty = stock_qty + ? WHERE id = ? AND track_inventory = 1");
+
+    if (!empty($booking['voucher_code']) && $hasVoucherUsed) {
+        try {
+            $pdo->prepare("UPDATE vouchers SET used_count = GREATEST(0, used_count - 1) WHERE code = ?")
+                ->execute([(string)$booking['voucher_code']]);
+        } catch (Throwable $ve) {
+            error_log("[CANCEL VOUCHER RESTORE WARN] " . $ve->getMessage());
+        }
+    }
+
+    $ptsUsed = max(0, (int)($booking['points_used'] ?? 0));
+    if ($ptsUsed > 0 && $userId > 0 && $bookingId > 0) {
+        try {
+            $insPtsLog = $pdo->prepare("INSERT IGNORE INTO points_log (user_id, booking_id, delta, reason, created_at) VALUES (?, ?, ?, 'Hoàn điểm do hủy đơn', NOW())");
+            $insPtsLog->execute([$userId, $bookingId, $ptsUsed]);
+            if ($insPtsLog->rowCount() > 0 && $hasUserPoints) {
+                $pdo->prepare("UPDATE users SET points = IFNULL(points, 0) + ? WHERE id = ?")->execute([$ptsUsed, $userId]);
+            }
+        } catch (Throwable $pe) {
+            error_log("[CANCEL POINTS RESTORE WARN] " . $pe->getMessage());
+        }
+    }
+
+    if ($revokeAwardedPoints && $userId > 0 && $bookingId > 0 && !empty($booking['points_awarded']) && (int)$booking['points_awarded'] === 1) {
+        try {
+            $awardedStmt = $pdo->prepare("SELECT COALESCE(SUM(delta), 0) FROM points_log WHERE booking_id = ? AND user_id = ? AND delta > 0 AND reason IN ('Tích điểm đặt sân', 'Tích điểm hoàn tất ca đá')");
+            $awardedStmt->execute([$bookingId, $userId]);
+            $awardedPts = (int)$awardedStmt->fetchColumn();
+            if ($awardedPts <= 0) {
+                $settings = get_system_settings_map($pdo);
+                $ptsPer10k = max(1, (int)($settings['loyalty_points_per_10k'] ?? 1));
+                $paidAmtForPts = max(0, (int)($booking['paid_amount'] ?? 0));
+                if ($paidAmtForPts > 0) {
+                    $awardedPts = max(1, (int)floor($paidAmtForPts / 10000) * $ptsPer10k);
+                }
+            }
+            if ($awardedPts > 0) {
+                $revLogStmt = $pdo->prepare("INSERT IGNORE INTO points_log (user_id, booking_id, delta, reason, created_at) VALUES (?, ?, ?, 'Thu hồi điểm do hủy đơn', NOW())");
+                $revLogStmt->execute([$userId, $bookingId, -$awardedPts]);
+                if ($revLogStmt->rowCount() > 0) {
+                    if ($hasUserPoints) {
+                        $pdo->prepare("UPDATE users SET points = GREATEST(0, IFNULL(points, 0) - ?) WHERE id = ?")->execute([$awardedPts, $userId]);
+                    }
+                    if (db_table_has_column($pdo, 'bookings', 'points_awarded')) {
+                        $pdo->prepare("UPDATE bookings SET points_awarded = 0 WHERE id = ?")->execute([$bookingId]);
+                    }
+                }
+            }
+        } catch (Throwable $re) {
+            error_log("[CANCEL POINTS REVOKE WARN] " . $re->getMessage());
+        }
+    }
+
+    if (!empty($booking['services_json'])) {
+        $services = json_decode((string)$booking['services_json'], true);
+        if (is_array($services)) {
+            foreach ($services as $srv) {
+                if (!is_array($srv)) {
+                    continue;
+                }
+                $srvId = sanitize_string($srv['id'] ?? '', 30);
+                $qty = max(0, (int)($srv['quantity'] ?? 0));
+                $isPaidItem = !array_key_exists('price', $srv) || (int)$srv['price'] > 0;
+                if ($srvId !== '' && $qty > 0 && $isPaidItem) {
+                    $restoreInv->execute([$qty, $srvId]);
+                }
+            }
+        }
+    }
+
+    if (!empty($booking['gift_deducted']) && (int)$booking['gift_deducted'] === 1) {
+        $weeks = (int)($booking['weeks_count'] ?? 1);
+        if ($weeks >= 12) {
+            $restoreInv->execute([2, 'SRV-WATER']);
+        } elseif ($weeks >= 8) {
+            $restoreInv->execute([1, 'SRV-WATER']);
+            $restoreInv->execute([1, 'SRV-BIB']);
+        }
+        if ($bookingId > 0 && db_table_has_column($pdo, 'bookings', 'gift_deducted')) {
+            $pdo->prepare("UPDATE bookings SET gift_deducted = 0 WHERE id = ?")->execute([$bookingId]);
+        }
+    }
+}
+
 function run_auto_release_expired_bookings(?PDO $pdo, bool $force = false): array {
     try {
         if (!$pdo) {
@@ -94,8 +187,8 @@ function run_auto_release_expired_bookings(?PDO $pdo, bool $force = false): arra
             $selStmt = $pdo->prepare("
                 SELECT *
                 FROM bookings
-                WHERE payment_status = 'Chờ cọc 30%'
-                  AND status NOT IN ('Đã hủy', 'Hoàn thành', 'Đang đá', 'Khách chưa đến', 'Chờ duyệt cọc', 'Đã xác nhận')
+                WHERE payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%')
+                  AND status IN ('Đã xác nhận', 'Giữ chỗ')
                   AND (paid_amount = 0 OR paid_amount IS NULL)
                   AND (payment_method IS NULL OR (payment_method NOT LIKE '%Khách quen%' AND payment_method NOT LIKE '%Chưa cọc%'))
                   AND code NOT IN (SELECT matched_booking_code FROM bank_transactions WHERE matched_booking_code IS NOT NULL AND match_status IN ('matched', 'underpaid', 'overpaid', 'resolved'))
@@ -113,8 +206,6 @@ function run_auto_release_expired_bookings(?PDO $pdo, bool $force = false): arra
                 $noteSuffix = " [Tự động hủy do quá hạn {$holdMinutes}p chưa đặt cọc]";
                 $hasCancelCol = db_table_has_column($pdo, 'bookings', 'cancel_policy_applied');
                 $hasGiftDeducted = db_table_has_column($pdo, 'bookings', 'gift_deducted');
-                $hasVoucherUsed = db_table_has_column($pdo, 'vouchers', 'used_count');
-                $hasUserPoints = db_table_has_column($pdo, 'users', 'points');
 
                 $updBookingSql = "
                     UPDATE bookings
@@ -128,53 +219,13 @@ function run_auto_release_expired_bookings(?PDO $pdo, bool $force = false): arra
                     WHERE id = ?
                 ";
                 $updBooking = $pdo->prepare($updBookingSql);
-                $restoreInv = $pdo->prepare("UPDATE extra_services SET stock_qty = stock_qty + ? WHERE id = ? AND track_inventory = 1");
 
                 foreach ($expiredRows as $row) {
                     $updBooking->execute([$noteSuffix, (int)$row['id']]);
                     $codes[] = $row['code'];
                     $releasedRows[] = $row;
 
-                    if (!empty($row['voucher_code']) && $hasVoucherUsed) {
-                        try {
-                            $pdo->prepare("UPDATE vouchers SET used_count = GREATEST(0, used_count - 1) WHERE code = ?")->execute([$row['voucher_code']]);
-                        } catch (Throwable $ve) {
-                            error_log("[AUTO RELEASE VOUCHER RESTORE WARN] " . $ve->getMessage());
-                        }
-                    }
-
-                    $ptsUsed = isset($row['points_used']) ? (int)$row['points_used'] : 0;
-                    $uid = isset($row['user_id']) ? (int)$row['user_id'] : 0;
-                    if ($ptsUsed > 0 && $uid > 0 && $hasUserPoints) {
-                        try {
-                            $pdo->prepare("UPDATE users SET points = IFNULL(points, 0) + ? WHERE id = ?")->execute([$ptsUsed, $uid]);
-                        } catch (Throwable $pe) {
-                            error_log("[AUTO RELEASE POINTS RESTORE WARN] " . $pe->getMessage());
-                        }
-                    }
-
-                    if (!empty($row['services_json'])) {
-                        $services = json_decode((string)$row['services_json'], true);
-                        if (is_array($services)) {
-                            foreach ($services as $srv) {
-                                $srvId = sanitize_string($srv['id'] ?? '', 30);
-                                $qty = max(0, (int)($srv['quantity'] ?? 0));
-                                if ($srvId !== '' && $qty > 0) {
-                                    $restoreInv->execute([$qty, $srvId]);
-                                }
-                            }
-                        }
-                    }
-
-                    if (!empty($row['gift_deducted']) && (int)$row['gift_deducted'] === 1) {
-                        $weeks = (int)($row['weeks_count'] ?? 1);
-                        if ($weeks >= 12) {
-                            $restoreInv->execute([2, 'SRV-WATER']);
-                        } elseif ($weeks >= 8) {
-                            $restoreInv->execute([1, 'SRV-WATER']);
-                            $restoreInv->execute([1, 'SRV-BIB']);
-                        }
-                    }
+                    restore_booking_resources_on_cancel($pdo, $row, false);
                 }
             }
 

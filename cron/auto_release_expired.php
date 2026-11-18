@@ -8,7 +8,7 @@ $isCli = (php_sapi_name() === 'cli' || PHP_SAPI === 'cli');
 if (!$isCli) {
     loadEnv();
     $cronSecret = trim($_ENV['CRON_SECRET'] ?? getenv('CRON_SECRET') ?: '');
-    $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? $_GET['secret'] ?? ''));
+    $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? ''));
 
     $authorized = ($cronSecret !== '' && $provided !== '' && hash_equals($cronSecret, $provided));
 
@@ -69,7 +69,7 @@ try {
     echo json_encode([
         'success'   => false,
         'timestamp' => date('c'),
-        'error'     => $e->getMessage()
+        'error'     => 'Lỗi thực thi cron tự động nhả sân.'
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
 } finally {
     if ($lockFp) {

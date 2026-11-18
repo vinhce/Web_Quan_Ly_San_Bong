@@ -14,12 +14,13 @@ CREATE TABLE IF NOT EXISTS `users` (
     `phone` VARCHAR(20) NOT NULL,
     `full_name` VARCHAR(100) NOT NULL,
     `password_hash` VARCHAR(255) NOT NULL,
-    `role` ENUM('user', 'staff', 'manager', 'admin') NOT NULL DEFAULT 'user',
+    `role` ENUM('user', 'staff', 'manager', 'admin', 'walkin') NOT NULL DEFAULT 'user',
     `status` ENUM('active', 'locked') NOT NULL DEFAULT 'active',
     `must_change_password` TINYINT(1) NOT NULL DEFAULT 0,
     `points` INT NOT NULL DEFAULT 0,
     `customer_tier` VARCHAR(30) NOT NULL DEFAULT 'standard',
     `admin_note` TEXT NULL DEFAULT NULL,
+    `version` INT NOT NULL DEFAULT 1,
     `totp_secret` VARCHAR(64) NULL DEFAULT NULL,
     `totp_enabled` TINYINT(1) NOT NULL DEFAULT 0,
     `privacy_consent_at` DATETIME NULL DEFAULT NULL,
@@ -99,6 +100,7 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `code` VARCHAR(40) NOT NULL UNIQUE,
     `user_id` INT NULL DEFAULT NULL,
+    `staff_id` INT NULL DEFAULT NULL,
     `customer_name` VARCHAR(100) NOT NULL,
     `phone` VARCHAR(20) NOT NULL,
     `email` VARCHAR(100) NOT NULL DEFAULT 'khachhang@sanbongpro.vn',
@@ -135,6 +137,7 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     CONSTRAINT `fk_bookings_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_pitch_date_slot` (`pitch_id`, `booking_date`, `slot_id`),
     INDEX `idx_bookings_user` (`user_id`),
+    INDEX `idx_bookings_staff` (`staff_id`),
     INDEX `idx_bookings_date` (`booking_date`),
     INDEX `idx_bookings_phone` (`phone`),
     INDEX `idx_bookings_expires` (`expires_at`),
@@ -188,8 +191,12 @@ CREATE TABLE IF NOT EXISTS `shifts` (
     `end_time` DATETIME NULL DEFAULT NULL,
     `cash_total` INT NOT NULL DEFAULT 0,
     `transfer_total` INT NOT NULL DEFAULT 0,
+    `initial_cash` DECIMAL(12,2) NOT NULL DEFAULT 0,
     `actual_cash_received` INT NULL DEFAULT NULL,
+    `actual_cash` DECIMAL(12,2) NULL DEFAULT NULL,
     `discrepancy_amount` INT NULL DEFAULT NULL,
+    `cash_discrepancy` DECIMAL(12,2) NOT NULL DEFAULT 0,
+    `discrepancy_reason` TEXT NULL DEFAULT NULL,
     `note` TEXT NULL DEFAULT NULL,
     `admin_note` TEXT NULL DEFAULT NULL,
     `status` ENUM('open', 'closed', 'confirmed') NOT NULL DEFAULT 'open',
@@ -583,8 +590,8 @@ CREATE TABLE IF NOT EXISTS `points_log` (
     `reason` VARCHAR(255) NOT NULL,
     `admin_id` INT NULL DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    KEY `idx_points_user` (`user_id`, `created_at`),
-    KEY `idx_points_admin` (`admin_id`),
+    INDEX `idx_points_user` (`user_id`, `created_at`),
+    INDEX `idx_points_admin` (`admin_id`),
     CONSTRAINT `fk_points_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -612,4 +619,18 @@ INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
 ('loyalty_points_per_10k', '1'),
 ('loyalty_bottle_cost_points', '50'),
 ('privacy_policy_version', '1.0');
+
+-- ===============================================================
+-- 17. TÀI KHOẢN HỆ THỐNG KHÁCH LẺ (WALK-IN) & VIEW ADMIN AUDIT LOGS
+-- ===============================================================
+
+INSERT IGNORE INTO `users` (`username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
+SELECT 'khachle', 'khachle@sanbongpro.local', '0000000000', 'Khách lẻ', '$argon2id$v=19$m=65536,t=4,p=1$DISABLED_NON_LOGIN$disabled', 'walkin', 'active'
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1 FROM `users`
+    WHERE `role` = 'walkin' OR `username` = 'khachle' OR `email` = 'khachle@sanbongpro.local'
+);
+
+CREATE OR REPLACE VIEW `admin_audit_logs` AS SELECT * FROM `audit_logs`;
 

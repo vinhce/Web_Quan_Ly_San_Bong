@@ -333,14 +333,14 @@ function refresh_session_user($pdo = null) {
     if (empty($userId)) return null;
     $_SESSION['user_id'] = (int)$userId;
     if ($pdo === null) $pdo = getDBConnection(false);
-    if (!$pdo) return $_SESSION['user'] ?? null;
+    if (!$pdo) return null;
     try {
         try {
             $stmt = $pdo->prepare("SELECT id, username, email, phone, full_name, role, status, must_change_password, totp_enabled FROM users WHERE id = ? LIMIT 1");
             $stmt->execute([$_SESSION['user_id']]);
             $fresh = $stmt->fetch();
         } catch (Throwable $e) {
-            $stmt = $pdo->prepare("SELECT id, username, email, phone, full_name, role, status, must_change_password FROM users WHERE id = ? LIMIT 1");
+            $stmt = $pdo->prepare("SELECT id, username, email, phone, full_name, role, status FROM users WHERE id = ? LIMIT 1");
             $stmt->execute([$_SESSION['user_id']]);
             $fresh = $stmt->fetch();
         }
@@ -364,7 +364,7 @@ function refresh_session_user($pdo = null) {
         return $_SESSION['user'];
     } catch (Throwable $e) {
         error_log("[SESSION REFRESH ERROR] " . $e->getMessage());
-        return $_SESSION['user'] ?? null;
+        return null;
     }
 }
 
@@ -708,7 +708,15 @@ function logAdminChange($pdo, string $action, $oldData, $newData, $targetId = nu
     $diffNew = ($diff && array_key_exists('diff_new', $diff)) ? $diff['diff_new'] : $newData;
     $changedKeys = ($diff && isset($diff['changed_keys'])) ? $diff['changed_keys'] : (is_array($diffNew) ? array_keys($diffNew) : ['value']);
 
-    $logged = write_audit_log($pdo, $action, $targetId, $diffOld, $diffNew, $actor);
+    $logged = write_audit_log(
+        $pdo,
+        $action,
+        $targetId,
+        $diffOld,
+        $diffNew,
+        $actor,
+        $targetType !== null ? (string)$targetType : null
+    );
 
     return [
         'has_change'   => true,
@@ -723,7 +731,7 @@ function log_admin_change($pdo, string $action, $oldData, $newData, $targetId = 
     return logAdminChange($pdo, $action, $oldData, $newData, $targetId, $targetType, $actor);
 }
 
-function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $newValue = null, $actor = null) {
+function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $newValue = null, $actor = null, ?string $explicitTargetType = null) {
     $diffResult = audit_log_extract_changes($oldValue, $newValue);
     if ($diffResult !== null) {
         if ($diffResult['has_change'] === false) {
@@ -814,6 +822,10 @@ function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $ne
                 $targetType = 'system';
                 $targetId = 'Bot Telegram';
             }
+        }
+
+        if ($explicitTargetType !== null && trim($explicitTargetType) !== '') {
+            $targetType = sanitize_string($explicitTargetType, 40);
         }
 
         $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, actor_name, actor_role, action, target_type, target_id, booking_id, old_value, new_value, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

@@ -180,29 +180,54 @@ function award_booking_loyalty_points(?PDO $pdo, array $bookingRow): void {
     if (!$pdo) {
         return;
     }
-    $userId    = (int)($bookingRow['user_id'] ?? 0);
     $bookingId = (int)($bookingRow['id'] ?? 0);
-    $payStatus = (string)($bookingRow['payment_status'] ?? '');
-    $paidAmount = (int)($bookingRow['paid_amount'] ?? 0);
-
-    if ($userId <= 0 || $bookingId <= 0) {
-        return;
-    }
-    $isPaidOrDeposited = ($paidAmount > 0) || in_array($payStatus, ['Đã cọc 30%', 'Đã cọc 50%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true);
-    if (!$isPaidOrDeposited) {
+    if ($bookingId <= 0) {
         return;
     }
 
     try {
+        $stmt = $pdo->prepare("SELECT b.*, u.role AS user_role FROM bookings b LEFT JOIN users u ON u.id = b.user_id WHERE b.id = ? LIMIT 1");
+        $stmt->execute([$bookingId]);
+        $fresh = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$fresh) {
+            return;
+        }
+
+        $userId = (int)($fresh['user_id'] ?? 0);
+        $userRole = strtolower(trim((string)($fresh['user_role'] ?? '')));
+        if ($userId <= 0 || $userRole === 'walkin') {
+            return;
+        }
+        if (in_array((string)($fresh['status'] ?? ''), ['Đã hủy', 'Khách chưa đến'], true)) {
+            return;
+        }
+
+        $payStatus = (string)($fresh['payment_status'] ?? '');
+        $paidAmount = max(0, (int)($fresh['paid_amount'] ?? 0));
+        $isPaidOrDeposited = ($paidAmount > 0) || in_array($payStatus, ['Đã cọc 30%', 'Đã cọc 50%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true);
+        if (!$isPaidOrDeposited) {
+            return;
+        }
+
+        $settings = get_system_settings_map($pdo);
+        $pointsPer10k = max(1, (int)($settings['loyalty_points_per_10k'] ?? 1));
+        $pointsEarned = max(1, (int)floor($paidAmount / 10000) * $pointsPer10k);
+
         if (db_table_has_column($pdo, 'bookings', 'points_awarded')) {
+            if ((int)($fresh['points_awarded'] ?? 0) === 1) {
+                return;
+            }
             $upd = $pdo->prepare("UPDATE bookings SET points_awarded = 1 WHERE id = ? AND (points_awarded = 0 OR points_awarded IS NULL)");
             $upd->execute([$bookingId]);
             if ($upd->rowCount() <= 0) {
                 return;
             }
         }
-        if (db_table_has_column($pdo, 'users', 'points')) {
-            $pdo->prepare("UPDATE users SET points = IFNULL(points, 0) + 100 WHERE id = ?")->execute([$userId]);
+
+        $logStmt = $pdo->prepare("INSERT IGNORE INTO points_log (user_id, booking_id, delta, reason, created_at) VALUES (?, ?, ?, 'Tích điểm đặt sân', NOW())");
+        $logStmt->execute([$userId, $bookingId, $pointsEarned]);
+        if ($logStmt->rowCount() > 0 && db_table_has_column($pdo, 'users', 'points')) {
+            $pdo->prepare("UPDATE users SET points = IFNULL(points, 0) + ? WHERE id = ?")->execute([$pointsEarned, $userId]);
         }
     } catch (Throwable $e) {
         error_log("[AWARD POINTS WARN] " . $e->getMessage());

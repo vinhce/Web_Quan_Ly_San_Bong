@@ -113,6 +113,6 @@ const orchestrator = `(function () {
 })();
 `;
 
-const bundle = orchestrator;
+const bundle = (qrcodeLib ? qrcodeLib + '\n;\n' : '') + orchestrator;
 fs.writeFileSync('js/app.js', bundle, 'utf8');
 console.log('Successfully bundled js/app.js! Size:', bundle.length, 'bytes');

@@ -382,7 +382,6 @@ function renderCheckoutDetails() {
 
 function startSePayAutoListener(bookingCode) {
   if (sepayPollTimer) clearInterval(sepayPollTimer);
-  const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
 
   sepayPollTimer = setInterval(async () => {
     if (isPaymentAlreadyConfirmed) {
@@ -391,8 +390,9 @@ function startSePayAutoListener(bookingCode) {
     }
 
     try {
-      const response = await fetch(`${apiBase}api/check_payment.php?code=${encodeURIComponent(bookingCode)}&_t=${Date.now()}`, {
-        cache: 'no-store'
+      const response = await fetch(getCheckPaymentUrl(bookingCode), {
+        cache: 'no-store',
+        credentials: 'same-origin'
       });
       if (response.ok) {
         const result = await response.json();
@@ -400,6 +400,8 @@ function startSePayAutoListener(bookingCode) {
           isPaymentAlreadyConfirmed = true;
           clearInterval(sepayPollTimer);
           handleSePayPaymentSuccess(result);
+        } else if (result && result.expired === true) {
+          handleExpiredCheckout(bookingCode, result.message);
         }
       }
     } catch (e) {
@@ -492,10 +494,11 @@ function setupLoyaltyWaterRedemption() {
   }
 
   const userPoints = typeof user.points === 'number' ? user.points : 0;
-  const maxBottles = Math.floor(userPoints / 100);
+  const bottleCost = Math.max(1, Number(window.SanBongApp?.SanBongDB?.getSystemConfig?.()?.loyaltyBottleCostPoints || db?.getSystemConfig?.()?.loyaltyBottleCostPoints) || 50);
+  const maxBottles = Math.floor(userPoints / bottleCost);
 
   const pointsEl = document.getElementById('current-user-points');
-  if (pointsEl) pointsEl.textContent = `${userPoints}đ`;
+  if (pointsEl) pointsEl.textContent = `${userPoints} điểm`;
 
   const maxEl = document.getElementById('max-redeemable-bottles');
   if (maxEl) maxEl.textContent = `${maxBottles} chai`;
@@ -507,10 +510,10 @@ function setupLoyaltyWaterRedemption() {
 
     if (redeemedBottles > 0) {
       if (summaryBox) summaryBox.classList.remove('hidden');
-      if (deductEl) deductEl.textContent = `${redeemedBottles * 100} điểm`;
+      if (deductEl) deductEl.textContent = `${redeemedBottles * bottleCost} điểm`;
       if (receivedEl) receivedEl.textContent = `${redeemedBottles} chai Aquafina miễn phí`;
       if (coRow) coRow.classList.remove('hidden');
-      if (coText) coText.textContent = `+${redeemedBottles} chai Aquafina (-${redeemedBottles * 100}đ)`;
+      if (coText) coText.textContent = `+${redeemedBottles} chai Aquafina (-${redeemedBottles * bottleCost} điểm)`;
     } else {
       if (summaryBox) summaryBox.classList.add('hidden');
       if (coRow) coRow.classList.add('hidden');
@@ -518,7 +521,7 @@ function setupLoyaltyWaterRedemption() {
 
     if (currentDraft) {
       currentDraft.redeemedBottles = redeemedBottles;
-      currentDraft.pointsUsed = redeemedBottles * 100;
+      currentDraft.pointsUsed = redeemedBottles * bottleCost;
       sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
     }
   }
@@ -563,7 +566,6 @@ async function confirmPayment(isAuto = false) {
   if (sepayPollTimer) clearInterval(sepayPollTimer);
 
   const btn = document.getElementById('confirm-payment-btn');
-  const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
 
   if (!isAuto && !isPaymentAlreadyConfirmed) {
     if (btn) {
@@ -572,14 +574,19 @@ async function confirmPayment(isAuto = false) {
     }
 
     try {
-      const response = await fetch(`${apiBase}api/check_payment.php?code=${encodeURIComponent(generatedBookingCode)}&_t=${Date.now()}`, {
-        cache: 'no-store'
+      const response = await fetch(getCheckPaymentUrl(generatedBookingCode), {
+        cache: 'no-store',
+        credentials: 'same-origin'
       });
       if (response.ok) {
         const result = await response.json();
         if (result && result.paid === true) {
           isPaymentAlreadyConfirmed = true;
           handleSePayPaymentSuccess(result);
+          return;
+        }
+        if (result && result.expired === true) {
+          handleExpiredCheckout(generatedBookingCode, result.message);
           return;
         }
       }
@@ -621,7 +628,8 @@ async function confirmPayment(isAuto = false) {
   db.updateBookingStatus(generatedBookingCode, 'Đã xác nhận', 'Đã cọc 30%');
 
   const user = db.getUser();
-  const pointsUsed = redeemedBottles * 100;
+  const bottleCost = Math.max(1, Number(window.SanBongApp?.SanBongDB?.getSystemConfig?.()?.loyaltyBottleCostPoints || db?.getSystemConfig?.()?.loyaltyBottleCostPoints) || 50);
+  const pointsUsed = redeemedBottles * bottleCost;
 
   const rawBooking = sessionStorage.getItem('sb_latest_booking');
   let currentBooking = null;
@@ -660,6 +668,31 @@ async function confirmPayment(isAuto = false) {
     localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
   } catch (e) {}
 
-  const successUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('success') : '/success';
+  const successUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('success') : '../success';
   window.location.href = `${successUrl}?code=${generatedBookingCode}`;
+}
+
+function getCheckPaymentUrl(bookingCode) {
+  const path = `api/check_payment.php?code=${encodeURIComponent(bookingCode)}&_t=${Date.now()}`;
+  return window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(path) : `../${path}`;
+}
+
+function handleExpiredCheckout(bookingCode, message) {
+  if (sepayPollTimer) {
+    clearInterval(sepayPollTimer);
+    sepayPollTimer = null;
+  }
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+  sessionStorage.removeItem('sb_booking_draft');
+  try {
+    localStorage.removeItem('sb_hold_expire_' + bookingCode);
+  } catch (e) {}
+  if (window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(message || 'Đơn đặt sân đã quá hạn giữ chỗ hoặc đã bị hủy.', 'error', 3500);
+  }
+  const bookingUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '../booking';
+  window.location.replace(bookingUrl);
 }

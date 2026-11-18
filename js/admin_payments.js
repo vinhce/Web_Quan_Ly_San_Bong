@@ -509,7 +509,7 @@ async function submitReconcileAssign(e) {
   if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
   if (typeof renderOverviewKPIs === 'function') renderOverviewKPIs();
   if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
-  if (isOwnerAdmin() && typeof loadAuditLogs === 'function') loadAuditLogs();
+  if (isOwnerAdmin() && typeof loadAdminLogs === 'function') loadAdminLogs(1);
 
   if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(serverMsg || `🔗 Đã gán giao dịch vào đơn #${bookingCode} và cập nhật trạng thái thanh toán!`, 'success', 3500);
@@ -569,7 +569,7 @@ async function resolveBankTransaction(txId, status = 'resolved') {
   }
 
   await loadBankTransactions();
-  if (isOwnerAdmin() && typeof loadAuditLogs === 'function') loadAuditLogs();
+  if (isOwnerAdmin() && typeof loadAdminLogs === 'function') loadAdminLogs(1);
   if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(
       serverMsg || (targetResStatus === 'ignored'

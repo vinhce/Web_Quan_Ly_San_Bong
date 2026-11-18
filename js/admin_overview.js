@@ -307,7 +307,7 @@ async function handleCheckIn(code) {
   if (db?.getBookingByCode) {
     const b = db.getBookingByCode(code);
     if (b) {
-      const todayStr = window.SanBongApp.SanBongData ? window.SanBongApp.SanBongData.getTodayDateString() : new Date().toISOString().split("T")[0];
+      const todayStr = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : (typeof getLocalTodayISO === 'function' ? getLocalTodayISO() : new Date().toLocaleDateString('en-CA'));
       const bDate = b.booking_date || b.date;
       if (bDate && bDate < todayStr) {
         window.SanBongApp?.showToast('Ca đặt sân đã quá hạn từ ngày trước, không thể Check-in!', 'error');
@@ -337,7 +337,7 @@ async function handleNoShowRelease(code) {
   if (db?.getBookingByCode) {
     const b = db.getBookingByCode(code);
     if (b) {
-      const todayStr = window.SanBongApp.SanBongData ? window.SanBongApp.SanBongData.getTodayDateString() : new Date().toISOString().split("T")[0];
+      const todayStr = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : (typeof getLocalTodayISO === 'function' ? getLocalTodayISO() : new Date().toLocaleDateString('en-CA'));
       const bDate = b.booking_date || b.date;
       if (bDate && bDate < todayStr) {
         window.SanBongApp?.showToast('Ca đặt sân đã quá hạn từ ngày trước, không thể nhả sân lúc này!', 'error');
@@ -378,7 +378,7 @@ function renderOverviewTodayBookings() {
   const container = document.getElementById("overview-today-bookings");
   if (!container) return;
 
-  const todayStr = window.SanBongApp.SanBongData ? window.SanBongApp.SanBongData.getTodayDateString() : new Date().toISOString().split("T")[0];
+  const todayStr = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : (typeof getLocalTodayISO === 'function' ? getLocalTodayISO() : new Date().toLocaleDateString('en-CA'));
   const now = new Date();
   const nowHHMM = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   const curMinutes = now.getHours() * 60 + now.getMinutes();

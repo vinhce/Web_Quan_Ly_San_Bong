@@ -54,11 +54,12 @@ assert.deepStrictEqual(groups.map(group => group.label), Array.from(catalog.grou
 const pricingGroup = groups.find(group => group.label === 'Giá & khuyến mãi');
 assert(pricingGroup.children.some(option => option.value === '__group__:pricing'));
 const pricingAction = pricingGroup.children.find(option => option.value.split(',').includes('UPDATE_PRICING'));
-assert.strictEqual(pricingAction.textContent, 'Cập nhật giá sân');
+assert.strictEqual(pricingAction.textContent, '🔵 Cập nhật giá sân');
 assert(!pricingAction.textContent.includes('UPDATE_PRICING'));
 
 const otherGroup = groups.find(group => group.label === 'Khác');
-assert(otherGroup.children.some(option => option.value === 'UNKNOWN_ACTION' && option.textContent === 'UNKNOWN_ACTION'));
+assert(otherGroup.children.some(option => option.value === 'UNKNOWN_ACTION' && option.textContent === '⚪ UNKNOWN_ACTION'));
+vm.runInContext("getActionDisplayLabel('UNKNOWN_ACTION'); getActionDisplayLabel('UNKNOWN_ACTION');", sandbox);
 assert.strictEqual(warnings.length, 1, 'Mã chưa map cần cảnh báo đúng một lần');
 
 assert.strictEqual(vm.runInContext("getActionDisplayLabel('UPDATE_PRICING')", sandbox), 'Cập nhật giá sân');

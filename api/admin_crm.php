@@ -465,19 +465,40 @@ if (!function_exists('admin_map_booking')) {
         $userId = (int)($_GET['user_id'] ?? $data['user_id'] ?? 0);
         $limit = max(1, min(50, (int)($_GET['limit'] ?? $data['limit'] ?? 10)));
 
+        if ($userId <= 0 && strlen($cleanPhone) < 9) {
+            json_error('Thiếu thông tin khách hàng hợp lệ để tra cứu lịch sử.', 422, 'ERR_INVALID_CUSTOMER_FILTER');
+        }
+
+        $whereParts = [];
+        $params = [];
+
+        if (strlen($cleanPhone) >= 9) {
+            $phoneLike = '%' . $cleanPhone . '%';
+            $whereParts[] = "(target_type = 'customer' AND target_id = ?)";
+            $params[] = $cleanPhone;
+            $whereParts[] = "target_id = ?";
+            $params[] = $cleanPhone;
+            $whereParts[] = "old_value LIKE ?";
+            $params[] = $phoneLike;
+            $whereParts[] = "new_value LIKE ?";
+            $params[] = $phoneLike;
+        }
+
+        if ($userId > 0) {
+            $whereParts[] = "(user_id = ? AND target_type = 'user')";
+            $params[] = $userId;
+            $whereParts[] = "(target_type = 'user' AND target_id = ?)";
+            $params[] = (string)$userId;
+        }
+
         $alStmt = $pdo->prepare("
             SELECT id, user_id, actor_name, actor_role, action, target_type, target_id, booking_id, old_value, new_value, ip, created_at
             FROM audit_logs
-            WHERE (target_type = 'customer' AND target_id = ?)
-               OR target_id = ?
-               OR (user_id = ? AND target_type = 'user')
-               OR old_value LIKE ?
-               OR new_value LIKE ?
+            WHERE " . implode(' OR ', $whereParts) . "
             ORDER BY id DESC
             LIMIT " . (int)$limit
         );
-        $phoneLike = '%' . $cleanPhone . '%';
-        $alStmt->execute([$cleanPhone, $cleanPhone, (int)$userId, $phoneLike, $phoneLike]);
+        $alStmt->execute($params);
         $auditLogs = $alStmt->fetchAll(PDO::FETCH_ASSOC);
 
         json_response([
@@ -609,8 +630,8 @@ if (!function_exists('admin_map_booking')) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            error_log("[ADJUST_POINTS ERROR] " . $e->getMessage());
-            json_error('Lỗi khi điều chỉnh điểm: ' . $e->getMessage(), 500, 'ERR_ADJUST_POINTS_FAILED');
+            error_log("[ADJUST_POINTS ERROR] " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+            json_error('Lỗi hệ thống khi điều chỉnh điểm tích lũy. Vui lòng thử lại sau.', 500, 'ERR_ADJUST_POINTS_FAILED');
         }
     }
 
@@ -937,7 +958,7 @@ if (!function_exists('admin_map_booking')) {
                 $pdo->rollBack();
             }
             error_log("[UPDATE_CUSTOMER ERROR] " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
-            json_error('Lỗi khi cập nhật hồ sơ khách hàng: ' . $e->getMessage(), 500, 'ERR_UPDATE_CUSTOMER_FAILED');
+            json_error('Lỗi hệ thống khi cập nhật hồ sơ khách hàng. Vui lòng thử lại sau.', 500, 'ERR_UPDATE_CUSTOMER_FAILED');
         }
     }
 

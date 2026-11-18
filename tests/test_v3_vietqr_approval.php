@@ -42,6 +42,8 @@ try {
     $cleanStmt->execute();
     $cleanTx = $pdo->prepare("DELETE FROM bank_transactions WHERE transaction_content LIKE '%[TEST]V3_%'");
     $cleanTx->execute();
+    $cleanAudit = $pdo->prepare("DELETE FROM audit_logs WHERE booking_id LIKE '[TEST]V3_%' OR target_id LIKE '[TEST]V3_%'");
+    $cleanAudit->execute();
 
     // 1. Tạo đơn mẫu 1: Khách đặt cọc 30% (Test Webhook SePay đủ tiền -> tự xác nhận)
     $code1 = '[TEST]V3_AUTO_' . time();
@@ -187,13 +189,20 @@ try {
     $b2Check = $pdo->query("SELECT status, payment_status FROM bookings WHERE code = '{$code2}'")->fetch();
     assertTest($b2Check['status'] === 'Đã xác nhận' && $b2Check['payment_status'] === 'Đã cọc 30%', "9. Transaction duyệt cọc an toàn, không tạo trùng");
 
-    // Dọn dẹp dữ liệu test
-    $cleanStmt->execute();
-    $cleanTx->execute();
-
 } catch (Throwable $e) {
     echo "EXCEPTION: " . $e->getMessage() . " on line " . $e->getLine() . "\n";
     echo $e->getTraceAsString() . "\n";
+} finally {
+    // Dọn dẹp dữ liệu test
+    if (isset($cleanStmt)) {
+        $cleanStmt->execute();
+    }
+    if (isset($cleanTx)) {
+        $cleanTx->execute();
+    }
+    if (isset($cleanAudit)) {
+        $cleanAudit->execute();
+    }
 }
 
 echo "\n=== KẾT QUẢ TEST V3: {$testsPassed}/{$totalTests} ĐẠT ===\n";

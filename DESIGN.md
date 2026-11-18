@@ -16,7 +16,7 @@
 - **Đã đặt cọc (Deposit Confirmed):** Amber `#F59E0B` (`amber-500`) / Tint `#FEF3C7` (`amber-100`)
 - **Đang đá (In-Play):** Blue `#2563EB` (`blue-600`) / Tint `#DBEAFE` (`blue-100`)
 - **Hoàn thành / Trống (Available):** Emerald `#16A34A` (`emerald-600`) / Tint `#DCFCE7` (`emerald-100`)
-- **Khách chưa đến / Hủy (No-Show/Cancelled):** Red `#DC2626` (`red-600`) / Tint `#FEE2E2` (`red-100`)
+- **Khách chưa đến / Đã hủy (khách không đến / trễ giờ quá hạn):** Red `#DC2626` (`red-600`) / Tint `#FEE2E2` (`red-100`)
 - **Bảo trì (Maintenance):** Slate `#475569` (`slate-600`) / Tint `#F1F5F9` (`slate-100`)
 
 ---
@@ -62,23 +62,23 @@
 - Tương tác vi mô (Micro-interactions): Tooltip hiển thị chi tiết doanh thu / số ca đá khi hover/touch vào các cột mốc dữ liệu mà không gây giật lag.
 
 ### 3.6. Giao Diện Bảng Nhật Ký Admin (Admin Audit Log UI Spec)
-- **Hệ thống 6 Nhóm Màu Hành Động (Audit Action Groups):**
-  1. 🟢 **Giá (Price):** `bg-emerald-50 text-emerald-800 border-emerald-200` (Cập nhật bảng giá, giá giờ vàng, giá theo sân).
-  2. 🔵 **Tiền & Cọc (Deposit & Money):** `bg-teal-50 text-teal-800 border-teal-200` (Duyệt cọc VietQR, hủy cọc, thanh toán tại quầy).
-  3. 🟣 **Ca trực & Điều hành (Shift & Ops):** `bg-indigo-50 text-indigo-800 border-indigo-200` (Mở ca, chốt ca, xác nhận bàn giao tiền mặt, đổi sân, bù giờ).
-  4. 🟡 **Hội viên & Điểm (Member & Loyalty):** `bg-amber-50 text-amber-800 border-amber-200` (Sửa thông tin hội viên, cộng/trừ điểm kèm lý do bắt buộc).
-  5. ⚪ **Cài đặt & Vận hành (Settings):** `bg-slate-100 text-slate-800 border-slate-300` (Cài đặt hệ thống, voucher, kho hàng).
-  6. 🔴 **Bảo mật & Hệ thống (Security & Access):** `bg-rose-50 text-rose-800 border-rose-200` (Đổi vai trò, trạng thái nhân viên, reset mật khẩu, sao lưu CSDL).
-- **Thanh Chú Thích Trực Quan (Legend):** Đặt ngay trên đầu bảng, hiển thị đầy đủ 6 nhóm màu giúp admin nhận diện nhanh thao tác.
-- **Tooltip IP Chống Tràn Bảng:** Thông tin địa chỉ IP được tích hợp dưới dạng tooltip khi hover vào cột thời gian thay vì tạo cột riêng biệt, giữ bảng luôn hiển thị vừa vặn, không cuộn ngang.
-- **Trình Diễn Diffing Cũ → Mới Trực Quan:** Thẻ gạch ngang màu đỏ nhạt `<span class="line-through text-rose-700 bg-rose-50">` cho giá trị cũ và thẻ xanh lá `<span class="text-emerald-800 bg-emerald-50">` cho giá trị mới; tự động parse JSON lồng nhau và che số điện thoại (`0912xxx678`).
-- **Dropdown Phân Nhóm Emoji:** Dropdown bộ lọc hành động tích hợp emoji nhận diện theo nhóm (💰, 💳, ⏱️, ⭐, ⚙️, 🛡️).
+- **Hệ thống 6 Nhóm Màu Badge Hành Động (`portal-admin/partials/tab11_admin_logs.php` & `js/admin_logs.js`):**
+  1. 🟢 **Tạo / Duyệt (`badge-green`):** `#DCFCE7` / chữ `#166534` / viền `#BBF7D0` (Tạo đơn quầy, mở ca, duyệt cọc, khớp webhook, thêm dịch vụ/bảo trì, xác nhận ca).
+  2. 🔴 **Xóa / Hủy / Chi tiền (`badge-red`):** `#FEE2E2` / chữ `#991B1B` / viền `#FECACA` (Xóa voucher/giờ vàng/khoản chi, hủy đơn, từ chối cọc, tự động nhả đơn quá hạn, thêm khoản chi).
+  3. 🔵 **Cập nhật (`badge-blue`):** `#DBEAFE` / chữ `#1E40AF` / viền `#BFDBFE` (Cập nhật bảng giá, cài đặt, trạng thái sân, sửa hội viên, điều chỉnh điểm, check-in, chuyển sân).
+  4. 🟠 **Cảnh báo (`badge-orange`):** `#FFEDD5` / chữ `#9A3412` / viền `#FED7AA` (Giao dịch lệch/chưa khớp, khách chưa đến quá hạn nhả sân, đổi vai trò/mật khẩu nhân sự, đóng/giao ca).
+  5. 🟣 **Tiền quầy (`badge-purple`):** `#F3E8FF` / chữ `#6B21A8` / viền `#E9D5FF` (Thu tiền, bán hàng tại quầy).
+  6. ⚪ **Tự động (`badge-gray`):** `#F1F5F9` / chữ `#334155` / viền `#CBD5E1` (Cron nhắc lịch, sinh lịch lặp, hoàn tất ca quá giờ, sao lưu CSDL, test Telegram).
+- **Thanh Chú Thích Trực Quan (Legend):** Đặt ngay trong khung bộ lọc trên đầu bảng, hiển thị đầy đủ 6 nhóm màu giúp admin nhận diện nhanh thao tác.
+- **Tooltip IP Chống Tràn Bảng:** Thông tin địa chỉ IP được tích hợp dưới dạng tooltip (`title="IP: ..."`) khi hover vào cột thời gian thay vì tạo cột riêng biệt, giữ bảng luôn hiển thị vừa vặn.
+- **Trình Diễn Diffing Cũ → Mới Trực Quan:** Thẻ gạch ngang `<del class="text-rose-700">` cho giá trị cũ và `<strong class="text-emerald-800">` cho giá trị mới; tự động giải mã JSON lồng nhau và che thông tin nhạy cảm (`0912xxx678`).
+- **Dropdown Phân Nhóm Emoji:** Dropdown bộ lọc hành động phân theo 9 nhóm nghiệp vụ (`ADMIN_LOG_CATALOG`) kèm emoji theo nhóm màu (🟢, 🔴, 🔵, 🟠, 🟣, ⚪).
 
 ### 3.7. Giao Diện Bảng CRM Khách Hàng (Customer Management UI Spec)
-- **Cấu trúc 2 cột mới:**
-  - *"Đặt gần nhất"*: Hiển thị dạng "x ngày trước", "Hôm nay", hoặc "—" (nếu chưa từng đặt).
-  - *"Số lượt đặt"*: Tổng số ca đá đã hoàn tất thành công.
-- **Nhãn Cảnh Báo Bùng Sân (No-Show Badge):** Huy hiệu màu đỏ `bg-red-50 text-red-700 border border-red-200` hiển thị ngay cạnh tên khách khi $N \ge 1$ lượt bùng (bằng 0 thì ẩn hoàn toàn).
+- **Cấu trúc 8 cột cố định (`tab6_customers.php` & `js/admin_customers.js`):** `Tên hội viên`, `Số điện thoại`, `Hạng`, `Trận hoàn thành`, `Điểm tích lũy`, `Đặt gần nhất`, `Tổng chi tiêu`, `Thao tác`. Trong đó 2 cột nổi bật:
+  - *"Đặt gần nhất"*: Hiển thị dạng *"Hôm nay"*, *"x ngày trước"*, *"Sắp tới"*, hoặc *"—"* (nếu chưa từng đặt).
+  - *"Trận hoàn thành"*: Tổng số ca đá đã hoàn tất thành công.
+- **Nhãn Cảnh Báo Khách Không Đến / Trễ Giờ Quá Hạn:** Huy hiệu màu đỏ `bg-red-100 text-red-700 border border-red-200` hiển thị ngay cạnh tên khách khi số lần `Khách chưa đến` $N \ge 1$ (bằng 0 thì ẩn hoàn toàn).
 - **Thanh Lọc Tinh Gọn:** 3 nút bấm chuẩn mực `[Tất cả khách]`, `[Hội viên VIP]`, `[Khách quen]` với hiệu ứng active nền xanh `bg-emerald-600 text-white`.
 
 ---

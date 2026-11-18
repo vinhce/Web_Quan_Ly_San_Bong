@@ -1,5 +1,5 @@
 ﻿// =========================================================
-// 4. QUẢN LÝ MÃƒ GIẢM GIÁ / VOUCHER KHUYẾN MÃƒI (TAB 5)
+// 4. QUẢN LÝ MÃ GIẢM GIÁ / VOUCHER KHUYẾN MÃI (TAB 5)
 // =========================================================
 // [hoisted to admin.js]
 let editingVoucherCode = '';
@@ -68,7 +68,7 @@ async function renderAdminVouchers() {
 
     const usageTxt = v.max_usage > 0 ? `${v.used_count}/${v.max_usage} lượt` : `${v.used_count} / Không giới hạn`;
     const dateTxt = (v.valid_from || v.valid_to)
-      ? `${escapeSearchHTML(v.valid_from || '...')} â†’ ${escapeSearchHTML(v.valid_to || '...')}`
+      ? `${escapeSearchHTML(v.valid_from || '...')} → ${escapeSearchHTML(v.valid_to || '...')}`
       : 'Không giới hạn ngày';
     const pitchTxt = v.pitch_type_limit ? `Chỉ Sân ${escapeSearchHTML(v.pitch_type_limit)} người` : 'Tất cả loại sân';
 
@@ -336,7 +336,7 @@ function populateGoldenHourSlots() {
   const prev = slotSel.value;
   const slots = db.getTimeSlots();
   slotSel.innerHTML = `<option value="">Tất cả khung giờ</option>` + slots.map(s => (
-    `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? 'â˜… Cao điểm' : ''}</option>`
+    `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? '★ Cao điểm' : ''}</option>`
   )).join('');
   if (prev && Array.from(slotSel.options).some(o => o.value === prev)) {
     slotSel.value = prev;

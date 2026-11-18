@@ -42,6 +42,7 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
             FROM bookings b
             LEFT JOIN time_slots ts ON b.slot_id = ts.id
             WHERE b.status = 'Đang đá'
+              AND COALESCE(b.paid_amount, 0) >= COALESCE(b.total_price, 0)
               AND (
                   b.booking_date < CURDATE()
                   OR (
@@ -57,7 +58,7 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
         $overdueBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($overdueBookings)) {
-            $updStmt = $pdo->prepare("UPDATE bookings SET status = 'Hoàn thành' WHERE id = ? AND status = 'Đang đá'");
+            $updStmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = GREATEST(0, total_price - paid_amount) WHERE id = ? AND status = 'Đang đá' AND COALESCE(paid_amount, 0) >= COALESCE(total_price, 0)");
             $actor = [
                 'id'        => null,
                 'username'  => 'cron_in_play',
@@ -75,7 +76,7 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
                         'cron_complete_overdue_in_play',
                         $bk['code'],
                         'Đang đá',
-                        'Hoàn thành',
+                        'completed',
                         $actor
                     );
                 }
@@ -115,7 +116,7 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
             'success'         => false,
             'completed_count' => 0,
             'codes'           => [],
-            'error'           => $e->getMessage(),
+            'error'           => 'cron_in_play_failed',
             'timestamp'       => date('c')
         ];
     }
@@ -128,7 +129,7 @@ if (realpath(__FILE__) === realpath($_SERVER['SCRIPT_FILENAME'] ?? '')) {
     if (!$isCli) {
         loadEnv();
         $cronSecret = trim($_ENV['CRON_SECRET'] ?? getenv('CRON_SECRET') ?: '');
-        $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? $_GET['secret'] ?? ''));
+        $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? ''));
 
         $authorized = ($cronSecret !== '' && $provided !== '' && hash_equals($cronSecret, $provided));
 

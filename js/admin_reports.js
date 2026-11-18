@@ -415,6 +415,7 @@ async function renderAdminReports() {
   }
 
   setElText('rpt-total-expenses', totalExpenses.toLocaleString('vi-VN') + 'đ');
+  setElText('rpt-expense-list-total', totalExpenses.toLocaleString('vi-VN') + 'đ');
   const netProfitEl = document.getElementById('rpt-net-profit');
   if (netProfitEl) {
     netProfitEl.textContent = netProfit.toLocaleString('vi-VN') + 'đ';
@@ -495,7 +496,7 @@ async function exportAdminReportsCSV() {
   const fromDate = (document.getElementById('rpt-from-date')?.value || '').trim();
   const toDate = (document.getElementById('rpt-to-date')?.value || '').trim();
 
-  // Æ¯u tiên gọi API xuất CSV của server nếu hỗ trợ trả về file CSV trực tiếp
+  // Ưu tiên gọi API xuất CSV của server nếu hỗ trợ trả về file CSV trực tiếp
   try {
     const qs = new URLSearchParams({ action: 'export_reports_csv' });
     if (fromDate) qs.set('from', fromDate);

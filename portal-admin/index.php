@@ -33,8 +33,7 @@ $safeUserPayload = [
     'full_name'    => $currentUser['full_name'] ?? $currentUser['name'] ?? $currentUser['username'] ?? 'Quản Trị Viên',
     'email'        => $currentUser['email'] ?? '',
     'phone'        => $currentUser['phone'] ?? '',
-    'role'         => $currentUser['role'] ?? 'staff',
-    'totp_enabled' => (int)($currentUser['totp_enabled'] ?? 0)
+    'role'         => $currentUser['role'] ?? 'staff'
 ];
 $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 ?>
@@ -523,29 +522,29 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261116_v91"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261115_v80"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261116_v92"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261116_v92"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261116_v83"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261116_v94"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261118_v95"></script>
 </body>
 </html>
 

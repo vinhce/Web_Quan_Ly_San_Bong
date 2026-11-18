@@ -61,22 +61,6 @@ function getDBConnection($fatalOnFail = true) {
         } catch (PDOException $tzEx) {
         }
         ensureSchemaInitialized($pdo);
-        try {
-            $pdo->exec("INSERT IGNORE INTO `pitches` (`id`, `name`, `type`, `type_name`, `size`, `grass`, `base_price`, `peak_price`, `weekend_price`, `status`, `amenities_json`, `variant`, `description`) VALUES
-('P5-H', 'Sân 5 - Sân H', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo Monofilament 50mm, thoát nước nhanh sau mưa', 250000, 350000, 380000, 'Hoạt động', '[\"Đèn LED 400W chống chói\", \"Bãi đỗ ô tô & xe máy\", \"Nước suối miễn phí\", \"Phòng thay đồ\", \"Wifi\"]', 'standard', 'Sân 5 chất lượng cao, vị trí thoáng mát.'),
-('P5-I', 'Sân 5 - Sân I', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo kim cương FIFA Quality Pro, đệm cao su EPDM', 250000, 350000, 380000, 'Hoạt động', '[\"Đèn LED 400W chống chói\", \"Bãi đỗ xe\", \"Phòng thay đồ\", \"Wifi\"]', 'bright', 'Sân 5 mới bổ sung mặt cỏ êm ái.'),
-('P7-I', 'Sân 7 - Sân I', 7, 'Sân 7 người', '30m x 50m', 'Cỏ sợi đan mật độ cao chuẩn thi đấu phong trào', 450000, 650000, 700000, 'Hoạt động', '[\"Hệ thống chiếu sáng 8 trụ LED\", \"Bãi xe ô tô\", \"Phòng tắm nóng lạnh\", \"Wifi\"]', 'deep', 'Sân 7 khu khán đài C, đèn sáng rõ.'),
-('P7-K', 'Sân 7 - Sân K', 7, 'Sân 7 người', '30m x 50m', 'Cỏ nhân tạo 5cm tiêu chuẩn quốc tế, đàn hồi êm', 450000, 650000, 700000, 'Hoạt động', '[\"Đèn LED công suất lớn\", \"Bãi đỗ xe\", \"Nước suối miễn phí\", \"Wifi\"]', 'twin', 'Sân 7 tiêu chuẩn mới cho các trận giao hữu.'),
-('P11-E', 'Sân 11 - Sân E (Tiêu Chuẩn FIFA)', 11, 'Sân 11 người', '68m x 105m', 'Kích thước chuẩn FIFA 68m x 105m, cỏ tiêu chuẩn thi đấu quốc tế', 900000, 1200000, 1400000, 'Hoạt động', '[\"Dàn đèn 12 cột chuẩn thi đấu\", \"Khán đài có mái che\", \"Phòng họp chiến thuật\", \"Bãi xe lớn\"]', 'hero', 'Sân 11 tiêu chuẩn quốc tế tổ chức các giải đấu chuyên nghiệp.'),
-('P11-F', 'Sân 11 - Sân F (Khu Nam)', 11, 'Sân 11 người', '68m x 105m', 'Mặt cỏ FIFA Quality Pro thoát nước ngầm hiện đại', 900000, 1200000, 1400000, 'Hoạt động', '[\"Dàn đèn LED 1200W\", \"Phòng thay đồ máy lạnh\", \"Khán đài\", \"Camera Livestream\"]', 'hero', 'Sân 11 khu Nam không gian rộng rãi cho các giải đấu cúp.');");
-        } catch (Throwable $e) {
-            // Không chặn khởi động nếu cấu trúc bảng chưa có hoặc đã được chèn
-        }
-        try {
-            $pdo->exec("UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE totp_enabled = 1 OR totp_secret IS NOT NULL");
-        } catch (Throwable $e) {
-            // Không chặn khởi động nếu cấu trúc bảng chưa có cột
-        }
         return $pdo;
     } catch (PDOException $e) {
         error_log("[DB CONNECTION ERROR] " . $e->getMessage());
@@ -121,7 +105,7 @@ function ensureIndexExists(PDO $pdo, string $table, string $indexName, string $c
 }
 
 function ensureSchemaInitialized(PDO $pdo) {
-    $markerFile = dirname(__DIR__) . '/logs/.schema_v16_crm_backend_ready';
+    $markerFile = dirname(__DIR__) . '/logs/.schema_v18_full_sync_ready';
     if (is_file($markerFile)) {
         return;
     }
@@ -151,7 +135,7 @@ function ensureSchemaInitialized(PDO $pdo) {
             }
         }
         $migrationStmts = [
-            "ALTER TABLE users MODIFY COLUMN role ENUM('user', 'staff', 'manager', 'admin') NOT NULL DEFAULT 'user'",
+            "ALTER TABLE users MODIFY COLUMN role ENUM('user', 'staff', 'manager', 'admin', 'walkin') NOT NULL DEFAULT 'user'",
             "INSERT IGNORE INTO users (username, email, phone, full_name, password_hash, role, status) VALUES ('nhanvien', 'nhanvien@sanbongpro.vn', '0352000111', 'Nhân Viên Trực Sân Ca 1', '\$argon2id\$v=19\$m=65536,t=4,p=1\$QlFIYnZIRlNaV3Nic1JwUw\$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI', 'staff', 'active')",
             "UPDATE users SET role = 'staff' WHERE username = 'nhanvien' AND (role = '' OR role IS NULL)",
             "INSERT IGNORE INTO users (username, email, phone, full_name, password_hash, role, status) VALUES ('quanly', 'quanly@sanbongpro.vn', '0352000222', 'Nguyễn Hoàng Minh (Quản Lý Sân)', '\$argon2id\$v=19\$m=65536,t=4,p=1\$QlFIYnZIRlNaV3Nic1JwUw\$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI', 'manager', 'active')",
@@ -195,7 +179,8 @@ function ensureSchemaInitialized(PDO $pdo) {
         ensureColumnExists($pdo, 'extra_services', 'track_inventory', 'TINYINT(1) NOT NULL DEFAULT 1');
         ensureColumnExists($pdo, 'extra_services', 'is_active', 'TINYINT(1) NOT NULL DEFAULT 1');
 
-        // 3. users (Bổ sung Tích điểm, Phân hạng, TOTP 2FA, Quyền riêng tư)
+        // 3. users (Bổ sung Đổi mật khẩu lần đầu, Tích điểm, Phân hạng, TOTP 2FA, Quyền riêng tư)
+        ensureColumnExists($pdo, 'users', 'must_change_password', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER `status`');
         ensureColumnExists($pdo, 'users', 'points', 'INT NOT NULL DEFAULT 0 AFTER `status`');
         ensureColumnExists($pdo, 'users', 'customer_tier', "VARCHAR(30) NOT NULL DEFAULT 'standard' AFTER `points`");
         ensureColumnExists($pdo, 'users', 'totp_secret', 'VARCHAR(64) NULL DEFAULT NULL AFTER `customer_tier`');
@@ -275,11 +260,11 @@ function ensureSchemaInitialized(PDO $pdo) {
 
         // 8. shifts & bookings staff tracking
         ensureColumnExists($pdo, 'shifts', 'initial_cash', 'DECIMAL(12,2) NOT NULL DEFAULT 0');
-        ensureColumnExists($pdo, 'shifts', 'discrepancy_reason', 'TEXT NULL DEFAULT NULL');
-        ensureColumnExists($pdo, 'shifts', 'actual_cash', 'DECIMAL(12,2) NOT NULL DEFAULT 0');
+        ensureColumnExists($pdo, 'shifts', 'actual_cash', 'DECIMAL(12,2) NULL DEFAULT NULL');
         ensureColumnExists($pdo, 'shifts', 'cash_discrepancy', 'DECIMAL(12,2) NOT NULL DEFAULT 0');
+        ensureColumnExists($pdo, 'shifts', 'discrepancy_reason', 'TEXT NULL DEFAULT NULL');
         ensureColumnExists($pdo, 'bookings', 'staff_id', 'INT NULL DEFAULT NULL');
-        ensureIndexExists($pdo, 'bookings', 'idx_bookings_staff_id', '`staff_id`');
+        ensureIndexExists($pdo, 'bookings', 'idx_bookings_staff', '`staff_id`');
 
         // 9. audit_logs, points_log, users expansion (Migration 015)
         ensureColumnExists($pdo, 'audit_logs', 'target_type', 'VARCHAR(50) NULL DEFAULT NULL AFTER `action`');
@@ -289,19 +274,28 @@ function ensureSchemaInitialized(PDO $pdo) {
         ensureColumnExists($pdo, 'points_log', 'admin_id', 'INT NULL DEFAULT NULL AFTER `reason`');
         try {
             $pdo->exec("ALTER TABLE `points_log` MODIFY COLUMN `reason` VARCHAR(255) NOT NULL");
-        } catch (Throwable $plModifyEx) {}
+        } catch (Throwable $plModifyEx) {
+            error_log("[SCHEMA POINTS_LOG MODIFY WARN] " . $plModifyEx->getMessage());
+        }
         ensureIndexExists($pdo, 'points_log', 'idx_points_user', '`user_id`, `created_at`');
         ensureIndexExists($pdo, 'points_log', 'idx_points_admin', '`admin_id`');
 
-        // 10. walkin role, walkin guest user & version (Migration 016)
+        // 10. walkin role, walkin guest user & version (Migration 016 - 018)
         ensureColumnExists($pdo, 'users', 'version', 'INT NOT NULL DEFAULT 1 AFTER `updated_at`');
-        try {
-            $pdo->exec("INSERT INTO `users` (`username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
-SELECT 'khachle', 'khachle@sanbongpro.local', '0000000000', 'Khách lẻ', '\$argon2id\$v=19\$m=65536,t=4,p=1\$DISABLED_NON_LOGIN\$disabled', 'walkin', 'active'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `users` WHERE `role` = 'walkin' OR `username` = 'khachle')");
-        } catch (Throwable $walkinEx) {}
 
         $postUpdates = [
+            "INSERT IGNORE INTO `pitches` (`id`, `name`, `type`, `type_name`, `size`, `grass`, `base_price`, `peak_price`, `weekend_price`, `status`, `amenities_json`, `variant`, `description`) VALUES
+('P5-H', 'Sân 5 - Sân H', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo Monofilament 50mm, thoát nước nhanh sau mưa', 250000, 350000, 380000, 'Hoạt động', '[\"Đèn LED 400W chống chói\", \"Bãi đỗ ô tô & xe máy\", \"Nước suối miễn phí\", \"Phòng thay đồ\", \"Wifi\"]', 'standard', 'Sân 5 chất lượng cao, vị trí thoáng mát.'),
+('P5-I', 'Sân 5 - Sân I', 5, 'Sân 5 người', '20m x 40m', 'Cỏ nhân tạo kim cương FIFA Quality Pro, đệm cao su EPDM', 250000, 350000, 380000, 'Hoạt động', '[\"Đèn LED 400W chống chói\", \"Bãi đỗ xe\", \"Phòng thay đồ\", \"Wifi\"]', 'bright', 'Sân 5 mới bổ sung mặt cỏ êm ái.'),
+('P7-I', 'Sân 7 - Sân I', 7, 'Sân 7 người', '30m x 50m', 'Cỏ sợi đan mật độ cao chuẩn thi đấu phong trào', 450000, 650000, 700000, 'Hoạt động', '[\"Hệ thống chiếu sáng 8 trụ LED\", \"Bãi xe ô tô\", \"Phòng tắm nóng lạnh\", \"Wifi\"]', 'deep', 'Sân 7 khu khán đài C, đèn sáng rõ.'),
+('P7-K', 'Sân 7 - Sân K', 7, 'Sân 7 người', '30m x 50m', 'Cỏ nhân tạo 5cm tiêu chuẩn quốc tế, đàn hồi êm', 450000, 650000, 700000, 'Hoạt động', '[\"Đèn LED công suất lớn\", \"Bãi đỗ xe\", \"Nước suối miễn phí\", \"Wifi\"]', 'twin', 'Sân 7 tiêu chuẩn mới cho các trận giao hữu.'),
+('P11-E', 'Sân 11 - Sân E (Tiêu Chuẩn FIFA)', 11, 'Sân 11 người', '68m x 105m', 'Kích thước chuẩn FIFA 68m x 105m, cỏ tiêu chuẩn thi đấu quốc tế', 900000, 1200000, 1400000, 'Hoạt động', '[\"Dàn đèn 12 cột chuẩn thi đấu\", \"Khán đài có mái che\", \"Phòng họp chiến thuật\", \"Bãi xe lớn\"]', 'hero', 'Sân 11 tiêu chuẩn quốc tế tổ chức các giải đấu chuyên nghiệp.'),
+('P11-F', 'Sân 11 - Sân F (Khu Nam)', 11, 'Sân 11 người', '68m x 105m', 'Mặt cỏ FIFA Quality Pro thoát nước ngầm hiện đại', 900000, 1200000, 1400000, 'Hoạt động', '[\"Dàn đèn LED 1200W\", \"Phòng thay đồ máy lạnh\", \"Khán đài\", \"Camera Livestream\"]', 'hero', 'Sân 11 khu Nam không gian rộng rãi cho các giải đấu cúp.')",
+            "INSERT INTO `users` (`username`, `email`, `phone`, `full_name`, `password_hash`, `role`, `status`)
+SELECT 'khachle', 'khachle@sanbongpro.local', '0000000000', 'Khách lẻ', '\$argon2id\$v=19\$m=65536,t=4,p=1\$DISABLED_NON_LOGIN\$disabled', 'walkin', 'active'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `users` WHERE `role` = 'walkin' OR `username` = 'khachle')",
+            "CREATE OR REPLACE VIEW `admin_audit_logs` AS SELECT * FROM `audit_logs`",
+            "UPDATE `users` SET `totp_enabled` = 0, `totp_secret` = NULL WHERE `totp_enabled` = 1 OR `totp_secret` IS NOT NULL",
             "UPDATE `bookings` SET `status` = 'completed' WHERE `status` = 'Hoàn thành'",
             "UPDATE `bookings` b
 INNER JOIN `users` u ON (b.user_id = u.id AND u.role IN ('admin', 'manager', 'staff'))

@@ -77,7 +77,8 @@ function scanPhpFile(filePath) {
 
   const patterns = [
     { regex: /write_audit_log\s*\(\s*[^,]+,\s*((['"])([A-Za-z_][A-Za-z0-9_]*)\2|\$([A-Za-z_][A-Za-z0-9_]*))/gs, actionIndex: 3, variableIndex: 4 },
-    { regex: /AdminLogService::record\s*\(\s*[^,]+,\s*[^,]+,\s*((['"])([A-Za-z_][A-Za-z0-9_]*)\2|\$([A-Za-z_][A-Za-z0-9_]*))/gs, actionIndex: 3, variableIndex: 4 }
+    { regex: /AdminLogService::record\s*\(\s*[^,]+,\s*[^,]+,\s*((['"])([A-Za-z_][A-Za-z0-9_]*)\2|\$([A-Za-z_][A-Za-z0-9_]*))/gs, actionIndex: 3, variableIndex: 4 },
+    { regex: /(?:logAdminChange|log_admin_change)\s*\(\s*[^,]+,\s*((['"])([A-Za-z_][A-Za-z0-9_]*)\2|\$([A-Za-z_][A-Za-z0-9_]*))/gs, actionIndex: 3, variableIndex: 4 }
   ];
 
   for (const { regex, actionIndex, variableIndex } of patterns) {
@@ -90,6 +91,7 @@ function scanPhpFile(filePath) {
       }
 
       const variable = match[variableIndex];
+      if (path.basename(filePath) === 'security_helper.php' && variable === 'action') continue;
       const values = assignments.get(variable) || [];
       if (values.length === 0) {
         unresolvedDynamicActions.push(`${path.relative(root, filePath)}: $${variable}`);

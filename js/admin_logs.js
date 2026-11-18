@@ -97,6 +97,10 @@ const ADMIN_LOG_CATALOG = {
       "label": "Thu tiền",
       "group": "payments"
     },
+    "ADJUST_DISCOUNT": {
+      "label": "Điều chỉnh giảm giá đơn",
+      "group": "payments"
+    },
     "UPDATE_PAYMENT": {
       "label": "Cập nhật thanh toán",
       "group": "payments"
@@ -151,6 +155,10 @@ const ADMIN_LOG_CATALOG = {
     },
     "CHECKIN": {
       "label": "Check-in",
+      "group": "booking"
+    },
+    "COMPLETE_BOOKING": {
+      "label": "Hoàn tất đơn đặt sân",
       "group": "booking"
     },
     "ADD_SERVICE": {
@@ -235,6 +243,10 @@ const ADMIN_LOG_CATALOG = {
     },
     "CRM_UPDATE": {
       "label": "Cập nhật hồ sơ khách",
+      "group": "members"
+    },
+    "CRM_CUSTOMER_UPDATE": {
+      "label": "Cập nhật hồ sơ khách hàng",
       "group": "members"
     },
     "UPDATE_MEMBER": {
@@ -551,11 +563,18 @@ const ADMIN_LOG_CATALOG = {
     "points_reason": {
       "label": "Lý do điều chỉnh điểm"
     },
+    "points_delta": {
+      "label": "Thay đổi điểm",
+      "format": "number"
+    },
     "tier": {
       "label": "Hạng hội viên"
     },
     "customer_tier": {
       "label": "Hạng khách hàng"
+    },
+    "tier_reason": {
+      "label": "Lý do đổi hạng"
     },
     "admin_note": {
       "label": "Ghi chú chăm sóc"
@@ -563,6 +582,9 @@ const ADMIN_LOG_CATALOG = {
     "is_blacklisted": {
       "label": "Danh sách đen",
       "format": "boolean"
+    },
+    "blacklist_reason": {
+      "label": "Lý do khóa tài khoản"
     },
     "status": {
       "label": "Trạng thái"
@@ -675,6 +697,7 @@ const ADMIN_LOG_ACTION_COLOR_MAP = {
   'ENABLE_2FA': 'green',
   'WEBHOOK_MATCH': 'green',
   'RECONCILE_MANUAL': 'green',
+  'COMPLETE_BOOKING': 'green',
 
   // 2. ĐỎ (red) - Xóa, hủy, từ chối, tắt bảo mật, thiếu tiền, chi tiền ra
   'VOUCHER_DELETE': 'red',
@@ -700,6 +723,7 @@ const ADMIN_LOG_ACTION_COLOR_MAP = {
   'EXPENSE_UPDATE': 'blue',
   'UPDATE_PAYMENT': 'blue',
   'CRM_UPDATE': 'blue',
+  'CRM_CUSTOMER_UPDATE': 'blue',
   'UPDATE_MEMBER': 'blue',
   'UPDATE_FINANCE': 'blue',
   'SERVICE_UPSERT': 'blue',
@@ -731,6 +755,7 @@ const ADMIN_LOG_ACTION_COLOR_MAP = {
   'WEBHOOK_OVERPAID': 'orange',
   'WEBHOOK_UNMATCHED': 'orange',
   'RECONCILE_RESOLVE': 'orange',
+  'ADJUST_DISCOUNT': 'orange',
   'WALKIN_PAST_SLOT': 'orange',
   'RECURRING_SKIP_DATE': 'orange',
   'RECURRING_CONFLICT_SKIP': 'orange',
@@ -801,6 +826,7 @@ const ADMIN_LOG_SCALAR_FIELD_LABELS = {
   PITCH_STATUS_TOGGLE: 'Trạng thái',
   TOGGLE_PITCH: 'Trạng thái',
   CHECKIN: 'Trạng thái',
+  COMPLETE_BOOKING: 'Trạng thái',
   RESTORE_BOOKING: 'Trạng thái',
   CANCEL_BOOKING: 'Trạng thái',
   EARLY_CANCEL: 'Trạng thái',

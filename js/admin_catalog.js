@@ -267,7 +267,7 @@ async function promptRestockService(serviceId) {
   if (rawQty === null) return;
   const added = parseInt(String(rawQty).replace(/[^\d]/g, ''), 10);
   if (!added || added <= 0) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Số lượng nhập kho phải lớn hÆ¡n 0!', 'warning');
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Số lượng nhập kho phải lớn hơn 0!', 'warning');
     return;
   }
 
@@ -282,7 +282,7 @@ async function promptRestockService(serviceId) {
 
   const updated = db.restockService(serviceId, added);
   renderAdminInventory();
-  if (isOwnerAdmin() && typeof loadAuditLogs === 'function') loadAuditLogs();
+  if (isOwnerAdmin() && typeof loadAdminLogs === 'function') loadAdminLogs(1);
 
   if (updated && window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(`📦 Đã nhập thêm +${added} ${updated.unit} cho "${updated.name}". Tồn kho mới: ${updated.stockQty} ${updated.unit}!`, 'success', 3500);
@@ -318,7 +318,7 @@ function openServiceModal(serviceId = '') {
     if (stockEl) stockEl.value = Number(srv.stockQty ?? 50);
     if (minEl) minEl.value = Number(srv.minStockWarning ?? 10);
   } else {
-    if (titleEl) titleEl.textContent = 'âž• Thêm mặt hàng / Dịch vụ mới vào kho';
+    if (titleEl) titleEl.textContent = '➕ Thêm mặt hàng / Dịch vụ mới vào kho';
     if (idEl) idEl.value = '';
     if (nameEl) nameEl.value = '';
     if (priceEl) priceEl.value = 15000;
@@ -422,7 +422,7 @@ async function handleDeleteService(serviceId) {
     db.deleteServiceItem(serviceId);
   }
   renderAdminInventory();
-  if (isOwnerAdmin() && typeof loadAuditLogs === 'function') loadAuditLogs();
+  if (isOwnerAdmin() && typeof loadAdminLogs === 'function') loadAdminLogs(1);
   if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(`🗑️ Đã ngừng kinh doanh dịch vụ "${srv.name}".`, 'info', 3000);
   }

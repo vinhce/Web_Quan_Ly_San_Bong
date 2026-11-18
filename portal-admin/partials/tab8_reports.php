@@ -136,7 +136,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="ui-card p-5 flex items-center justify-between">
             <div>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Sân 5 người (6 sân)</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Sân 5 người (9 sân)</span>
               <div id="rpt-p5-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
               <div id="rpt-p5-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
             </div>
@@ -144,7 +144,7 @@
           </div>
           <div class="ui-card p-5 flex items-center justify-between">
             <div>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Sân 7 người (8 sân)</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Sân 7 người (10 sân)</span>
               <div id="rpt-p7-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
               <div id="rpt-p7-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
             </div>
@@ -152,7 +152,7 @@
           </div>
           <div class="ui-card p-5 flex items-center justify-between">
             <div>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800">Sân 11 người (3 sân)</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800">Sân 11 người (7 sân)</span>
               <div id="rpt-p11-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
               <div id="rpt-p11-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
             </div>
@@ -250,7 +250,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="ui-card p-5 border-l-4 border-l-rose-500">
             <div class="text-xs font-semibold text-[#64748B]">Tổng chi phí vận hành</div>
-            <div id="rpt-total-expenses" class="font-heading font-extrabold text-2xl text-rose-600 mt-1">0đ</div>
+            <div id="rpt-expense-list-total" class="font-heading font-extrabold text-2xl text-rose-600 mt-1">0đ</div>
             <div class="text-[11px] text-[#64748B] mt-1">Điện nước, bảo trì, nhập hàng, nhân sự</div>
           </div>
           <div class="ui-card p-5 border-l-4 border-l-[#16A34A]">

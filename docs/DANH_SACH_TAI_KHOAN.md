@@ -1,137 +1,75 @@
-# 📋 DANH SÁCH TÀI KHOẢN HỆ THỐNG — SÂN BÓNG PRO
+# 📋 DANH SÁCH TÀI KHOẢN & PHÂN QUYỀN HỆ THỐNG — SÂN BÓNG PRO
 
-Tài liệu tổng hợp tài khoản đăng nhập, phân quyền truy cập và hướng dẫn sử dụng hệ thống **Sân Bóng Pro**.
+Tài liệu tổng hợp tài khoản khởi tạo theo vai trò, ma trận phân quyền 11 phân hệ Portal Admin và quy định vận hành cơ bản của **Sân Bóng Pro**.
+
+> *Xem chi tiết quy trình đăng nhập, bảo mật server-side và hướng dẫn vận hành 11 tab quản trị tại [TAI_KHOAN_ADMIN.md](./TAI_KHOAN_ADMIN.md).*
 
 ---
 
-## 1. Đường dẫn Đăng nhập & Quản trị
+## 1. Đường dẫn Truy cập Hệ thống
 
-| Môi trường | Cổng Đăng nhập (Khách & Admin) | Cổng Quản trị Trực tiếp (Admin Portal) |
+| Môi trường | Cổng Đăng nhập (Khách & Nhân sự) | Cổng Quản trị (`/portal-admin/`) |
 | :--- | :--- | :--- |
-| **Website Online (Production)** | [https://fxzioyr.id.vn/login](https://fxzioyr.id.vn/login) | [https://fxzioyr.id.vn/portal-admin/](https://fxzioyr.id.vn/portal-admin/) |
-| **Môi trường Local (Laragon)** | `http://localhost/Quan_Ly_San_Bong/login` | `http://localhost/Quan_Ly_San_Bong/portal-admin/` |
+| **Production Live** | [https://fxzioyr.id.vn/login](https://fxzioyr.id.vn/login) | [https://fxzioyr.id.vn/portal-admin/](https://fxzioyr.id.vn/portal-admin/) |
+| **Local Development** | `http://localhost/Quan_Ly_San_Bong/login` | `http://localhost/Quan_Ly_San_Bong/portal-admin/` |
 
 ---
 
-## 2. Danh sách Tài khoản & Mật khẩu
+## 2. Danh mục Tài khoản Mẫu theo Vai trò (`users.role`)
 
-### 2.1. Tài khoản Quản trị viên Chính (Admin - Toàn quyền)
-> Dùng để vận hành sân, duyệt cọc VietQR, khóa sân bảo trì, xem doanh thu, cấu hình hệ thống, quản lý hội viên và kiểm toán toàn bộ thao tác qua Tab 11 Audit Log.
+*Thông tin liên hệ cá nhân (SĐT/email) được che mờ để bảo vệ dữ liệu; mật khẩu đều băm một chiều bằng **Argon2id** (`PASSWORD_ARGON2ID`) và quản lý trực tiếp trong CSDL hoặc Portal Admin.*
 
-- **Tên đăng nhập (Username):** `vxyen0801`
-- **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Mật khẩu quản trị viên)*
-- **Email quản trị:** `vxyen0801@sanbongpro.vn`
-- **Số điện thoại:** `0352313548`
-- **Vai trò (Role):** `admin` (Chủ sân · Toàn quyền 11 phân hệ)
-- **Quyền hạn đặc biệt:** Toàn quyền truy cập Tab 10 (Cài đặt hệ thống) và Tab 11 (Nhật ký kiểm toán Audit Log 6 nhóm hành động: Giá sân, Cài đặt, Cọc VietQR, Hủy đơn, Hội viên, Bảo trì sân).
-- **Ghi chú:** Sau khi đăng nhập thành công, hệ thống tự động chuyển thẳng vào `/portal-admin/` và mở menu quản trị.
+| Username | Vai trò (`role`) | Đối tượng / Mục đích | SĐT (Đã che) | Ghi chú truy cập |
+| :--- | :--- | :--- | :--- | :--- |
+| `vxyen0801` | `admin` (Chủ sân) | Quản trị viên chính — toàn quyền 11 tab | `0352xxx548` | Tự động chuyển vào `/portal-admin/` khi đăng nhập |
+| `admin` | `admin` (Chủ sân) | Tài khoản quản trị hệ thống dự phòng | `0987xxx321` | Toàn quyền 11 phân hệ quản trị |
+| `quanly` | `manager` (Quản lý sân) | Điều hành Timeline, kho, duyệt cọc, chốt ca, báo cáo | `0352xxx222` | Bị chặn Tab 5, Tab 10, Tab 11 |
+| `nhanvien` | `staff` (Nhân viên trực) | Check-in QR, đặt tại quầy, bán nước, mở/chốt ca | `0352xxx111` | Bị chặn Tab 5, Tab 7, Tab 9, Tab 10, Tab 11 |
+| `user` | `user` (Hội viên mẫu) | Kiểm thử đặt sân, VietQR, đổi điểm lấy nước | `0000xxx002` | Chỉ dùng cổng khách hàng (`/` và `/history`) |
+| `khachle` | `walkin` (Hệ thống) | Bản ghi nội bộ gắn đơn khách lẻ tại quầy | `0000000000` | Tài khoản hệ thống, không đăng nhập |
 
----
-
-### 2.2. Tài khoản Quản trị viên (Admin)
-> Dùng để đăng nhập quản trị hệ thống, duyệt cọc, bảo trì sân, xem doanh thu, đặt sân tại quầy và tra cứu nhật ký kiểm toán Tab 11.
-
-- **Tên đăng nhập (Username):** `admin`
-- **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
-- **Email:** `admin@sanbongpro.vn`
-- **Vai trò (Role):** `admin` (Quản trị viên)
-- **Quyền hạn:** Toàn quyền truy cập 11 tab vận hành và quản trị, bao gồm Cài đặt và Audit Log.
+> Quyền truy cập được xác định hoàn toàn từ trường `role` trong cơ sở dữ liệu; tên đăng nhập và số điện thoại không tự cấp quyền quản trị.
 
 ---
 
-### 2.3. Tài khoản Quản lý Sân (Manager)
-> Dùng để điều hành ca đá Gantt Timeline, kiểm duyệt ghép kèo, quản lý bảo trì sân, duyệt cọc lệch tiền và kiểm tra kho nước.
+## 3. Ma trận Phân quyền Cổng Quản trị (11 Tab Chuẩn — `portal-admin/partials/sidebar.php`)
 
-- **Tên đăng nhập (Username):** `quanly`
-- **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
-- **Email:** `quanly@sanbongpro.vn`
-- **Số điện thoại:** `0352000222`
-- **Họ và tên:** Nguyễn Hoàng Minh (Quản Lý Sân)
-- **Vai trò (Role):** `manager` (Quản lý vận hành)
-- **Quyền hạn:** Truy cập các tab điều hành vận hành (Tab 1, 2, 3, 4, 6, 7, 8); **bị chặn truy cập Tab 10 (Cài đặt hệ thống) và Tab 11 (Audit Log)** theo chính sách RBAC bảo vệ dữ liệu nhạy cảm.
-
----
-
-### 2.4. Tài khoản Nhân viên Trực Sân (Staff)
-> Dùng cho nhân viên quầy ca trực để check-in vé QR, bán nước/dịch vụ, chốt ca tiền mặt và đặt sân tại quầy.
-
-- **Tên đăng nhập (Username):** `nhanvien`
-- **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Đã băm Argon2id - đổi/cấp lại trong Portal Admin)*
-- **Email:** `nhanvien@sanbongpro.vn`
-- **Số điện thoại:** `0352000111`
-- **Họ và tên:** Nhân Viên Trực Sân Ca 1
-- **Vai trò (Role):** `staff` (Nhân viên vận hành trực sân)
-- **Quyền hạn:** Quét vé QR check-in, bán nước/dịch vụ, chốt ca bàn giao tiền mặt, đặt sân tại quầy; ẩn toàn bộ KPI doanh thu nhạy cảm, **bị chặn truy cập Tab 10 (Cài đặt hệ thống) và Tab 11 (Audit Log)**.
+| Phân hệ / Tab | Mã Tab | `staff` (Trực sân) | `manager` (Quản lý) | `admin` (Chủ sân) | Phạm vi chức năng chính |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **Tab 1: Tổng quan & Đang chơi** | `overview` | ✅ *(Ẩn KPI tiền & biểu đồ)* | ✅ *(Ẩn KPI tiền & biểu đồ)* | ✅ *(Toàn phần)* | Theo dõi ca đá hôm nay, tỷ lệ lấp đầy, quét QR Check-in (`admin` xem đủ KPI doanh thu) |
+| **Tab 2: Lịch đặt sân Timeline** | `timeline` | ✅ *(Ẩn duyệt kèo)* | ✅ | ✅ | Gantt 05:30–23:00, Popup điều hành ca, Waitlist, Lịch lặp; `manager`/`admin` duyệt ghép kèo |
+| **Tab 3: Đặt sân tại quầy** | `quick-booking` | ✅ *(Bán quầy)* | ✅ | ✅ | Đặt sân tại quầy (POS), bán nước trừ kho; `manager`/`admin` thêm & sửa dịch vụ |
+| **Tab 4: Quản lý sân bóng** | `pitches` | ✅ *(Xem & bảo trì nhanh)* | ✅ *(+ Lịch bảo trì, đánh giá)* | ✅ *(Toàn quyền)* | Quản lý 26 sân; `manager`/`admin` tạo lịch bảo trì; chỉ `admin` thêm/sửa sân mới |
+| **Tab 5: Bảng giá & Voucher** | `pricing` | ❌ *(Ẩn/403)* | ❌ *(Ẩn/403)* | ✅ | Giá thường/cao điểm/cuối tuần, chính sách gói tháng, Voucher, quy tắc giờ vàng |
+| **Tab 6: Khách & Hội viên** | `customers` | ✅ *(Chỉ xem)* | ✅ *(Xem & Sửa CRM)* | ✅ *(Xem & Sửa CRM)* | Tìm SĐT chuẩn hóa, bảng 8 cột (Đặt gần nhất, Trận hoàn thành), chỉnh điểm qua `points_log` |
+| **Tab 7: Duyệt cọc VietQR** | `payments` | ❌ *(Ẩn/403)* | ✅ | ✅ | Duyệt biên lai VietQR & đối soát giao dịch webhook SePay (`bank_transactions`) |
+| **Tab 8: Chốt ca / Giao ca** | `shifts` | ✅ *(Mở/chốt ca)* | ✅ *(+ Xác nhận ca)* | ✅ *(Toàn quyền)* | Mở ca vốn lẻ, kiểm đếm tiền mặt, tính chênh lệch và xác nhận bàn giao ca |
+| **Tab 9: Báo cáo doanh thu** | `reports` | ❌ *(Ẩn/403)* | ✅ | ✅ | Đối chiếu 2 công thức tài chính, biểu đồ SVG, sổ chi phí, lãi ròng & xuất CSV |
+| **Tab 10: Cài đặt hệ thống** | `settings` | ❌ *(Ẩn/403)* | ❌ *(Ẩn/403)* | ✅ | Tỷ lệ cọc, ngân hàng VietQR, chính sách hoàn/giữ chỗ, Telegram/Zalo, nhân sự, backup DB |
+| **Tab 11: Nhật ký Admin** | `logs` | ❌ *(Ẩn/403)* | ❌ *(Ẩn/403)* | ✅ | Kiểm toán bất biến (append-only), diffing Cũ → Mới, 6 nhóm màu badge, che dữ liệu nhạy cảm |
 
 ---
 
-### 2.5. Tài khoản Khách hàng / Hội viên Mẫu (Test User)
-> Dùng để kiểm thử luồng đặt sân, chuyển khoản cọc VietQR SePay, đổi điểm tích lũy lấy nước suối.
+## 4. Tạo Tài khoản Hội viên Mới & Điểm thưởng
 
-- **Tên đăng nhập (Username):** `user`
-- **Mật khẩu (Password):** `******** (Liên hệ quản trị viên hoặc xem/đặt qua DB)` *(Mật khẩu mẫu)*
-- **Họ và tên:** Trần Minh Hoàng
-- **Số điện thoại mẫu:** `0000000002` (không dùng để liên hệ)
-- **Vai trò (Role):** `user` (Hội viên)
-- **Điểm tích lũy:** Có sẵn điểm thưởng để kiểm thử tính năng đổi nước suối (100 điểm = 1 chai Aquafina).
-
-> Quyền truy cập được xác định từ trường `role` trong cơ sở dữ liệu; tên đăng nhập và số điện thoại không tự cấp quyền admin.
+1. **Đăng ký hội viên:** Truy cập [https://fxzioyr.id.vn/login?tab=register](https://fxzioyr.id.vn/login?tab=register), điền đầy đủ Tên đăng nhập, Họ tên, SĐT di động 10 số (`03/05/07/08/09`), Email, Mật khẩu (**tối thiểu 8 ký tự**) và tích xác nhận Chính sách bảo mật (Nghị định 13/2023).
+2. **Tích điểm & Đổi quà (`points_log`):** Điểm thưởng được ghi nhận minh bạch trong transaction qua `points_log` (theo cấu hình `loyalty_points_per_10k` và `loyalty_bottle_cost_points`), cho phép hội viên đổi điểm lấy nước suối Aquafina khi đặt sân hoặc được Quản lý/Admin điều chỉnh kèm lý do bắt buộc.
 
 ---
 
-### 2.6. Ma trận Phân quyền Cổng Quản trị (11 Phân hệ Portal Admin)
+## 5. Quy định Giữ chỗ & Xử lý Khách Không Đến / Trễ Giờ Quá Hạn
 
-| Phân hệ / Tab | Quyền `staff` (Trực sân) | Quyền `manager` (Quản lý) | Quyền `admin` (Chủ sân) | Ghi chú bảo mật |
-| :--- | :---: | :---: | :---: | :--- |
-| **Tab 1: Tổng quan KPI** | Ẩn doanh thu | ✅ Toàn phần | ✅ Toàn phần | `staff` chỉ thấy ca đá, ẩn biểu đồ & doanh thu |
-| **Tab 2: Lịch Timeline Gantt** | ✅ | ✅ | ✅ | Điều hành và xem trạng thái sân trực quan |
-| **Tab 3: Đặt sân tại quầy** | ✅ | ✅ | ✅ | Đặt sân khách vãng lai, in phiếu nhận sân |
-| **Tab 4: Quản lý sân & Bảo trì** | ✅ | ✅ | ✅ | Bật/tắt bảo trì tức thì |
-| **Tab 5: Bảng giá & Voucher** | ❌ (Chặn) | ❌ (Chặn) | ✅ | Cấu hình giá giờ vàng, cuối tuần, mã giảm giá |
-| **Tab 6: Khách hàng & CRM** | ✅ (Xem) | ✅ (Xem) | ✅ (Xem & Sửa) | Tìm kiếm SĐT, xem nợ/điểm, chỉ `admin` được sửa hội viên |
-| **Tab 7: Ghép kèo giao hữu** | ✅ | ✅ | ✅ | Hỗ trợ bắt đối, duyệt ghép đội |
-| **Tab 8: Duyệt cọc VietQR** | ❌ (Chặn) | ✅ | ✅ | Duyệt cọc SePay, hoàn tiền hoặc hủy cọc |
-| **Tab 9: Báo cáo thống kê** | ❌ (Ẩn) | ❌ (Ẩn) | ✅ | Báo cáo tài chính, doanh thu chi tiết |
-| **Tab 10: Cài đặt hệ thống** | ❌ (Ẩn/403) | ❌ (Ẩn/403) | ✅ | Tỷ lệ cọc, tài khoản ngân hàng thụ hưởng, hotline |
-| **Tab 11: Nhật ký Audit Log** | ❌ (Ẩn/403) | ❌ (Ẩn/403) | ✅ | Kiểm toán thao tác 6 nhóm màu, chống sinh log thừa |
+- **Thời gian giữ chỗ thanh toán cọc:** Mặc định **15 phút** (theo cấu hình `hold_minutes`, có thể chỉnh 5–120 phút ở Tab 10). Quá hạn chưa chuyển cọc, tác vụ `cron/auto_release_expired.php` (hoặc cơ chế tự động kiểm tra) sẽ hủy đơn giữ chỗ và giải phóng slot.
+- **Quy chế ân hạn nhận sân (15 phút):** Khách đã cọc phải có mặt trong vòng 15 phút đầu ca đá.
+- **Xử lý khi khách không đến / trễ giờ quá hạn:** Nếu quá 15 phút khách không đến nhận sân, nhân sự thao tác **Quá giờ chưa đến: Nhả sân** trên Portal Admin:
+  1. Tịch thu cọc 30% bồi thường giữ sân (`Tịch thu cọc 30%`).
+  2. Trạng thái đơn chuyển thành **`Khách chưa đến`** (theo quy ước thuật ngữ tại [RULES.md](../RULES.md)).
+  3. Lập tức nhả slot trống để đón khách vãng lai/đặt mới và kích hoạt thông báo hàng chờ (Waitlist).
 
 ---
 
-## 3. Tạo Tài khoản Hội viên Mới (Dành cho Khách hàng)
+## 6. Lưu ý Bảo mật Chung
 
-Khách hàng mới có thể tự đăng ký tài khoản nhanh chóng theo các bước sau:
-1. Truy cập: [https://fxzioyr.id.vn/login?tab=register](https://fxzioyr.id.vn/login?tab=register)
-2. Điền các trường thông tin:
-   - **Họ và tên:** Họ tên đầy đủ người đặt sân
-   - **Số điện thoại:** Dùng làm số liên hệ nhận sân và tên đăng nhập
-   - **Mật khẩu:** Tối thiểu 8 ký tự
-3. Bấm **Tạo tài khoản hội viên**:
-   - Hệ thống tự động cấp mã định danh, đăng nhập tức thì.
-   - Nếu khách đang trong quá trình đặt sân (từ nút thanh toán), hệ thống sẽ tự động đưa ngay sang trang thanh toán `/checkout` mà không cần thao tác lại.
-
----
-
-## 4. Quyền lợi & Cơ chế Điểm thưởng Hội viên
-
-- **Tích điểm tự động:** Mỗi đơn đặt sân thanh toán cọc thành công được cộng **+100 điểm thưởng**.
-- **Quy tắc dùng điểm:** Điểm thưởng của trận đấu hiện tại sẽ được ghi nhận và **sử dụng từ trận kế tiếp**.
-- **Đổi quà tại trang thanh toán:** Hội viên có thể dùng điểm tích lũy để đổi nước suối Aquafina ướp lạnh trực tiếp khi thanh toán (tỷ lệ: **100 điểm = 1 chai**).
-
----
-
-## 5. Quy định Vận hành Sân & Xử lý Khách Quá Hạn (No-Show)
-
-- **Thời gian giữ chỗ thanh toán:** 10 phút đếm ngược tại trang thanh toán VietQR SePay. Hết 10 phút không chuyển cọc, hệ thống tự động giải phóng mã giữ chỗ.
-- **Quy định nhận sân (Ân hạn 15 phút):** Khách đã cọc phải có mặt trước hoặc trong vòng 15 phút đầu của ca đá.
-- **Xử lý No-Show:** Nếu quá 15 phút khách không đến nhận sân và không thông báo, Admin bấm nút **🚨 Quá hạn: Nhả sân** trên bảng điều khiển:
-  1. Tịch thu cọc 30% bồi thường chi phí giữ sân.
-  2. Trạng thái đơn chuyển thành *Vắng mặt (No-Show)*.
-  3. Lập tức **nhả sân về trạng thái Còn trống** để đón khách vãng lai hoặc khách đặt trực tiếp tại quầy, đảm bảo không bao giờ để trống sân.
-
----
-
-## 6. Lưu ý Bảo mật Quan trọng
-
-1. Mật khẩu trên hệ thống được mã hóa một chiều bằng thuật toán **Argon2id** (`PASSWORD_ARGON2ID`), tuyệt đối không lưu dạng văn bản thuần trong CSDL.
-2. Hệ thống áp dụng cơ chế **Rate Limiting**: Nếu nhập sai mật khẩu quá 5 lần liên tiếp trong 15 phút, tài khoản/IP sẽ bị khóa tạm thời trong 15 phút để chống tấn công Brute-Force.
-3. Không chia sẻ tài khoản quản trị `vxyen0801` cho người ngoài. Khi rời máy, luôn bấm nút **Thoát** ở góc dưới bên trái menu Admin để hủy hoàn toàn phiên làm việc trên server.
+1. Mật khẩu được băm bằng **Argon2id** (`PASSWORD_ARGON2ID`), không lưu dạng văn bản thuần.
+2. Đăng nhập bị giới hạn tần suất (**Rate Limit: tối đa 5 lần / 15 phút**, vượt ngưỡng trả `HTTP 429` và khóa tạm tài khoản tăng dần trên DB).
+3. Luôn bấm nút **Thoát** ở góc dưới bên trái menu để hủy phiên làm việc trên server khi rời máy.

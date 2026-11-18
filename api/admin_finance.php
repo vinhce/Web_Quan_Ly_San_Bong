@@ -13,9 +13,13 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
     }
 
 function handle_admin_pending_deposits(PDO $pdo, ?array $actor = null): void {
-    $staff = !empty($actor) ? $actor : require_staff_or_admin($pdo);
-    if (!in_array($staff['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
-        json_error('Bạn không có quyền hạn thực hiện thao tác này.', 403, 'ERR_FORBIDDEN');
+    $mgr = !empty($actor) ? $actor : require_manager_or_admin($pdo);
+    if (!in_array($mgr['role'] ?? '', ['admin', 'manager'], true)) {
+        error_log("[SECURITY ALERT] Phát hiện nỗ lực vượt quyền Quản lý/Admin tại pending_deposits từ user ID: " . ($mgr['id'] ?? 'unknown') . " (role: " . ($mgr['role'] ?? 'unknown') . ") | IP: " . get_client_ip());
+        json_error('Chức năng này chỉ dành cho Quản lý sân hoặc Chủ sân (Admin).', 403, 'ERR_FORBIDDEN');
+    }
+    if (!empty($mgr['must_change_password'])) {
+        json_error('Bạn cần đổi mật khẩu khởi tạo trước khi tiếp tục thao tác.', 403, 'ERR_MUST_CHANGE_PASSWORD');
     }
 
     $bStmt = $pdo->query("

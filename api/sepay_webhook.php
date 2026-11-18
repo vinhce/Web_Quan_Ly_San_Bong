@@ -172,7 +172,11 @@ $txFingerprint = hash(
 );
 
 $recordPaidLedger = function (string $code, int $amount, int $expected, string $ref, string $cnt): void {
-    $ledgerFile = __DIR__ . '/sepay_paid_orders.json';
+    $logDir = dirname(__DIR__) . '/logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0750, true);
+    }
+    $ledgerFile = $logDir . '/sepay_paid_orders.json';
     $paidOrders = [];
     if (file_exists($ledgerFile)) {
         $rawLedger = @file_get_contents($ledgerFile);
@@ -191,7 +195,7 @@ $recordPaidLedger = function (string $code, int $amount, int $expected, string $
         'content'        => $cnt,
         'paid_at'        => date('Y-m-d H:i:s')
     ];
-    @file_put_contents($ledgerFile, json_encode($paidOrders, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    @file_put_contents($ledgerFile, json_encode($paidOrders, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
 };
 
 if (!$pdo) {
@@ -215,8 +219,19 @@ if (!$pdo) {
 try {
     $pdo->beginTransaction();
 
-    $dupStmt = $pdo->prepare("SELECT id, match_status, matched_booking_code FROM bank_transactions WHERE (? != '' AND sepay_tx_id = ?) OR tx_fingerprint = ? LIMIT 1 FOR UPDATE");
-    $dupStmt->execute([$sepayTxId, $sepayTxId, $txFingerprint]);
+    $refFingerprint = ($referenceCode !== '')
+        ? hash('sha256', "REF:{$referenceCode}|AMT:{$transferAmount}")
+        : '';
+    $dupStmt = $pdo->prepare("
+        SELECT id, match_status, matched_booking_code
+        FROM bank_transactions
+        WHERE (? != '' AND sepay_tx_id = ?)
+           OR tx_fingerprint = ?
+           OR (? != '' AND tx_fingerprint = ?)
+           OR (? != '' AND reference_code = ? AND transfer_amount = ? AND matched_booking_code IS NOT NULL)
+        LIMIT 1 FOR UPDATE
+    ");
+    $dupStmt->execute([$sepayTxId, $sepayTxId, $txFingerprint, $refFingerprint, $refFingerprint, $referenceCode, $referenceCode, $transferAmount]);
     $dupTx = $dupStmt->fetch();
 
     if ($dupTx) {
@@ -317,7 +332,7 @@ try {
             } else {
                 $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
                 $newRem       = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 0 : max(0, $totalPrice - $newTotalPaid);
-                $updB = $pdo->prepare("UPDATE bookings SET status = 'Đã xác nhận', payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = ? WHERE id = ?");
+                $updB = $pdo->prepare("UPDATE bookings SET status = IF(status IN ('Đang đá', 'completed', 'Hoàn thành'), status, 'Đã xác nhận'), payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = ? WHERE id = ?");
                 $updB->execute([$newPayStatus, $newTotalPaid, $newRem, (int)$booking['id']]);
 
                 $matchStatus    = 'overpaid';

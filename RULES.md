@@ -18,14 +18,14 @@
   ```bash
   node scripts/build_app_bundle.js
   ```
-  Nguồn gồm: `js/vendor/qrcode.min.js` + `js/helpers.js` + `js/db.js` + `js/ui.js`.
+  Đóng gói `js/vendor/qrcode.min.js` cùng lớp điều phối `window.SanBongApp` (liên kết `js/helpers.js`, `js/db.js`, `js/ui.js`).
   $\rightarrow$ Luôn sửa ở các file nguồn con tương ứng, sau đó chạy lệnh build bundle. **TUYỆT ĐỐI KHÔNG sửa tay trực tiếp trong file `js/app.js`**.
 
 ### 1.3. An Toàn Dữ Liệu & Database
 - Nghiêm cấm chạy các lệnh phá hủy dữ liệu (`DROP TABLE`, `TRUNCATE`, `migrate:fresh`).
 - Mọi thao tác ghi nhiều bảng liên quan đến đặt sân/thanh toán phải được bọc trong MySQL Transaction (`BEGIN TRANSACTION ... COMMIT`).
 - Chống đặt trùng slot (Race Condition) bằng `SELECT ... FOR UPDATE` hoặc ràng buộc logic kiểm tra trạng thái trước khi insert đơn.
-- Các thay đổi cấu trúc bảng mới phải tạo file migration trong `database/migrations/` và tuân thủ marker an toàn (`/logs/.schema_v12_booking_status_ready`).
+- Các thay đổi cấu trúc bảng mới phải tạo file migration trong `database/migrations/` (hệ thống gồm 17 migrations `001..017`) và tuân thủ marker an toàn (`logs/.schema_v18_full_sync_ready`).
 
 ### 1.4. Bảo Mật Web & Xác Thực
 - **Không hardcode Secret:** API Token SePay, DB Password, Secret Turnstile, Mailer Secret phải được đọc từ biến môi trường (`.env` nằm ngoài thư mục web công khai).
@@ -35,7 +35,7 @@
 - **XSS & SQL Injection:** Tham số hóa 100% câu truy vấn PDO; escape toàn bộ dữ liệu người dùng trước khi in ra HTML bằng `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')`.
 
 ### 1.5. Quy Ước Thuật Ngữ & Ngôn Ngữ
-- Thuật ngữ trạng thái ca đá quá 15 phút không đến nhận sân: Thống nhất dùng tiếng Việt chuẩn **"Khách chưa đến"** (không dùng từ "No-Show" hay "Vắng mặt").
+- Thuật ngữ trạng thái ca đá quá 15 phút không đến nhận sân: Thống nhất dùng tiếng Việt chuẩn **"Khách chưa đến"** (diễn giải nghiệp vụ: **khách không đến / trễ giờ quá hạn**; không dùng thuật ngữ ngoại lai hoặc từ ngữ khác ngoài chuẩn này).
 - Mã giao dịch chuyển khoản VietQR quy ước theo loại sân:
   - Sân 5 người: `ASFF` + 6 số
   - Sân 7 người: `ASFS` + 6 số
@@ -48,4 +48,4 @@
 - **Điều Chỉnh Điểm Hội Viên:** Không sửa trực tiếp `users.points`. Bắt buộc ghi nhận qua `points_log` kèm lý do bắt buộc và `admin_id` người duyệt trong transaction có khóa dòng `SELECT ... FOR UPDATE`. Chặn điểm âm.
 
 ### 1.7. Quy Chuẩn Migration Cơ Sở Dữ Liệu
-- Mọi thay đổi cấu trúc bảng CSDL phải được viết dưới dạng Migration Idempotent (kiểm tra `INFORMATION_SCHEMA` trước khi thêm bảng/cột/chỉ mục), đảm bảo chạy lại nhiều lần không sinh lỗi. Cập nhật marker schema tương ứng (`logs/.schema_v15_audit_points_ready`).
+- Mọi thay đổi cấu trúc bảng CSDL phải được viết dưới dạng Migration Idempotent (kiểm tra `INFORMATION_SCHEMA` trước khi thêm bảng/cột/chỉ mục), đảm bảo chạy lại nhiều lần không sinh lỗi. Hệ thống hiện duy trì 17 bản migration (`001..017`) cùng hàm `ensureSchemaInitialized()` và marker `logs/.schema_v18_full_sync_ready`.

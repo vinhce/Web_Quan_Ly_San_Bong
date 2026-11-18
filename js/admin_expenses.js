@@ -19,6 +19,11 @@
 
   const list = Array.isArray(r.data?.expenses) ? r.data.expenses : [];
   currentAdminExpensesList = list;
+  const listTotal = Number(r.data?.totalAmount ?? list.reduce((sum, ex) => sum + Number(ex.amount || 0), 0));
+  const listTotalEl = document.getElementById('rpt-expense-list-total');
+  if (listTotalEl) {
+    listTotalEl.textContent = listTotal.toLocaleString('vi-VN') + 'đ';
+  }
   if (list.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-[#94A3B8]">Chưa có khoản chi nào trong kỳ lọc.</td></tr>';
     return;
@@ -58,13 +63,15 @@ async function deleteAdminExpense(id) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Quản lý hoặc Chủ sân mới có quyền xóa khoản chi!', 'error');
     return;
   }
-  const ok = await showAdminConfirm({
-    title: 'Xóa khoản chi vận hành',
-    message: `Bạn có chắc chắn muốn xóa khoản chi #${id} khỏi sổ chi vận hành?`,
-    confirmText: 'Xóa khoản chi',
-    cancelText: 'Hủy',
-    danger: true
-  });
+  const ok = typeof showAdminConfirm === 'function'
+    ? await showAdminConfirm({
+        title: 'Xóa khoản chi vận hành',
+        message: `Bạn có chắc chắn muốn xóa khoản chi #${id} khỏi sổ chi vận hành?`,
+        confirmText: 'Xóa khoản chi',
+        cancelText: 'Hủy',
+        danger: true
+      })
+    : confirm(`Bạn có chắc chắn muốn xóa khoản chi #${id} khỏi sổ chi vận hành?`);
   if (!ok) return;
 
   const r = await adminFetchJson('../api/admin.php?action=delete_expense', {
@@ -211,30 +218,3 @@ async function handleAddExpense(e) {
   }
 }
 window.handleAddExpense = handleAddExpense;
-
-async function deleteAdminExpense(id) {
-  if (!isOwnerAdmin()) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Chỉ Chủ sân (Admin) mới có quyền xóa khoản chi!', 'error');
-    return;
-  }
-  const ok = await showAdminConfirm({
-    title: 'Xóa khoản chi vận hành',
-    message: `Bạn có chắc chắn muốn xóa khoản chi #${id} khỏi sổ chi vận hành?`,
-    confirmText: 'Xóa khoản chi',
-    cancelText: 'Hủy',
-    danger: true
-  });
-  if (!ok) return;
-
-  const r = await adminFetchJson('../api/admin.php?action=delete_expense', {
-    method: 'POST',
-    body: JSON.stringify({ id: Number(id) })
-  });
-  if (!r.ok) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || 'Không thể xóa khoản chi!', 'error', 4000);
-    return;
-  }
-  if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã xóa khoản chi!', 'success', 3000);
-  await renderAdminReports();
-}
-window.deleteAdminExpense = deleteAdminExpense;

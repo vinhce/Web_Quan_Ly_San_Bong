@@ -27,18 +27,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const checkCode = codeParam || (booking ? booking.code : '');
-  const checkoutUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('checkout') : '/checkout';
+  const checkoutUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('checkout') : '../checkout';
 
   if (!checkCode) {
     window.location.replace(checkoutUrl);
     return;
   }
 
-  const apiBase = window.SanBongApp?.getAppBase ? window.SanBongApp.getAppBase() : '/';
   let serverVerifiedPaid = false;
   try {
-    const res = await fetch(`${apiBase}api/check_payment.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`, {
-      cache: 'no-store'
+    const checkPath = `api/check_payment.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`;
+    const checkUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(checkPath) : `../${checkPath}`;
+    const res = await fetch(checkUrl, {
+      cache: 'no-store',
+      credentials: 'same-origin'
     });
     if (res.ok) {
       const data = await res.json();
@@ -67,7 +69,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!booking) {
     try {
-      const bRes = await fetch(`${apiBase}api/bookings.php?code=${encodeURIComponent(checkCode)}`, { cache: 'no-store' });
+      const bookingPath = `api/bookings.php?code=${encodeURIComponent(checkCode)}`;
+      const bookingApiUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(bookingPath) : `../${bookingPath}`;
+      const bRes = await fetch(bookingApiUrl, {
+        cache: 'no-store',
+        credentials: 'same-origin'
+      });
       if (bRes.ok) {
         const bJson = await bRes.json();
         const bData = bJson?.data || null;

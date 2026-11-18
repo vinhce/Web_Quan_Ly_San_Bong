@@ -1,4 +1,4 @@
-      <!-- TAB 4: QUẢN LÝ 17 SÂN & BẬT TẮT BẢO TRÌ (Frame 14) -->
+      <!-- TAB 4: QUẢN LÝ 26 SÂN & BẬT TẮT BẢO TRÌ (Frame 14) -->
       <!-- ========================================== -->
       <div id="tab-content-pitches" class="space-y-4 hidden">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">

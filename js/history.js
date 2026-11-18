@@ -413,7 +413,10 @@ function cancelBooking(bookingCode) {
       const headers = window.SanBongApp?.getAuthFetchHeaders
         ? window.SanBongApp.getAuthFetchHeaders()
         : { 'Content-Type': 'application/json' };
-      const res = await fetch('../api/bookings.php?action=early_cancel', {
+      const cancelBaseUrl = window.SanBongApp?.getRelativePath
+        ? window.SanBongApp.getRelativePath('api/bookings.php')
+        : '../api/bookings.php';
+      const res = await fetch(`${cancelBaseUrl}?action=early_cancel`, {
         method: 'POST',
         headers,
         credentials: 'same-origin',

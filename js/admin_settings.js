@@ -203,7 +203,7 @@ async function saveAdminSettings(e) {
 
   if (refundPartialHours >= refundFullHours) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Mốc sát giờ không hoàn cọc phải nhỏ hÆ¡n mốc hoàn 100% cọc!', 'warning', 3500);
+      window.SanBongApp.showToast('Mốc sát giờ không hoàn cọc phải nhỏ hơn mốc hoàn 100% cọc!', 'warning', 3500);
     }
     return;
   }
@@ -450,7 +450,7 @@ async function backupDatabaseNow() {
     }
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast(r.message || '✓ Đã tạo bản sao lưu CSDL thành công!', 'success', 4000);
     await loadBackupsList();
-    if (typeof loadAuditLogs === 'function') loadAuditLogs();
+    if (typeof loadAdminLogs === 'function') loadAdminLogs(1);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -541,7 +541,7 @@ async function runAutoReleaseNow() {
 
   refreshAllAdminViews();
   initQuickBookingForm();
-  if (typeof loadAuditLogs === 'function') loadAuditLogs();
+  if (typeof loadAdminLogs === 'function') loadAdminLogs(1);
 
   if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(

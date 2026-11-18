@@ -79,22 +79,58 @@ if ($method === 'POST') {
         require_once __DIR__ . '/services/admin_bookings_manage.php';
         $actor = require_staff_or_admin($pdo);
         $code = sanitize_string($data['code'] ?? '', 40);
-        $stmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1");
-        $stmt->execute([$code]);
-        $oldBooking = $stmt->fetch();
-        if (!$oldBooking) {
-            json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
+        if ($code === '') {
+            json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
         }
-        $totPrice = (int)($oldBooking['total_price'] ?? 0);
-        $paidAmt  = (int)($oldBooking['paid_amount'] ?? 0);
-        if ($totPrice > $paidAmt) {
-            $diff = $totPrice - $paidAmt;
-            json_error("Không thể hoàn tất đơn đặt sân khi chưa thanh toán đủ (Còn thiếu: " . number_format($diff, 0, ',', '.') . "đ). Vui lòng thu đủ hoặc Điều chỉnh giảm trước khi hoàn tất.", 400, 'ERR_UNPAID_COMPLETION');
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+            $stmt->execute([$code]);
+            $oldBooking = $stmt->fetch();
+            if (!$oldBooking) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
+            }
+            $currentStatus = (string)($oldBooking['status'] ?? '');
+            if (in_array($currentStatus, ['Đã hủy', 'Khách chưa đến'], true)) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_error('Không thể hoàn tất đơn đặt sân đã hủy hoặc khách chưa đến.', 400, 'ERR_INVALID_BOOKING_STATUS');
+            }
+            if (in_array($currentStatus, ['completed', 'Hoàn thành'], true)) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                json_response(['success' => true, 'idempotent' => true, 'message' => "Đơn {$code} đã ở trạng thái hoàn tất."]);
+            }
+            $totPrice = (int)($oldBooking['total_price'] ?? 0);
+            $paidAmt  = (int)($oldBooking['paid_amount'] ?? 0);
+            if ($totPrice > $paidAmt) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $diff = $totPrice - $paidAmt;
+                json_error("Không thể hoàn tất đơn đặt sân khi chưa thanh toán đủ (Còn thiếu: " . number_format($diff, 0, ',', '.') . "đ). Vui lòng thu đủ hoặc Điều chỉnh giảm trước khi hoàn tất.", 400, 'ERR_UNPAID_COMPLETION');
+            }
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = GREATEST(0, total_price - paid_amount) WHERE code = ?");
+            $stmt->execute([$code]);
+            $freshStmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1");
+            $freshStmt->execute([$code]);
+            $updatedBooking = $freshStmt->fetch() ?: $oldBooking;
+            award_booking_loyalty_points($pdo, $updatedBooking);
+            write_audit_log($pdo, 'COMPLETE_BOOKING', $code, $currentStatus, 'completed', $actor);
+            $pdo->commit();
+            json_response(['success' => true, 'message' => "Đã chuyển đơn {$code} sang trạng thái hoàn tất."]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("[COMPLETE BOOKING ERROR] " . $e->getMessage());
+            json_error('Lỗi hệ thống khi hoàn tất đơn đặt sân.', 500, 'ERR_COMPLETE_FAILED');
         }
-        $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = GREATEST(0, total_price - paid_amount) WHERE code = ?");
-        $stmt->execute([$code]);
-        write_audit_log($pdo, 'COMPLETE_BOOKING', $code, (string)($oldBooking['status'] ?? ''), 'completed', $actor);
-        json_response(['success' => true, 'message' => "Đã chuyển đơn {$code} sang trạng thái hoàn tất."]);
         exit;
     }
     if ($action === 'create' || empty($action)) {
@@ -124,7 +160,7 @@ if ($method === 'GET') {
         $stmt = $pdo->prepare("SELECT b.*, p.name as pitch_name, p.type_name, p.variant 
                                FROM bookings b 
                                JOIN pitches p ON b.pitch_id = p.id 
-                               WHERE b.user_id = ? OR (? != '' AND REPLACE(REPLACE(REPLACE(b.customer_phone, ' ', ''), '.', ''), '-', '') = ?)
+                               WHERE b.user_id = ? OR (? != '' AND REPLACE(REPLACE(REPLACE(b.phone, ' ', ''), '.', ''), '-', '') = ?)
                                ORDER BY b.id DESC LIMIT 50");
         $stmt->execute([(int)$currentUser['id'], $userPhone, $userPhone]);
     }

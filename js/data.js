@@ -341,6 +341,184 @@ const DEFAULT_PITCHES = [
     ],
     "variant": "hero",
     "description": "Sân 11 trung tâm hiện đại nhất hệ thống, tích hợp hệ thống bảng tỷ số LED và livestream đa góc máy phục vụ các giải đấu tranh cúp đỉnh cao."
+  },
+  {
+    "id": "P5-G",
+    "name": "Sân 5 - Sân G (Mẫu)",
+    "type": 5,
+    "typeName": "Sân 5 người",
+    "size": "20m x 40m",
+    "grass": "Cỏ nhân tạo tiêu chuẩn, đệm hạt cao su",
+    "basePrice": 260000,
+    "peakPrice": 360000,
+    "weekendPrice": 390000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Đèn LED",
+      "Bãi xe máy",
+      "Phòng thay đồ"
+    ],
+    "variant": "standard",
+    "description": "Sân 5 mẫu bổ sung để kiểm thử danh sách và đặt sân."
+  },
+  {
+    "id": "P5-H",
+    "name": "Sân 5 - Sân H",
+    "type": 5,
+    "typeName": "Sân 5 người",
+    "size": "20m x 40m",
+    "grass": "Cỏ nhân tạo Monofilament 50mm, thoát nước nhanh sau mưa",
+    "basePrice": 250000,
+    "peakPrice": 350000,
+    "weekendPrice": 380000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Đèn LED 400W chống chói",
+      "Bãi đỗ ô tô & xe máy",
+      "Nước suối miễn phí",
+      "Phòng thay đồ",
+      "Wifi"
+    ],
+    "variant": "standard",
+    "description": "Sân 5 chất lượng cao, vị trí thoáng mát."
+  },
+  {
+    "id": "P5-I",
+    "name": "Sân 5 - Sân I",
+    "type": 5,
+    "typeName": "Sân 5 người",
+    "size": "20m x 40m",
+    "grass": "Cỏ nhân tạo kim cương FIFA Quality Pro, đệm cao su EPDM",
+    "basePrice": 250000,
+    "peakPrice": 350000,
+    "weekendPrice": 380000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Đèn LED 400W chống chói",
+      "Bãi đỗ xe",
+      "Phòng thay đồ",
+      "Wifi"
+    ],
+    "variant": "bright",
+    "description": "Sân 5 mới bổ sung mặt cỏ êm ái."
+  },
+  {
+    "id": "P7-H",
+    "name": "Sân 7 - Sân H (Mẫu)",
+    "type": 7,
+    "typeName": "Sân 7 người",
+    "size": "30m x 50m",
+    "grass": "Cỏ nhân tạo sợi ngắn, thoát nước nhanh",
+    "basePrice": 430000,
+    "peakPrice": 630000,
+    "weekendPrice": 720000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Đèn LED",
+      "Bãi đỗ xe",
+      "Nước uống"
+    ],
+    "variant": "bright",
+    "description": "Sân 7 mẫu bổ sung, phù hợp các trận giao hữu buổi tối."
+  },
+  {
+    "id": "P7-I",
+    "name": "Sân 7 - Sân I",
+    "type": 7,
+    "typeName": "Sân 7 người",
+    "size": "30m x 50m",
+    "grass": "Cỏ sợi đan mật độ cao chuẩn thi đấu phong trào",
+    "basePrice": 450000,
+    "peakPrice": 650000,
+    "weekendPrice": 700000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Hệ thống chiếu sáng 8 trụ LED",
+      "Bãi xe ô tô",
+      "Phòng tắm nóng lạnh",
+      "Wifi"
+    ],
+    "variant": "deep",
+    "description": "Sân 7 khu khán đài C, đèn sáng rõ."
+  },
+  {
+    "id": "P7-K",
+    "name": "Sân 7 - Sân K",
+    "type": 7,
+    "typeName": "Sân 7 người",
+    "size": "30m x 50m",
+    "grass": "Cỏ nhân tạo 5cm tiêu chuẩn quốc tế, đàn hồi êm",
+    "basePrice": 450000,
+    "peakPrice": 650000,
+    "weekendPrice": 700000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Đèn LED công suất lớn",
+      "Bãi đỗ xe",
+      "Nước suối miễn phí",
+      "Wifi"
+    ],
+    "variant": "twin",
+    "description": "Sân 7 tiêu chuẩn mới cho các trận giao hữu."
+  },
+  {
+    "id": "P11-D",
+    "name": "Sân 11 - Sân D (Mẫu)",
+    "type": 11,
+    "typeName": "Sân 11 người",
+    "size": "68m x 105m",
+    "grass": "Cỏ nhân tạo tiêu chuẩn thi đấu",
+    "basePrice": 920000,
+    "peakPrice": 1420000,
+    "weekendPrice": 1550000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Đèn thi đấu",
+      "Khán đài",
+      "Phòng thay đồ"
+    ],
+    "variant": "hero",
+    "description": "Sân 11 mẫu bổ sung để kiểm thử cấu hình và hiển thị."
+  },
+  {
+    "id": "P11-E",
+    "name": "Sân 11 - Sân E (Tiêu Chuẩn FIFA)",
+    "type": 11,
+    "typeName": "Sân 11 người",
+    "size": "68m x 105m",
+    "grass": "Kích thước chuẩn FIFA 68m x 105m, cỏ tiêu chuẩn thi đấu quốc tế",
+    "basePrice": 900000,
+    "peakPrice": 1200000,
+    "weekendPrice": 1400000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Dàn đèn 12 cột chuẩn thi đấu",
+      "Khán đài có mái che",
+      "Phòng họp chiến thuật",
+      "Bãi xe lớn"
+    ],
+    "variant": "hero",
+    "description": "Sân 11 tiêu chuẩn quốc tế tổ chức các giải đấu chuyên nghiệp."
+  },
+  {
+    "id": "P11-F",
+    "name": "Sân 11 - Sân F (Khu Nam)",
+    "type": 11,
+    "typeName": "Sân 11 người",
+    "size": "68m x 105m",
+    "grass": "Mặt cỏ FIFA Quality Pro thoát nước ngầm hiện đại",
+    "basePrice": 900000,
+    "peakPrice": 1200000,
+    "weekendPrice": 1400000,
+    "status": "Hoạt động",
+    "amenities": [
+      "Dàn đèn LED 1200W",
+      "Phòng thay đồ máy lạnh",
+      "Khán đài",
+      "Camera Livestream"
+    ],
+    "variant": "hero",
+    "description": "Sân 11 khu Nam không gian rộng rãi cho các giải đấu cúp."
   }
 ];
 

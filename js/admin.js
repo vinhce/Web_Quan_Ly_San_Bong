@@ -244,7 +244,7 @@ async function handleAdminLogout() {
     sessionStorage.removeItem('sb_csrf_token');
     localStorage.removeItem('sb_current_user');
   } catch (e) {}
-  window.location.replace('/login');
+  window.location.replace(window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login');
 }
 window.handleAdminLogout = handleAdminLogout;
 
@@ -343,20 +343,21 @@ function applyRolePermissions() {
     }
   });
 
-  const kpiRevCard = document.getElementById('kpi-revenue-card');
+  const kpiRevCard = document.getElementById('kpi-card-revenue');
   const chartsRow = document.getElementById('overview-charts-row');
   const kpiGrid = document.getElementById('overview-kpi-grid');
 
   if (kpiRevCard) {
-    kpiRevCard.classList.toggle('hidden', !isMgrOrAdmin);
-    kpiRevCard.style.display = isMgrOrAdmin ? '' : 'none';
+    kpiRevCard.classList.toggle('hidden', !isAdmin);
+    kpiRevCard.style.display = isAdmin ? '' : 'none';
   }
   if (chartsRow) {
-    chartsRow.classList.toggle('hidden', !isMgrOrAdmin);
-    chartsRow.style.display = isMgrOrAdmin ? '' : 'none';
+    chartsRow.classList.toggle('hidden', !isAdmin);
+    chartsRow.style.display = isAdmin ? '' : 'none';
   }
   if (kpiGrid) {
-    if (isMgrOrAdmin) {
+    const showRevenueCard = Boolean(kpiRevCard) && isAdmin;
+    if (showRevenueCard) {
       kpiGrid.classList.remove('lg:grid-cols-3');
       kpiGrid.classList.add('lg:grid-cols-4');
     } else {
@@ -514,10 +515,9 @@ function switchAdminTab(moduleKey) {
   if (moduleKey === 'settings' && isOwnerAdmin()) {
     loadAdminSettings();
     loadStaffUsers();
-    if (typeof loadAuditLogs === 'function') loadAuditLogs();
+    if (typeof loadAdminLogs === 'function') loadAdminLogs(1);
     if (typeof loadNotificationLogs === 'function') loadNotificationLogs();
     if (typeof loadBackupsList === 'function') loadBackupsList();
-    if (typeof load2FaStatus === 'function') load2FaStatus();
   }
   if (moduleKey === 'logs' && isOwnerAdmin()) {
     if (typeof loadAdminLogs === 'function') {
@@ -595,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
           [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadGoldenHourRules, loadAdminSettings, loadStaffUsers, loadAuditLogs, loadNotificationLogs, loadBackupsList, load2FaStatus].forEach(fn => { if (typeof fn === 'function') fn(); });
+          [renderAdminVouchers, loadPricingTable, loadGoldenHourRules, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         return;
       }
@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
           [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadGoldenHourRules, loadAdminSettings, loadStaffUsers, loadAuditLogs, loadNotificationLogs, loadBackupsList, load2FaStatus].forEach(fn => { if (typeof fn === 'function') fn(); });
+          [renderAdminVouchers, loadPricingTable, loadGoldenHourRules, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         return;
       }
@@ -623,14 +623,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ? (data.message || 'Tài khoản của bạn đã bị Chủ sân tạm khóa.')
         : 'Phiên làm việc đã hết hạn hoặc không có quyền truy cập.';
       if (window.SanBongApp?.showToast) window.SanBongApp.showToast(msg, 'error');
-      window.location.replace('/login?redirect=portal-admin');
+      window.location.replace((window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin');
       return;
     })
     .catch(err => {
       console.warn('Lỗi kết nối auth/me:', err);
       if (!isAllowedAdmin) {
         document.documentElement.style.display = 'none';
-        window.location.replace('/login?redirect=portal-admin');
+        window.location.replace((window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin');
       }
     });
 

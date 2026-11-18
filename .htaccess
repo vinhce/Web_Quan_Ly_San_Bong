@@ -52,7 +52,7 @@ ServerSignature Off
 </IfModule>
 
 # 4. Chặn tuyệt đối truy cập các tệp tin & thư mục nhạy cảm
-<FilesMatch "^(\.env|\.git|\.agents|.*\.sql(\.gz)?|.*\.bak|.*\.log|.*\.tmp|.*\.md|composer\.(json|lock)|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json|test_pitches\.php)$">
+<FilesMatch "^(\.env|\.git|\.agents|.*\.sql(\.gz)?|.*\.bak|.*\.log|.*\.tmp|.*\.md|composer\.(json|lock)|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json|test_pitches\.php|test_.*\.php)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
@@ -78,7 +78,7 @@ LimitRequestBody 10485760
     Header always set Permissions-Policy "geolocation=(), camera=(self), microphone=()"
 
     # Content Security Policy (CSP) cho phép CDN Tailwind, Lucide, Fonts, VietQR API, SePay API, Turnstile
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://api.sepay.vn https://userapi.sepay.vn https://userapi-sandbox.sepay.vn https://api.telegram.org https://api.open-meteo.com https://api.vietqr.io; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self';"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://api.sepay.vn https://userapi.sepay.vn https://userapi-sandbox.sepay.vn https://api.telegram.org https://api.open-meteo.com https://api.vietqr.io; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self';"
 
     # Chống lưu cache cũ trên HTML, PHP và API động
     <FilesMatch "\.(html|htm|php|json)$">

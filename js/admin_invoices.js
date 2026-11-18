@@ -57,7 +57,7 @@ function openInvoicePrintModal(code) {
         </div>
         <div class="text-right">
           <div class="text-xs font-extrabold uppercase tracking-wider text-[#16A34A]">PHIẾU THANH TOÁN / HÓA ĐƠN</div>
-          <div class="font-mono font-extrabold text-sm text-[#0F172A] mt-0.5">#${b.code}</div>
+          <div class="font-mono font-extrabold text-sm text-[#0F172A] mt-0.5">#${escapeHTML(b.code)}</div>
           <div class="text-[11px] font-bold text-slate-600">${escapeSearchHTML(displayPayStatus)}</div>
         </div>
       </div>
@@ -153,7 +153,7 @@ function printInvoiceNow() {
     <html lang="vi">
     <head>
       <meta charset="UTF-8">
-      <title>Hóa Đơn #${activeInvoiceCode || 'SANBONGPRO'}</title>
+      <title>Hóa Đơn #${escapeHTML(activeInvoiceCode || 'SANBONGPRO')}</title>
       <script src="https://cdn.tailwindcss.com"></script>
       <style>
         @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

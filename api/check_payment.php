@@ -102,15 +102,77 @@ try {
                 $lockStmt->execute([(int)$booking['id']]);
                 $freshBooking = $lockStmt->fetch();
                 if ($freshBooking) {
-                    $currentPaid = (int)($freshBooking['paid_amount'] ?? 0);
-                    $targetAmount = $receivedAmount > 0 ? $receivedAmount : $expectedAmount;
-                    $newPaid = max($currentPaid, $targetAmount);
-                    $remainingAmount = max(0, (int)($freshBooking['total_price'] ?? 0) - $newPaid);
-                    $newPaymentStatus = ($remainingAmount <= 0) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
-                    $newStatus = ($freshBooking['status'] === 'Chờ duyệt cọc') ? 'Đã xác nhận' : $freshBooking['status'];
-                    $updateStmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
-                    $updateStmt->execute([$newStatus, $newPaymentStatus, $newPaid, $newPaid, (int)$freshBooking['id']]);
-                    award_booking_loyalty_points($pdo, $freshBooking);
+                    $freshStatus = (string)($freshBooking['status'] ?? '');
+                    $freshPayStatus = (string)($freshBooking['payment_status'] ?? '');
+                    $currentPaid = max(0, (int)($freshBooking['paid_amount'] ?? 0));
+                    $freshDeposit = max(0, (int)($freshBooking['deposit_amount'] ?? 0));
+
+                    if ($freshStatus === 'Đã hủy' || $freshStatus === 'Khách chưa đến') {
+                        $pdo->rollBack();
+                        json_response([
+                            'success'        => true,
+                            'paid'           => false,
+                            'expired'        => true,
+                            'code'           => $freshBooking['code'],
+                            'payment_status' => $freshPayStatus,
+                            'paidAmount'     => $currentPaid,
+                            'expectedAmount' => $freshDeposit,
+                            'message'        => 'Đơn đặt sân đã quá hạn giữ chỗ hoặc đã bị hủy.'
+                        ]);
+                    }
+
+                    $txInfo = is_array($result['transaction'] ?? null) ? $result['transaction'] : [];
+                    $txSepayId = trim((string)($txInfo['id'] ?? $txInfo['transaction_id'] ?? $txInfo['tx_id'] ?? ''));
+                    $txRef     = trim((string)($txInfo['reference'] ?? $txInfo['reference_code'] ?? $txInfo['reference_number'] ?? $txInfo['referenceCode'] ?? ''));
+                    $txContent = trim((string)($txInfo['content'] ?? $txInfo['transaction_content'] ?? $freshBooking['code']));
+                    $txDateRaw = trim((string)($txInfo['date'] ?? $txInfo['paid_at'] ?? $txInfo['transaction_date'] ?? ''));
+                    $txDateTs  = $txDateRaw !== '' ? strtotime($txDateRaw) : false;
+                    $txDateDb  = $txDateTs ? date('Y-m-d H:i:s', $txDateTs) : date('Y-m-d H:i:s');
+                    $txAmount  = $receivedAmount > 0 ? $receivedAmount : $expectedAmount;
+                    $txFingerprint = hash(
+                        'sha256',
+                        $txSepayId !== ''
+                            ? "ID:{$txSepayId}"
+                            : ($txRef !== ''
+                                ? "REF:{$txRef}|AMT:{$txAmount}"
+                                : "AMT:{$txAmount}|CNT:{$txContent}|DT:{$txDateDb}")
+                    );
+                    $matchStatusTx = ($txAmount > $expectedAmount) ? 'overpaid' : 'matched';
+
+                    $insTx = $pdo->prepare("
+                        INSERT IGNORE INTO bank_transactions
+                            (sepay_tx_id, tx_fingerprint, reference_code, transaction_content, detected_booking_code, matched_booking_code, transfer_amount, expected_amount, match_status, transaction_date, created_at, resolved_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    ");
+                    $insTx->execute([
+                        $txSepayId !== '' ? substr($txSepayId, 0, 80) : null,
+                        $txFingerprint,
+                        $txRef !== '' ? substr($txRef, 0, 100) : null,
+                        $txContent !== '' ? $txContent : $freshBooking['code'],
+                        $freshBooking['code'],
+                        $freshBooking['code'],
+                        $txAmount,
+                        $expectedAmount,
+                        $matchStatusTx,
+                        $txDateDb
+                    ]);
+
+                    $alreadyConfirmed = in_array($freshPayStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)
+                        || ($freshDeposit > 0 && $currentPaid >= $freshDeposit);
+
+                    if ($alreadyConfirmed) {
+                        $newPaid = $currentPaid;
+                        $newPaymentStatus = $freshPayStatus;
+                    } else {
+                        $targetAmount = $receivedAmount > 0 ? $receivedAmount : $expectedAmount;
+                        $newPaid = max($currentPaid, $targetAmount);
+                        $remainingAmount = max(0, (int)($freshBooking['total_price'] ?? 0) - $newPaid);
+                        $newPaymentStatus = ($remainingAmount <= 0) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
+                        $newStatus = in_array($freshStatus, ['Chờ duyệt cọc', 'Giữ chỗ'], true) ? 'Đã xác nhận' : $freshStatus;
+                        $updateStmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
+                        $updateStmt->execute([$newStatus, $newPaymentStatus, $newPaid, $newPaid, (int)$freshBooking['id']]);
+                        award_booking_loyalty_points($pdo, $freshBooking);
+                    }
                 }
                 $pdo->commit();
                 $result['payment_status'] = $newPaymentStatus;
