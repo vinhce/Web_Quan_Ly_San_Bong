@@ -34,6 +34,20 @@ CREATE TABLE IF NOT EXISTS `users` (
     INDEX `idx_users_phone` (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `password_resets` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `code_hash` CHAR(64) NOT NULL,
+    `expires_at` DATETIME NOT NULL,
+    `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    `used_at` DATETIME DEFAULT NULL,
+    `request_ip` VARCHAR(45) NOT NULL DEFAULT '',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_pw_reset_user_exp` (`user_id`, `expires_at`),
+    INDEX `idx_pw_reset_created` (`created_at`),
+    CONSTRAINT `fk_pw_resets_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 2. Bảng Danh mục Sân bóng (Pitches)
 CREATE TABLE IF NOT EXISTS `pitches` (
     `id` VARCHAR(20) PRIMARY KEY,

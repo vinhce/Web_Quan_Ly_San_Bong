@@ -44,11 +44,11 @@ ServerSignature Off
     RewriteRule ^register/?$ /login?tab=register [R=301,L,QSA]
 
     # 3.3. Loại bỏ đuôi .html và thư mục html/ trên URL -> Chuyển hướng 301 sang Clean URLs
-    RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /(?:html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking)\.html(\?[^\ ]*)?\ HTTP/ [NC]
-    RewriteRule ^(html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking)\.html$ /$2 [R=301,L]
+    RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /(?:html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking|forgot-password)\.html(\?[^\ ]*)?\ HTTP/ [NC]
+    RewriteRule ^(html/)?(fields|booking|checkout|success|history|login|field-detail|matchmaking|forgot-password)\.html$ /$2 [R=301,L]
 
     # 3.4. Rewrite nội bộ phục vụ file từ thư mục html/ cho Clean URLs
-    RewriteRule ^(fields|booking|checkout|success|history|login|field-detail|matchmaking)/?$ html/$1.html [L,QSA]
+    RewriteRule ^(fields|booking|checkout|success|history|login|field-detail|matchmaking|forgot-password)/?$ html/$1.html [L,QSA]
 </IfModule>
 
 # 4. Chặn tuyệt đối truy cập các tệp tin & thư mục nhạy cảm

@@ -491,14 +491,22 @@ try {
             $todayStats['today_total'] = null;
         }
 
+        $pendingVietqrCount = (int)$pdo->query("
+            SELECT COUNT(*)
+            FROM bookings b
+            WHERE b.payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%')
+              AND b.status NOT IN ('Đã hủy')
+        ")->fetchColumn();
+
         json_response([
             'success' => true,
             'data'    => [
-                'todayStats'    => $todayStats,
-                'todayBookings' => $todayBookings,
-                'pitchStats'    => $pitchStats,
-                'weeklySeries'  => $weeklySeries,
-                'byPitch'       => array_values($byPitchMap)
+                'todayStats'         => $todayStats,
+                'todayBookings'      => $todayBookings,
+                'pitchStats'         => $pitchStats,
+                'weeklySeries'       => $weeklySeries,
+                'byPitch'            => array_values($byPitchMap),
+                'pendingVietqrCount' => $pendingVietqrCount
             ]
         ]);
     }

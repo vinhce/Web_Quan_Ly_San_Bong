@@ -96,7 +96,7 @@ function get_rate_limit_file(string $action, ?string $identifier = null): string
     }
     $cleanAction = preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower(trim($action)));
     $ip = get_client_ip();
-    $scope = ($cleanAction === 'login_acct' && !empty($identifier))
+    $scope = (in_array($cleanAction, ['login_acct', 'forgot_pw_acct'], true) && !empty($identifier))
         ? $cleanAction . '|' . strtolower(trim($identifier))
         : (!empty($identifier) ? $cleanAction . '|' . $ip . '|' . strtolower(trim($identifier)) : $cleanAction . '|' . $ip);
     return $dir . '/rl_' . hash('sha256', $scope) . '.json';

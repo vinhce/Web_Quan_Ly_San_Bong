@@ -325,6 +325,10 @@ const ADMIN_LOG_CATALOG = {
       "label": "Đặt lại mật khẩu nhân sự",
       "group": "security"
     },
+    "FORGOT_PASSWORD_REQUEST": {
+      "label": "Yêu cầu khôi phục mật khẩu",
+      "group": "security"
+    },
     "AUTO_CANCEL_EXPIRED": {
       "label": "Tự động hủy đơn quá hạn",
       "group": "automation"
@@ -763,6 +767,7 @@ const ADMIN_LOG_ACTION_COLOR_MAP = {
   'STAFF_ROLE_CHANGE': 'orange',
   'CHANGE_PASSWORD': 'orange',
   'STAFF_RESET_PASSWORD': 'orange',
+  'FORGOT_PASSWORD_REQUEST': 'orange',
   'DB_BACKUP_DOWNLOAD': 'orange',
   'SAMPLE_DATA_CLEAN': 'orange',
   'SERVICE_DELETE': 'orange',
@@ -1493,6 +1498,9 @@ function resolveAdminLogTarget(item) {
     }
     if (action.includes('CHANGE_PASSWORD')) {
       return { typeLabel: 'Tài khoản', idText: 'Đổi mật khẩu' };
+    }
+    if (['FORGOT_PASSWORD_REQUEST'].includes(action)) {
+      return { typeLabel: 'Bảo mật', idText: 'Khôi phục mật khẩu' };
     }
     if (action.includes('WALKIN')) {
       return { typeLabel: 'Đặt tại quầy', idText: 'Đơn tại quầy' };

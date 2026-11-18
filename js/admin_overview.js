@@ -148,7 +148,8 @@ function applyOverviewKPIsData(data) {
   const totalCount = Number(todayStats.count ?? todayBookings.length ?? 0);
   let playingCount = 0;
   let waitingCheckinCount = 0;
-  let pendingVietQRCount = 0;
+  const hasApiPendingVietQR = data?.pendingVietqrCount !== undefined && data?.pendingVietqrCount !== null;
+  let pendingVietQRCount = hasApiPendingVietQR ? (Number(data.pendingVietqrCount) || 0) : 0;
   let activeTodayBookings = 0;
 
   todayBookings.forEach(b => {
@@ -156,7 +157,7 @@ function applyOverviewKPIsData(data) {
     const paySt = b.paymentStatus || b.payment_status || '';
     if (st === 'Đang đá') playingCount++;
     if (st === 'Đã xác nhận' || st === 'Chờ duyệt cọc') waitingCheckinCount++;
-    if (paySt === 'Chờ duyệt cọc' && st !== 'Đã hủy' && st !== 'Khách chưa đến') pendingVietQRCount++;
+    if (!hasApiPendingVietQR && (paySt === 'Chờ duyệt cọc' || paySt === 'Chờ cọc 30%') && st !== 'Đã hủy' && st !== 'Khách chưa đến') pendingVietQRCount++;
     if (st !== 'Đã hủy' && st !== 'Khách chưa đến') activeTodayBookings++;
   });
 

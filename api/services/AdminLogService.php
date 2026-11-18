@@ -354,6 +354,11 @@ class AdminLogService
         if ($action === 'STAFF_RESET_PASSWORD') {
             return "{$actorName} đặt lại mật khẩu cho {$targetDisplay}{$timeSuffix}";
         }
+        if ($action === 'FORGOT_PASSWORD_REQUEST') {
+            return $newRaw !== ''
+                ? "{$actorName} gửi yêu cầu đặt lại mật khẩu ({$newRaw}){$timeSuffix}"
+                : "{$actorName} gửi yêu cầu đặt lại mật khẩu cho {$targetDisplay}{$timeSuffix}";
+        }
 
         // 5. Trường hợp: Cài đặt hệ thống & cấu hình
         if ($action === 'UPDATE_SETTINGS') {

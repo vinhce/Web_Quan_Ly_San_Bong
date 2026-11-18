@@ -11,7 +11,7 @@ if (!defined('SANBONG_APP')) {
 function _rate_limit_db_key(string $action, ?string $identifier = null): array {
     $act = substr(preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower(trim($action))), 0, 50);
     $ip = function_exists('get_client_ip') ? get_client_ip() : '127.0.0.1';
-    $key = ($act === 'login_acct' && !empty($identifier))
+    $key = (in_array($act, ['login_acct', 'forgot_pw_acct'], true) && !empty($identifier))
         ? strtolower(trim($identifier))
         : (!empty($identifier) ? $ip . '|' . strtolower(trim($identifier)) : $ip);
     return [$act, strlen($key) > 45 ? substr(hash('sha256', $key), 0, 45) : $key];

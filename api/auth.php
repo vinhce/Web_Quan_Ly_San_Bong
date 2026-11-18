@@ -640,6 +640,14 @@ if ($action === 'register') {
     ], 201);
 }
 
+if ($action === 'forgot_password') {
+    if (!$pdo instanceof PDO) {
+        json_error('Không thể kết nối cơ sở dữ liệu. Vui lòng thử lại sau.', 503, 'ERR_DB_UNAVAILABLE');
+    }
+    require_once __DIR__ . '/services/forgot_password_service.php';
+    handle_forgot_password($pdo, $data);
+}
+
 json_response([
     'success'  => false,
     'message'  => 'Hành động không hợp lệ.',
