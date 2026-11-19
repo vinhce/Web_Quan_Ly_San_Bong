@@ -9,6 +9,9 @@ $isLibOnly = defined('SANBONG_CRON_LIB_ONLY') && SANBONG_CRON_LIB_ONLY === true;
 
 if (!function_exists('generate_database_dump')) {
     function generate_database_dump(PDO $pdo, string $targetFile): array {
+        if (function_exists('loadEnv')) {
+            loadEnv();
+        }
         $backupDir = dirname($targetFile);
         if (!is_dir($backupDir)) {
             @mkdir($backupDir, 0750, true);
@@ -231,6 +234,12 @@ if (!$isLibOnly) {
 
     loadEnv();
     $customBackupDir = trim(getenv('BACKUP_DIR') ?: ($_ENV['BACKUP_DIR'] ?? ''));
+    if ($customBackupDir === '') {
+        $parentBackup = dirname(__DIR__, 2) . '/backup';
+        if (is_dir($parentBackup) && is_writable($parentBackup)) {
+            $customBackupDir = $parentBackup;
+        }
+    }
     $backupDir = ($customBackupDir !== '' && (is_dir($customBackupDir) || @mkdir($customBackupDir, 0750, true))) ? rtrim($customBackupDir, '/\\') : __DIR__ . '/../backups';
     $pdo = getDBConnection(false);
     $ext = function_exists('gzopen') ? '.sql.gz' : '.sql';

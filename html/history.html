@@ -48,7 +48,9 @@
         <div class="ui-card p-6 space-y-5">
           <div class="flex items-center gap-4">
             <div id="member-avatar" class="w-14 h-14 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-extrabold text-xl flex items-center justify-center shadow-sm">
-              👤
+              <svg class="w-7 h-7 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
             </div>
             <div>
               <div id="member-name" class="font-heading font-extrabold text-lg text-[#0F172A]">Hội viên</div>
@@ -81,6 +83,12 @@
             <a href="/fields" class="px-3.5 py-2.5 rounded-lg text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] block">
               Đặt sân mới
             </a>
+            <button id="btn-edit-profile" type="button" onclick="openEditProfileModal()" class="w-full text-left px-3.5 py-2.5 rounded-lg text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] flex items-center justify-between font-semibold">
+              <span>Sửa thông tin tài khoản</span>
+              <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
             <a id="btn-history-login" href="/login?redirect=history" class="hidden w-full text-center px-3.5 py-2.5 rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] block font-bold text-xs mt-2">
               Đăng nhập tài khoản
             </a>
@@ -183,6 +191,44 @@
           Đóng cửa sổ
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Sửa thông tin tài khoản -->
+  <div id="modal-edit-profile" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-heading font-bold text-base text-[#0F172A]">Cập nhật thông tin tài khoản</h3>
+        <button type="button" onclick="closeEditProfileModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-200 min-h-[44px]">✕</button>
+      </div>
+      <form id="form-edit-profile" onsubmit="handleSaveProfile(event)" class="p-5 space-y-4">
+        <div>
+          <label for="edit-profile-name" class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Họ và tên *</label>
+          <input type="text" id="edit-profile-name" required class="input-field text-sm font-semibold">
+          <div id="edit-profile-name-err" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
+        </div>
+        <div>
+          <label for="edit-profile-phone" class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Số điện thoại *</label>
+          <input type="tel" id="edit-profile-phone" required class="input-field text-sm font-semibold">
+          <div id="edit-profile-phone-err" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
+        </div>
+        <div id="edit-profile-pwd-wrap" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+          <label for="edit-profile-pwd" class="block text-xs font-bold text-amber-900 uppercase tracking-wider">
+            Xác thực mật khẩu (Bắt buộc khi đổi SĐT) *
+          </label>
+          <input type="password" id="edit-profile-pwd" placeholder="Nhập mật khẩu tài khoản hiện tại" class="input-field text-sm bg-white">
+          <div id="edit-profile-pwd-err" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
+        </div>
+        <div id="edit-profile-general-msg" class="text-xs font-semibold hidden"></div>
+        <div class="flex items-center gap-3 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeEditProfileModal()" class="btn-base btn-secondary flex-1 text-xs font-bold min-h-[44px]">
+            Hủy
+          </button>
+          <button type="submit" id="btn-submit-edit-profile" class="btn-base btn-primary flex-1 text-xs font-bold min-h-[44px]">
+            Lưu thay đổi
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

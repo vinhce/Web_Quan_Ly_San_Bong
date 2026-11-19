@@ -74,9 +74,8 @@ if ($method === 'GET') {
             $isMine = ($currentUser && (int)($p['user_id'] ?? 0) === (int)$currentUser['id']);
             $p['is_mine'] = $isMine;
             $p['phone_masked'] = mask_phone_number($p['phone'] ?? '');
-            if ($currentUser !== null || $isMine) {
-                // Giữ nguyên $p['phone'] cho hội viên đã đăng nhập để liên hệ
-            } else {
+            $canSeePhone = $isMine || in_array($currentUser['role'] ?? '', ['admin', 'manager', 'staff'], true);
+            if (!$canSeePhone) {
                 unset($p['phone']);
             }
             unset($p['opponent_phone']);

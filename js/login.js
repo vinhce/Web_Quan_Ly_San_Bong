@@ -37,6 +37,8 @@ function resolveAppUrl(target) {
     .replace(/^\/+/, '')
     .replace(/\.html(?=$|[?#])/, '');
 
+  if (/^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|\/\/)/.test(clean) || clean.includes('\\') || clean.includes('..')) return root;
+
   if (clean === 'portal-admin' || clean === 'portal-admin/') {
     return `${root}portal-admin/`;
   }
@@ -48,7 +50,12 @@ function syncStoredUser(user) {
   try {
     const raw = JSON.stringify(user);
     sessionStorage.setItem('sb_current_user', raw);
-    localStorage.setItem('sb_current_user', raw);
+    // Chỉ lưu localStorage cho khách hàng thường (user), không lưu cho admin/staff tránh autofill trang khách
+    if (user.role === 'user') {
+      localStorage.setItem('sb_current_user', raw);
+    } else {
+      localStorage.removeItem('sb_current_user');
+    }
     window.sb_current_user = user;
   } catch (e) {
     console.warn('Storage sync error:', e);
@@ -66,13 +73,11 @@ function handleLoginRedirect(user) {
       const cleanParam = String(redirectParam).trim().replace(/^\/+/, '').replace(/^html\//, '');
       const baseRoute = cleanParam.split(/[?#]/)[0].replace(/\/+$/, '');
       if (baseRoute === 'portal-admin' || baseRoute === 'portal-admin/index') {
-        window.location.href = resolveAppUrl('portal-admin/');
+        window.location.href = resolveAppUrl(cleanParam);
         return;
       }
-      window.location.href = resolveAppUrl(cleanParam);
-    } else {
-      window.location.href = resolveAppUrl('portal-admin/');
     }
+    window.location.href = resolveAppUrl('portal-admin/');
     return;
   }
 
@@ -139,19 +144,29 @@ function setAuthMessage(msg, type = 'error') {
     return;
   }
 
-  box.classList.remove('hidden', 'bg-rose-50', 'text-rose-700', 'border-rose-200', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
+  box.classList.remove('hidden', 'bg-rose-50', 'text-rose-700', 'border-rose-200', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200', 'bg-blue-50', 'text-blue-800', 'border-blue-200');
+
+  const safeMsg = window.SanBongApp?.escapeHTML
+    ? window.SanBongApp.escapeHTML(msg)
+    : String(msg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
   if (type === 'success') {
     box.classList.add('bg-emerald-50', 'text-emerald-800', 'border', 'border-emerald-200');
     box.innerHTML = `
       <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-      <div class="leading-snug">${window.SanBongApp ? window.SanBongApp.escapeHTML(msg) : msg}</div>
+      <div class="leading-snug">${safeMsg}</div>
+    `;
+  } else if (type === 'info') {
+    box.classList.add('bg-blue-50', 'text-blue-800', 'border', 'border-blue-200');
+    box.innerHTML = `
+      <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+      <div class="leading-snug font-semibold">${safeMsg}</div>
     `;
   } else {
     box.classList.add('bg-rose-50', 'text-rose-700', 'border', 'border-rose-200');
     box.innerHTML = `
       <svg class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-      <div class="leading-snug">${window.SanBongApp ? window.SanBongApp.escapeHTML(msg) : msg}</div>
+      <div class="leading-snug">${safeMsg}</div>
     `;
   }
 }
@@ -215,6 +230,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       })
       .catch(() => {});
+  }
+
+  // Hiển thị thông báo 1 dòng khi được chuyển hướng từ đặt sân
+  const redirectParam = urlParams.get('redirect') || '';
+  if (redirectParam === 'booking' || sessionStorage.getItem('sb_login_notice')) {
+    setAuthMessage('Đăng nhập để tiếp tục đặt sân', 'info');
+    sessionStorage.removeItem('sb_login_notice');
   }
 
   // Legal modal buttons

@@ -265,6 +265,13 @@ if ($action === 'sample_data') {
     $mgr = require_manager_or_admin($pdo);
     $subAction = sanitize_string($data['sub_action'] ?? $_GET['sub_action'] ?? 'status', 20);
 
+    if (in_array($subAction, ['clean', 'seed'], true)) {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
+        require_csrf_if_session_authenticated($data);
+    }
+
     if ($subAction === 'clean') {
         $deletedCount = clear_sample_test_data($pdo);
         write_audit_log($pdo, 'SAMPLE_DATA_CLEAN', 'ALL_TEST', null, "Đã dọn dẹp {$deletedCount} bản ghi mẫu [TEST]", $mgr);

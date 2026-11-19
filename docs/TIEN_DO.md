@@ -43,3 +43,34 @@
 
 ## Lỗi mở
 - Không có lỗi mở.
+
+## Nâng cấp Trang /booking: Toast, Đăng nhập & Chống trùng ca
+### Pha 1: Phân tích Trang /booking, Toast & Chống trùng ca
+1. **Xử lý nút & Toast**: Nút checkout chạy `proceedToCheckout()` (`js/booking.js:498`), gán sự kiện tại `js/booking_ui.js:620`. Toast thông báo bắn qua `window.SanBongApp.showToast()` (`js/booking.js:591`).
+2. **Nguyên nhân 9 toast lặp**: Đăng ký sự kiện lặp lại nhiều lần khi tải trang/đồng bộ (`sb-data-synced`, `sb-auth-synced`) khi thiếu cờ khóa duy nhất, cộng với hàm `showToast()` trong `js/ui.js` thiếu cơ chế gộp trùng (deduplication) và không giới hạn số lượng toast hiển thị.
+3. **Lưới ca time_slots**: Bảng có 18 ca (S01–S18), tồn tại song song cả ca 60' và ca 90' gây chồng lấn giờ (S10 đè S09+S11; S13 đè S12+S14; S15 đè S16; S17 đè S16+S18).
+4. **Lỗ hổng chống trùng**: `booking_creator.php:312` chỉ kiểm tra `slot_id = ?` thay vì khoảng thời gian, khiến 2 đơn cùng sân cùng ngày đặt các ca chồng giờ nhau (vd S09 và S10) vẫn thành công.
+
+### Pha 2: Thực hiện sửa Toast, Đăng nhập & Chống trùng ca
+- **A. Khách chưa đăng nhập**: Nút mặc định ghi "Đăng nhập để đặt sân". Bấm nút không bắn toast, lưu draft vào `sessionStorage`, chuyển thẳng sang `/login?redirect=booking` với thông báo 1 dòng "Đăng nhập để tiếp tục đặt sân"; đăng nhập xong tự quay lại `/booking` khôi phục đầy đủ sân/ngày/ca/dịch vụ.
+- **B. Toast & Form Validation**: `showToast()` có cơ chế gộp trùng nội dung (dedup), tối đa 3 toast cùng lúc, tự đóng sau 4s, đặt góc dưới phải (`bottom-5 right-5`), có nút đóng, `aria-live="polite"`. Khi lỗi form, gom mọi trường thiếu thành đúng 1 toast rõ ràng, viền đỏ `border-rose-500`, tự cuộn và focus vào ô lỗi đầu tiên. Nút đặt sân có cờ `_isProceedingCheckout` chống spam click.
+- **C. Chống trùng khoảng thời gian (Interval Overlap)**:
+  - **Server**: Trong `booking_creator.php`, truy vấn `SELECT ... FOR UPDATE` so sánh khoảng thời gian: `start_time < sEnd AND end_time > sStart` trên mọi đơn đang giữ chỗ/chờ duyệt/đã xác nhận cùng sân cùng ngày (kể cả đơn nhiều tuần). Từ chối 409 `ERR_DOUBLE_BOOKING` nếu trùng.
+  - **UI**: Trong `booking.js` `renderSlots()`, khi chọn 1 ca (`activeSlotObj`), tự động tính toán và khóa tất cả các ca khác chồng giờ với nó, hiển thị nhãn "Trùng giờ", chip màu xám không thể bấm.
+- **D. Nghiệm thu 7 tiêu chí bắt buộc**: 15/15 test asserts (100% PASS trên `tests/test_v10_overlap_and_toast.php`). Cú pháp PHP/JS sạch, không phát sinh lỗi trong `php_errors.log`.
+
+
+
+## [XONG] Gọn bước 4 "Thông tin người đặt sân" & Thống nhất nguồn xác thực (Pha 1 + Pha 2 hoàn tất)
+### Pha 1: Kết luận phân tích (Nguồn tự điền, Lệch nguồn & Cache-Control)
+1. **Nguyên nhân tự điền Admin**: Khi đăng nhập portal admin, `login.js`/`admin.js` ghi dữ liệu vào `localStorage.sb_current_user`. Vì cùng origin (domain/localhost), `booking_ui.js` đọc `db.getUser()` từ `localStorage` và tự điền thông tin admin vào form trước khi API auth kiểm tra xong.
+2. **Lệch nguồn & Cơ chế session**: Header phụ thuộc API `/api/auth.php?action=me` (PHP session), trong khi form đọc đồng bộ từ `localStorage`. Đã thống nhất dùng hàm `currentCustomer(?PDO $pdo)` làm single source of truth; tài khoản admin/staff portal không được coi là khách đặt sân; đăng nhập portal không còn ghi admin vào `localStorage`.
+3. **Cache-Control chống rò rỉ**: Cấu hình `Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0` cho toàn bộ tài nguyên động (HTML/PHP/API) trong `.htaccess` và header PHP để đảm bảo không bị lưu đệm qua CDN/hosting/proxy giữa các người dùng.
+
+### Pha 2: Thực hiện chuẩn hóa & Nghiệm thu
+- **A. Nguồn sự thật**: Triển khai `currentCustomer(?PDO $pdo)` đọc session server, tách biệt hoàn toàn portal operator và khách hàng.
+- **B. Mục 4 chỉ render khi đã đăng nhập**: Khách chưa đăng nhập ẩn hoàn toàn mục 4 (`class="hidden"`), hiển thị nhắc nhở `#summary-login-reminder`, nút tiếp tục đổi thành "Đăng nhập để đặt sân" điều hướng `/login?redirect=booking` và giữ nguyên trạng thái chọn sân trong `sessionStorage`.
+- **C. Mục 4 cho người đã đăng nhập (gọn)**: Thẻ tóm tắt "<Họ tên> · <SĐT> · Hội viên <hạng>". Nút "Đặt hộ bạn bè / Đổi thông tin" trượt 2 ô tên/SĐT chỉ áp dụng cho đơn này, không đổi hồ sơ. Ghi chú ẩn sau nút "+ Thêm ghi chú cho ban quản lý sân". Voucher 1 dòng + chip gợi ý tải động từ DB.
+- **D. Server hardening (`create_booking`)**: Bắt buộc đăng nhập (chưa đăng nhập trả 401). Tự lấy `user_id` và thông tin mặc định từ session server, triệt tiêu nguy cơ IDOR/mạo danh. Chỉ nhận tên/SĐT khi đánh dấu "Đặt hộ bạn bè" (vẫn gán `user_id` người đặt). Điểm thưởng (`points_log`) luôn gán cho khách đặt sân.
+- **E. Bảo mật & Giao diện**: Header `Cache-Control` no-store. Bỏ toàn bộ emoji, dùng 100% SVG cục bộ. Widget rác "hi — Blocked" bị chặn và ẩn hoàn toàn.
+- **F. Nghiệm thu 9 kịch bản bắt buộc**: Đạt 25/25 test asserts (100% PASS trên `tests/test_v9_booking_streamline.php`). Không phát sinh lỗi cú pháp hay file rác.

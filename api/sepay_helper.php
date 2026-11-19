@@ -109,7 +109,9 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
     }
     $cleanCode = str_replace(['-', ' '], '', strtoupper($bookingCode));
 
-    $ledgerFile = __DIR__ . '/sepay_paid_orders.json';
+    $ledgerFile = file_exists(__DIR__ . '/../logs/sepay_paid_orders.json')
+        ? __DIR__ . '/../logs/sepay_paid_orders.json'
+        : __DIR__ . '/sepay_paid_orders.json';
     if (file_exists($ledgerFile)) {
         $paidOrders = json_decode(@file_get_contents($ledgerFile), true);
         if (is_array($paidOrders) && isset($paidOrders[$cleanCode])) {

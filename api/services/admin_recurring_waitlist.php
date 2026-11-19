@@ -53,6 +53,9 @@ function handle_admin_recurring_waitlist(string $action, string $method, PDO $pd
 
     // 5.2 Lịch lặp cố định: Tạo lịch cố định
     if ($action === 'create_recurring_schedule') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $customerName = sanitize_string($data['customer_name'] ?? $data['customerName'] ?? '', 100);
         $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
         $pitchId = sanitize_string($data['pitch_id'] ?? $data['pitchId'] ?? '', 20);
@@ -150,6 +153,9 @@ function handle_admin_recurring_waitlist(string $action, string $method, PDO $pd
 
     // 5.2 Lịch lặp cố định: Hủy chuỗi lịch
     if ($action === 'cancel_recurring_schedule') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $mgr = require_manager_or_admin($pdo);
         $scheduleId = (int)($data['schedule_id'] ?? $data['id'] ?? 0);
         $reason = sanitize_string($data['reason'] ?? 'Chủ sân/Khách dừng lịch cố định', 255);
@@ -189,6 +195,9 @@ function handle_admin_recurring_waitlist(string $action, string $method, PDO $pd
 
     // 5.2 Lịch lặp cố định: Xin nghỉ 1 buổi
     if ($action === 'skip_recurring_booking') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $bookingCode = sanitize_string($data['booking_code'] ?? '', 40);
         $reason = sanitize_string($data['reason'] ?? 'Khách xin nghỉ trận tuần này', 255);
         if (empty($bookingCode)) {
@@ -254,6 +263,9 @@ function handle_admin_recurring_waitlist(string $action, string $method, PDO $pd
 
     // 5.3 Waitlist: Gán khách vào ca đá
     if ($action === 'assign_waitlist') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $waitlistId = (int)($data['waitlist_id'] ?? $data['id'] ?? 0);
         $bookingCode = strtoupper(sanitize_string($data['booking_code'] ?? '', 40));
         if ($waitlistId <= 0) {
@@ -362,6 +374,9 @@ function handle_admin_recurring_waitlist(string $action, string $method, PDO $pd
 
     // 5.3 Waitlist: Báo sân trống / Hủy
     if ($action === 'notify_waitlist' || $action === 'cancel_waitlist') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $waitlistId = (int)($data['waitlist_id'] ?? $data['id'] ?? 0);
         if ($waitlistId <= 0) {
             json_error('Thiếu ID danh sách chờ.', 400, 'ERR_WAITLIST_ID');

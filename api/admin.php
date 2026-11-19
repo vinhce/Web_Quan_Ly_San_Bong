@@ -34,9 +34,9 @@ $postOnlyActions = [
     'update_customer_crm', 'update_customer', 'adjust_points', 'create_recurring_schedule', 'cancel_recurring_schedule',
     'skip_recurring_booking', 'assign_waitlist', 'notify_waitlist', 'cancel_waitlist',
     'save_voucher', 'delete_voucher', 'save_golden_hour', 'delete_golden_hour',
-    'save_maintenance', 'update_maintenance', 'add_expense', 'delete_expense',
+    'save_maintenance', 'update_maintenance', 'add_expense', 'update_expense', 'delete_expense',
     'test_telegram', 'run_match_reminders', 'run_recurring_cron',
-    'moderate_matchmaking', 'backup_database_now', 'update_member'
+    'moderate_matchmaking', 'backup_database_now', 'update_member', 'adjust_customer_points'
 ];
 if (in_array($action, $postOnlyActions, true) && strtoupper($method) !== 'POST') {
     json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
@@ -562,6 +562,10 @@ try {
             $detail .= " (Lý do: {$reason})";
         }
 
+        if ($status === 'Ẩn' || $oldStatus === 'Ẩn') {
+            $actor = require_manager_or_admin($pdo);
+        }
+
         // Yêu cầu 1, 2, 3: So sánh trạng thái cũ/mới bằng logAdminChange
         $statusDiff = logAdminChange($pdo, 'PITCH_STATUS', $oldStatus, $detail, $pitchId, 'pitch', $actor);
         if (!$statusDiff['has_change']) {
@@ -570,10 +574,6 @@ try {
                 'has_changed' => false,
                 'message'     => "Không có thay đổi trạng thái cho sân {$pitchId} (trạng thái hiện tại: {$status})."
             ]);
-        }
-
-        if ($status === 'Ẩn' || $oldStatus === 'Ẩn') {
-            $actor = require_manager_or_admin($pdo);
         }
 
         $stmt = $pdo->prepare("UPDATE pitches SET status = ? WHERE id = ?");

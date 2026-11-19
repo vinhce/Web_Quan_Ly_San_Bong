@@ -25,8 +25,10 @@ function renderDailyRevenueSVG(dailyRevenue) {
     const barH = Math.max(4, Math.round((rev / maxRev) * chartH));
     const x = Math.round(idx * (w / dailyRevenue.length) + (w / dailyRevenue.length - barWidth) / 2);
     const y = h - paddingBottom - barH;
-    const dateLabel = String(d.date || '').slice(5).replace('-', '/');
-    const tipText = `Ngày: ${d.date} | Doanh thu: ${rev.toLocaleString('vi-VN')}đ (${d.matches || 0} ca)`;
+    const safeDate = escapeSearchHTML(String(d.date || ''));
+    const safeMatches = Number(d.matches || 0);
+    const dateLabel = safeDate.slice(5).replace('-', '/');
+    const tipText = `Ngày: ${safeDate} | Doanh thu: ${rev.toLocaleString('vi-VN')}đ (${safeMatches} ca)`;
 
     return `
       <g class="cursor-pointer group">

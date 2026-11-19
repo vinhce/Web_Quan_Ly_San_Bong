@@ -11,14 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
-  const currentUser = db.getUser();
-  if (!currentUser || !currentUser.name) {
-    if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Vui lòng đăng nhập hoặc đăng ký tài khoản để tiếp tục thanh toán chuyển khoản!', 'info', 3000); }
-    const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
-    window.location.replace(loginUrl);
-    return;
-  }
-
+  const currentUser = db.getCustomer ? db.getCustomer() : (db ? db.getUser() : null);
   const rawDraft = sessionStorage.getItem('sb_booking_draft');
   if (rawDraft) {
     try {
@@ -26,6 +19,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       currentDraft = null;
     }
+  }
+
+  if (!currentUser) {
+    if (window.SanBongApp?.showToast) { window.SanBongApp.showToast('Vui lòng đăng nhập để tiến hành đặt sân!', 'info', 3000); }
+    const bookingUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking';
+    window.location.replace(bookingUrl);
+    return;
   }
 
   if (!currentDraft) {

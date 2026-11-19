@@ -13,8 +13,8 @@ function initFieldsPage() {
   const urlParams = new URLSearchParams(window.location.search);
   const typeParam = urlParams.get('type');
   selectedFilterDate = urlParams.get('date') || '';
-  if (typeParam && typeParam !== 'all') {
-    const radio = document.querySelector(`input[name="filter-type"][value="${typeParam}"]`);
+  if (typeParam && ['5', '7', '11'].includes(String(typeParam))) {
+    const radio = document.querySelector('input[name="filter-type"][value="' + typeParam + '"]');
     if (radio) radio.checked = true;
   }
 

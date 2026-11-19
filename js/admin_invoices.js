@@ -37,7 +37,7 @@ function openInvoicePrintModal(code) {
 
   const overtimeRow = overtimeFee > 0 ? `
     <tr class="border-b border-slate-100">
-      <td class="py-2">Phụ thu đá thêm giờ (+${b.overtimeMinutes || 30} phút)</td>
+      <td class="py-2">Phụ thu đá thêm giờ (+${Number(b.overtimeMinutes || 0) || 30} phút)</td>
       <td class="py-2 text-center">1</td>
       <td class="py-2 text-right">${window.SanBongApp.formatVND(overtimeFee)}</td>
       <td class="py-2 text-right font-bold">${window.SanBongApp.formatVND(overtimeFee)}</td>
@@ -67,7 +67,7 @@ function openInvoicePrintModal(code) {
         <div>Số điện thoại: <b class="font-mono text-[#0F172A]">${escapeSearchHTML(b.phone)}</b></div>
         <div>Sân thi đấu: <b class="text-[#16A34A]">${escapeSearchHTML(b.pitchName)}</b></div>
         <div>Khung giờ: <b class="text-[#0F172A]">${escapeSearchHTML(b.slotTime)} (${window.SanBongApp.formatDateVN(b.date)})</b></div>
-        ${b.weeksCount && b.weeksCount > 1 ? `<div class="col-span-2 text-purple-700 font-bold">📅 Hợp đồng đặt sân cố định theo tháng: ${b.weeksCount} tuần liên tiếp</div>` : ''}
+        ${Number(b.weeksCount || 0) > 1 ? `<div class="col-span-2 text-purple-700 font-bold">📅 Hợp đồng đặt sân cố định theo tháng: ${Number(b.weeksCount || 0)} tuần liên tiếp</div>` : ''}
       </div>
 
       <table class="w-full text-xs border-collapse">
@@ -82,8 +82,8 @@ function openInvoicePrintModal(code) {
         <tbody>
           <tr class="border-b border-slate-100">
             <td class="py-2 font-semibold">Tiền thuê sân (${escapeSearchHTML(b.pitchName)} · ${escapeSearchHTML(b.slotTime)})</td>
-            <td class="py-2 text-center">${b.weeksCount || 1}</td>
-            <td class="py-2 text-right">${window.SanBongApp.formatVND(Math.round(pitchPrice / (b.weeksCount || 1)))}</td>
+            <td class="py-2 text-center">${Number(b.weeksCount || 0) || 1}</td>
+            <td class="py-2 text-right">${window.SanBongApp.formatVND(Math.round(pitchPrice / (Number(b.weeksCount || 0) || 1)))}</td>
             <td class="py-2 text-right font-bold">${window.SanBongApp.formatVND(pitchPrice)}</td>
           </tr>
           ${overtimeRow}

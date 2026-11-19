@@ -116,15 +116,18 @@ if ($hmacFailed || !$isAuthorizedWebhook) {
     exit;
 }
 
-$logEntry = [
-    'time'           => date('Y-m-d H:i:s'),
-    'remote_ip'      => $_SERVER['REMOTE_ADDR'] ?? '',
-    'user_agent'     => $_SERVER['HTTP_USER_AGENT'] ?? '',
-    'auth_header'    => $maskedAuthHeader,
-    'raw_payload'    => $rawPayload,
-    'parsed_payload' => $payload
-];
-@file_put_contents(__DIR__ . '/../logs/webhook_debug.log', json_encode($logEntry, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n---\n", FILE_APPEND);
+$appDebug = (strtolower(trim($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?: '')) === 'true');
+if ($appDebug) {
+    $logEntry = [
+        'time'           => date('Y-m-d H:i:s'),
+        'remote_ip'      => $_SERVER['REMOTE_ADDR'] ?? '',
+        'user_agent'     => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'auth_header'    => $maskedAuthHeader,
+        'raw_payload'    => $rawPayload,
+        'parsed_payload' => $payload
+    ];
+    @file_put_contents(__DIR__ . '/../logs/webhook_debug.log', json_encode($logEntry, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n---\n", FILE_APPEND);
+}
 
 if ($transferType === 'out') {
     header('Content-Type: application/json; charset=utf-8');

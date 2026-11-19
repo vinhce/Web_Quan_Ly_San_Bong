@@ -17,6 +17,9 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
 
     // 5.4 Vouchers: Lưu mã giảm giá (Chỉ Admin)
     if ($action === 'save_voucher') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $admin = require_admin($pdo);
         $code = strtoupper(sanitize_string($data['code'] ?? '', 30));
         $desc = sanitize_string($data['description'] ?? '', 255);
@@ -126,6 +129,9 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
 
     // 5.4 Vouchers: Xóa mã
     if ($action === 'delete_voucher') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $admin = require_admin($pdo);
         $code = strtoupper(sanitize_string($data['code'] ?? '', 30));
         $stmt = $pdo->prepare("DELETE FROM vouchers WHERE code = ?");
@@ -150,6 +156,9 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
 
     // 5.4 Giờ vàng: Lưu quy tắc
     if ($action === 'save_golden_hour') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $admin = require_admin($pdo);
         $ruleName = sanitize_string($data['rule_name'] ?? '', 100);
         $rawPitchType = !empty($data['pitch_type']) ? (int)$data['pitch_type'] : null;
@@ -226,6 +235,9 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
 
     // 5.4 Giờ vàng: Xóa quy tắc
     if ($action === 'delete_golden_hour') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $admin = require_admin($pdo);
         $id = (int)($data['id'] ?? 0);
         $stmt = $pdo->prepare("DELETE FROM golden_hour_rules WHERE id = ?");
@@ -250,6 +262,9 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
 
     // 6.3 Lịch bảo trì sân: Thêm/Sửa
     if ($action === 'save_maintenance') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $mgr = require_manager_or_admin($pdo);
         $id = (int)($data['id'] ?? 0);
         $pitchId = sanitize_string($data['pitch_id'] ?? '', 20);
@@ -318,6 +333,9 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
 
     // 6.3 Lịch bảo trì sân: Cập nhật trạng thái
     if ($action === 'update_maintenance') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
         $mgr = require_manager_or_admin($pdo);
         $id = (int)($data['id'] ?? 0);
         $status = sanitize_string($data['status'] ?? 'completed', 20);

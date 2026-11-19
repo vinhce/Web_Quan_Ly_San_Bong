@@ -22,6 +22,16 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
     }
     $data = array_merge($_POST, $data);
     $action = $_GET['action'] ?? $data['action'] ?? 'crm_customers';
+    $postOnlyActions = [
+        'adjust_points', 'adjust_customer_points', 'update_customer_crm', 'update_customer',
+        'update_member', 'create_recurring_schedule', 'cancel_recurring_schedule',
+        'skip_recurring_booking', 'assign_waitlist', 'notify_waitlist', 'cancel_waitlist',
+        'save_voucher', 'delete_voucher', 'save_golden_hour', 'delete_golden_hour',
+        'save_maintenance', 'update_maintenance'
+    ];
+    if (in_array($action, $postOnlyActions, true) && strtoupper($method) !== 'POST') {
+        json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+    }
     if (!in_array(strtoupper($method), ['GET', 'POST'], true)) {
         require_csrf_if_session_authenticated($data);
         json_error('Phương thức HTTP không được hỗ trợ.', 405, 'ERR_METHOD_NOT_ALLOWED');
@@ -371,22 +381,24 @@ if (!function_exists('admin_map_booking')) {
             $pointsLogs = $plStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        // Lấy 10 dòng nhật ký quản trị gần nhất cho khách hàng này
+        // Chỉ Admin/Manager được phép xem nhật ký quản trị của khách hàng
         $auditLogs = [];
-        $alStmt = $pdo->prepare("
-            SELECT id, user_id, actor_name, actor_role, action, target_type, target_id, booking_id, old_value, new_value, ip, created_at
-            FROM audit_logs
-            WHERE (target_type = 'customer' AND target_id = ?)
-               OR target_id = ?
-               OR (user_id = ? AND target_type = 'user')
-               OR old_value LIKE ?
-               OR new_value LIKE ?
-            ORDER BY id DESC
-            LIMIT 10
-        ");
-        $phoneLike = '%' . $cleanPhone . '%';
-        $alStmt->execute([$cleanPhone, $cleanPhone, (int)($userId ?? 0), $phoneLike, $phoneLike]);
-        $auditLogs = $alStmt->fetchAll(PDO::FETCH_ASSOC);
+        if (in_array($actor['role'] ?? '', ['admin', 'manager'], true)) {
+            $alStmt = $pdo->prepare("
+                SELECT id, user_id, actor_name, actor_role, action, target_type, target_id, booking_id, old_value, new_value, ip, created_at
+                FROM audit_logs
+                WHERE (target_type = 'customer' AND target_id = ?)
+                   OR target_id = ?
+                   OR (user_id = ? AND target_type = 'user')
+                   OR old_value LIKE ?
+                   OR new_value LIKE ?
+                ORDER BY id DESC
+                LIMIT 10
+            ");
+            $phoneLike = '%' . $cleanPhone . '%';
+            $alStmt->execute([$cleanPhone, $cleanPhone, (int)($userId ?? 0), $phoneLike, $phoneLike]);
+            $auditLogs = $alStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $displayName = trim((string)($uRow['full_name'] ?? ''));
         if ($displayName === '') {
@@ -458,8 +470,9 @@ if (!function_exists('admin_map_booking')) {
         ]);
     }
 
-    // 5.1 CRM: Lấy nhật ký quản trị của khách hàng
+    // 5.1 CRM: Lấy nhật ký quản trị của khách hàng (chỉ Quản lý hoặc Quản trị viên)
     if ($action === 'customer_audit_logs') {
+        require_manager_or_admin($pdo);
         $phone = sanitize_string($_GET['phone'] ?? $data['phone'] ?? '', 25);
         $cleanPhone = normalize_phone($phone);
         $userId = (int)($_GET['user_id'] ?? $data['user_id'] ?? 0);

@@ -10,6 +10,11 @@ DirectoryIndex index.php index.html
 # 2. Ẩn chữ ký phiên bản máy chủ (Server Signature)
 ServerSignature Off
 
+# 2.1. Trang lỗi tùy chỉnh (ẩn tên máy chủ web)
+ErrorDocument 403 /html/403.html
+ErrorDocument 404 /html/404.html
+ErrorDocument 500 /html/500.html
+
 # 3. Điều hướng Clean URLs & Phân quyền đường dẫn Admin
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -17,17 +22,26 @@ ServerSignature Off
     # Cho phép truyền Authorization Header vào PHP (cần cho Webhook & API)
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # 3.0a. Chuyển hướng 301 từ www sang non-www HTTPS (1 bước, tránh vòng lặp)
+    RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
+    RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+
     # 3.0. Bắt buộc HTTPS 301 trên môi trường Production (Mục 5.1)
     RewriteCond %{HTTPS} off
     RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
     RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+    # Chặn mọi file và thư mục ẩn (.env*, .git/*, .agents/*) trừ .well-known cho SSL
+    RewriteCond %{REQUEST_URI} !(^|/)\.well-known(/|$) [NC]
+    RewriteRule (^|/)\. - [F,L]
+
     # Chặn truy cập trực tiếp các file .json, .log trong api/ và logs/
     RewriteRule ^(api|logs)/.*\.(json|log)$ - [F,L]
 
     # Chặn truy cập trực tiếp vào các thư mục nội bộ & partials (áp dụng trước mọi Clean URL rewrite)
-    RewriteRule ^(config|database|logs|scripts|backups|cron|portal-admin/partials|docs|tests)(/|$) - [NC,F,L]
+    RewriteRule ^(config|database|sql|logs|scripts|backups|cron|portal-admin/partials|docs|tests)(/|$) - [NC,F,L]
 
     # Route /portal-admin/ và /portal-admin/index.html qua cổng kiểm tra session PHP
     RewriteRule ^portal-admin/?$ portal-admin/index.php [L,QSA]
@@ -52,7 +66,7 @@ ServerSignature Off
 </IfModule>
 
 # 4. Chặn tuyệt đối truy cập các tệp tin & thư mục nhạy cảm
-<FilesMatch "^(\.env|\.git|\.agents|.*\.sql(\.gz)?|.*\.bak|.*\.log|.*\.tmp|.*\.md|composer\.(json|lock)|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json|test_pitches\.php|test_.*\.php)$">
+<FilesMatch "(?i)^(\.env(\..*)?|\.git.*|\.agents|.*\.sql(\.gz)?|.*\.bak|.*\.log|.*\.tmp|.*\.md|.*\.py|composer\.(json|lock)|package(-lock)?\.json|phpinfo\.php|adminer\.php|sepay_paid_orders\.json|expected_orders\.json|rate_limits\.json|test_pitches\.php|test_.*\.php)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
@@ -62,6 +76,8 @@ LimitRequestBody 10485760
 
 # 5. Thiết lập các Security Headers bảo vệ trình duyệt (Mục 5.2)
 <IfModule mod_headers.c>
+    Header always unset X-Powered-By
+
     # Bắt buộc HTTPS HSTS (1 năm, gồm subdomains)
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 
@@ -78,11 +94,11 @@ LimitRequestBody 10485760
     Header always set Permissions-Policy "geolocation=(), camera=(self), microphone=()"
 
     # Content Security Policy (CSP) cho phép CDN Tailwind, Lucide, Fonts, VietQR API, SePay API, Turnstile
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://api.sepay.vn https://userapi.sepay.vn https://userapi-sandbox.sepay.vn https://api.telegram.org https://api.open-meteo.com https://api.vietqr.io; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self';"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://api.sepay.vn https://userapi.sepay.vn https://userapi-sandbox.sepay.vn https://api.telegram.org https://api.open-meteo.com https://api.vietqr.io; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self';"
 
-    # Chống lưu cache cũ trên HTML, PHP và API động
+    # Chống lưu cache cũ trên HTML, PHP và API động (Bảo vệ dữ liệu cá nhân theo NĐ 13/2023)
     <FilesMatch "\.(html|htm|php|json)$">
-        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header set Cache-Control "private, no-cache, no-store, must-revalidate, max-age=0"
         Header set Pragma "no-cache"
         Header set Expires "0"
     </FilesMatch>

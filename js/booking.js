@@ -170,9 +170,24 @@ function renderSlots(skipServerFetch = false) {
   if (Array.isArray(serverList) && serverList.length > 0) {
     slotsWithStatus.forEach(s => {
       if (s.status === 'Bảo trì') return;
-      const foundSrv = serverList.find(b => (b.slotId || b.slot_id) === s.id || (b.slotTime || b.slot_time) === s.time);
+      const sStart = String(s.start || (s.time ? s.time.split('-')[0] : '') || '').trim();
+      const sEnd = String(s.end || (s.time ? s.time.split('-')[1] : '') || '').trim();
+
+      const foundSrv = serverList.find(b => {
+        if ((b.slotId || b.slot_id) === s.id || (b.slotTime || b.slot_time) === s.time) {
+          return true;
+        }
+        const bStart = String(b.startTime || b.start_time || (b.slotTime || b.slot_time || '').split('-')[0] || '').trim();
+        const bEnd = String(b.endTime || b.end_time || (b.slotTime || b.slot_time || '').split('-')[1] || '').trim();
+        if (sStart && sEnd && bStart && bEnd) {
+          return (sStart < bEnd && sEnd > bStart);
+        }
+        return false;
+      });
+
       if (foundSrv && s.status === 'Trống') {
         s.status = foundSrv.status === 'Đang đá' ? 'Đang đá' : 'Đã đặt';
+        s.isOverlapping = (foundSrv.slotId || foundSrv.slot_id) !== s.id;
       }
     });
   }
@@ -193,45 +208,71 @@ function renderSlots(skipServerFetch = false) {
     const firstFree = slotsWithStatus.find(s => s.status === 'Trống' && !isSlotPast(s));
     selectedSlotId = firstFree ? firstFree.id : '';
   }
+
+  const activeSlotObj = slotsWithStatus.find(s => s.id === selectedSlotId);
+  const selStart = activeSlotObj ? String(activeSlotObj.start || (activeSlotObj.time ? activeSlotObj.time.split('-')[0] : '') || '').trim() : '';
+  const selEnd = activeSlotObj ? String(activeSlotObj.end || (activeSlotObj.time ? activeSlotObj.time.split('-')[1] : '') || '').trim() : '';
+
   container.innerHTML = slotsWithStatus.map(s => {
     const isPast = isSlotPast(s);
     const isSelected = s.id === selectedSlotId;
     const isMaint = s.status === 'Bảo trì';
     const isBooked = s.status === 'Đã đặt' || s.status === 'Khóa';
     const isPlaying = s.status === 'Đang đá';
+
+    const sStart = String(s.start || (s.time ? s.time.split('-')[0] : '') || '').trim();
+    const sEnd = String(s.end || (s.time ? s.time.split('-')[1] : '') || '').trim();
+    const isOverlappingSelected = Boolean(
+      activeSlotObj &&
+      !isSelected &&
+      selStart && selEnd && sStart && sEnd &&
+      (sStart < selEnd && sEnd > selStart)
+    );
+
     const safeId = esc(s.id);
     const safeTime = esc(s.time);
     let chipCls = 'bg-white border border-[#16A34A] text-[#0F172A] hover:bg-[#DCFCE7]/30';
     let statusBadge = `<span class="text-[11px] text-[#16A34A] font-semibold">${s.isPeak ? 'Cao điểm' : 'Thường'}</span>`;
+    let chipTitle = '';
+
     if (isPast) {
       chipCls = 'bg-slate-100 border border-slate-200 text-slate-400 opacity-50 cursor-not-allowed';
       statusBadge = `<span class="text-[11px] font-bold text-slate-400">⏱️ Đã qua</span>`;
+      chipTitle = 'Khung giờ này đã qua';
     } else if (isMaint) {
       chipCls = 'hatch-slate border border-[#CBD5E1] text-[#64748B] cursor-not-allowed';
       statusBadge = `<span class="text-[11px] font-bold text-[#475569]">🛠️ Bảo trì</span>`;
+      chipTitle = esc(s.maintenanceReason || 'Sân đang bảo trì trong khung giờ này');
     } else if (isSelected) {
       chipCls = 'bg-[#16A34A] text-white border-[#16A34A] shadow-md';
       statusBadge = `<span class="text-[11px] text-white font-bold">✓ Đang chọn</span>`;
+      chipTitle = 'Khung giờ bạn đang chọn';
     } else if (isPlaying) {
       chipCls = 'bg-[#DBEAFE] border border-[#2563EB] text-[#2563EB] cursor-not-allowed';
       statusBadge = `<span class="text-[11px] font-bold">Đang đá</span>`;
+      chipTitle = 'Sân đang có trận đấu diễn ra';
     } else if (isBooked) {
       chipCls = 'bg-[#FEF3C7]/40 border border-[#F59E0B] text-[#B45309] hover:bg-[#FEF3C7] cursor-pointer';
       statusBadge = `<span class="text-[11px] font-bold text-[#B45309]">🔔 Đăng ký chờ</span>`;
+      chipTitle = 'Khung giờ đã kín. Nhấn để đăng ký danh sách chờ!';
+    } else if (isOverlappingSelected) {
+      chipCls = 'bg-slate-100 border border-slate-300 text-slate-400 opacity-60 cursor-not-allowed select-none';
+      statusBadge = `<span class="text-[11px] font-bold text-slate-500">Trùng giờ</span>`;
+      chipTitle = `Trùng giờ với ca ${activeSlotObj.time} đang chọn`;
     }
-    const clickAttr = (isPast || isPlaying || isMaint)
+
+    const clickAttr = (isPast || isPlaying || isMaint || isOverlappingSelected)
       ? ''
       : (isBooked
         ? `onclick="openWaitlistPrompt(this.getAttribute('data-slot-id'), this.getAttribute('data-slot-time'))"`
         : `onclick="selectSlot(this.getAttribute('data-slot-id'))"`);
     return `
-      <div data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} class="slot-chip p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${isPast ? 'Khung giờ này đã qua' : (isMaint ? esc(s.maintenanceReason || 'Sân đang bảo trì trong khung giờ này') : (isBooked ? 'Khung giờ đã kín. Nhấn để đăng ký danh sách chờ!' : ''))}">
+      <div data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} class="slot-chip p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${chipTitle}">
         <div class="text-xs sm:text-sm font-extrabold">${safeTime}</div>
         <div class="mt-1">${statusBadge}</div>
       </div>
     `;
   }).join('');
-  const activeSlotObj = slotsWithStatus.find(s => s.id === selectedSlotId);
   const badge = document.getElementById('selected-slot-badge');
   if (badge) {
     if (activeSlotObj) {
@@ -341,6 +382,7 @@ function applyVoucher() {
   if (!code) {
     appliedVoucherCode = '';
     msg.textContent = '';
+    if (typeof window.renderVoucherQuickList === 'function') window.renderVoucherQuickList();
     updateBillSummary();
     return;
   }
@@ -361,6 +403,7 @@ function applyVoucher() {
     msg.textContent = `✕ ${testCalc?.voucherError || 'Mã giảm giá không hợp lệ hoặc đã hết hạn.'}`;
     msg.className = 'text-xs mt-1.5 font-semibold text-[#DC2626]';
   }
+  if (typeof window.renderVoucherQuickList === 'function') window.renderVoucherQuickList();
   updateBillSummary();
 }
 
@@ -454,38 +497,25 @@ function updateBillSummary() {
   }
 }
 
-function proceedToCheckout() {
+function saveCurrentBookingDraft() {
   const db = window.SanBongApp?.SanBongDB;
   const user = db ? db.getUser() : null;
-  let name = document.getElementById('cust-name')?.value.trim() || '';
-  let phone = document.getElementById('cust-phone')?.value.trim() || '';
-  let note = document.getElementById('cust-note')?.value.trim() || '';
-  const agree = document.getElementById('policy-agree')?.checked;
-  if (isCurrentPhoneBlacklisted) {
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('SĐT này đang bị khóa đặt sân. Vui lòng liên hệ quản lý sân.', 'error');
-    }
-    return;
-  }
-  if (!selectedSlotId) {
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Vui lòng chọn một khung giờ thi đấu còn trống trước khi tiếp tục.', 'warning');
-    }
-    const slotsEl = document.getElementById('slots-container');
-    if (slotsEl) {
-      slotsEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      slotsEl.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2');
-      setTimeout(() => slotsEl.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2'), 2500);
-    }
-    return;
-  }
   const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
   const promo = db ? db.getPackagePromotion(weeks) : null;
-  if (weeks > 1) {
-    const dateLabels = monthlyDates.map(d => d.label).join(', ');
-    const giftNote = promo ? ` [Tài trợ mỗi trận: ${promo.giftSummary}]` : '';
-    note = (note ? note + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]${giftNote}`;
+  const isFriend = Boolean(window.isBookingForFriend);
+
+  let name = '';
+  let phone = '';
+
+  if (user && !isFriend) {
+    name = user.full_name || user.name || '';
+    phone = user.phone || document.getElementById('user-missing-phone')?.value.trim() || '';
+  } else {
+    name = document.getElementById('cust-name')?.value.trim() || '';
+    phone = document.getElementById('cust-phone')?.value.trim() || '';
   }
+  let note = document.getElementById('cust-note')?.value.trim() || '';
+
   const bookingDraft = {
     pitchId: selectedPitchId,
     date: selectedDate,
@@ -496,55 +526,183 @@ function proceedToCheckout() {
     packagePromotion: promo,
     services: appliedServices,
     voucherCode: appliedVoucherCode,
-    customerName: name || user?.name || '',
-    phone: phone || user?.phone || '',
-    note: note
+    customerName: name,
+    phone: phone,
+    note: note,
+    is_booking_for_friend: isFriend
   };
   sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
-  if (!user || !user.name) {
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Đang chuyển hướng sang Đăng nhập / Đăng ký để định danh người chuyển cọc và tích điểm thưởng...', 'info', 3000);
-    }
-    const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
-    setTimeout(() => {
-      window.location.href = loginUrl;
-    }, 500);
+  return bookingDraft;
+}
+window.saveCurrentBookingDraft = saveCurrentBookingDraft;
+
+function proceedToCheckout() {
+  if (window._isProceedingCheckout) return;
+  window._isProceedingCheckout = true;
+  setTimeout(() => { window._isProceedingCheckout = false; }, 1000);
+
+  const db = window.SanBongApp?.SanBongDB;
+  const user = db && db.getCustomer ? db.getCustomer() : (db ? db.getUser() : null);
+  const isCustomer = Boolean(user && !['admin', 'manager', 'staff'].includes(String(user.role).toLowerCase()));
+
+  // Nếu khách chưa đăng nhập: lưu draft không PII và chuyển hướng đăng nhập (KHÔNG hiện toast)
+  if (!isCustomer) {
+    saveCurrentBookingDraft();
+    sessionStorage.setItem('sb_login_notice', 'Đăng nhập để tiếp tục đặt sân');
+    const loginUrl = window.SanBongHelpers?.getRelativePath ? window.SanBongHelpers.getRelativePath('login?redirect=booking') : '/login?redirect=booking';
+    window.location.href = loginUrl;
     return;
   }
-  if (!name && user?.name) name = user.name;
-  if (!phone && user?.phone) phone = user.phone;
-  if (!name || !phone) {
+
+  const isFriend = Boolean(window.isBookingForFriend);
+
+  // Xóa các thông báo lỗi cũ dưới từng ô
+  ['cust-name-error', 'cust-phone-error', 'user-missing-phone-error', 'cust-note-error'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+  });
+  ['cust-name', 'cust-phone', 'user-missing-phone', 'cust-note'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('border-rose-500', 'ring-2', 'ring-rose-100');
+  });
+  const slotsCont = document.getElementById('slots-container');
+  if (slotsCont) slotsCont.classList.remove('ring-2', 'ring-rose-500', 'ring-offset-2', 'ring-amber-400');
+  const agreeParent = document.getElementById('policy-agree')?.parentElement;
+  if (agreeParent) agreeParent.classList.remove('text-rose-600', 'font-bold');
+
+  if (isCurrentPhoneBlacklisted) {
     if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Vui lòng nhập họ tên và số điện thoại người đặt sân.', 'error');
+      window.SanBongApp.showToast('SĐT này đang bị khóa đặt sân. Vui lòng liên hệ quản lý sân.', 'error');
     }
+    return;
+  }
+
+  const missingFields = [];
+  let firstInvalidEl = null;
+
+  if (!selectedSlotId) {
+    missingFields.push('Khung giờ thi đấu');
+    if (slotsCont) {
+      slotsCont.classList.add('ring-2', 'ring-rose-500', 'ring-offset-2');
+      if (!firstInvalidEl) firstInvalidEl = slotsCont;
+    }
+  }
+
+  let name = '';
+  let phone = '';
+
+  if (!isFriend) {
+    name = user.full_name || user.name || '';
+    phone = user.phone || '';
+    if (!phone) {
+      const missingInput = document.getElementById('user-missing-phone');
+      phone = missingInput?.value.trim() || '';
+      if (!/^0\d{9}$/.test(phone)) {
+        missingFields.push('Số điện thoại (10 chữ số)');
+        const errEl = document.getElementById('user-missing-phone-error');
+        if (errEl) { errEl.textContent = 'Hồ sơ chưa có SĐT. Vui lòng nhập số điện thoại hợp lệ (10 chữ số).'; errEl.classList.remove('hidden'); }
+        missingInput?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+        if (!firstInvalidEl) firstInvalidEl = missingInput;
+      }
+    }
+  } else {
     const nameInput = document.getElementById('cust-name');
     const phoneInput = document.getElementById('cust-phone');
-    if (!name && nameInput) {
-      nameInput.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
-      nameInput.focus();
-    } else if (!phone && phoneInput) {
-      phoneInput.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
-      phoneInput.focus();
+    name = nameInput?.value.trim() || '';
+    phone = phoneInput?.value.trim() || '';
+
+    if (name.length < 2 || name.length > 60) {
+      missingFields.push('Họ tên người được đặt hộ (2-60 ký tự)');
+      const errEl = document.getElementById('cust-name-error');
+      if (errEl) {
+        errEl.textContent = 'Họ tên người được đặt hộ phải từ 2 đến 60 ký tự.';
+        errEl.classList.remove('hidden');
+      }
+      nameInput?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      if (!firstInvalidEl) firstInvalidEl = nameInput;
     }
-    return;
+
+    if (!/^0\d{9}$/.test(phone)) {
+      missingFields.push('Số điện thoại người được đặt hộ (10 chữ số bắt đầu bằng 0)');
+      const errEl = document.getElementById('cust-phone-error');
+      if (errEl) {
+        errEl.textContent = 'Số điện thoại người được đặt hộ không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).';
+        errEl.classList.remove('hidden');
+      }
+      phoneInput?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      if (!firstInvalidEl) firstInvalidEl = phoneInput;
+    }
   }
+
+  let note = document.getElementById('cust-note')?.value.trim() || '';
+  if (note.length > 300) {
+    missingFields.push('Ghi chú (tối đa 300 ký tự)');
+    const errEl = document.getElementById('cust-note-error');
+    if (errEl) { errEl.textContent = 'Ghi chú tối đa 300 ký tự.'; errEl.classList.remove('hidden'); }
+    const noteEl = document.getElementById('cust-note');
+    noteEl?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+    if (!firstInvalidEl) firstInvalidEl = noteEl;
+  }
+
+  const agree = document.getElementById('policy-agree')?.checked;
   if (!agree) {
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Vui lòng tích chọn đồng ý với điều khoản xử lý dữ liệu và chính sách cọc.', 'warning');
-    }
+    missingFields.push('Đồng ý điều khoản đặt cọc');
     const agreeEl = document.getElementById('policy-agree');
-    if (agreeEl) {
-      agreeEl.focus();
-      agreeEl.parentElement?.classList.add('text-rose-600', 'font-bold');
-      setTimeout(() => agreeEl.parentElement?.classList.remove('text-rose-600', 'font-bold'), 2500);
+    if (agreeEl?.parentElement) {
+      agreeEl.parentElement.classList.add('text-rose-600', 'font-bold');
+    }
+    if (!firstInvalidEl) firstInvalidEl = agreeEl;
+  }
+
+  if (missingFields.length > 0) {
+    if (firstInvalidEl) {
+      firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (typeof firstInvalidEl.focus === 'function') {
+        firstInvalidEl.focus();
+      }
+    }
+    const singleMsg = 'Vui lòng hoàn thiện: ' + missingFields.join(', ') + '.';
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast(singleMsg, 'error');
     }
     return;
   }
-  bookingDraft.customerName = name;
-  bookingDraft.phone = phone;
-  bookingDraft.privacy_consent = true;
-  bookingDraft.turnstile_token = bookingTurnstileToken || '';
+
+  const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
+  const promo = db ? db.getPackagePromotion(weeks) : null;
+  if (weeks > 1) {
+    const dateLabels = monthlyDates.map(d => d.label).join(', ');
+    const giftNote = promo ? ` [Tài trợ mỗi trận: ${promo.giftSummary}]` : '';
+    note = (note ? note + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]${giftNote}`;
+  }
+
+  const bookingDraft = {
+    pitchId: selectedPitchId,
+    date: selectedDate,
+    slotId: selectedSlotId,
+    bookingMode: bookingMode,
+    weeksCount: weeks,
+    monthlyDates: monthlyDates,
+    packagePromotion: promo,
+    services: appliedServices,
+    voucherCode: appliedVoucherCode,
+    customerName: name,
+    phone: phone,
+    note: note,
+    is_booking_for_friend: isFriend,
+    privacy_consent: true,
+    turnstile_token: bookingTurnstileToken || ''
+  };
+
   sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
+
+  const checkoutBtn = document.getElementById('proceed-checkout-btn');
+  if (checkoutBtn) {
+    checkoutBtn.disabled = true;
+    checkoutBtn.classList.add('opacity-70', 'cursor-not-allowed');
+    checkoutBtn.textContent = 'Đang chuyển sang thanh toán...';
+  }
+
   window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('checkout') : '/checkout';
 }
 

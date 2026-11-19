@@ -6,6 +6,7 @@ require_once __DIR__ . '/services/booking_operations.php';
 require_once __DIR__ . '/services/booking_creator.php';
 require_once __DIR__ . '/services/booking_queries.php';
 
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
 secure_session_start();
 $pdo = getDBConnection(false);
 $method = $_SERVER['REQUEST_METHOD'];

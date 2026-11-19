@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/security_helper.php';
 
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
 secure_session_start();
 $pdo = getDBConnection(false);
 $method = $_SERVER['REQUEST_METHOD'];
@@ -86,12 +87,18 @@ if ($method === 'GET' && $action === 'me') {
             $_SESSION['user']['name'] = $_SESSION['user']['full_name'] ?? $_SESSION['user']['username'] ?? 'Hội viên';
             unset($_SESSION['user']['totp_secret']);
         }
+        $isOperator = is_portal_operator($_SESSION['user'] ?? null);
+        $customer = $isOperator ? null : currentCustomer($pdo);
         json_response([
             'success'            => true,
             'authenticated'      => true,
             'logged_in'          => true,
             'turnstile_site_key' => $siteKey,
-            'user'               => $_SESSION['user']
+            'user'               => $_SESSION['user'],
+            'customer'           => $customer,
+            'is_operator'        => $isOperator,
+            'is_customer'        => !empty($customer),
+            'csrf_token'         => generate_csrf_token()
         ]);
     } else {
         json_response([
@@ -99,7 +106,11 @@ if ($method === 'GET' && $action === 'me') {
             'authenticated'      => false,
             'logged_in'          => false,
             'turnstile_site_key' => $siteKey,
-            'user'               => null
+            'user'               => null,
+            'customer'           => null,
+            'is_operator'        => false,
+            'is_customer'        => false,
+            'csrf_token'         => generate_csrf_token()
         ]);
     }
 }
@@ -128,6 +139,10 @@ if ($action === 'login') {
 
     if (!check_rate_limit($pdo, 'login', 5, 900) || ($acctRateKey !== '' && !check_rate_limit($pdo, 'login_acct', 5, 900, $acctRateKey))) {
         json_response(['success' => false, 'message' => 'Bạn đã đăng nhập sai quá 5 lần. Vui lòng thử lại sau ít phút để bảo vệ tài khoản.', 'ref_code' => 'ERR_RATE_LIMITED'], 429);
+    }
+
+    if (!empty($_COOKIE[session_name()]) && !verify_csrf_token($data)) {
+        json_error('Phiên bảo mật không hợp lệ hoặc đã hết hạn. Vui lòng tải lại trang.', 403, 'ERR_CSRF_INVALID');
     }
 
     if (empty($username) || empty($password)) {
@@ -519,6 +534,83 @@ if ($action === 'change_password') {
     }
 }
 
+if ($action === 'update_profile') {
+    if (strtoupper($method) !== 'POST') {
+        json_response(['success' => false, 'message' => 'Phương thức không hợp lệ. Vui lòng gửi POST để cập nhật hồ sơ.', 'ref_code' => 'ERR_METHOD_NOT_ALLOWED'], 405);
+    }
+    if (empty($_SESSION['user_id'])) {
+        json_response(['success' => false, 'message' => 'Vui lòng đăng nhập để cập nhật thông tin tài khoản.', 'ref_code' => 'ERR_UNAUTHORIZED'], 401);
+    }
+    require_csrf_if_session_authenticated($data);
+    if (!$pdo) {
+        json_response(['success' => false, 'message' => 'Cơ sở dữ liệu tạm thời không khả dụng. Vui lòng thử lại sau.', 'ref_code' => 'ERR_DB_UNAVAILABLE'], 503);
+    }
+
+    $fullName = sanitize_string($data['full_name'] ?? $data['fullName'] ?? '', 100);
+    $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
+    $password = (string)($data['password'] ?? '');
+
+    if (mb_strlen($fullName) < 2 || mb_strlen($fullName) > 60) {
+        json_response(['success' => false, 'message' => 'Họ và tên phải từ 2 đến 60 ký tự.', 'ref_code' => 'ERR_INVALID_NAME'], 400);
+    }
+
+    $userId = (int)$_SESSION['user_id'];
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $currentUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$currentUser) {
+        json_response(['success' => false, 'message' => 'Không tìm thấy người dùng.', 'ref_code' => 'ERR_USER_NOT_FOUND'], 404);
+    }
+
+    $oldPhone = normalize_phone($currentUser['phone'] ?? '');
+    $phoneChanged = ($phone !== '' && $phone !== $oldPhone);
+
+    if ($phoneChanged) {
+        if (!preg_match('/^0\d{9}$/', $phone)) {
+            json_response(['success' => false, 'message' => 'Số điện thoại không hợp lệ (cần đúng 10 chữ số).', 'ref_code' => 'ERR_INVALID_PHONE'], 400);
+        }
+        if (empty($password) || !password_verify($password, (string)($currentUser['password_hash'] ?? ''))) {
+            json_response(['success' => false, 'message' => 'Đổi số điện thoại bắt buộc phải nhập đúng mật khẩu tài khoản hiện tại.', 'ref_code' => 'ERR_INVALID_PASSWORD'], 400);
+        }
+        $dupStmt = $pdo->prepare("SELECT id FROM users WHERE phone = ? AND id != ? LIMIT 1");
+        $dupStmt->execute([$phone, $userId]);
+        if ($dupStmt->fetch()) {
+            json_response(['success' => false, 'message' => 'Số điện thoại này đã được sử dụng bởi một tài khoản khác.', 'ref_code' => 'ERR_PHONE_IN_USE'], 400);
+        }
+    } else {
+        $phone = $oldPhone;
+    }
+
+    try {
+        $upd = $pdo->prepare("UPDATE users SET full_name = ?, phone = ? WHERE id = ?");
+        $upd->execute([$fullName, $phone, $userId]);
+
+        $_SESSION['user_name'] = $fullName;
+        $_SESSION['user_phone'] = $phone;
+        if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+            $_SESSION['user']['full_name'] = $fullName;
+            $_SESSION['user']['name'] = $fullName;
+            $_SESSION['user']['phone'] = $phone;
+        }
+
+        write_audit_log($pdo, 'UPDATE_PROFILE', (string)$userId, "name={$currentUser['full_name']}|phone={$oldPhone}", "name={$fullName}|phone={$phone}", $currentUser);
+
+        json_response([
+            'success' => true,
+            'message' => 'Cập nhật thông tin tài khoản thành công!',
+            'data' => [
+                'id' => $userId,
+                'full_name' => $fullName,
+                'phone' => $phone
+            ]
+        ]);
+    } catch (Throwable $e) {
+        error_log("[UPDATE PROFILE ERROR] " . $e->getMessage());
+        json_response(['success' => false, 'message' => 'Lỗi hệ thống khi cập nhật hồ sơ.', 'ref_code' => 'ERR_DB'], 500);
+    }
+}
+
 if ($action === 'register') {
     if (strtoupper($method) !== 'POST') {
         json_response(['success' => false, 'message' => 'Phương thức không hợp lệ. Vui lòng gửi POST để đăng ký.', 'ref_code' => 'ERR_METHOD_NOT_ALLOWED'], 405);
@@ -535,6 +627,10 @@ if ($action === 'register') {
 
     if (!check_rate_limit($pdo, 'register', 3, 300)) {
         json_response(['success' => false, 'message' => 'Thao tác quá nhanh. Vui lòng thử lại sau ít phút.', 'ref_code' => 'ERR_RATE_LIMITED'], 429);
+    }
+
+    if (!empty($_COOKIE[session_name()]) && !verify_csrf_token($data)) {
+        json_error('Phiên bảo mật không hợp lệ hoặc đã hết hạn. Vui lòng tải lại trang.', 403, 'ERR_CSRF_INVALID');
     }
     increment_rate_limit($pdo, 'register');
 

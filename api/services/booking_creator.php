@@ -2,9 +2,28 @@
 // Dịch vụ khởi tạo đơn đặt sân trực tuyến & tại quầy
 function handle_create_booking(?PDO $pdo, array $data): void {
     $isWalkin = !empty($data['isWalkin']) || !empty($data['is_walkin']);
+    $customer = null;
     if ($isWalkin) {
         $walkinActor = require_staff_or_admin($pdo);
+        $userId = null;
+        $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? '', 60);
+        $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
+        if (mb_strlen($customerName) < 2 || mb_strlen($customerName) > 60) {
+            json_error('Họ và tên khách tại quầy phải từ 2 đến 60 ký tự.', 400, 'ERR_INVALID_NAME');
+        }
+        if (!preg_match('/^0\d{9}$/', $phone)) {
+            json_error('Số điện thoại khách tại quầy không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).', 400, 'ERR_INVALID_PHONE');
+        }
     } else {
+        $customer = currentCustomer($pdo);
+        if (!$customer) {
+            json_response([
+                'success'  => false,
+                'message'  => 'Vui lòng đăng nhập để đặt sân trực tuyến.',
+                'ref_code' => 'ERR_UNAUTHORIZED'
+            ], 401);
+        }
+
         $consent = !empty($data['privacy_consent']) || !empty($data['privacyConsent']);
         if (!$consent) {
             json_response([
@@ -31,17 +50,62 @@ function handle_create_booking(?PDO $pdo, array $data): void {
             ], 429);
         }
         increment_rate_limit($pdo, 'create_booking');
+
+        // Bỏ qua mọi user_id client gửi lên, lấy tuyệt đối từ session server chống IDOR
+        $userId = (int)$customer['id'];
+        $isBookingForFriend = !empty($data['is_booking_for_friend']) || !empty($data['isBookingForFriend']);
+
+        if ($isBookingForFriend) {
+            // Đặt hộ bạn bè: Nhận họ tên & SĐT từ form, lưu vào đơn, KHÔNG đổi hồ sơ của khách đang đăng nhập
+            $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? '', 60);
+            $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
+            if (mb_strlen($customerName) < 2 || mb_strlen($customerName) > 60) {
+                json_error('Họ tên người được đặt hộ phải từ 2 đến 60 ký tự.', 400, 'ERR_INVALID_NAME');
+            }
+            if (!preg_match('/^0\d{9}$/', $phone)) {
+                json_error('Số điện thoại người được đặt hộ không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).', 400, 'ERR_INVALID_PHONE');
+            }
+        } else {
+            // Đặt cho mình: Lấy mặc định từ hồ sơ server, bỏ qua dữ liệu mặc định client gửi lên chống mạo danh
+            $customerName = trim((string)($customer['full_name'] ?? $customer['name'] ?? ''));
+            $phone = normalize_phone((string)($customer['phone'] ?? ''));
+
+            if ($phone === '') {
+                $providedPhone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
+                if (!preg_match('/^0\d{9}$/', $providedPhone)) {
+                    json_error('Hồ sơ của bạn chưa có số điện thoại. Vui lòng nhập số điện thoại hợp lệ (10 chữ số bắt đầu bằng 0).', 400, 'ERR_INVALID_PHONE');
+                }
+                $phone = $providedPhone;
+                if ($pdo) {
+                    $updPhone = $pdo->prepare("UPDATE users SET phone = ? WHERE id = ?");
+                    $updPhone->execute([$phone, $userId]);
+                }
+                $_SESSION['user_phone'] = $phone;
+                if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+                    $_SESSION['user']['phone'] = $phone;
+                }
+            }
+            if ($customerName === '') {
+                $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? 'Hội viên', 60);
+            }
+            if (mb_strlen($customerName) < 2 || mb_strlen($customerName) > 60) {
+                json_error('Họ và tên người đặt phải từ 2 đến 60 ký tự.', 400, 'ERR_INVALID_NAME');
+            }
+        }
     }
 
-    $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? '', 100);
-    $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
+    $rawNote = (string)($data['note'] ?? '');
+    if (mb_strlen($rawNote) > 300) {
+        json_error('Ghi chú cho ban quản lý tối đa 300 ký tự.', 400, 'ERR_NOTE_TOO_LONG');
+    }
+    $note = sanitize_string($rawNote, 300);
+
     $email = filter_var($data['email'] ?? 'khachhang@sanbongpro.vn', FILTER_VALIDATE_EMAIL) ?: 'khachhang@sanbongpro.vn';
     $pitchId = sanitize_string($data['pitchId'] ?? $data['pitch_id'] ?? '', 20);
     $date = sanitize_string($data['date'] ?? $data['booking_date'] ?? '', 15);
     $slotId = sanitize_string($data['slotId'] ?? $data['slot_id'] ?? '', 10);
     $servicesInput = is_array($data['services'] ?? null) ? $data['services'] : [];
     $voucherCode = strtoupper(sanitize_string($data['voucherCode'] ?? $data['voucher_code'] ?? '', 30));
-    $note = sanitize_string($data['note'] ?? '', 255);
     $paymentMethod = sanitize_string($data['paymentMethod'] ?? $data['payment_method'] ?? 'VietQR Chuyển khoản', 50);
 
     $rawWeeks = (int)($data['weeksCount'] ?? $data['weeks_count'] ?? 1);
@@ -221,13 +285,23 @@ function handle_create_booking(?PDO $pdo, array $data): void {
             json_error('Sân bóng này hiện đang bảo trì, tạm ẩn hoặc không tồn tại.', 400, 'ERR_PITCH_UNAVAILABLE');
         }
 
-        $slotStmt = $pdo->prepare("SELECT id, slot_time, is_peak, duration FROM time_slots WHERE id = ?");
+        $slotStmt = $pdo->prepare("SELECT id, slot_time, start_time, end_time, is_peak, duration FROM time_slots WHERE id = ?");
         $slotStmt->execute([$slotId]);
         $slot = $slotStmt->fetch();
         if (!$slot) {
             $pdo->rollBack();
             json_error('Khung giờ đặt không hợp lệ.', 400, 'ERR_INVALID_SLOT');
         }
+
+        $sStart = !empty($slot['start_time']) ? trim((string)$slot['start_time']) : '';
+        $sEnd   = !empty($slot['end_time'])   ? trim((string)$slot['end_time'])   : '';
+        if ($sStart === '' || $sEnd === '') {
+            $slotParts = explode('-', (string)$slot['slot_time']);
+            $sStart = trim($slotParts[0] ?? '05:30');
+            $sEnd   = trim($slotParts[1] ?? '23:00');
+        }
+        if (strlen($sStart) > 5) { $sStart = substr($sStart, 0, 5); }
+        if (strlen($sEnd) > 5) { $sEnd = substr($sEnd, 0, 5); }
 
         if ($bookingDateStr === $todayStr && !$isPastSlot) {
             $slotParts = explode('-', (string)$slot['slot_time']);
@@ -244,20 +318,31 @@ function handle_create_booking(?PDO $pdo, array $data): void {
         for ($k = 0; $k < $weeksCount; $k++) {
             $checkDate = date('Y-m-d', strtotime("+{$k} week", $bookingDateTime));
             $checkDuplicateStmt = $pdo->prepare("
-                SELECT code FROM bookings
-                WHERE pitch_id = ? AND booking_date = ? AND slot_id = ?
-                  AND status NOT IN ('Đã hủy', 'Khách chưa đến')
-                  AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
+                SELECT b.code, b.slot_id, b.slot_time
+                FROM bookings b
+                LEFT JOIN time_slots ts ON ts.id = b.slot_id
+                WHERE b.pitch_id = ?
+                  AND (
+                    b.booking_date = ?
+                    OR (
+                      DATEDIFF(?, b.booking_date) BETWEEN 0 AND 7 * (GREATEST(1, COALESCE(b.weeks_count, 1)) - 1)
+                      AND MOD(DATEDIFF(?, b.booking_date), 7) = 0
+                    )
+                  )
+                  AND SUBSTR(TRIM(IFNULL(NULLIF(ts.start_time, ''), SUBSTRING_INDEX(b.slot_time, '-', 1))), 1, 5) < ?
+                  AND SUBSTR(TRIM(IFNULL(NULLIF(ts.end_time, ''), SUBSTRING_INDEX(b.slot_time, '-', -1))), 1, 5) > ?
+                  AND b.status NOT IN ('Đã hủy', 'Khách chưa đến')
+                  AND b.payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
                 LIMIT 1 FOR UPDATE
             ");
-            $checkDuplicateStmt->execute([$pitchId, $checkDate, $slotId]);
-            $existingBusyCode = $checkDuplicateStmt->fetchColumn();
-            if ($existingBusyCode) {
+            $checkDuplicateStmt->execute([$pitchId, $checkDate, $checkDate, $checkDate, $sEnd, $sStart]);
+            $existingBusy = $checkDuplicateStmt->fetch(PDO::FETCH_ASSOC);
+            if ($existingBusy) {
                 $pdo->rollBack();
                 $weekNote = ($weeksCount > 1) ? (" (buổi tuần thứ " . ($k + 1) . ")") : "";
                 json_response([
                     'success'  => false,
-                    'message'  => "Khung giờ {$slot['slot_time']} ngày {$checkDate}{$weekNote} tại {$pitch['name']} đã có đơn đặt trước (#{$existingBusyCode}). Vui lòng chọn khung giờ khác!",
+                    'message'  => "Khung giờ {$slot['slot_time']} ngày {$checkDate}{$weekNote} tại {$pitch['name']} bị trùng thời gian với đơn đặt trước (#{$existingBusy['code']} - {$existingBusy['slot_time']}). Vui lòng chọn khung giờ khác!",
                     'ref_code' => 'ERR_DOUBLE_BOOKING'
                 ], 409);
             }
@@ -395,27 +480,36 @@ function handle_create_booking(?PDO $pdo, array $data): void {
         $voucherDiscountAmount = 0;
         $appliedVoucher = null;
         if ($voucherCode !== '') {
+            if (!check_rate_limit($pdo, 'invalid_voucher_attempts', 5, 300)) {
+                $pdo->rollBack();
+                json_error('Bạn đã thử mã ưu đãi sai quá nhiều lần. Vui lòng thử lại sau 5 phút.', 429, 'ERR_RATE_LIMITED');
+            }
             $vStmt = $pdo->prepare("SELECT * FROM vouchers WHERE code = ? LIMIT 1 FOR UPDATE");
             $vStmt->execute([$voucherCode]);
             $vData = $vStmt->fetch(PDO::FETCH_ASSOC);
             if (!$vData || (int)$vData['is_active'] !== 1) {
+                increment_rate_limit($pdo, 'invalid_voucher_attempts');
                 $pdo->rollBack();
                 json_error('Mã giảm giá không tồn tại hoặc đã ngừng áp dụng.', 400, 'ERR_INVALID_VOUCHER');
             }
             $nowDate = date('Y-m-d');
             if ((!empty($vData['valid_from']) && $nowDate < $vData['valid_from']) || (!empty($vData['valid_to']) && $nowDate > $vData['valid_to'])) {
+                increment_rate_limit($pdo, 'invalid_voucher_attempts');
                 $pdo->rollBack();
                 json_error('Mã giảm giá chưa đến ngày áp dụng hoặc đã hết hạn.', 400, 'ERR_INVALID_VOUCHER');
             }
             if (!empty($vData['pitch_type_limit']) && (int)$vData['pitch_type_limit'] !== (int)$pitch['type']) {
+                increment_rate_limit($pdo, 'invalid_voucher_attempts');
                 $pdo->rollBack();
                 json_error('Mã giảm giá này chỉ áp dụng riêng cho Sân ' . (int)$vData['pitch_type_limit'] . ' người.', 400, 'ERR_INVALID_VOUCHER');
             }
             if ((int)($vData['max_usage'] ?? 0) > 0 && (int)($vData['used_count'] ?? 0) >= (int)$vData['max_usage']) {
+                increment_rate_limit($pdo, 'invalid_voucher_attempts');
                 $pdo->rollBack();
                 json_error('Mã giảm giá đã hết lượt sử dụng.', 400, 'ERR_INVALID_VOUCHER');
             }
             if ($subtotal < (int)($vData['min_order'] ?? 0)) {
+                increment_rate_limit($pdo, 'invalid_voucher_attempts');
                 $pdo->rollBack();
                 json_error('Đơn hàng chưa đạt giá trị tối thiểu (' . number_format((int)$vData['min_order']) . 'đ) để dùng mã này.', 400, 'ERR_INVALID_VOUCHER');
             }
@@ -429,6 +523,7 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 $uLimitStmt = $pdo->prepare($uLimitSql);
                 $uLimitStmt->execute($uLimitParams);
                 if ((int)$uLimitStmt->fetchColumn() >= $maxPerUser) {
+                    increment_rate_limit($pdo, 'invalid_voucher_attempts');
                     $pdo->rollBack();
                     json_error('Bạn đã sử dụng hết số lần áp dụng cho mã này (tối đa ' . $maxPerUser . ' lần/khách).', 400, 'ERR_VOUCHER_USER_LIMIT');
                 }
@@ -437,11 +532,13 @@ function handle_create_booking(?PDO $pdo, array $data): void {
             $reqTier = !empty($vData['required_tier']) ? trim((string)$vData['required_tier']) : ($voucherCode === 'VIPGOLD' ? 'vip,regular' : '');
             if ($reqTier !== '' && strtolower($reqTier) !== 'standard' && strtolower($reqTier) !== 'all') {
                 if (!$userId) {
+                    increment_rate_limit($pdo, 'invalid_voucher_attempts');
                     $pdo->rollBack();
                     json_error('Mã giảm giá này chỉ áp dụng cho thành viên hạng ưu đãi đã đăng nhập tài khoản.', 403, 'ERR_VOUCHER_TIER_REQUIRED');
                 }
                 $userTier = get_authenticated_user_tier($pdo, (int)$userId);
                 if (!is_tier_allowed_for_voucher($userTier, $reqTier)) {
+                    increment_rate_limit($pdo, 'invalid_voucher_attempts');
                     $pdo->rollBack();
                     json_error('Hạng thành viên hiện tại chưa đủ điều kiện áp dụng mã ưu đãi này.', 403, 'ERR_VOUCHER_TIER_MISMATCH');
                 }

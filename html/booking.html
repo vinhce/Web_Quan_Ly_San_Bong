@@ -225,45 +225,118 @@
           </div>
         </div>
 
-        <div class="ui-card p-5 sm:p-6 space-y-4">
-          <h3 class="font-heading font-bold text-lg text-[#0F172A] flex items-center gap-2">
-            <span class="w-2 h-5 rounded-sm bg-[#16A34A]"></span>
-            4. Thông tin người đặt sân
-          </h3>
+        <div id="booking-step4-card" class="ui-card p-5 sm:p-6 space-y-4 hidden">
+          <div class="flex items-center justify-between">
+            <h3 class="font-heading font-bold text-lg text-[#0F172A] flex items-center gap-2">
+              <span class="w-2 h-5 rounded-sm bg-[#16A34A]"></span>
+              4. Thông tin người đặt sân
+            </h3>
+          </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Họ và tên *</label>
-              <input type="text" id="cust-name" placeholder="Ví dụ: Nguyễn Văn A" class="input-field font-semibold">
+          <!-- A. Đã đăng nhập: Thẻ tóm tắt thông tin người đặt -->
+          <div id="booking-user-summary-card" class="p-4 rounded-xl bg-slate-50 border border-slate-200 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div id="summary-card-avatar" class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-xs shrink-0">
+                  <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-[#0F172A] flex flex-wrap items-center gap-1.5">
+                    <span id="summary-card-name">--</span>
+                    <span class="text-slate-300">·</span>
+                    <span id="summary-card-phone" class="font-mono text-xs text-slate-700">--</span>
+                    <span class="text-slate-300">·</span>
+                    <span id="summary-card-tier" class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">Hội viên</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">Tự động dùng thông tin hồ sơ để giữ sân &amp; tích lũy điểm</p>
+                </div>
+              </div>
+              <button type="button" id="btn-toggle-friend" class="btn-base px-3 py-2 min-h-[44px] text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg shrink-0 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500">
+                Đặt hộ bạn bè / Đổi thông tin
+              </button>
             </div>
-            <div>
-              <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Số điện thoại *</label>
-              <input type="tel" id="cust-phone" placeholder="Ví dụ: 0987 654 321" class="input-field font-semibold">
+
+            <!-- Trường hợp hồ sơ thiếu SĐT -->
+            <div id="booking-missing-phone-wrap" class="hidden mt-3 pt-3 border-t border-slate-200">
+              <label for="user-missing-phone" class="block text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">
+                Tài khoản chưa có Số điện thoại (Bắt buộc để nhận mã vé) *
+              </label>
+              <input type="tel" id="user-missing-phone" placeholder="Ví dụ: 0987654321" class="input-field font-semibold text-sm max-w-sm">
+              <div id="user-missing-phone-error" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
+            </div>
+          </div>
+
+          <!-- B. Form thông tin người đặt hộ (Chỉ hiện khi đã bấm Đặt hộ bạn bè) -->
+          <div id="booking-input-fields-wrap" class="hidden space-y-4">
+            <!-- Thông báo khi đang ở chế độ Đặt hộ bạn bè -->
+            <div id="booking-friend-mode-alert" class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Đang đặt hộ bạn bè. Thông tin này chỉ lưu vào đơn, không thay đổi hồ sơ của bạn. Điểm thưởng vẫn tích cho bạn.</span>
+              </div>
+              <button type="button" id="btn-revert-my-info" class="btn-base px-3 py-1.5 min-h-[44px] text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500">
+                Quay lại dùng thông tin của tôi
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label id="lbl-cust-name" for="cust-name" class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Họ và tên người được đặt hộ *</label>
+                <input type="text" id="cust-name" placeholder="Ví dụ: Nguyễn Văn A" class="input-field font-semibold">
+                <div id="cust-name-error" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
+              </div>
+              <div>
+                <label id="lbl-cust-phone" for="cust-phone" class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Số điện thoại người được đặt hộ *</label>
+                <input type="tel" id="cust-phone" placeholder="Ví dụ: 0987654321" class="input-field font-semibold">
+                <div id="cust-phone-error" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
+              </div>
             </div>
           </div>
 
           <!-- Hộp cảnh báo No-Show ngay dưới ô SĐT của khách -->
           <div id="booking-noshow-warning" class="hidden p-3 rounded-xl bg-red-50 border-2 border-red-300 text-xs text-red-800 font-bold leading-relaxed"></div>
 
+          <!-- C. Ô phụ: Ghi chú ẩn sau nút bấm -->
           <div>
-            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Ghi chú cho ban quản lý sân</label>
-            <input type="text" id="cust-note" placeholder="Ví dụ: Cần trọng tài bắt kỹ, khởi động trước 15 phút..." class="input-field">
+            <button type="button" id="btn-toggle-note" class="text-xs font-bold text-slate-600 hover:text-emerald-700 flex items-center gap-1.5 min-h-[44px] py-1 transition-colors focus-visible:outline-none focus-visible:underline">
+              <svg id="icon-toggle-note" class="w-4 h-4 text-emerald-600 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              <span id="text-toggle-note">+ Thêm ghi chú cho ban quản lý sân</span>
+            </button>
+            <div id="cust-note-wrapper" class="hidden mt-2">
+              <input type="text" id="cust-note" maxlength="300" placeholder="Ví dụ: Cần trọng tài bắt kỹ, khởi động trước 15 phút..." class="input-field text-sm">
+              <div class="flex justify-between items-center text-[11px] text-slate-400 mt-1">
+                <span id="cust-note-error" class="text-rose-600 font-semibold"></span>
+                <span><span id="cust-note-counter">0</span>/300 ký tự</span>
+              </div>
+            </div>
           </div>
 
-          <div class="pt-2 border-t border-[#F1F5F9]">
-            <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1.5">Mã ưu đãi / Voucher</label>
-            <div class="flex gap-2">
-              <input type="text" id="voucher-input" placeholder="Nhập mã (WELCOME10, GIAM50K)" class="input-field uppercase font-mono font-bold text-[#16A34A]">
-              <button type="button" id="apply-voucher-btn" class="btn-base btn-secondary shrink-0 font-bold">
-                Áp dụng
-              </button>
+          <!-- D. Voucher: gọn 1 hàng + gợi ý 1 chạm từ DB -->
+          <div class="pt-3 border-t border-[#F1F5F9] space-y-2">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label for="voucher-input" class="text-xs font-bold text-[#475569] uppercase tracking-wider shrink-0">
+                Mã ưu đãi:
+              </label>
+              <div class="flex gap-2 flex-1 max-w-md">
+                <input type="text" id="voucher-input" placeholder="Nhập mã ưu đãi" class="input-field uppercase font-mono font-bold text-[#16A34A] text-sm">
+                <button type="button" id="apply-voucher-btn" class="btn-base btn-secondary shrink-0 font-bold min-h-[44px] px-4 focus-visible:ring-2 focus-visible:ring-emerald-500">
+                  Áp dụng
+                </button>
+                <button type="button" id="remove-voucher-btn" class="hidden btn-base bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 shrink-0 font-bold min-h-[44px] px-3 focus-visible:ring-2 focus-visible:ring-rose-500">
+                  Bỏ mã
+                </button>
+              </div>
             </div>
-            <div id="voucher-msg" class="text-xs mt-1.5 font-semibold"></div>
-            <div id="voucher-quick-list" class="flex flex-wrap items-center gap-1.5 mt-2">
+            <div id="voucher-msg" class="text-xs font-semibold"></div>
+            <div id="voucher-quick-list" class="flex flex-wrap items-center gap-1.5 pt-1">
               <span class="text-[11px] text-[#64748B]">Gợi ý 1 chạm:</span>
-              <button type="button" onclick="quickApplyVoucher('WELCOME10')" class="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-[#16A34A] text-[11px] font-bold border border-emerald-200 transition-colors">WELCOME10 (-10%)</button>
-              <button type="button" onclick="quickApplyVoucher('GIAM50K')" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-[#D97706] text-[11px] font-bold border border-amber-200 transition-colors">GIAM50K (-50k)</button>
-              <button type="button" onclick="quickApplyVoucher('VIPGOLD')" class="px-2 py-0.5 rounded bg-purple-50 hover:bg-purple-100 text-purple-700 text-[11px] font-bold border border-purple-200 transition-colors">VIPGOLD (-15%)</button>
+              <span id="voucher-empty-hint" class="text-[11px] text-slate-400 italic">Đang tải mã ưu đãi khả dụng...</span>
             </div>
           </div>
         </div>
@@ -305,7 +378,12 @@
               <span id="summary-discount-price" class="font-bold">-0đ</span>
             </div>
             <div id="summary-promo-gifts-row" class="hidden flex justify-between text-xs font-semibold text-emerald-800 bg-emerald-50/90 p-2 rounded-lg border border-emerald-200">
-              <span class="flex items-center gap-1"><span>🎁</span> <span>Tài trợ quà mỗi trận:</span></span>
+              <span class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V4a2 2 0 10-4 0v4m4 0a2 2 0 114 0v4m-8 0h12a2 2 0 012 2v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7a2 2 0 012-2z" />
+                </svg>
+                <span>Tài trợ quà mỗi trận:</span>
+              </span>
               <span id="summary-promo-gifts-text" class="text-right font-bold text-[#15803D]">2 thùng nước + 1 trọng tài (0đ)</span>
             </div>
           </div>
@@ -339,8 +417,19 @@
 
           <div id="booking-turnstile-wrap" class="my-2"></div>
 
+          <!-- Dòng nhắc đăng nhập cho khách chưa đăng nhập -->
+          <div id="summary-login-reminder" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="font-semibold">Đăng nhập để đặt sân và tích điểm</span>
+            </div>
+            <a href="/login?redirect=booking" class="text-xs font-bold text-emerald-700 hover:underline shrink-0">Đăng nhập ngay</a>
+          </div>
+
           <button type="button" id="proceed-checkout-btn" class="btn-base btn-primary w-full text-base font-bold shadow-lg">
-            Tiến hành chuyển khoản cọc →
+            Đăng nhập để đặt sân
           </button>
         </div>
       </div>

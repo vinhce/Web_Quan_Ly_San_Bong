@@ -42,6 +42,15 @@
       }
     },
 
+    getCustomer() {
+      const u = this.getUser();
+      if (!u) return null;
+      if (['admin', 'manager', 'staff'].includes(String(u.role).toLowerCase())) {
+        return null;
+      }
+      return u;
+    },
+
     getCurrentUser() {
       return this.getUser();
     },

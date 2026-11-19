@@ -18,12 +18,29 @@ if (empty($code)) {
 try {
     $booking = null;
     if ($pdo) {
-        $stmt = $pdo->prepare("SELECT id, code, deposit_amount, paid_amount, total_price, status, payment_status, expires_at FROM bookings WHERE code = ? OR REPLACE(code, '-', '') = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, user_id, code, deposit_amount, paid_amount, total_price, status, payment_status, expires_at FROM bookings WHERE code = ? OR REPLACE(code, '-', '') = ? LIMIT 1");
         $cleanCode = str_replace('-', '', strtoupper($code));
         $stmt->execute([$code, $cleanCode]);
         $booking = $stmt->fetch();
 
         if ($booking) {
+            $authUser = get_authenticated_user($pdo);
+            $sessionCodes = $_SESSION['owned_booking_codes'] ?? [];
+            if (!is_array($sessionCodes)) {
+                $sessionCodes = [];
+            }
+            $isOwnerBySession = in_array($booking['code'], $sessionCodes, true) || in_array(str_replace('-', '', strtoupper($booking['code'])), $sessionCodes, true);
+            $isOwnerByUser = ($authUser && (int)$authUser['id'] === (int)($booking['user_id'] ?? 0));
+            $isOperator = is_portal_operator($authUser);
+
+            if (!$isOwnerBySession && !$isOwnerByUser && !$isOperator) {
+                json_response([
+                    'success'  => false,
+                    'message'  => 'Bạn không có quyền tra cứu đơn đặt sân này.',
+                    'ref_code' => 'ERR_FORBIDDEN'
+                ], 403);
+            }
+
             $depositAmt = max(0, (int)($booking['deposit_amount'] ?? 0));
             $paidAmt    = max(0, (int)($booking['paid_amount'] ?? 0));
             $payStatus  = (string)($booking['payment_status'] ?? '');

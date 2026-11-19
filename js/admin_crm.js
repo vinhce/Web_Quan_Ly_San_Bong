@@ -291,7 +291,7 @@ function performAdminSearch() {
             <span class="font-bold text-[#16A34A]">${Number(p.amt || 0).toLocaleString('vi-VN')}đ</span>
           </div>
           <div class="text-[11px] text-[#64748B] flex items-center justify-between mt-0.5">
-            <span>${escapeSearchHTML(p.bank || 'VietQR')} · ${p.time || ''}</span>
+            <span>${escapeSearchHTML(p.bank || 'VietQR')} · ${escapeSearchHTML(p.time || '')}</span>
             <span class="text-[#D97706] font-semibold">Xem duyệt cọc →</span>
           </div>
         </div>

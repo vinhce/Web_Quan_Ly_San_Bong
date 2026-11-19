@@ -142,8 +142,8 @@ function handle_admin_staff_users(PDO $pdo, array $data, string $method, array $
             if (!preg_match('/^(0[3|5|7|8|9])[0-9]{8}$/', $phone)) {
                 json_error('Số điện thoại không đúng định dạng di động 10 số.', 400, 'ERR_PHONE_FORMAT');
             }
-            if (strlen($password) < 6) {
-                json_error('Mật khẩu nhân viên phải có tối thiểu 6 ký tự.', 400, 'ERR_WEAK_PASSWORD');
+            if (strlen($password) < 8) {
+                json_error('Mật khẩu nhân viên phải có tối thiểu 8 ký tự.', 400, 'ERR_WEAK_PASSWORD');
             }
 
             $email = strtolower($username) . '@sanbongpro.vn';
@@ -259,8 +259,8 @@ function handle_admin_staff_users(PDO $pdo, array $data, string $method, array $
             if ($staffId <= 0) {
                 json_error('ID nhân viên không hợp lệ.', 400, 'ERR_INVALID_ID');
             }
-            if (strlen($password) < 6) {
-                json_error('Mật khẩu mới phải có tối thiểu 6 ký tự.', 400, 'ERR_WEAK_PASSWORD');
+            if (strlen($password) < 8) {
+                json_error('Mật khẩu mới phải có tối thiểu 8 ký tự.', 400, 'ERR_WEAK_PASSWORD');
             }
 
             $findStmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ? AND role IN ('staff', 'manager') LIMIT 1");

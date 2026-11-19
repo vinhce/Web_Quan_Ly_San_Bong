@@ -89,6 +89,15 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
     }
 
     if ($action === 'join_waitlist') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động đăng ký hàng chờ bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
+        if (!check_rate_limit($pdo, 'join_waitlist', 5, 300)) {
+            json_error('Thao tác đăng ký hàng chờ quá nhanh. Vui lòng thử lại sau ít phút.', 429, 'ERR_RATE_LIMITED');
+        }
+        require_csrf_if_session_authenticated($data);
+        increment_rate_limit($pdo, 'join_waitlist');
+
         $pitchId = sanitize_string($data['pitch_id'] ?? $data['pitchId'] ?? '', 20);
         $date = sanitize_string($data['booking_date'] ?? $data['date'] ?? '', 20);
         $slotId = sanitize_string($data['slot_id'] ?? $data['slotId'] ?? '', 10);

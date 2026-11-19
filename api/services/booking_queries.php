@@ -93,30 +93,36 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
             $isStaffOrAdmin = is_portal_operator($currentUser);
 
             if (!empty($pitchId)) {
-                $stmt = $pdo->prepare("SELECT code, pitch_id, slot_id, slot_time, status, payment_status, customer_name, phone
-                                       FROM bookings
-                                       WHERE pitch_id = ? AND booking_date = ?
-                                         AND status NOT IN ('Đã hủy', 'Khách chưa đến')
-                                         AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
-                                       ORDER BY slot_id ASC");
+                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone
+                                       FROM bookings b
+                                       LEFT JOIN time_slots ts ON ts.id = b.slot_id
+                                       WHERE b.pitch_id = ? AND b.booking_date = ?
+                                         AND b.status NOT IN ('Đã hủy', 'Khách chưa đến')
+                                         AND b.payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
+                                       ORDER BY ts.start_time ASC, b.slot_id ASC");
                 $stmt->execute([$pitchId, $date]);
             } else {
-                $stmt = $pdo->prepare("SELECT code, pitch_id, slot_id, slot_time, status, payment_status, customer_name, phone
-                                       FROM bookings
-                                       WHERE booking_date = ?
-                                         AND status NOT IN ('Đã hủy', 'Khách chưa đến')
-                                         AND payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
-                                       ORDER BY pitch_id ASC, slot_id ASC");
+                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone
+                                       FROM bookings b
+                                       LEFT JOIN time_slots ts ON ts.id = b.slot_id
+                                       WHERE b.booking_date = ?
+                                         AND b.status NOT IN ('Đã hủy', 'Khách chưa đến')
+                                         AND b.payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
+                                       ORDER BY b.pitch_id ASC, ts.start_time ASC, b.slot_id ASC");
                 $stmt->execute([$date]);
             }
 
             $rows = $stmt->fetchAll() ?: [];
             $slots = [];
             foreach ($rows as $r) {
+                $rawStart = !empty($r['start_time']) ? trim($r['start_time']) : trim(explode('-', (string)$r['slot_time'])[0] ?? '');
+                $rawEnd   = !empty($r['end_time'])   ? trim($r['end_time'])   : trim(explode('-', (string)$r['slot_time'])[1] ?? '');
                 $entry = [
                     'pitchId'       => $r['pitch_id'],
                     'slotId'        => $r['slot_id'],
                     'slotTime'      => $r['slot_time'],
+                    'startTime'     => $rawStart,
+                    'endTime'       => $rawEnd,
                     'status'        => $r['status'],
                     'paymentStatus' => $r['payment_status']
                 ];
@@ -239,6 +245,130 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
         json_response([
             'success' => true,
             'data'    => $booking
+        ]);
+        return true;
+    }
+
+    if ($action === 'eligible_vouchers') {
+        require_once __DIR__ . '/pricing_tier_helper.php';
+        if ($pdo === null) {
+            json_response(['success' => true, 'data' => []]);
+            return true;
+        }
+        $currentUser = get_authenticated_user($pdo);
+        $userTier = $currentUser ? ($currentUser['customer_tier'] ?? 'standard') : null;
+        $userId = $currentUser ? (int)$currentUser['id'] : null;
+        $userPhone = $currentUser ? normalize_phone($currentUser['phone'] ?? '') : '';
+
+        $stmt = $pdo->prepare("
+            SELECT code, description, discount_type, discount_value, min_order, required_tier, max_usage, used_count, max_per_user
+            FROM vouchers
+            WHERE is_active = 1
+              AND (valid_from IS NULL OR valid_from <= CURDATE())
+              AND (valid_to IS NULL OR valid_to >= CURDATE())
+              AND (max_usage <= 0 OR used_count < max_usage)
+            ORDER BY discount_value DESC
+        ");
+        $stmt->execute();
+        $allVouchers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $eligible = [];
+        foreach ($allVouchers as $v) {
+            $reqTier = trim((string)($v['required_tier'] ?? ''));
+            if (!$currentUser) {
+                if ($reqTier !== '' && $reqTier !== 'all' && $reqTier !== 'regular' && $reqTier !== 'standard') {
+                    continue;
+                }
+            } else {
+                if (!is_tier_allowed_for_voucher($userTier, $reqTier)) {
+                    continue;
+                }
+                $maxPerUser = (int)($v['max_per_user'] ?? 1);
+                if ($maxPerUser > 0) {
+                    $uCheck = $pdo->prepare("
+                        SELECT COUNT(*) FROM bookings
+                        WHERE voucher_code = ?
+                          AND (user_id = ? OR (? != '' AND REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ?))
+                          AND status NOT IN ('Đã hủy', 'Khách chưa đến')
+                    ");
+                    $uCheck->execute([$v['code'], $userId, $userPhone, $userPhone]);
+                    if ((int)$uCheck->fetchColumn() >= $maxPerUser) {
+                        continue;
+                    }
+                }
+            }
+            $eligible[] = [
+                'code' => $v['code'],
+                'description' => $v['description'],
+                'type' => $v['discount_type'],
+                'value' => (int)$v['discount_value'],
+                'minOrder' => (int)$v['min_order'],
+                'requiredTier' => $reqTier
+            ];
+        }
+        json_response(['success' => true, 'data' => $eligible]);
+        return true;
+    }
+
+    if ($action === 'validate_voucher') {
+        require_once __DIR__ . '/pricing_tier_helper.php';
+        if ($pdo === null) {
+            json_error('Cơ sở dữ liệu không khả dụng.', 503, 'ERR_DB_UNAVAILABLE');
+            return true;
+        }
+        if (!check_rate_limit($pdo, 'invalid_voucher_attempts', 5, 300)) {
+            json_error('Bạn đã thử mã ưu đãi sai quá nhiều lần. Vui lòng thử lại sau 5 phút.', 429, 'ERR_RATE_LIMITED');
+            return true;
+        }
+        $code = strtoupper(sanitize_string($_GET['code'] ?? '', 30));
+        if ($code === '') {
+            json_error('Vui lòng nhập mã ưu đãi.', 400, 'ERR_MISSING_CODE');
+            return true;
+        }
+        $vStmt = $pdo->prepare("SELECT * FROM vouchers WHERE code = ? LIMIT 1");
+        $vStmt->execute([$code]);
+        $v = $vStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$v || (int)$v['is_active'] !== 1) {
+            increment_rate_limit($pdo, 'invalid_voucher_attempts');
+            json_error('Mã giảm giá không tồn tại hoặc đã ngừng áp dụng.', 400, 'ERR_INVALID_VOUCHER');
+            return true;
+        }
+        $nowDate = date('Y-m-d');
+        if ((!empty($v['valid_from']) && $nowDate < $v['valid_from']) || (!empty($v['valid_to']) && $nowDate > $v['valid_to'])) {
+            increment_rate_limit($pdo, 'invalid_voucher_attempts');
+            json_error('Mã giảm giá chưa đến ngày áp dụng hoặc đã hết hạn.', 400, 'ERR_INVALID_VOUCHER');
+            return true;
+        }
+        if ((int)($v['max_usage'] ?? 0) > 0 && (int)($v['used_count'] ?? 0) >= (int)$v['max_usage']) {
+            increment_rate_limit($pdo, 'invalid_voucher_attempts');
+            json_error('Mã giảm giá đã hết lượt sử dụng.', 400, 'ERR_INVALID_VOUCHER');
+            return true;
+        }
+        $currentUser = get_authenticated_user($pdo);
+        $reqTier = trim((string)($v['required_tier'] ?? ''));
+        if ($reqTier !== '' && strtolower($reqTier) !== 'standard' && strtolower($reqTier) !== 'all') {
+            if (!$currentUser) {
+                increment_rate_limit($pdo, 'invalid_voucher_attempts');
+                json_error('Mã giảm giá này chỉ áp dụng cho thành viên đã đăng nhập.', 403, 'ERR_VOUCHER_TIER_REQUIRED');
+                return true;
+            }
+            $userTier = $currentUser['customer_tier'] ?? 'standard';
+            if (!is_tier_allowed_for_voucher($userTier, $reqTier)) {
+                increment_rate_limit($pdo, 'invalid_voucher_attempts');
+                json_error('Hạng thành viên hiện tại chưa đủ điều kiện áp dụng mã ưu đãi này.', 403, 'ERR_VOUCHER_TIER_MISMATCH');
+                return true;
+            }
+        }
+        json_response([
+            'success' => true,
+            'data' => [
+                'code' => $v['code'],
+                'description' => $v['description'],
+                'type' => $v['discount_type'],
+                'value' => (int)$v['discount_value'],
+                'minOrder' => (int)$v['min_order'],
+                'requiredTier' => $reqTier
+            ]
         ]);
         return true;
     }

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+@header_remove('X-Powered-By');
 
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
@@ -24,20 +25,24 @@ function secure_session_start() {
             || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
             || (isset($_SERVER['HTTP_CF_VISITOR']) && strpos($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"') !== false);
 
-    session_set_cookie_params([
-        'lifetime' => 7200, 
-        'path'     => '/',
-        'domain'   => '',
-        'secure'   => $isHttps,
-        'httponly' => true, 
-        'samesite' => 'Lax' 
-    ]);
+    if (!headers_sent()) {
+        session_set_cookie_params([
+            'lifetime' => 7200, 
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => $isHttps,
+            'httponly' => true, 
+            'samesite' => 'Lax' 
+        ]);
 
-    ini_set('session.use_only_cookies', '1');
-    ini_set('session.use_strict_mode', '1');
-    ini_set('session.gc_maxlifetime', '7200');
+        ini_set('session.use_only_cookies', '1');
+        ini_set('session.use_strict_mode', '1');
+        ini_set('session.gc_maxlifetime', '7200');
+    }
 
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
 
     $now = time();
     $maxLifetime = 7200;
@@ -255,6 +260,35 @@ function get_authenticated_user(?PDO $pdo = null): ?array {
     $user = refresh_session_user($pdo);
     if (!is_array($user) || !empty($user['_locked'])) {
         return null;
+    }
+    return $user;
+}
+
+/**
+ * Một nguồn sự thật: Xác thực khách hàng hiện tại của trang đặt sân.
+ * Tài khoản admin/staff/manager đăng nhập ở portal không được coi là khách đang đăng nhập trang khách.
+ */
+function currentCustomer(?PDO $pdo = null): ?array {
+    $user = get_authenticated_user($pdo);
+    if (!$user) {
+        return null;
+    }
+    if (is_portal_operator($user)) {
+        return null;
+    }
+    if ($pdo === null) $pdo = getDBConnection(false);
+    if ($pdo) {
+        try {
+            $stmt = $pdo->prepare("SELECT loyalty_points, tier, customer_tier FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([(int)$user['id']]);
+            $extra = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($extra) {
+                $user['loyalty_points'] = (int)($extra['loyalty_points'] ?? 0);
+                $user['points'] = $user['loyalty_points'];
+                $user['customer_tier'] = $extra['customer_tier'] ?? 'standard';
+                $user['tier'] = $extra['tier'] ?? 'Hội viên';
+            }
+        } catch (Throwable $e) {}
     }
     return $user;
 }

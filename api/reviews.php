@@ -34,6 +34,14 @@ if ($method === 'GET') {
             ");
             $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        foreach ($reviews as &$rv) {
+            $rawCode = (string)($rv['booking_code'] ?? '');
+            if (strlen($rawCode) > 4) {
+                $rv['booking_code'] = substr($rawCode, 0, 4) . '***' . substr($rawCode, -2);
+            }
+        }
+        unset($rv);
+
             $pitchStatsStmt = $pdo->query("
                 SELECT p.id AS pitch_id, p.name AS pitch_name, p.type,
                        COUNT(r.id) AS total_reviews,
@@ -176,6 +184,14 @@ if ($method === 'GET') {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($reviews as &$rv) {
+            $rawCode = (string)($rv['booking_code'] ?? '');
+            if (strlen($rawCode) > 4) {
+                $rv['booking_code'] = substr($rawCode, 0, 4) . '***' . substr($rawCode, -2);
+            }
+        }
+        unset($rv);
 
         $statsSql = "
             SELECT

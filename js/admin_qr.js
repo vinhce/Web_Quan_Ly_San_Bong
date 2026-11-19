@@ -310,7 +310,7 @@ function lookupQRTicket(codeOpt) {
 
   let srvListText = 'Không có dịch vụ thêm';
   if (booking.services && booking.services.length > 0) {
-    srvListText = booking.services.map(s => `${escapeSearchHTML(s.name)} × ${s.quantity}`).join(', ');
+    srvListText = booking.services.map(s => `${escapeSearchHTML(s.name)} × ${Number(s.quantity || 1)}`).join(', ');
   }
 
   const safeBookingCode = escapeSearchHTML(booking.code || '');
@@ -327,7 +327,7 @@ function lookupQRTicket(codeOpt) {
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[#334155] bg-slate-50 p-3 rounded-lg border border-slate-200">
       <div>👤 Khách hàng: <b class="text-[#0F172A]">${escapeSearchHTML(booking.customerName)}</b></div>
       <div>📞 Số điện thoại: <b class="font-mono text-[#0F172A]">${escapeSearchHTML(booking.phone || 'Chưa lưu')}</b></div>
-      <div>📅 Ngày thi đấu: <b class="text-[#0F172A]">${window.SanBongApp.formatDateVN(booking.date)}</b></div>
+      <div>📅 Ngày thi đấu: <b class="text-[#0F172A]">${escapeSearchHTML(window.SanBongApp.formatDateVN(booking.date))}</b></div>
       <div>⏰ Khung giờ: <b class="text-[#16A34A]">${escapeSearchHTML(booking.slotTime)}</b></div>
       <div class="sm:col-span-2 pt-1 border-t border-slate-200 text-slate-600">
         🥤 Dịch vụ kèm theo: <b>${srvListText}</b>

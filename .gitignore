@@ -39,5 +39,7 @@ scripts/original*
 scripts/dry_run*
 scripts/simulate*
 test_e2e_sanbong.py
+test_pitches.php
+tests/tmp*
 
 

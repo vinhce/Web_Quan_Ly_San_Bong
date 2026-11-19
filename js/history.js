@@ -29,7 +29,7 @@ async function updateHistoryUserInfo() {
   if (isGuest) {
     if (mName) mName.textContent = 'Khách vãng lai';
     if (mPhone) mPhone.textContent = 'Chưa đăng nhập';
-    if (mAvatar) mAvatar.textContent = '👤';
+    if (mAvatar) mAvatar.textContent = '--';
     if (mTier) {
       mTier.textContent = 'Dành cho Hội viên';
       mTier.className = 'inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold';
@@ -39,9 +39,14 @@ async function updateHistoryUserInfo() {
     if (pUpgrade) pUpgrade.textContent = 'Đăng nhập tài khoản để tích điểm hội viên';
     if (btnLogout) btnLogout.classList.add('hidden');
     if (btnLogin) btnLogin.classList.remove('hidden');
+    const btnEditProfile = document.getElementById('btn-edit-profile');
+    if (btnEditProfile) btnEditProfile.classList.add('hidden');
     renderHistory();
     return;
   }
+
+  const btnEditProfile = document.getElementById('btn-edit-profile');
+  if (btnEditProfile) btnEditProfile.classList.remove('hidden');
 
   const isAdmin = user.role === 'admin';
   const isManager = (user.role === 'manager');
@@ -294,7 +299,7 @@ function renderHistory() {
           <div>
             <h3 class="font-heading font-extrabold text-lg text-[#0F172A]">${safePitch}</h3>
             <div class="text-sm font-semibold text-[#16A34A] mt-0.5">
-              ${window.SanBongApp.formatDateVN(b.date)} · ${esc(b.slotTime)}
+              ${esc(window.SanBongApp.formatDateVN(b.date))} · ${esc(b.slotTime)}
             </div>
             <div class="text-xs text-[#64748B] mt-1">
               Tổng tiền: <b class="text-[#0F172A]">${window.SanBongApp.formatVND(b.totalPrice)}</b>
@@ -622,3 +627,161 @@ document.addEventListener('click', (e) => {
     window.openTeamSplit(btn.getAttribute('data-code'));
   }
 });
+
+let _origProfilePhone = '';
+
+function openEditProfileModal() {
+  const db = window.SanBongApp?.SanBongDB;
+  const user = db ? db.getUser() : null;
+  if (!user) return;
+
+  const modal = document.getElementById('modal-edit-profile');
+  const nameInput = document.getElementById('edit-profile-name');
+  const phoneInput = document.getElementById('edit-profile-phone');
+  const pwdWrap = document.getElementById('edit-profile-pwd-wrap');
+  const pwdInput = document.getElementById('edit-profile-pwd');
+  const generalMsg = document.getElementById('edit-profile-general-msg');
+
+  if (nameInput) nameInput.value = user.full_name || user.name || '';
+  if (phoneInput) {
+    phoneInput.value = user.phone || '';
+    _origProfilePhone = (user.phone || '').trim();
+  }
+  if (pwdInput) pwdInput.value = '';
+  if (pwdWrap) pwdWrap.classList.add('hidden');
+  if (generalMsg) {
+    generalMsg.textContent = '';
+    generalMsg.classList.add('hidden');
+  }
+
+  ['edit-profile-name-err', 'edit-profile-phone-err', 'edit-profile-pwd-err'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+  });
+
+  if (phoneInput && !phoneInput._pwdCheckBound) {
+    phoneInput._pwdCheckBound = true;
+    phoneInput.addEventListener('input', () => {
+      const curPh = phoneInput.value.trim();
+      if (curPh !== _origProfilePhone && _origProfilePhone !== '') {
+        pwdWrap?.classList.remove('hidden');
+      } else {
+        pwdWrap?.classList.add('hidden');
+      }
+    });
+  }
+
+  modal?.classList.remove('hidden');
+}
+
+function closeEditProfileModal() {
+  const modal = document.getElementById('modal-edit-profile');
+  modal?.classList.add('hidden');
+}
+
+async function handleSaveProfile(e) {
+  e.preventDefault();
+  const nameInput = document.getElementById('edit-profile-name');
+  const phoneInput = document.getElementById('edit-profile-phone');
+  const pwdInput = document.getElementById('edit-profile-pwd');
+  const submitBtn = document.getElementById('btn-submit-edit-profile');
+  const nameErr = document.getElementById('edit-profile-name-err');
+  const phoneErr = document.getElementById('edit-profile-phone-err');
+  const pwdErr = document.getElementById('edit-profile-pwd-err');
+  const generalMsg = document.getElementById('edit-profile-general-msg');
+
+  [nameErr, phoneErr, pwdErr, generalMsg].forEach(el => {
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+  });
+
+  const fullName = nameInput?.value.trim() || '';
+  const phone = phoneInput?.value.trim() || '';
+  const password = pwdInput?.value || '';
+
+  if (fullName.length < 2 || fullName.length > 60) {
+    if (nameErr) { nameErr.textContent = 'Họ và tên phải từ 2 đến 60 ký tự.'; nameErr.classList.remove('hidden'); }
+    nameInput?.focus();
+    return;
+  }
+
+  const phoneChanged = (phone !== _origProfilePhone && _origProfilePhone !== '');
+  if (!/^0\d{9}$/.test(phone)) {
+    if (phoneErr) { phoneErr.textContent = 'Số điện thoại không hợp lệ (cần đúng 10 chữ số).'; phoneErr.classList.remove('hidden'); }
+    phoneInput?.focus();
+    return;
+  }
+
+  if (phoneChanged && !password) {
+    if (pwdErr) { pwdErr.textContent = 'Vui lòng nhập mật khẩu tài khoản hiện tại để xác nhận đổi SĐT.'; pwdErr.classList.remove('hidden'); }
+    pwdInput?.focus();
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Đang lưu...';
+
+  try {
+    const csrfToken = window.SanBongApp?.getCsrfToken ? window.SanBongApp.getCsrfToken() : (sessionStorage.getItem('sb_csrf_token') || '');
+    const updateUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('api/auth.php?action=update_profile') : '/api/auth.php?action=update_profile';
+    const res = await fetch(updateUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        full_name: fullName,
+        phone: phone,
+        password: password
+      })
+    });
+
+    const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+    if (tokenHeader && window.SanBongApp?.setCsrfToken) {
+      window.SanBongApp.setCsrfToken(tokenHeader);
+    }
+
+    const data = await res.json();
+    if (data?.csrf_token && window.SanBongApp?.setCsrfToken) {
+      window.SanBongApp.setCsrfToken(data.csrf_token);
+    }
+
+    if (data.success) {
+      const db = window.SanBongApp?.SanBongDB;
+      if (db?.updateUser) {
+        db.updateUser({ full_name: fullName, name: fullName, phone: phone });
+      } else {
+        try {
+          const u = JSON.parse(sessionStorage.getItem('sb_current_user') || '{}');
+          u.full_name = fullName;
+          u.name = fullName;
+          u.phone = phone;
+          sessionStorage.setItem('sb_current_user', JSON.stringify(u));
+        } catch (err) {}
+      }
+      closeEditProfileModal();
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(data.message || 'Cập nhật hồ sơ thành công!', 'success');
+      }
+      updateHistoryUserInfo();
+    } else {
+      if (generalMsg) {
+        generalMsg.textContent = data.message || 'Không thể cập nhật hồ sơ.';
+        generalMsg.className = 'text-xs font-semibold text-rose-600 block';
+      }
+    }
+  } catch (err) {
+    if (generalMsg) {
+      generalMsg.textContent = 'Lỗi kết nối tới máy chủ. Vui lòng thử lại sau.';
+      generalMsg.className = 'text-xs font-semibold text-rose-600 block';
+    }
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Lưu thay đổi';
+  }
+}
+
+window.openEditProfileModal = openEditProfileModal;
+window.closeEditProfileModal = closeEditProfileModal;
+window.handleSaveProfile = handleSaveProfile;

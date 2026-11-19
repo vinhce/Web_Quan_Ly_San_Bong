@@ -26,10 +26,11 @@ function handleLogout() {
         });
       } catch (e) {}
 
-      sessionStorage.removeItem('sb_current_user');
+      ['sb_current_user', 'sb_booking_draft', 'sb_latest_booking', 'sb_csrf_token'].forEach(k => sessionStorage.removeItem(k));
       try {
-        localStorage.removeItem('sb_current_user');
-        localStorage.removeItem('sb_user_v1');
+        sessionStorage.clear();
+        ['sb_current_user', 'sb_user_v1', 'sb_bookings_v1', 'sb_pending_payments_v3', 'sb_audit_logs_v1', 'sb_shifts_v1', 'sb_counter_sales_v1', 'sb_bank_transactions_v1'].forEach(k => localStorage.removeItem(k));
+        Object.keys(localStorage).forEach(k => { if (k.startsWith('sb_hold_expire_') || k.startsWith('sb_')) localStorage.removeItem(k); });
       } catch (e) {}
       if (window.SanBongHelpers?.clearCsrfToken) window.SanBongHelpers.clearCsrfToken();
       window.location.href = getRelativePath('');
@@ -76,11 +77,11 @@ function handleLogout() {
     ];
 
     if (currentUser && currentUser.role === 'admin') {
-      navItems.push({ label: '🛡️ Quản trị Portal', href: getRelativePath('portal-admin/') });
+      navItems.push({ label: 'Quản trị Portal', href: getRelativePath('portal-admin/') });
     } else if (currentUser && currentUser.role === 'manager') {
-      navItems.push({ label: '🛡️ Quản lý Sân', href: getRelativePath('portal-admin/') });
+      navItems.push({ label: 'Quản lý Sân', href: getRelativePath('portal-admin/') });
     } else if (currentUser && currentUser.role === 'staff') {
-      navItems.push({ label: '🏟️ Cổng Trực Sân', href: getRelativePath('portal-admin/') });
+      navItems.push({ label: 'Cổng Trực Sân', href: getRelativePath('portal-admin/') });
     }
 
     let authSectionHtml = '';
@@ -124,20 +125,25 @@ function handleLogout() {
                 <div class="text-[11px] text-[#64748B] truncate">${escapeHTML(currentUser.phone || currentUser.email || '')}</div>
               </div>
               <a href="${getRelativePath('history')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] hover:text-[#16A34A]">
-                <span>📋 Lịch sử đặt sân & Hội viên</span>
+                <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <span>Lịch sử đặt sân & Hội viên</span>
               </a>
               ${isAdmin ? `
               <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#16A34A] hover:bg-[#DCFCE7]/50">
-                <span>🛡️ Bảng điều khiển Quản trị</span>
+                <svg class="w-4 h-4 text-[#16A34A] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                <span>Bảng điều khiển Quản trị</span>
               </a>` : (isManager ? `
               <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#7C3AED] hover:bg-purple-50">
-                <span>🛡️ Quản lý Sân</span>
+                <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                <span>Quản lý Sân</span>
               </a>` : (isStaff ? `
               <a href="${getRelativePath('portal-admin/')}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#2563EB] hover:bg-blue-50">
-                <span>🏟️ Cổng Trực Sân</span>
+                <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                <span>Cổng Trực Sân</span>
               </a>` : ''))}
               <button onclick="window.SanBongApp.handleLogout()" class="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#DC2626] hover:bg-rose-50 border-t border-[#F1F5F9]">
-                <span>🚪 Đăng xuất</span>
+                <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                <span>Đăng xuất</span>
               </button>
             </div>
           </div>
@@ -256,23 +262,45 @@ function handleLogout() {
           <span class="text-[11px] sm:text-xs font-black tracking-tighter">Zalo</span>
         </a>
         <a href="tel:0352313548" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-base sm:text-lg" title="Gọi Hotline đặt sân 0352 313 548">
-          <span>📞</span>
+          <svg class="w-5 h-5 text-white fill-current" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z"/></svg>
         </a>
       </div>
     </footer>`;
   }
 
-  function showToast(message, type = 'info', duration = 3500) {
+  function showToast(message, type = 'info', duration = 4000) {
     let container = document.getElementById('sb-toast-container');
     if (!container) {
       container = document.createElement('div');
       container.id = 'sb-toast-container';
-      container.className = 'fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0';
+      container.setAttribute('role', 'region');
+      container.setAttribute('aria-label', 'Thông báo hệ thống');
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('aria-atomic', 'true');
+      container.className = 'fixed bottom-5 right-5 z-[9999] flex flex-col-reverse gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0';
       document.body.appendChild(container);
     }
 
+    const normMsg = String(message || '').trim();
+    // Gộp trùng: chỉ 1 toast cùng nội dung tại một thời điểm
+    const existing = container.querySelectorAll('[data-sb-toast-msg]');
+    for (const el of existing) {
+      if (el.getAttribute('data-sb-toast-msg') === normMsg) {
+        el.classList.add('ring-2', 'ring-emerald-400', 'scale-105');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-emerald-400', 'scale-105'), 200);
+        return;
+      }
+    }
+
+    // Tối đa 3 toast: loại bỏ toast cũ nhất nếu đã đủ 3
+    while (container.children.length >= 3) {
+      const oldest = container.firstElementChild;
+      if (oldest) oldest.remove();
+    }
+
     const toast = document.createElement('div');
-    toast.className = 'pointer-events-auto transform -translate-y-2 opacity-0 transition-all duration-300 ease-out shadow-xl rounded-xl p-3.5 flex items-start gap-3 border text-xs font-semibold backdrop-blur-md';
+    toast.setAttribute('data-sb-toast-msg', normMsg);
+    toast.className = 'pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-300 ease-out shadow-xl rounded-xl p-3.5 flex items-start gap-3 border text-xs font-semibold backdrop-blur-md';
 
     let icon = '';
     let styleClasses = '';
@@ -295,12 +323,12 @@ function handleLogout() {
     toast.innerHTML = `
       ${icon}
       <div class="flex-1 leading-snug">${escapeHTML(message).replace(/\n/g, '<br>')}</div>
-      <button type="button" class="text-slate-400 hover:text-slate-700 ml-1 text-sm font-bold leading-none select-none">&times;</button>
+      <button type="button" aria-label="Đóng thông báo" class="text-slate-400 hover:text-slate-700 ml-1 text-sm font-bold leading-none select-none p-1">&times;</button>
     `;
 
     const closeBtn = toast.querySelector('button');
     const removeToast = () => {
-      toast.classList.add('opacity-0', '-translate-y-2');
+      toast.classList.add('opacity-0', 'translate-y-2');
       setTimeout(() => {
         try { toast.remove(); } catch (e) {}
       }, 300);
@@ -309,7 +337,7 @@ function handleLogout() {
 
     container.appendChild(toast);
     requestAnimationFrame(() => {
-      toast.classList.remove('opacity-0', '-translate-y-2');
+      toast.classList.remove('opacity-0', 'translate-y-2');
       toast.classList.add('opacity-100', 'translate-y-0');
     });
 
@@ -579,19 +607,20 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
               navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
             }
             if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-              window.dispatchEvent(new CustomEvent('sb-auth-synced', { detail: data.user }));
+              const custDetail = (data.customer || (data.user.role === 'user' ? data.user : null));
+              window.dispatchEvent(new CustomEvent('sb-auth-synced', { detail: custDetail }));
+              if (!custDetail) {
+                window.dispatchEvent(new CustomEvent('sb-auth-unauthenticated'));
+              }
             }
             return data.user;
           } else if (data && data.authenticated === false) {
-            const hadSession = sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user');
-            if (hadSession) {
-              sessionStorage.removeItem('sb_current_user');
-              try { localStorage.removeItem('sb_current_user'); } catch (e) {}
-              const navPlaceholder = document.getElementById('app-navbar');
-              if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
-                const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
-                navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
-              }
+            sessionStorage.removeItem('sb_current_user');
+            try { localStorage.removeItem('sb_current_user'); } catch (e) {}
+            const navPlaceholder = document.getElementById('app-navbar');
+            if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
+              const activePage = navPlaceholder.dataset ? navPlaceholder.dataset.activePage : navPlaceholder.getAttribute?.('data-active-page');
+              navPlaceholder.innerHTML = activePage ? window.SanBongUI.renderNavbar(activePage) : window.SanBongUI.renderNavbar();
             }
             if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
               window.dispatchEvent(new CustomEvent('sb-auth-unauthenticated'));
@@ -627,6 +656,20 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
   if (typeof window !== 'undefined') {
     window.SanBongApp = window.SanBongApp || {};
     window.SanBongApp.authReady = syncAuthMe();
+
+    // Bảo vệ UI: Tự động ẩn mọi widget rác/bên thứ ba bị chặn hoặc hiện lỗi "hi — Blocked"
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        const suspicious = document.querySelectorAll('iframe, [id*="chat"], [class*="chat"], [id*="widget"]');
+        suspicious.forEach(el => {
+          const t = (el.innerText || el.textContent || '').trim();
+          if (/blocked/i.test(t) || t === 'hi' || /hi\s*[-—]\s*blocked/i.test(t)) {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+          }
+        });
+      } catch (e) {}
+    });
   }
 
   window.alert = function (msg) {
