@@ -163,13 +163,13 @@
               <div class="border-t border-slate-200 pt-4 space-y-3">
                 <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
                   <button type="button" id="crm-subtab-bookings-btn" onclick="switchCrmSubTab('bookings')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0F172A] text-white cursor-pointer">
-                    ⚽ Lịch sử đặt sân (<span id="crm-bookings-count-badge">0</span>)
+                    Lịch sử đặt sân (<span id="crm-bookings-count-badge">0</span>)
                   </button>
                   <button type="button" id="crm-subtab-points-btn" onclick="switchCrmSubTab('points')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">
-                    🎁 Lịch sử điểm (<span id="crm-points-count-badge">0</span>)
+                    Lịch sử điểm (<span id="crm-points-count-badge">0</span>)
                   </button>
                   <button type="button" id="crm-subtab-audit-btn" onclick="switchCrmSubTab('audit')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">
-                    🛡️ Lịch sử chỉnh sửa hồ sơ (<span id="crm-audit-count-badge">0</span>)
+                    Lịch sử chỉnh sửa hồ sơ (<span id="crm-audit-count-badge">0</span>)
                   </button>
                 </div>
 

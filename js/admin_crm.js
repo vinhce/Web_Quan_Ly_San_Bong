@@ -215,56 +215,29 @@ async function toggleReviewStatus(reviewId, nextStatus) {
 }
 window.toggleReviewStatus = toggleReviewStatus;
 
-function performAdminSearch() {
-  const input = document.getElementById('admin-global-search');
+function normalizeSearchVN(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .trim();
+}
+
+let _adminSearchDebounce = null;
+let _adminSearchSeq = 0;
+
+function renderAdminSearchDropdown(rawQuery, matchedPending, matchedBookings, matchedCustomers, isLoadingRemote = false) {
   const resultsBox = document.getElementById('admin-search-results');
-  const clearBtn = document.getElementById('admin-search-clear');
-  if (!input || !resultsBox) return;
+  if (!resultsBox) return;
 
-  const rawQuery = input.value.trim();
-  const query = rawQuery.toLowerCase();
-  if (!query) {
-    resultsBox.classList.add('hidden');
-    resultsBox.innerHTML = '';
-    if (clearBtn) clearBtn.classList.add('hidden');
-    return;
-  }
-  if (clearBtn) clearBtn.classList.remove('hidden');
-
-  const db = window.SanBongApp?.SanBongDB;
-  if (!db) return;
-
-  const allBookings = db.getAllBookings ? db.getAllBookings() : [];
-  const pendingPayments = (isManagerOrAdmin() && db.getPendingPayments) ? db.getPendingPayments() : [];
-  const cleanPhoneQ = query.replace(/[\s\.\-]+/g, '');
-
-  const matchedBookings = allBookings.filter(b => {
-    const code = (b.code || '').toLowerCase();
-    const phone = (b.phone || '').replace(/[\s\.\-]+/g, '');
-    const name = (b.customerName || '').toLowerCase();
-    const pitch = (b.pitchName || '').toLowerCase();
-    const isCodeMatch = code.includes(query);
-    const isPhoneMatch = cleanPhoneQ.length >= 3 && phone.includes(cleanPhoneQ);
-    const isNameMatch = name.includes(query);
-    const isPitchMatch = pitch.includes(query);
-    return isCodeMatch || isPhoneMatch || isNameMatch || isPitchMatch;
-  });
-
-  const matchedPending = pendingPayments.filter(p => {
-    const code = (p.code || '').toLowerCase();
-    const name = (p.name || '').toLowerCase();
-    const bank = (p.bank || '').toLowerCase();
-    return code.includes(query) || name.includes(query) || bank.includes(query);
-  });
-
-  const total = matchedBookings.length + matchedPending.length;
-
+  const total = matchedPending.length + matchedBookings.length + matchedCustomers.length;
   if (total === 0) {
     resultsBox.innerHTML = `
       <div class="p-4 text-center">
-        <div class="text-2xl mb-1">🔍</div>
-        <div class="font-bold text-xs text-[#0F172A]">Không tìm thấy đơn đặt sân nào</div>
-        <div class="text-[11px] text-[#64748B] mt-0.5">Không có kết quả khớp với "<strong>${escapeSearchHTML(rawQuery)}</strong>"</div>
+        <div class="text-2xl mb-1">${isLoadingRemote ? '⏳' : '🔍'}</div>
+        <div class="font-bold text-xs text-[#0F172A]">${isLoadingRemote ? 'Đang tìm trên máy chủ...' : 'Không tìm thấy đơn đặt sân nào'}</div>
+        <div class="text-[11px] text-[#64748B] mt-0.5">${isLoadingRemote ? 'Vui lòng chờ giây lát' : `Không có kết quả khớp với "<strong>${escapeSearchHTML(rawQuery)}</strong>"`}</div>
       </div>
     `;
     resultsBox.classList.remove('hidden');
@@ -274,12 +247,12 @@ function performAdminSearch() {
   let html = `
     <div class="px-3 py-1.5 text-[11px] font-bold text-[#64748B] bg-slate-50 rounded-lg flex items-center justify-between mb-1.5">
       <span>TÌM THẤY ${total} KẾT QUẢ</span>
-      <button onclick="clearAdminSearch()" class="text-slate-400 hover:text-slate-600 text-xs">Đóng</button>
+      <button type="button" onclick="clearAdminSearch()" class="text-slate-400 hover:text-slate-600 text-xs">Đóng</button>
     </div>
   `;
 
   if (matchedPending.length > 0) {
-    matchedPending.forEach(p => {
+    matchedPending.slice(0, 8).forEach(p => {
       html += `
         <div onclick="switchAdminTab('payments'); clearAdminSearch();" class="p-2.5 rounded-lg hover:bg-amber-50 cursor-pointer transition-all border border-transparent hover:border-amber-200 mb-1">
           <div class="flex items-center justify-between gap-2">
@@ -300,22 +273,42 @@ function performAdminSearch() {
   }
 
   if (matchedBookings.length > 0) {
-    matchedBookings.forEach(b => {
-      const isPending = b.paymentStatus === 'Chờ duyệt cọc';
-      const statusBg = isPending ? 'bg-amber-100 text-amber-700' : (b.status === 'Đang đá' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700');
+    matchedBookings.slice(0, 12).forEach(b => {
+      const codeVal = b.code || '';
+      const paySt = b.paymentStatus || b.payment_status || '';
+      const statusVal = b.status || '';
+      const isPending = paySt === 'Chờ duyệt cọc' || statusVal === 'Giữ chỗ';
+      const statusBg = isPending ? 'bg-amber-100 text-amber-700' : (statusVal === 'Đang đá' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700');
       html += `
-        <div data-code="${escapeSearchHTML(b.code || '')}" onclick="viewBookingDetail(this.getAttribute('data-code'))" class="p-2.5 rounded-lg hover:bg-emerald-50 cursor-pointer transition-all border border-transparent hover:border-emerald-200 mb-1">
+        <div data-code="${escapeSearchHTML(codeVal)}" onclick="viewBookingDetail(this.getAttribute('data-code'))" class="p-2.5 rounded-lg hover:bg-emerald-50 cursor-pointer transition-all border border-transparent hover:border-emerald-200 mb-1">
           <div class="flex items-center justify-between gap-2">
-            <span class="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded">${escapeSearchHTML(b.code)}</span>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBg}">${escapeSearchHTML(b.paymentStatus || b.status)}</span>
+            <span class="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded">${escapeSearchHTML(codeVal)}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBg}">${escapeSearchHTML(paySt || statusVal)}</span>
           </div>
           <div class="mt-1 text-xs font-semibold text-[#0F172A] flex items-center justify-between">
-            <span>${escapeSearchHTML(b.customerName || 'Khách')} ${b.phone ? '· ' + escapeSearchHTML(b.phone) : ''}</span>
-            <span class="font-bold text-[#16A34A]">${Number(b.totalPrice || 0).toLocaleString('vi-VN')}đ</span>
+            <span>${escapeSearchHTML(b.customerName || b.customer_name || 'Khách')} ${b.phone ? '· ' + escapeSearchHTML(b.phone) : ''}</span>
+            <span class="font-bold text-[#16A34A]">${Number(b.totalPrice ?? b.total_price ?? 0).toLocaleString('vi-VN')}đ</span>
           </div>
           <div class="text-[11px] text-[#64748B] flex items-center justify-between mt-0.5">
-            <span>${escapeSearchHTML(b.pitchName || '')} (${escapeSearchHTML(b.slotTime || '')})</span>
+            <span>${escapeSearchHTML(b.pitchName || b.pitch_name || '')} (${escapeSearchHTML(b.slotTime || b.slot_time || '')})</span>
             <span class="text-[#16A34A] font-semibold">Chi tiết đơn →</span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  if (matchedCustomers.length > 0) {
+    matchedCustomers.slice(0, 6).forEach(c => {
+      html += `
+        <div onclick="switchAdminTab('customers'); clearAdminSearch();" class="p-2.5 rounded-lg hover:bg-sky-50 cursor-pointer transition-all border border-transparent hover:border-sky-200 mb-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-xs text-[#0F172A]">${escapeSearchHTML(c.full_name || c.name || c.phone || 'Khách hàng')}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">${escapeSearchHTML(c.phone || '')}</span>
+          </div>
+          <div class="text-[11px] text-[#64748B] flex items-center justify-between mt-0.5">
+            <span>${Number(c.points || 0).toLocaleString('vi-VN')} điểm · ${Number(c.total_bookings || 0)} lượt đặt</span>
+            <span class="text-sky-600 font-semibold">Xem CRM →</span>
           </div>
         </div>
       `;
@@ -326,10 +319,86 @@ function performAdminSearch() {
   resultsBox.classList.remove('hidden');
 }
 
+function performAdminSearch() {
+  const input = document.getElementById('admin-global-search');
+  const resultsBox = document.getElementById('admin-search-results');
+  const clearBtn = document.getElementById('admin-search-clear');
+  if (!input || !resultsBox) return;
+
+  const rawQuery = input.value.trim();
+  const normQuery = normalizeSearchVN(rawQuery);
+  if (!normQuery) {
+    resultsBox.classList.add('hidden');
+    resultsBox.innerHTML = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+    if (_adminSearchDebounce) clearTimeout(_adminSearchDebounce);
+    return;
+  }
+  if (clearBtn) clearBtn.classList.remove('hidden');
+
+  const db = window.SanBongApp?.SanBongDB;
+  const allBookings = db?.getAllBookings ? db.getAllBookings() : [];
+  const pendingPayments = (isManagerOrAdmin() && db?.getPendingPayments) ? db.getPendingPayments() : [];
+  const cleanPhoneQ = normQuery.replace(/[\s\.\-]+/g, '');
+
+  const matchedBookings = allBookings.filter(b => {
+    const code = normalizeSearchVN(b.code || '');
+    const phone = String(b.phone || '').replace(/[\s\.\-]+/g, '').toLowerCase();
+    const name = normalizeSearchVN(b.customerName || b.customer_name || '');
+    const pitch = normalizeSearchVN(b.pitchName || b.pitch_name || '');
+    return code.includes(normQuery) || (cleanPhoneQ.length >= 3 && phone.includes(cleanPhoneQ)) || name.includes(normQuery) || pitch.includes(normQuery);
+  });
+
+  const matchedPending = pendingPayments.filter(p => {
+    const code = normalizeSearchVN(p.code || '');
+    const name = normalizeSearchVN(p.name || '');
+    const bank = normalizeSearchVN(p.bank || '');
+    return code.includes(normQuery) || name.includes(normQuery) || bank.includes(normQuery);
+  });
+
+  const hasLocal = (matchedPending.length + matchedBookings.length) > 0;
+  renderAdminSearchDropdown(rawQuery, matchedPending, matchedBookings, [], !hasLocal && normQuery.length >= 2);
+
+  if (!hasLocal || normQuery.length >= 3) {
+    if (_adminSearchDebounce) clearTimeout(_adminSearchDebounce);
+    const reqSeq = ++_adminSearchSeq;
+    _adminSearchDebounce = setTimeout(async () => {
+      try {
+        const curNorm = normalizeSearchVN(document.getElementById('admin-global-search')?.value || '');
+        if (!curNorm || reqSeq !== _adminSearchSeq) return;
+        const [ovRes, crmRes] = await Promise.all([
+          matchedBookings.length === 0 ? adminFetchJson('../api/admin.php?action=overview') : Promise.resolve(null),
+          adminFetchJson(`../api/admin_crm.php?action=crm_customers&q=${encodeURIComponent(rawQuery)}`)
+        ]);
+        if (reqSeq !== _adminSearchSeq) return;
+
+        let remoteBookings = matchedBookings;
+        if (ovRes?.ok && Array.isArray(ovRes.data?.bookings)) {
+          const seen = new Set(matchedBookings.map(x => String(x.code || '')));
+          const extra = ovRes.data.bookings.filter(b => {
+            const c = String(b.code || '');
+            if (seen.has(c)) return false;
+            const code = normalizeSearchVN(c);
+            const phone = String(b.phone || '').replace(/[\s\.\-]+/g, '').toLowerCase();
+            const name = normalizeSearchVN(b.customerName || b.customer_name || '');
+            const pitch = normalizeSearchVN(b.pitchName || b.pitch_name || '');
+            return code.includes(curNorm) || (cleanPhoneQ.length >= 3 && phone.includes(cleanPhoneQ)) || name.includes(curNorm) || pitch.includes(curNorm);
+          });
+          remoteBookings = matchedBookings.concat(extra);
+        }
+        const remoteCustomers = (crmRes?.ok && Array.isArray(crmRes.data)) ? crmRes.data : [];
+        renderAdminSearchDropdown(rawQuery, matchedPending, remoteBookings, remoteCustomers, false);
+      } catch (e) {}
+    }, 260);
+  }
+}
+
 function clearAdminSearch() {
   const input = document.getElementById('admin-global-search');
   const resultsBox = document.getElementById('admin-search-results');
   const clearBtn = document.getElementById('admin-search-clear');
+  if (_adminSearchDebounce) clearTimeout(_adminSearchDebounce);
+  _adminSearchSeq++;
   if (input) input.value = '';
   if (resultsBox) {
     resultsBox.classList.add('hidden');
@@ -344,10 +413,17 @@ function viewBookingDetail(code) {
 }
 
 document.addEventListener('click', (e) => {
-  const searchContainer = document.getElementById('admin-global-search')?.closest('.relative');
-  if (searchContainer && !searchContainer.contains(e.target)) {
+  const searchWrap = document.getElementById('admin-search-wrap');
+  const toggleBtn = document.getElementById('admin-mobile-search-toggle');
+  if (!searchWrap) return;
+  const insideWrap = searchWrap.contains(e.target);
+  const insideToggle = toggleBtn ? toggleBtn.contains(e.target) : false;
+  if (!insideWrap && !insideToggle) {
     const resultsBox = document.getElementById('admin-search-results');
     if (resultsBox) resultsBox.classList.add('hidden');
+    if (window.innerWidth < 640 && !searchWrap.classList.contains('hidden')) {
+      searchWrap.classList.add('hidden');
+    }
   }
 });
 
