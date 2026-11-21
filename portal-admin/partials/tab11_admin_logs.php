@@ -151,7 +151,7 @@
         <label for="admin-log-filter-from" class="block text-[11px] font-bold text-[#475569] mb-1">
           Từ ngày
         </label>
-        <input type="date" id="admin-log-filter-from" onchange="handleAdminLogFilterChange()" class="input-field h-9 text-xs font-semibold bg-white w-full">
+        <input type="date" id="admin-log-filter-from" data-vn-datepicker="1" data-allow-past="1" onchange="handleAdminLogFilterChange()" class="input-field h-9 text-xs font-semibold bg-white w-full">
       </div>
 
       <!-- Đến ngày -->
@@ -159,7 +159,7 @@
         <label for="admin-log-filter-to" class="block text-[11px] font-bold text-[#475569] mb-1">
           Đến ngày
         </label>
-        <input type="date" id="admin-log-filter-to" onchange="handleAdminLogFilterChange()" class="input-field h-9 text-xs font-semibold bg-white w-full">
+        <input type="date" id="admin-log-filter-to" data-vn-datepicker="1" data-allow-past="1" onchange="handleAdminLogFilterChange()" class="input-field h-9 text-xs font-semibold bg-white w-full">
       </div>
 
       <!-- Nút thao tác lọc -->
@@ -195,12 +195,12 @@
         </svg>
         Quy ước màu:
       </span>
-      <span class="inline-flex items-center gap-1 font-medium bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">🟢 Tạo / Duyệt</span>
-      <span class="inline-flex items-center gap-1 font-medium bg-rose-50 text-rose-800 px-2 py-0.5 rounded border border-rose-200">🔴 Xóa / Hủy / Chi tiền</span>
-      <span class="inline-flex items-center gap-1 font-medium bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200">🔵 Cập nhật</span>
-      <span class="inline-flex items-center gap-1 font-medium bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200">🟠 Cảnh báo</span>
-      <span class="inline-flex items-center gap-1 font-medium bg-purple-50 text-purple-800 px-2 py-0.5 rounded border border-purple-200">🟣 Tiền quầy</span>
-      <span class="inline-flex items-center gap-1 font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">⚪ Tự động</span>
+      <span class="inline-flex items-center gap-1.5 font-medium bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Tạo / Duyệt</span>
+      <span class="inline-flex items-center gap-1.5 font-medium bg-rose-50 text-rose-800 px-2 py-0.5 rounded border border-rose-200"><span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span> Xóa / Hủy / Chi tiền</span>
+      <span class="inline-flex items-center gap-1.5 font-medium bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200"><span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> Cập nhật</span>
+      <span class="inline-flex items-center gap-1.5 font-medium bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Cảnh báo</span>
+      <span class="inline-flex items-center gap-1.5 font-medium bg-purple-50 text-purple-800 px-2 py-0.5 rounded border border-purple-200"><span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span> Tiền quầy</span>
+      <span class="inline-flex items-center gap-1.5 font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200"><span class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span> Tự động</span>
     </div>
   </div>
 
@@ -222,8 +222,8 @@
 
     <!-- State 2: Error Alert -->
     <div id="admin-log-error" class="hidden p-8 text-center space-y-3">
-      <div class="w-12 h-12 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl">
-        ⚠️
+      <div class="w-12 h-12 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
       </div>
       <div>
         <h4 class="font-heading font-bold text-sm text-[#0F172A]">Không thể tải nhật ký hệ thống</h4>
@@ -236,8 +236,8 @@
 
     <!-- State 3: Empty State -->
     <div id="admin-log-empty" class="hidden p-12 text-center space-y-3">
-      <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center text-2xl">
-        📋
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       </div>
       <div class="space-y-1">
         <h4 class="font-heading font-bold text-sm text-[#0F172A]">Chưa có bản ghi nhật ký nào</h4>

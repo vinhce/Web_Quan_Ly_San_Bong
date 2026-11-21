@@ -37,7 +37,7 @@
                 </div>
                 <div>
                   <label class="block font-bold text-[#475569] mb-1">Ngày thi đấu *</label>
-                  <input type="date" id="admin-book-date" required class="input-field w-full font-bold text-[#0F172A]">
+                  <input type="date" id="admin-book-date" data-vn-datepicker="1" required class="input-field w-full font-bold text-[#0F172A]">
                 </div>
               </div>
 

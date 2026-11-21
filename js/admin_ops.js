@@ -467,7 +467,7 @@ function initQuickBookingForm() {
 
   const prevPitch = pitchSelect.value;
   pitchSelect.innerHTML = db.getPitches().filter(p => p.status !== 'Ẩn').map(p => `
-    <option value="${escapeSearchHTML(p.id)}" ${p.status === 'Bảo trì' ? 'disabled' : ''}>${escapeSearchHTML(p.name)} (${escapeSearchHTML(p.typeName)}) - ${escapeSearchHTML(window.SanBongApp.formatVND(p.basePrice))}/h</option>
+    <option value="${escapeSearchHTML(p.id)}" ${p.status === 'Bảo trì' ? 'disabled' : ''}>${escapeSearchHTML(p.name)} (${escapeSearchHTML(p.typeName)}) - ${escapeSearchHTML(window.SanBongApp.formatVND(p.basePrice))}/ca 2h</option>
   `).join('');
   if (prevPitch && Array.from(pitchSelect.options).some(o => o.value === prevPitch && !o.disabled)) {
     pitchSelect.value = prevPitch;

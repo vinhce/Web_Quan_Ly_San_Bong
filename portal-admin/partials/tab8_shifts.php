@@ -123,7 +123,7 @@
           <p class="text-[11px] text-[#64748B]">Danh sách các ca trực đã chốt, chờ đối soát và đã duyệt bàn giao</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <input type="date" id="shift-filter-date" onchange="loadShiftHandovers()" class="input-field text-xs py-1.5 bg-white">
+          <input type="date" id="shift-filter-date" data-vn-datepicker="1" data-allow-past="1" onchange="loadShiftHandovers()" class="input-field text-xs py-1.5 bg-white">
           <select id="shift-filter-staff" onchange="loadShiftHandovers()" class="input-field text-xs py-1.5 bg-white">
             <option value="">Tất cả nhân viên</option>
           </select>

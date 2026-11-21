@@ -7,7 +7,7 @@
             <button type="button" onclick="changeTimelineDate(-1)" class="px-2.5 py-1 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-bold text-[#334155] cursor-pointer">◀ Hôm qua</button>
             <button type="button" onclick="changeTimelineDate(0)" class="px-2.5 py-1 rounded-lg border border-[#16A34A] bg-[#DCFCE7]/60 hover:bg-[#DCFCE7] text-xs font-bold text-[#15803D] cursor-pointer">Hôm nay</button>
             <button type="button" onclick="changeTimelineDate(1)" class="px-2.5 py-1 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-bold text-[#334155] cursor-pointer">Ngày mai ▶</button>
-            <input type="date" id="timeline-date-picker" onchange="setTimelineDate(this.value)" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] bg-white text-xs font-bold text-[#0F172A]">
+            <input type="date" id="timeline-date-picker" data-vn-datepicker="1" data-allow-past="1" onchange="setTimelineDate(this.value)" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] bg-white text-xs font-bold text-[#0F172A]">
             <span id="timeline-date-label" class="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold"></span>
           </div>
           <!-- Legend Status Pills -->
@@ -49,7 +49,7 @@
               <p class="text-[11px] text-[#64748B]">Khách hàng đăng ký chờ khi khung giờ kín lịch — Tự động báo khi có ca hủy/quá hạn</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-              <input type="date" id="waitlist-date-filter" onchange="loadWaitlistAdmin()" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] text-xs font-semibold">
+              <input type="date" id="waitlist-date-filter" data-vn-datepicker="1" data-allow-past="1" onchange="loadWaitlistAdmin()" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] text-xs font-semibold">
               <select id="waitlist-status-filter" onchange="loadWaitlistAdmin()" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] text-xs font-semibold">
                 <option value="all">Tất cả trạng thái</option>
                 <option value="waiting">Đang chờ (waiting)</option>
@@ -128,7 +128,7 @@
               </div>
               <div>
                 <label for="rec-start-date" class="block text-[11px] font-bold text-[#475569] mb-1">Ngày bắt đầu *</label>
-                <input type="date" id="rec-start-date" required class="input-field h-9 text-xs font-bold bg-white">
+                <input type="date" id="rec-start-date" data-vn-datepicker="1" required class="input-field h-9 text-xs font-bold bg-white">
               </div>
               <div>
                 <label for="rec-weeks-count" class="block text-[11px] font-bold text-[#475569] mb-1">Số tuần cố định</label>
