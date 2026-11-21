@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/sepay_helper.php';
+require_once __DIR__ . '/notification_helper.php';
+require_once __DIR__ . '/services/cancellation_helper.php';
 
 secure_session_start();
 $pdo = getDBConnection(false);
@@ -18,7 +20,7 @@ if (empty($code)) {
 try {
     $booking = null;
     if ($pdo) {
-        $stmt = $pdo->prepare("SELECT id, user_id, code, deposit_amount, paid_amount, total_price, status, payment_status, expires_at, weeks_count, booking_mode FROM bookings WHERE code = ? OR REPLACE(code, '-', '') = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? OR REPLACE(code, '-', '') = ? LIMIT 1");
         $cleanCode = str_replace('-', '', strtoupper($code));
         $stmt->execute([$code, $cleanCode]);
         $booking = $stmt->fetch();
@@ -60,15 +62,47 @@ try {
             );
 
             if ($isCancelledOrExpiredStatus || $isPastHold) {
+                $releasedNow = false;
+                if (!$isCancelledOrExpiredStatus && $isPastHold && $paidAmt <= 0) {
+                    $pdo->beginTransaction();
+                    try {
+                        $lockExpStmt = $pdo->prepare("SELECT * FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE");
+                        $lockExpStmt->execute([(int)$booking['id']]);
+                        $freshExp = $lockExpStmt->fetch(PDO::FETCH_ASSOC);
+                        if ($freshExp && !in_array((string)$freshExp['status'], ['Đã hủy', 'Khách chưa đến'], true) && (int)($freshExp['paid_amount'] ?? 0) <= 0) {
+                            $hasIdem = db_table_has_column($pdo, 'bookings', 'idempotency_key');
+                            $updExpSql = "UPDATE bookings SET status = 'Đã hủy', payment_status = 'Đã hủy', remaining_amount = 0, refund_amount = 0, cancel_policy_applied = 'auto_expired'" . ($hasIdem ? ", idempotency_key = NULL" : "") . ", note = CONCAT(IFNULL(note, ''), ' [Tự động hủy & nhả sân do hết thời gian giữ chỗ]') WHERE id = ?";
+                            $pdo->prepare($updExpSql)->execute([(int)$freshExp['id']]);
+                            restore_booking_resources_on_cancel($pdo, $freshExp, false);
+                            $releasedNow = true;
+                            $payStatus = 'Đã hủy';
+                            $bStatus = 'Đã hủy';
+                        }
+                        $pdo->commit();
+                        if ($releasedNow) {
+                            $sysActor = ['id' => null, 'full_name' => 'Hệ thống (Check Payment)', 'role' => 'system'];
+                            write_audit_log($pdo, 'AUTO_CANCEL_EXPIRED', (string)$freshExp['code'], ($freshExp['status'] ?? '') . ' (' . ($freshExp['payment_status'] ?? '') . ')', 'Đã hủy (Hết hạn giữ chỗ qua check_payment)', $sysActor);
+                            trigger_waitlist_notification($pdo, (string)$freshExp['pitch_id'], (string)$freshExp['booking_date'], (string)$freshExp['slot_id'], (string)($freshExp['slot_time'] ?? ''), $sysActor, (string)$freshExp['code']);
+                        }
+                    } catch (Throwable $expEx) {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        error_log('[CHECK_PAYMENT AUTO RELEASE WARN] ' . $expEx->getMessage());
+                    }
+                }
                 json_response([
                     'success'        => true,
                     'paid'           => false,
                     'expired'        => true,
+                    'isExpired'      => true,
+                    'released'       => $releasedNow,
                     'code'           => $booking['code'],
+                    'status'         => $bStatus,
                     'payment_status' => $payStatus,
                     'paidAmount'     => $paidAmt,
                     'expectedAmount' => $depositAmt,
-                    'message'        => 'Đơn đặt sân đã quá hạn giữ chỗ hoặc đã bị hủy.'
+                    'message'        => 'Đơn đặt sân đã quá hạn giữ chỗ và được tự động nhả sân trống.'
                 ]);
             }
 
