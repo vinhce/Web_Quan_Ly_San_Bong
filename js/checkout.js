@@ -146,61 +146,220 @@ document.addEventListener('DOMContentLoaded', async () => {
   startSePayAutoListener(generatedBookingCode);
 
   document.getElementById('confirm-payment-btn')?.addEventListener('click', () => confirmPayment(false));
+
+  const backBtn = document.getElementById('checkout-back-to-booking-btn');
+  if (backBtn && !backBtn._boundRelease) {
+    backBtn._boundRelease = true;
+    backBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (sepayPollTimer) clearInterval(sepayPollTimer);
+      if (countdownTimer) clearInterval(countdownTimer);
+      const releaseCode = generatedBookingCode || currentDraft?.serverCreatedCode;
+      if (releaseCode && window.SanBongApp?.SanBongAPI?.requestJSON && !isPaymentAlreadyConfirmed) {
+        try {
+          await window.SanBongApp.SanBongAPI.requestJSON('api/bookings.php?action=release_draft_hold', {
+            action: 'release_draft_hold',
+            code: releaseCode
+          });
+        } catch (err) {}
+      }
+      if (currentDraft) {
+        delete currentDraft.serverCreatedCode;
+        delete currentDraft.code;
+        delete currentDraft.expiresAt;
+        delete currentDraft.idempotencyKey;
+        sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
+      }
+      sessionStorage.removeItem('sb_active_hold_code');
+      localStorage.removeItem('sb_hold_expire_' + releaseCode);
+      window.location.href = backBtn.getAttribute('href') || '/booking';
+    });
+  }
 });
 
 async function createInitialBookingRecord() {
   const db = window.SanBongApp.SanBongDB;
   const slots = db.getTimeSlots();
   const slot = slots.find(s => s.id === currentDraft.slotId);
+  const bookingUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking';
 
-  let existing = db.getAllBookings().find(b => b.code === generatedBookingCode);
-  const newBooking = existing || db.createBooking({
-    code: generatedBookingCode,
-    customerName: currentDraft.customerName,
-    phone: currentDraft.phone,
-    email: 'khachhang@sanbongpro.vn',
-    pitchId: currentDraft.pitchId,
-    date: currentDraft.date,
-    slotId: currentDraft.slotId,
-    slotTime: slot ? slot.time : '18:30 - 20:00',
-    bookingMode: currentDraft.bookingMode || 'single',
-    weeksCount: currentDraft.weeksCount || 1,
-    monthlyDates: currentDraft.monthlyDates || [],
-    services: currentDraft.services,
-    voucherCode: currentDraft.voucherCode,
-    note: currentDraft.note,
-    status: 'Chờ duyệt cọc',
-    paymentStatus: 'Chờ cọc 30%',
-    paymentMethod: 'VietQR SePay (Tự động)'
-  });
+  const applyServerBookingToUI = (srvData) => {
+    const serverCode = srvData.code || srvData.bookingCode || srvData.booking_code;
+    if (serverCode) {
+      if (serverCode !== generatedBookingCode) {
+        localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
+        generatedBookingCode = serverCode;
+      }
+      if (currentDraft) {
+        currentDraft.code = serverCode;
+        currentDraft.serverCreatedCode = serverCode;
+      }
+      sessionStorage.setItem('sb_active_hold_code', serverCode);
+    }
 
-  sessionStorage.setItem('sb_latest_booking', JSON.stringify(newBooking));
+    const srvTotal = Number(srvData.totalAmount ?? srvData.total_amount ?? srvData.totalPrice ?? srvData.total_price);
+    const srvDeposit = Number(srvData.depositAmount ?? srvData.deposit_amount);
+    const srvRemaining = Number(srvData.remainingAmount ?? srvData.remaining_amount ?? (srvTotal - srvDeposit));
+    const srvDepositRate = Number(srvData.depositRate ?? srvData.deposit_rate ?? ((Number(srvData.weeksCount ?? currentDraft?.weeksCount ?? 1) > 1) ? 60 : 30));
+
+    window._checkoutServerBooking = srvData;
+
+    const orderBadge = document.getElementById('order-code-badge');
+    if (orderBadge) orderBadge.textContent = generatedBookingCode;
+    const memoBadge = document.getElementById('bank-memo');
+    if (memoBadge) memoBadge.textContent = generatedBookingCode;
+
+    if (!isNaN(srvTotal) && srvTotal > 0) {
+      const tAmt = document.getElementById('co-total-amount');
+      if (tAmt) tAmt.textContent = window.SanBongApp.formatVND(srvTotal);
+    }
+    if (!isNaN(srvDeposit) && srvDeposit >= 0) {
+      const dAmt = document.getElementById('co-deposit-amount');
+      if (dAmt) dAmt.textContent = window.SanBongApp.formatVND(srvDeposit);
+      const bAmt = document.getElementById('bank-amount');
+      if (bAmt) bAmt.textContent = window.SanBongApp.formatVND(srvDeposit);
+    }
+    if (!isNaN(srvRemaining) && srvRemaining >= 0) {
+      const rAmt = document.getElementById('co-remaining-amount');
+      if (rAmt) rAmt.textContent = window.SanBongApp.formatVND(srvRemaining);
+    }
+
+    const chkDepPct = document.getElementById('checkout-deposit-pct');
+    if (chkDepPct) chkDepPct.textContent = String(srvDepositRate);
+    const coDepPct = document.getElementById('co-deposit-pct');
+    if (coDepPct) coDepPct.textContent = String(srvDepositRate);
+
+    if (srvData.redeemedBottles !== undefined) {
+      redeemedBottles = Number(srvData.redeemedBottles || 0);
+      if (currentDraft) {
+        currentDraft.redeemedBottles = redeemedBottles;
+        currentDraft.pointsUsed = Number(srvData.pointsUsed || redeemedBottles * 100);
+      }
+      setupLoyaltyWaterRedemption();
+    }
+
+    const qrImg = document.getElementById('sepay-qr-img');
+    const qrLoading = document.getElementById('sepay-qr-loading');
+    if (qrImg) {
+      const bank = db.getBankInfo();
+      const sepayBank = bank.bankCode || 'MB';
+      const sepayAcc = bank.accountNumber || bank.accountNo || '0352313548';
+      const sepayAmt = (!isNaN(srvDeposit) && srvDeposit > 0) ? srvDeposit : 0;
+      const qrUrl = `https://qr.sepay.vn/img?bank=${encodeURIComponent(sepayBank)}&acc=${encodeURIComponent(sepayAcc)}&template=compact&amount=${sepayAmt}&des=${encodeURIComponent(generatedBookingCode)}`;
+      qrImg.src = qrUrl;
+      if (qrLoading) qrLoading.classList.add('hidden');
+    }
+
+    try {
+      const latest = Object.assign({}, srvData, {
+        code: generatedBookingCode,
+        totalPrice: !isNaN(srvTotal) && srvTotal > 0 ? srvTotal : undefined,
+        depositAmount: !isNaN(srvDeposit) && srvDeposit >= 0 ? srvDeposit : undefined,
+        remainingAmount: !isNaN(srvRemaining) && srvRemaining >= 0 ? srvRemaining : undefined,
+        depositRate: srvDepositRate,
+        redeemedBottles: Number(srvData.redeemedBottles ?? redeemedBottles ?? 0),
+        pointsUsed: Number(srvData.pointsUsed ?? (Number(srvData.redeemedBottles ?? redeemedBottles ?? 0) * 100))
+      });
+      sessionStorage.setItem('sb_latest_booking', JSON.stringify(latest));
+    } catch (e) {}
+
+    const srvHoldMins = Number(srvData.holdMinutes ?? srvData.hold_minutes ?? 0);
+    const srvExpiresAt = srvData.expiresAt ?? srvData.expires_at ?? null;
+    if (srvHoldMins > 0) {
+      activeHoldMinutes = Math.max(5, Math.min(120, srvHoldMins));
+      const holdLabelEl = document.getElementById('hold-minutes-label');
+      if (holdLabelEl) holdLabelEl.textContent = `${activeHoldMinutes} phút`;
+    }
+    let targetExpireMs = 0;
+    if (srvExpiresAt) {
+      const parsed = typeof srvExpiresAt === 'number'
+        ? (srvExpiresAt < 1e12 ? srvExpiresAt * 1000 : srvExpiresAt)
+        : Date.parse(String(srvExpiresAt).replace(' ', 'T'));
+      if (!isNaN(parsed) && parsed > Date.now()) {
+        targetExpireMs = parsed;
+      }
+    } else if (srvHoldMins > 0) {
+      targetExpireMs = Date.now() + activeHoldMinutes * 60 * 1000;
+    }
+    if (targetExpireMs > 0 && currentDraft) {
+      currentDraft.expiresAt = targetExpireMs;
+      sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
+      localStorage.setItem('sb_hold_expire_' + generatedBookingCode, String(targetExpireMs));
+      const newRemaining = Math.max(0, Math.ceil((targetExpireMs - Date.now()) / 1000));
+      startCountdown(newRemaining);
+    }
+  };
 
   if (window.SanBongApp?.SanBongAPI) {
+    // T3-03: Nếu F5 / tải lại /checkout mà đã có serverCreatedCode, lấy lại đơn hiện có thay vì POST trùng
+    if (currentDraft.serverCreatedCode) {
+      try {
+        const getRes = await window.SanBongApp.SanBongAPI.getBooking(currentDraft.serverCreatedCode);
+        if (getRes && getRes.success && getRes.data) {
+          const d = getRes.data;
+          const isDead = ['Đã hủy', 'Khách chưa đến'].includes(String(d.status || '')) ||
+            (d.expiresAt && Date.parse(String(d.expiresAt).replace(' ', 'T')) <= Date.now() && Number(d.paidAmount || 0) <= 0);
+          if (!isDead) {
+            if (Number(d.paidAmount || 0) >= Number(d.depositAmount || 0) && Number(d.depositAmount || 0) > 0) {
+              const successUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('success') : '../success';
+              window.location.replace(`${successUrl}?code=${encodeURIComponent(d.code)}`);
+              return false;
+            }
+            applyServerBookingToUI(d);
+            return true;
+          }
+        }
+      } catch (e) {}
+      delete currentDraft.serverCreatedCode;
+    }
+
     try {
-      const apiRes = await window.SanBongApp.SanBongAPI.postBooking({
-        code: generatedBookingCode,
-        booking: Object.assign({}, newBooking, {
-          redeemedBottles: redeemedBottles || currentDraft.redeemedBottles || 0,
-          privacy_consent: currentDraft.privacy_consent !== undefined ? currentDraft.privacy_consent : true,
-          turnstile_token: currentDraft.turnstile_token || ''
-        }),
-        redeemedBottles: redeemedBottles || currentDraft.redeemedBottles || 0,
+      const bookingBody = {
+        idempotencyKey: currentDraft.idempotencyKey || '',
+        customerName: currentDraft.customerName,
+        phone: currentDraft.phone,
+        email: 'khachhang@sanbongpro.vn',
+        pitchId: currentDraft.pitchId,
+        date: currentDraft.date,
+        slotId: currentDraft.slotId,
+        slotTime: slot ? slot.time : '18:30 - 20:30',
+        bookingMode: currentDraft.bookingMode || 'single',
+        weeksCount: currentDraft.weeksCount || 1,
+        services: currentDraft.services,
+        voucherCode: currentDraft.voucherCode,
+        note: currentDraft.note,
+        redeemedBottles: Number(currentDraft.redeemedBottles ?? redeemedBottles ?? 0),
+        is_booking_for_friend: Boolean(currentDraft.is_booking_for_friend),
         privacy_consent: currentDraft.privacy_consent !== undefined ? currentDraft.privacy_consent : true,
-        turnstile_token: currentDraft.turnstile_token || '',
+        turnstile_token: currentDraft.turnstile_token || ''
+      };
+      const apiRes = await window.SanBongApp.SanBongAPI.postBooking({
+        idempotencyKey: currentDraft.idempotencyKey || '',
+        booking: bookingBody,
+        redeemedBottles: bookingBody.redeemedBottles,
+        privacy_consent: bookingBody.privacy_consent,
+        turnstile_token: bookingBody.turnstile_token,
         timestamp: new Date().toISOString()
       });
+      if (apiRes && apiRes.status === 401) {
+        if (countdownTimer) clearInterval(countdownTimer);
+        if (sepayPollTimer) clearInterval(sepayPollTimer);
+        if (window.SanBongApp?.handleUnauthorizedSession) {
+          window.SanBongApp.handleUnauthorizedSession('checkout');
+        } else {
+          window.location.replace((window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=checkout&expired=1');
+        }
+        return false;
+      }
       if (apiRes && !apiRes.success && !apiRes.localOnly) {
         if (countdownTimer) clearInterval(countdownTimer);
         if (sepayPollTimer) clearInterval(sepayPollTimer);
         try {
-          const allB = db.getAllBookings();
-          localStorage.setItem('sb_bookings_v1', JSON.stringify(allB.filter(b => b.code !== generatedBookingCode)));
           sessionStorage.removeItem('sb_booking_draft');
           sessionStorage.removeItem('sb_latest_booking');
+          sessionStorage.removeItem('sb_active_hold_code');
           localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
         } catch (err) {}
-        const bookingUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('booking') : '/booking';
         const errMsg = apiRes.message || 'Khung giờ vừa có người khác đặt hoặc sân đang bảo trì. Vui lòng chọn giờ khác.';
         if (window.SanBongApp?.showModal) {
           window.SanBongApp.showModal({
@@ -217,88 +376,7 @@ async function createInitialBookingRecord() {
         return false;
       }
       if (apiRes && apiRes.success && apiRes.data) {
-        const srvData = apiRes.data;
-        const serverCode = srvData.code || srvData.bookingCode || srvData.booking_code;
-        if (serverCode && serverCode !== generatedBookingCode) {
-          const oldCode = generatedBookingCode;
-          generatedBookingCode = serverCode;
-          if (currentDraft) currentDraft.code = serverCode;
-          localStorage.removeItem('sb_hold_expire_' + oldCode);
-        }
-
-        const srvTotal = Number(srvData.totalAmount ?? srvData.total_amount ?? srvData.totalPrice ?? srvData.total_price);
-        const srvDeposit = Number(srvData.depositAmount ?? srvData.deposit_amount);
-        const srvRemaining = Number(srvData.remainingAmount ?? srvData.remaining_amount ?? (srvTotal - srvDeposit));
-
-        const orderBadge = document.getElementById('order-code-badge');
-        if (orderBadge) orderBadge.textContent = generatedBookingCode;
-        const memoBadge = document.getElementById('bank-memo');
-        if (memoBadge) memoBadge.textContent = generatedBookingCode;
-
-        if (!isNaN(srvTotal) && srvTotal > 0) {
-          const tAmt = document.getElementById('co-total-amount');
-          if (tAmt) tAmt.textContent = window.SanBongApp.formatVND(srvTotal);
-        }
-        if (!isNaN(srvDeposit) && srvDeposit >= 0) {
-          const dAmt = document.getElementById('co-deposit-amount');
-          if (dAmt) dAmt.textContent = window.SanBongApp.formatVND(srvDeposit);
-          const bAmt = document.getElementById('bank-amount');
-          if (bAmt) bAmt.textContent = window.SanBongApp.formatVND(srvDeposit);
-        }
-        if (!isNaN(srvRemaining) && srvRemaining >= 0) {
-          const rAmt = document.getElementById('co-remaining-amount');
-          if (rAmt) rAmt.textContent = window.SanBongApp.formatVND(srvRemaining);
-        }
-
-        // Tải lại QR SePay theo số tiền & mã chuẩn server
-        const qrImg = document.getElementById('sepay-qr-img');
-        const qrLoading = document.getElementById('sepay-qr-loading');
-        if (qrImg) {
-          const bank = db.getBankInfo();
-          const sepayBank = bank.bankCode || 'MB';
-          const sepayAcc = bank.accountNumber || bank.accountNo || '0352313548';
-          const sepayAmt = (!isNaN(srvDeposit) && srvDeposit > 0) ? srvDeposit : 0;
-          const sepayDes = generatedBookingCode;
-          const qrUrl = `https://qr.sepay.vn/img?bank=${encodeURIComponent(sepayBank)}&acc=${encodeURIComponent(sepayAcc)}&template=compact&amount=${sepayAmt}&des=${encodeURIComponent(sepayDes)}`;
-          qrImg.src = qrUrl;
-          if (qrLoading) qrLoading.classList.add('hidden');
-        }
-
-        // Cập nhật lại sessionStorage.sb_latest_booking
-        try {
-          const latest = JSON.parse(sessionStorage.getItem('sb_latest_booking') || '{}');
-          latest.code = generatedBookingCode;
-          if (!isNaN(srvTotal) && srvTotal > 0) latest.totalPrice = srvTotal;
-          if (!isNaN(srvDeposit) && srvDeposit >= 0) latest.depositAmount = srvDeposit;
-          if (!isNaN(srvRemaining) && srvRemaining >= 0) latest.remainingAmount = srvRemaining;
-          sessionStorage.setItem('sb_latest_booking', JSON.stringify(latest));
-        } catch (e) {}
-
-        const srvHoldMins = Number(srvData.holdMinutes ?? srvData.hold_minutes ?? 0);
-        const srvExpiresAt = srvData.expiresAt ?? srvData.expires_at ?? null;
-        if (srvHoldMins > 0) {
-          activeHoldMinutes = Math.max(5, Math.min(120, srvHoldMins));
-          const holdLabelEl = document.getElementById('hold-minutes-label');
-          if (holdLabelEl) holdLabelEl.textContent = `${activeHoldMinutes} phút`;
-        }
-        let targetExpireMs = 0;
-        if (srvExpiresAt) {
-          const parsed = typeof srvExpiresAt === 'number'
-            ? (srvExpiresAt < 1e12 ? srvExpiresAt * 1000 : srvExpiresAt)
-            : Date.parse(String(srvExpiresAt).replace(' ', 'T'));
-          if (!isNaN(parsed) && parsed > Date.now()) {
-            targetExpireMs = parsed;
-          }
-        } else if (srvHoldMins > 0) {
-          targetExpireMs = Date.now() + activeHoldMinutes * 60 * 1000;
-        }
-        if (targetExpireMs > 0 && currentDraft) {
-          currentDraft.expiresAt = targetExpireMs;
-          sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
-          localStorage.setItem('sb_hold_expire_' + generatedBookingCode, String(targetExpireMs));
-          const newRemaining = Math.max(0, Math.ceil((targetExpireMs - Date.now()) / 1000));
-          startCountdown(newRemaining);
-        }
+        applyServerBookingToUI(apiRes.data);
       }
     } catch (e) {}
   }
@@ -551,8 +629,6 @@ function startCountdown(seconds) {
 function setupLoyaltyWaterRedemption() {
   const db = window.SanBongApp.SanBongDB;
   const user = db.getUser();
-  const btnSub = document.getElementById('btn-sub-water');
-  const btnAdd = document.getElementById('btn-add-water');
   const countEl = document.getElementById('redeemed-bottles-count');
   const summaryBox = document.getElementById('points-exchange-summary');
   const deductEl = document.getElementById('points-to-deduct');
@@ -561,8 +637,6 @@ function setupLoyaltyWaterRedemption() {
   const coText = document.getElementById('co-redeemed-water-text');
 
   if (!user || !user.id) {
-    if (btnSub) btnSub.disabled = true;
-    if (btnAdd) btnAdd.disabled = true;
     const loginLink = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
     if (summaryBox) {
       summaryBox.classList.remove('hidden');
@@ -572,8 +646,9 @@ function setupLoyaltyWaterRedemption() {
   }
 
   const userPoints = typeof user.points === 'number' ? user.points : 0;
-  const bottleCost = Math.max(1, Number(window.SanBongApp?.SanBongDB?.getSystemConfig?.()?.loyaltyBottleCostPoints || db?.getSystemConfig?.()?.loyaltyBottleCostPoints) || 50);
+  const bottleCost = Math.max(1, Number(window.SanBongApp?.SanBongDB?.getSystemConfig?.()?.loyaltyBottleCostPoints || db?.getSystemConfig?.()?.loyaltyBottleCostPoints) || 100);
   const maxBottles = Math.floor(userPoints / bottleCost);
+  redeemedBottles = Math.max(0, Math.min(20, Number(currentDraft?.redeemedBottles ?? redeemedBottles ?? 0)));
 
   const pointsEl = document.getElementById('current-user-points');
   if (pointsEl) pointsEl.textContent = `${userPoints} điểm`;
@@ -581,44 +656,18 @@ function setupLoyaltyWaterRedemption() {
   const maxEl = document.getElementById('max-redeemable-bottles');
   if (maxEl) maxEl.textContent = `${maxBottles} chai`;
 
-  function renderRedemptionState() {
-    if (countEl) countEl.textContent = String(redeemedBottles);
-    if (btnSub) btnSub.disabled = (redeemedBottles <= 0);
-    if (btnAdd) btnAdd.disabled = (redeemedBottles >= maxBottles);
-
-    if (redeemedBottles > 0) {
-      if (summaryBox) summaryBox.classList.remove('hidden');
-      if (deductEl) deductEl.textContent = `${redeemedBottles * bottleCost} điểm`;
-      if (receivedEl) receivedEl.textContent = `${redeemedBottles} chai Aquafina miễn phí`;
-      if (coRow) coRow.classList.remove('hidden');
-      if (coText) coText.textContent = `+${redeemedBottles} chai Aquafina (-${redeemedBottles * bottleCost} điểm)`;
-    } else {
-      if (summaryBox) summaryBox.classList.add('hidden');
-      if (coRow) coRow.classList.add('hidden');
-    }
-
-    if (currentDraft) {
-      currentDraft.redeemedBottles = redeemedBottles;
-      currentDraft.pointsUsed = redeemedBottles * bottleCost;
-      sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft));
-    }
+  if (countEl) countEl.textContent = String(redeemedBottles);
+  const ptsUsed = Number(currentDraft?.pointsUsed ?? (redeemedBottles * bottleCost));
+  if (redeemedBottles > 0) {
+    if (summaryBox) summaryBox.classList.remove('hidden');
+    if (deductEl) deductEl.textContent = `${ptsUsed} điểm`;
+    if (receivedEl) receivedEl.textContent = `${redeemedBottles} chai Aquafina miễn phí`;
+    if (coRow) coRow.classList.remove('hidden');
+    if (coText) coText.textContent = `+${redeemedBottles} chai Aquafina (-${ptsUsed} điểm)`;
+  } else {
+    if (summaryBox) summaryBox.classList.add('hidden');
+    if (coRow) coRow.classList.add('hidden');
   }
-
-  btnSub?.addEventListener('click', () => {
-    if (redeemedBottles > 0) {
-      redeemedBottles--;
-      renderRedemptionState();
-    }
-  });
-
-  btnAdd?.addEventListener('click', () => {
-    if (redeemedBottles < maxBottles) {
-      redeemedBottles++;
-      renderRedemptionState();
-    }
-  });
-
-  renderRedemptionState();
 }
 
 function copyText(elementId) {
@@ -703,11 +752,14 @@ async function confirmPayment(isAuto = false) {
   }
 
   const db = window.SanBongApp.SanBongDB;
-  db.updateBookingStatus(generatedBookingCode, 'Đã xác nhận', 'Đã cọc 30%');
+  const weeks = Math.max(1, parseInt(currentDraft?.weeksCount, 10) || 1);
+  const sysRate = Number(window._checkoutServerBooking?.depositRate || db?.getSystemConfig?.()?.depositRate || 30);
+  const depPct = (weeks > 1 || currentDraft?.bookingMode === 'monthly') ? 60 : Math.max(10, Math.min(100, sysRate));
+  const payLabel = `Đã cọc ${depPct}%`;
+  db.updateBookingStatus(generatedBookingCode, 'Đã xác nhận', payLabel);
 
-  const user = db.getUser();
-  const bottleCost = Math.max(1, Number(window.SanBongApp?.SanBongDB?.getSystemConfig?.()?.loyaltyBottleCostPoints || db?.getSystemConfig?.()?.loyaltyBottleCostPoints) || 50);
-  const pointsUsed = redeemedBottles * bottleCost;
+  const bottleCost = Math.max(1, Number(window.SanBongApp?.SanBongDB?.getSystemConfig?.()?.loyaltyBottleCostPoints || db?.getSystemConfig?.()?.loyaltyBottleCostPoints) || 100);
+  const pointsUsed = Number(currentDraft?.pointsUsed ?? (redeemedBottles * bottleCost));
 
   const rawBooking = sessionStorage.getItem('sb_latest_booking');
   let currentBooking = null;
@@ -721,7 +773,8 @@ async function confirmPayment(isAuto = false) {
 
   if (currentBooking) {
     currentBooking.status = 'Đã xác nhận';
-    currentBooking.paymentStatus = 'Đã cọc 30%';
+    currentBooking.paymentStatus = payLabel;
+    currentBooking.depositRate = depPct;
     currentBooking.pointsUsed = pointsUsed;
     currentBooking.redeemedBottles = redeemedBottles;
     sessionStorage.setItem('sb_latest_booking', JSON.stringify(currentBooking));
@@ -732,7 +785,8 @@ async function confirmPayment(isAuto = false) {
       if (idx !== -1) {
         all[idx] = Object.assign(all[idx], {
           status: 'Đã xác nhận',
-          paymentStatus: 'Đã cọc 30%',
+          paymentStatus: payLabel,
+          depositRate: depPct,
           pointsUsed: pointsUsed,
           redeemedBottles: redeemedBottles
         });
@@ -742,6 +796,7 @@ async function confirmPayment(isAuto = false) {
   }
 
   sessionStorage.removeItem('sb_booking_draft');
+  sessionStorage.removeItem('sb_active_hold_code');
   try {
     localStorage.removeItem('sb_hold_expire_' + generatedBookingCode);
   } catch (e) {}
