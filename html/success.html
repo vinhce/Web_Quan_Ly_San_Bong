@@ -46,10 +46,10 @@
       <div class="w-16 h-16 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center mx-auto shadow-sm ring-8 ring-[#DCFCE7]/40 mb-3">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
-      <h1 class="font-heading font-extrabold text-3xl sm:text-4xl text-[#0F172A]">
+      <h1 id="success-page-title" class="font-heading font-extrabold text-3xl sm:text-4xl text-[#0F172A]">
         Đặt sân bóng thành công!
       </h1>
-      <p class="text-sm text-[#475569] max-w-md mx-auto">
+      <p id="success-page-subtitle" class="text-sm text-[#475569] max-w-md mx-auto">
         Hệ thống đã tự động ghi nhận tiền cọc 30%. Vui lòng đưa mã vé dưới đây cho nhân viên khi đến sân.
       </p>
     </div>
@@ -62,7 +62,7 @@
 
       <div class="flex flex-col sm:flex-row gap-6 items-center pb-6 border-b-2 border-dashed border-[#CBD5E1]">
         
-        <div class="text-center p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shrink-0">
+        <div id="ticket-qr-box" class="text-center p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shrink-0">
           <div id="ticket-qr-mount" class="w-36 h-36 flex items-center justify-center bg-white rounded-xl"></div>
           <div class="text-[11px] font-bold text-[#475569] mt-2 uppercase tracking-wider">Mã QR Check-in</div>
           <button type="button" onclick="window.SanBongApp.downloadTicketQR && window.SanBongApp.downloadTicketQR(document.getElementById('ticket-booking-code')?.textContent)" class="mt-2 text-[11px] font-bold text-[#16A34A] hover:underline flex items-center justify-center gap-1 mx-auto cursor-pointer">
@@ -178,10 +178,10 @@
   <script src="../js/db_bookings.js?v=20261115_v78"></script>
   <script src="../js/db_operations.js?v=20261115_v78"></script>
   <script src="../js/db.js?v=20261115_v78"></script>
-  <script src="../js/ui.js?v=20261115_v78"></script>
+  <script src="../js/ui.js?v=20261121_v118"></script>
   <script src="../js/app.js?v=20261115_v78"></script>
   <script src="../js/api.js?v=20261115_v78"></script>
-  <script src="../js/success.js?v=20261115_v78"></script>
+  <script src="../js/success.js?v=20261121_v120"></script>
 </body>
 </html>
 

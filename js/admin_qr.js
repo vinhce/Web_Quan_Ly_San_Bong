@@ -291,18 +291,22 @@ function lookupQRTicket(codeOpt) {
   let statusBadgeHtml = '';
   let canCheckin = false;
 
+  const stLower = String(booking.status || '').trim().toLowerCase();
+  const isAlreadyScanned = (booking.status === 'Đang đá' || booking.status === 'Hoàn thành' || stLower === 'completed');
+
   if (booking.status === 'Đã xác nhận') {
     statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs">🟢 HỢP LỆ — SẴN SÀNG NHẬN SÂN</span>';
     canCheckin = true;
-  } else if (booking.status === 'Đang đá') {
-    statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300 font-extrabold text-xs">🔵 ĐANG ĐÁ — ĐÃ NHẬN SÂN</span>';
+  } else if (isAlreadyScanned) {
+    statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-extrabold text-xs">⛔ MÃ QR ĐÃ SỬ DỤNG (CHỈ QUÉT 1 LẦN)</span>';
     canCheckin = false;
+    if (window.SanBongApp?.playScanBeep) window.SanBongApp.playScanBeep(false);
+    if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast(`Mã QR #${booking.code} đã được quét check-in trước đó! Mỗi mã QR chỉ có hiệu lực 1 lần.`, 'error', 4000);
+    }
   } else if (booking.status === 'Chờ duyệt cọc') {
     statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-xs">🟡 CHỜ DUYỆT CỌC (Chưa xác nhận cọc)</span>';
     canCheckin = true;
-  } else if (booking.status === 'Hoàn thành') {
-    statusBadgeHtml = '<span class="px-3 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-300 font-extrabold text-xs">⚪ ĐÃ HOÀN THÀNH (Đã thu 100%)</span>';
-    canCheckin = false;
   } else {
     statusBadgeHtml = `<span class="px-3 py-1 rounded-full bg-red-100 text-red-800 border border-red-300 font-extrabold text-xs">🔴 ${escapeSearchHTML(booking.status)}</span>`;
     canCheckin = false;
@@ -357,18 +361,16 @@ function lookupQRTicket(codeOpt) {
       checkinBtn.className = 'btn-sm btn-primary font-bold shadow';
       checkinBtn.innerHTML = '✅ Xác nhận Check-in Nhận Sân';
       checkinBtn.onclick = () => confirmQRCheckin(booking.code);
-    } else if (booking.status === 'Đang đá') {
-      checkinBtn.disabled = false;
-      checkinBtn.className = 'btn-sm bg-sky-600 hover:bg-sky-700 text-white font-bold shadow';
-      checkinBtn.innerHTML = '⚙️ Mở Điều Hành & Thu Tiền';
-      checkinBtn.onclick = () => {
-        closeQRScannerModal();
-        openInPlayModal(booking.code);
-      };
+    } else if (isAlreadyScanned) {
+      checkinBtn.disabled = true;
+      checkinBtn.className = 'btn-sm bg-rose-100 text-rose-700 border border-rose-300 font-bold cursor-not-allowed opacity-80';
+      checkinBtn.innerHTML = '⛔ Mã QR đã quét — Không thể quét lại';
+      checkinBtn.onclick = null;
     } else {
       checkinBtn.disabled = true;
       checkinBtn.className = 'btn-sm bg-slate-200 text-slate-400 cursor-not-allowed';
-      checkinBtn.innerHTML = 'Đã hoàn thành / Không thể check-in';
+      checkinBtn.innerHTML = 'Không thể check-in';
+      checkinBtn.onclick = null;
     }
   }
 }

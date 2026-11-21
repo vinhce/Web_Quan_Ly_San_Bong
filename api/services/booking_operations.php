@@ -23,10 +23,17 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
         if ($oldRow['status'] === 'Đã hủy') {
             json_error('Đơn đặt sân đã bị hủy, không thể nhận sân.', 400, 'ERR_BOOKING_CANCELLED');
         }
+        if ($oldRow['status'] === 'Khách chưa đến') {
+            json_error('Đơn đặt sân đã bị đánh dấu khách chưa đến và nhả sân, không thể check-in.', 400, 'ERR_BOOKING_NOSHOW');
+        }
+        if (in_array($oldRow['status'], ['Đang đá', 'Hoàn thành', 'completed'], true)) {
+            json_error('Mã QR này đã được quét check-in trước đó. Mỗi mã QR chỉ có hiệu lực 1 lần duy nhất!', 409, 'ERR_ALREADY_CHECKED_IN');
+        }
 
         $oldStatus = $oldRow['status'] . ' (' . $oldRow['payment_status'] . ')';
         $currentPayStatus = (string)($oldRow['payment_status'] ?? 'Chờ duyệt cọc');
-        $isDepositPaid = in_array($currentPayStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'deposited', 'completed', 'paid'], true);
+        $isDepositPaid = in_array($currentPayStatus, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'deposited', 'completed', 'paid'], true)
+            || (stripos($currentPayStatus, 'Đã cọc') !== false);
 
         $newPayStatus = $currentPayStatus;
         if (!$isDepositPaid) {
@@ -42,12 +49,18 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
             }
             $remAmt = max(0, $totPrice - $depAmt);
 
-            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = 'Đã cọc 30%', paid_amount = ?, remaining_amount = ? WHERE code = ?");
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = 'Đã cọc 30%', paid_amount = ?, remaining_amount = ? WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
             $stmt->execute([$depAmt, $remAmt, $code]);
+            if ($stmt->rowCount() === 0) {
+                json_error('Mã QR này đã được quét check-in trước đó. Mỗi mã QR chỉ có hiệu lực 1 lần duy nhất!', 409, 'ERR_ALREADY_CHECKED_IN');
+            }
             $newPayStatus = 'Đã cọc 30%';
         } else {
-            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá' WHERE code = ?");
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá' WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
             $stmt->execute([$code]);
+            if ($stmt->rowCount() === 0) {
+                json_error('Mã QR này đã được quét check-in trước đó. Mỗi mã QR chỉ có hiệu lực 1 lần duy nhất!', 409, 'ERR_ALREADY_CHECKED_IN');
+            }
         }
         write_audit_log($pdo, 'CHECKIN', $code, $oldStatus, 'Đang đá', $actor);
 
@@ -107,6 +120,27 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
 
         if (empty($pitchId) || empty($date) || empty($slotId) || empty($customerName) || empty($phone)) {
             json_error('Vui lòng điền đầy đủ họ tên, SĐT, sân, ngày và khung giờ cần chờ.', 400, 'ERR_MISSING_FIELDS');
+        }
+
+        $todayStr = date('Y-m-d');
+        if ($date < $todayStr) {
+            json_error('Không thể đăng ký danh sách chờ cho ngày trong quá khứ.', 400, 'ERR_PAST_DATE');
+        }
+
+        // Chặn đăng ký chờ khi khung giờ đã có người cọc thành công
+        $depStmt = $pdo->prepare("
+            SELECT id FROM bookings 
+            WHERE pitch_id = ? AND booking_date = ? AND slot_id = ? 
+              AND status NOT IN ('Đã hủy', 'cancelled', 'noshow')
+              AND (
+                  payment_status IN ('Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%')
+                  OR status IN ('Đã xác nhận', 'Đang đá', 'completed')
+              )
+            LIMIT 1
+        ");
+        $depStmt->execute([$pitchId, $date, $slotId]);
+        if ($depStmt->fetch()) {
+            json_error('Khung giờ này đã có người đặt cọc thành công, không nhận thêm danh sách chờ.', 409, 'ERR_ALREADY_DEPOSITED');
         }
 
         $currentUser = get_authenticated_user($pdo);

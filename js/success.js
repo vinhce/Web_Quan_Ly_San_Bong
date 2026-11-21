@@ -65,40 +65,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  if (mainEl) mainEl.style.visibility = 'visible';
-
-  if (!booking) {
-    try {
-      const bookingPath = `api/bookings.php?code=${encodeURIComponent(checkCode)}`;
-      const bookingApiUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(bookingPath) : `../${bookingPath}`;
-      const bRes = await fetch(bookingApiUrl, {
-        cache: 'no-store',
-        credentials: 'same-origin'
-      });
-      if (bRes.ok) {
-        const bJson = await bRes.json();
-        const bData = bJson?.data || null;
-        if (bJson?.success && bData) {
-          booking = {
-            code: bData.code || checkCode,
-            customerName: bData.customerName || bData.customer_name || 'Khách hàng',
-            phone: bData.phone || '',
-            pitchName: bData.pitchName || bData.pitch_name || bData.pitchId || bData.pitch_id || 'Sân bóng',
-            date: bData.date || bData.booking_date || (window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0]),
-            slotTime: bData.slotTime || bData.slot_time || '',
-            totalPrice: Number(bData.totalPrice ?? bData.total_price ?? 0),
-            depositAmount: Number(bData.depositAmount ?? bData.deposit_amount ?? 0),
-            remainingAmount: Number(bData.remainingAmount ?? bData.remaining_amount ?? 0),
-            paymentStatus: bData.paymentStatus || bData.payment_status || 'Đã cọc 30%',
-            status: bData.status || 'Đã xác nhận',
-            services: Array.isArray(bData.services) ? bData.services : [],
-            weeksCount: Number(bData.weeksCount ?? bData.weeks_count ?? 1),
-            note: bData.note || ''
-          };
-        }
+  try {
+    const bookingPath = `api/bookings.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`;
+    const bookingApiUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(bookingPath) : `../${bookingPath}`;
+    const bRes = await fetch(bookingApiUrl, {
+      cache: 'no-store',
+      credentials: 'same-origin'
+    });
+    if (bRes.ok) {
+      const bJson = await bRes.json();
+      const rawList = Array.isArray(bJson?.data) ? bJson.data : (bJson?.data ? [bJson.data] : []);
+      const bData = rawList.find(item => String(item?.code || '').toUpperCase() === String(checkCode).toUpperCase()) || rawList[0] || null;
+      if (bJson?.success && bData) {
+        const freshBooking = {
+          code: bData.code || checkCode,
+          customerName: bData.customerName || bData.customer_name || booking?.customerName || 'Khách hàng',
+          phone: bData.phone || booking?.phone || '',
+          pitchName: bData.pitchName || bData.pitch_name || bData.pitchId || bData.pitch_id || booking?.pitchName || 'Sân bóng',
+          date: bData.date || bData.booking_date || booking?.date || (window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0]),
+          slotTime: bData.slotTime || bData.slot_time || booking?.slotTime || '',
+          totalPrice: Number(bData.totalPrice ?? bData.total_price ?? booking?.totalPrice ?? 0),
+          depositAmount: Number(bData.depositAmount ?? bData.deposit_amount ?? booking?.depositAmount ?? 0),
+          remainingAmount: Number(bData.remainingAmount ?? bData.remaining_amount ?? booking?.remainingAmount ?? 0),
+          paymentStatus: bData.paymentStatus || bData.payment_status || booking?.paymentStatus || 'Đã cọc 30%',
+          status: bData.status || booking?.status || 'Đã xác nhận',
+          services: Array.isArray(bData.services) ? bData.services : (booking?.services || []),
+          weeksCount: Number(bData.weeksCount ?? bData.weeks_count ?? booking?.weeksCount ?? 1),
+          note: bData.note || booking?.note || ''
+        };
+        booking = Object.assign({}, booking || {}, freshBooking);
       }
-    } catch (e) {}
-  }
+    }
+  } catch (e) {}
+
+  if (mainEl) mainEl.style.visibility = 'visible';
 
   if (!booking) {
     const historyUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('history') : '/history';
@@ -189,8 +189,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     balanceEl.textContent = `${currentBalance} điểm`;
   }
 
+  const isCheckedInStatus = (st) => {
+    const s = String(st || '').trim().toLowerCase();
+    return s === 'đang đá' || s === 'hoàn thành' || s === 'completed';
+  };
+
+  const qrBox = document.getElementById('ticket-qr-box');
   const qrMount = document.getElementById('ticket-qr-mount');
-  if (qrMount) {
-    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(booking.code, 140);
+  const titleEl = document.getElementById('success-page-title') || document.querySelector('main h1');
+  const subtitleEl = document.getElementById('success-page-subtitle') || document.querySelector('main h1 + p');
+
+  const renderTicketQR = (checkedIn) => {
+    if (checkedIn) {
+      if (qrBox) qrBox.classList.add('hidden');
+      if (qrMount) qrMount.innerHTML = '';
+
+      if (titleEl) titleEl.textContent = 'Đã vào sân!';
+      document.title = 'Đã Vào Sân – Vé Điện Tử Sân Bóng Pro';
+
+      const st = String(booking.status || '');
+      const isDone = st === 'Hoàn thành' || st.toLowerCase() === 'completed';
+      if (subtitleEl) {
+        subtitleEl.textContent = isDone
+          ? 'Trận đấu đã hoàn thành. Cảm ơn bạn đã sử dụng dịch vụ tại Sân Bóng Pro!'
+          : 'Vé check-in đã được xác nhận thành công. Chúc đội bạn có một trận đấu thật bùng nổ!';
+      }
+
+      const statusBadge = document.getElementById('ticket-status-badge');
+      if (statusBadge) {
+        statusBadge.className = 'px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold';
+        statusBadge.textContent = isDone
+          ? '✓ Đã Check-in & Hoàn thành'
+          : '✓ Đã vào sân (Đang đá)';
+      }
+      return;
+    }
+
+    if (qrBox) qrBox.classList.remove('hidden');
+    if (qrMount) {
+      qrMount.classList.add('relative');
+      qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(booking.code, 140);
+    }
+  };
+
+  let alreadyCheckedIn = isCheckedInStatus(booking.status);
+  renderTicketQR(alreadyCheckedIn);
+
+  // Tự động kiểm tra trạng thái quét QR check-in mỗi 4 giây (tối đa 15 phút)
+  if (!alreadyCheckedIn && booking.code) {
+    let pollCount = 0;
+    const apiPath = window.SanBongApp?.getRelativePath
+      ? window.SanBongApp.getRelativePath(`api/bookings.php?code=${encodeURIComponent(booking.code)}&_t=`)
+      : `../api/bookings.php?code=${encodeURIComponent(booking.code)}&_t=`;
+    const checkPoll = setInterval(async () => {
+      pollCount += 1;
+      if (pollCount > 225 || alreadyCheckedIn) {
+        clearInterval(checkPoll);
+        return;
+      }
+      try {
+        const res = await fetch(apiPath + Date.now(), { credentials: 'same-origin', cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        const list = Array.isArray(json?.data) ? json.data : (json?.data ? [json.data] : []);
+        const matched = list.find(item => String(item?.code || '').toUpperCase() === String(booking.code).toUpperCase());
+        if (matched && isCheckedInStatus(matched.status)) {
+          alreadyCheckedIn = true;
+          booking.status = matched.status;
+          db.updateBookingStatus(booking.code, booking.status, booking.paymentStatus);
+          renderTicketQR(true);
+          clearInterval(checkPoll);
+        }
+      } catch (e) {}
+    }, 4000);
   }
 });
