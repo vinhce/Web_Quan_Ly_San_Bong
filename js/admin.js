@@ -3,7 +3,7 @@ let currentPortalRole = (typeof window !== 'undefined' && window.sb_current_user
   ? window.sb_current_user.role
   : (() => {
       try {
-        const u = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || '{}');
+        const u = JSON.parse(sessionStorage.getItem('sb_current_user') || '{}');
         return u.role || 'admin';
       } catch (e) {
         return 'admin';
@@ -177,7 +177,7 @@ async function adminFetchJson(url, options = {}) {
           sessionStorage.removeItem('sb_csrf_token');
           localStorage.removeItem('sb_current_user');
         } catch (e) {}
-        const loginUrl = (window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin';
+        const loginUrl = (window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin&expired=1';
         window.location.replace(loginUrl);
       }
       return {
@@ -292,12 +292,7 @@ function applyRolePermissions() {
   let storedUser = null;
   try {
     storedUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-    if (!storedUser) {
-      storedUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
-      if (storedUser) {
-        try { sessionStorage.setItem('sb_current_user', JSON.stringify(storedUser)); } catch (e) {}
-      }
-    }
+    try { localStorage.removeItem('sb_current_user'); } catch (e) {}
   } catch (e) {}
   if (storedUser && storedUser.role) {
     currentPortalRole = storedUser.role;
@@ -358,15 +353,15 @@ function applyRolePermissions() {
   const kpiGrid = document.getElementById('overview-kpi-grid');
 
   if (kpiRevCard) {
-    kpiRevCard.classList.toggle('hidden', !isAdmin);
-    kpiRevCard.style.display = isAdmin ? '' : 'none';
+    kpiRevCard.classList.toggle('hidden', !isMgrOrAdmin);
+    kpiRevCard.style.display = isMgrOrAdmin ? '' : 'none';
   }
   if (chartsRow) {
-    chartsRow.classList.toggle('hidden', !isAdmin);
-    chartsRow.style.display = isAdmin ? '' : 'none';
+    chartsRow.classList.toggle('hidden', !isMgrOrAdmin);
+    chartsRow.style.display = isMgrOrAdmin ? '' : 'none';
   }
   if (kpiGrid) {
-    const showRevenueCard = Boolean(kpiRevCard) && isAdmin;
+    const showRevenueCard = Boolean(kpiRevCard) && isMgrOrAdmin;
     if (showRevenueCard) {
       kpiGrid.classList.remove('lg:grid-cols-3');
       kpiGrid.classList.add('lg:grid-cols-4');
@@ -411,7 +406,7 @@ function switchAdminTab(moduleKey) {
     currentPortalRole = window.sb_current_user.role;
   } else {
     try {
-      const u = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || '{}');
+      const u = JSON.parse(sessionStorage.getItem('sb_current_user') || '{}');
       if (u.role) currentPortalRole = u.role;
     } catch(e) {}
   }
@@ -558,13 +553,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!localUser) {
       localUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
     }
-    if (!localUser) {
-      localUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
-      if (localUser) {
-        try { sessionStorage.setItem('sb_current_user', JSON.stringify(localUser)); } catch (e) {}
-      }
-    }
   } catch (e) {}
+  try { localStorage.removeItem('sb_current_user'); } catch (e) {}
 
   const isAllowedAdmin = Boolean(
     (localUser && ['admin', 'manager', 'staff'].includes(localUser.role)) ||
@@ -598,32 +588,26 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPortalRole = data.user.role;
         try {
           sessionStorage.setItem('sb_current_user', JSON.stringify(data.user));
-          localStorage.setItem('sb_current_user', JSON.stringify(data.user));
+          localStorage.removeItem('sb_current_user');
           window.sb_current_user = data.user;
         } catch (e) {}
         updateAdminProfile(data.user);
         applyRolePermissions();
         document.documentElement.style.display = '';
-        [renderOverviewKPIs, renderAdminPitches, loadMaintenanceSchedules, loadAdminReviews, renderAdminInventory, loadShiftHandovers, renderAdminCustomers, initRecurringScheduleForm, loadRecurringSchedules, loadWaitlistAdmin].forEach(fn => { if (typeof fn === 'function') fn(); });
-        if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
-        if (isManagerOrAdmin()) {
-          [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
-        }
-        if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadMonthlyPackages, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
+        const targetTab = activeModule || 'overview';
+        switchAdminTab(targetTab);
+        if (targetTab === 'overview' && typeof renderOverviewTodayBookings === 'function') {
+          renderOverviewTodayBookings();
         }
         return;
       }
 
       if (isAllowedAdmin) {
         console.warn('Phiên nền tảng đang đồng bộ');
-        [renderOverviewKPIs, renderAdminPitches, loadMaintenanceSchedules, loadAdminReviews, renderAdminInventory, loadShiftHandovers, renderAdminCustomers, initRecurringScheduleForm, loadRecurringSchedules, loadWaitlistAdmin].forEach(fn => { if (typeof fn === 'function') fn(); });
-        if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
-        if (isManagerOrAdmin()) {
-          [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
-        }
-        if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadMonthlyPackages, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
+        const targetTab = activeModule || 'overview';
+        switchAdminTab(targetTab);
+        if (targetTab === 'overview' && typeof renderOverviewTodayBookings === 'function') {
+          renderOverviewTodayBookings();
         }
         return;
       }
@@ -638,14 +622,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ? (data.message || 'Tài khoản của bạn đã bị Chủ sân tạm khóa.')
         : 'Phiên làm việc đã hết hạn hoặc không có quyền truy cập.';
       if (window.SanBongApp?.showToast) window.SanBongApp.showToast(msg, 'error');
-      window.location.replace((window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin');
+      window.location.replace((window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin&expired=1');
       return;
     })
     .catch(err => {
       console.warn('Lỗi kết nối auth/me:', err);
       if (!isAllowedAdmin) {
         document.documentElement.style.display = 'none';
-        window.location.replace((window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin');
+        window.location.replace((window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin&expired=1');
       }
     });
 
