@@ -154,7 +154,8 @@ function printInvoiceNow() {
     <head>
       <meta charset="UTF-8">
       <title>Hóa Đơn #${escapeHTML(activeInvoiceCode || 'SANBONGPRO')}</title>
-      <script src="https://cdn.tailwindcss.com"></script>
+      <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261122_v128">
+      <link rel="stylesheet" href="../css/style.css?v=20261122_v128">
       <style>
         @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
       </style>
