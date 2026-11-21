@@ -3,11 +3,19 @@
 
   const TARGET_IDS = new Set([
     'search-date',
+    'fields-filter-date',
     'booking-date-input',
     'detail-schedule-date',
     'widget-date',
     'filter-date',
     'post-match-date',
+    'timeline-date-picker',
+    'waitlist-date-filter',
+    'rec-start-date',
+    'admin-book-date',
+    'shift-filter-date',
+    'admin-log-filter-from',
+    'admin-log-filter-to',
     'rpt-from-date',
     'rpt-to-date',
     'exp-date',
@@ -16,6 +24,11 @@
 
   const ALLOW_PAST_IDS = new Set([
     'filter-date',
+    'timeline-date-picker',
+    'waitlist-date-filter',
+    'shift-filter-date',
+    'admin-log-filter-from',
+    'admin-log-filter-to',
     'rpt-from-date',
     'rpt-to-date',
     'exp-date',
