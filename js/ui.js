@@ -90,31 +90,56 @@ function handleLogout() {
       const isAdmin = currentUser.role === 'admin';
       const isManager = currentUser.role === 'manager';
       const isStaff = currentUser.role === 'staff';
+      const cleanAvatarWords = userDisplayName
+        .replace(/\([^)]*\)/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .map(w => w.replace(/[^a-zA-ZÀ-ỹ0-9]/g, ''))
+        .filter(Boolean);
       const user = {
         name: userDisplayName,
         full_name: userDisplayName,
-        avatar: userDisplayName.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() || 'VIP',
+        avatar: cleanAvatarWords.map(w => w[0]).slice(-2).join('').toUpperCase() || 'VIP',
         tier: isAdmin ? 'Quản trị viên' : (isManager ? 'Quản lý sân' : (isStaff ? 'Nhân viên trực sân' : (currentUser.tier || 'Hội viên'))),
         points: Number(currentUser.points) || 0
       };
       const userSubline = (isStaff || isManager) ? escapeHTML(user.tier) : `${escapeHTML(user.tier)} • ${user.points}đ`;
 
       authSectionHtml = `
-      <div class="flex items-center gap-3 sm:gap-4">
-        <a href="${getRelativePath('history')}" class="w-10 h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#F8FAFC] transition-colors" title="Lịch sử đặt sân & Hội viên">
-          ${Icons.bell}
-        </a>
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div id="notif-bell-wrap" class="relative shrink-0">
+          <button type="button" id="notif-bell-btn" aria-label="Thông báo" aria-haspopup="true" aria-expanded="false" onclick="window.SanBongUI && window.SanBongUI.toggleNotificationsDropdown(event)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#ECFDF3] hover:text-[#15803D] hover:border-[#86EFAC] transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16A34A]">
+            ${Icons.bell}
+            <span id="notif-unread-dot" class="hidden absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
+          </button>
 
-        <div id="user-menu-container" class="relative group">
-          <button id="user-menu-btn" aria-expanded="false" class="flex items-center gap-2 pl-2 py-1 pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0] text-left">
-            <div class="w-9 h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center">
+          <div id="notif-dropdown-menu" role="region" aria-label="Danh sách thông báo" class="hidden absolute right-0 top-full mt-2 w-80 sm:w-96 max-w-[calc(100vw-24px)] bg-white rounded-xl shadow-2xl border border-[#E2E8F0] z-50 overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#F1F5F9] flex items-center justify-between bg-[#F8FAFC]">
+              <div class="flex items-center gap-2">
+                <span class="font-heading font-bold text-sm text-[#0F172A]">Thông báo</span>
+                <span id="notif-count-badge" class="hidden px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-extrabold">0</span>
+              </div>
+              <button type="button" onclick="window.SanBongUI && window.SanBongUI.markNotificationsRead()" class="text-[11px] font-semibold text-[#16A34A] hover:text-[#15803D] hover:underline">Đánh dấu đã đọc</button>
+            </div>
+            <div id="notif-list-container" class="max-h-80 overflow-y-auto divide-y divide-[#F1F5F9]">
+              <div class="p-6 text-center text-xs text-[#64748B]">Đang tải thông báo...</div>
+            </div>
+            <div class="px-4 py-2.5 border-t border-[#F1F5F9] bg-[#F8FAFC] text-center">
+              <a href="${getRelativePath('history')}" class="text-xs font-bold text-[#16A34A] hover:text-[#15803D] hover:underline">Xem tất cả lịch sử đặt sân →</a>
+            </div>
+          </div>
+        </div>
+
+        <div id="user-menu-container" class="relative group shrink-0">
+          <button id="user-menu-btn" aria-expanded="false" class="flex items-center gap-2 pl-1.5 py-1 pr-2 sm:pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0] text-left whitespace-nowrap">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-xs sm:text-sm flex items-center justify-center shrink-0">
               ${escapeHTML(user.avatar || 'VIP')}
             </div>
-            <div class="hidden sm:block">
-              <div class="text-[14px] font-semibold text-[#0F172A] leading-tight">${escapeHTML(user.name)}</div>
-              <div class="text-[11px] text-[#16A34A] font-medium">${userSubline}</div>
+            <div class="hidden xl:block max-w-[140px]">
+              <div class="text-[13px] font-semibold text-[#0F172A] leading-tight truncate">${escapeHTML(user.name)}</div>
+              <div class="text-[11px] text-[#16A34A] font-medium truncate">${userSubline}</div>
             </div>
-            <svg class="w-4 h-4 text-[#94A3B8] ml-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+            <svg class="w-4 h-4 text-[#94A3B8] shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
           </button>
 
           <!-- Dropdown menu -->
@@ -151,44 +176,63 @@ function handleLogout() {
       </div>`;
     } else {
       authSectionHtml = `
-      <div class="flex items-center gap-2 sm:gap-3">
-        <a href="${getRelativePath('login')}" class="h-9 px-3.5 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold text-[#16A34A] border border-[#16A34A] hover:bg-[#DCFCE7]/60 transition-all">
+      <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+        <a href="${getRelativePath('login')}" class="h-9 px-3 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold text-[#16A34A] border border-[#16A34A] hover:bg-[#ECFDF3] hover:text-[#15803D] transition-all whitespace-nowrap">
           Đăng nhập
         </a>
-        <a href="${getRelativePath('login')}?tab=register" class="h-9 px-3.5 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold bg-[#16A34A] text-white hover:bg-[#15803D] shadow-sm transition-all">
+        <a href="${getRelativePath('login')}?tab=register" class="h-9 px-3 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold bg-[#16A34A] text-white hover:bg-[#15803D] shadow-sm transition-all whitespace-nowrap">
           Đăng ký
         </a>
       </div>`;
     }
 
-    return `
-    <header class="w-full h-[72px] bg-white border-b border-[#E2E8F0] px-4 md:px-10 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-      <div class="flex items-center gap-6 lg:gap-10">
-        <a href="${getRelativePath('')}" class="flex items-center gap-3 group">
-          <div class="w-10 h-10 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md group-hover:bg-[#15803D] transition-all">
-            ${Icons.ball}
-          </div>
-          <div>
-            <span class="font-heading font-extrabold text-[20px] text-[#0F172A] tracking-tight">Sân Bóng Pro</span>
-            <span class="block text-[10px] font-medium text-[#16A34A] uppercase tracking-wider -mt-1">Hệ thống sân đỉnh cao</span>
-          </div>
-        </a>
+    const mobileNavHtml = navItems.map(item => {
+      const isAct = item.label === activePage;
+      return `
+      <a href="${item.href}" class="block px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+        isAct ? 'bg-[#ECFDF3] text-[#15803D]' : 'text-[#334155] hover:bg-[#F8FAFC] hover:text-[#15803D]'
+      }">${escapeHTML(item.label)}</a>`;
+    }).join('');
 
-        <nav class="hidden md:flex items-center gap-6 lg:gap-8 h-[72px]">
-          ${navItems.map(item => {
-            const isAct = item.label === activePage;
-            return `
-            <a href="${item.href}" class="h-full flex items-center relative text-[14px] font-medium transition-colors ${
-              isAct ? 'text-[#16A34A] font-semibold' : 'text-[#475569] hover:text-[#0F172A]'
-            }">
-              <span>${escapeHTML(item.label)}</span>
-              ${isAct ? `<span class="absolute bottom-0 left-0 right-0 h-[3px] bg-[#16A34A] rounded-t-full"></span>` : ''}
-            </a>`;
-          }).join('')}
-        </nav>
+    return `
+    <header class="w-full bg-white border-b border-[#E2E8F0] sticky top-0 z-50 shadow-sm">
+      <div class="h-[72px] px-3 sm:px-4 lg:px-6 xl:px-10 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-4 lg:gap-6 xl:gap-8 min-w-0">
+          <a href="${getRelativePath('')}" class="flex items-center gap-2.5 group shrink-0 whitespace-nowrap">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md group-hover:bg-[#15803D] transition-all shrink-0">
+              ${Icons.ball}
+            </div>
+            <div class="leading-none">
+              <span class="block font-heading font-extrabold text-[17px] sm:text-[19px] text-[#0F172A] tracking-tight whitespace-nowrap">Sân Bóng Pro</span>
+              <span class="block text-[9px] sm:text-[10px] font-medium text-[#16A34A] uppercase tracking-wider mt-0.5 whitespace-nowrap">Hệ thống sân đỉnh cao</span>
+            </div>
+          </a>
+
+          <nav class="hidden lg:flex items-center gap-4 xl:gap-6 h-[72px]">
+            ${navItems.map(item => {
+              const isAct = item.label === activePage;
+              return `
+              <a href="${item.href}" class="h-full flex items-center relative text-[13px] xl:text-[14px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                isAct ? 'text-[#16A34A] font-semibold' : 'text-[#475569] hover:text-[#15803D]'
+              }">
+                <span>${escapeHTML(item.label)}</span>
+                ${isAct ? `<span class="absolute bottom-0 left-0 right-0 h-[3px] bg-[#16A34A] rounded-t-full"></span>` : ''}
+              </a>`;
+            }).join('')}
+          </nav>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          ${authSectionHtml}
+          <button type="button" id="mobile-nav-toggle-btn" aria-label="Mở menu điều hướng" aria-expanded="false" onclick="(function(btn){var m=document.getElementById('mobile-nav-drawer');if(!m)return;var open=m.classList.toggle('hidden');btn.setAttribute('aria-expanded',String(!open));})(this)" class="lg:hidden w-9 h-9 rounded-lg border border-[#E2E8F0] flex items-center justify-center text-[#334155] hover:bg-[#ECFDF3] hover:text-[#15803D] transition-colors shrink-0">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+        </div>
       </div>
 
-      ${authSectionHtml}
+      <nav id="mobile-nav-drawer" class="hidden lg:hidden border-t border-[#E2E8F0] bg-white px-3 py-2.5 space-y-1 shadow-md">
+        ${mobileNavHtml}
+      </nav>
     </header>`;
   }
 
@@ -257,12 +301,127 @@ function handleLogout() {
       </div>
 
       <!-- FLOATING QUICK ACTIONS (ZALO & HOTLINE) -->
-      <div class="fixed right-3 sm:right-5 bottom-4 sm:bottom-6 z-40 flex flex-col gap-2 pointer-events-auto">
-        <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform font-bold text-[11px] sm:text-xs" title="Chat Zalo hỗ trợ 24/7">
-          <span class="text-[11px] sm:text-xs font-black tracking-tighter">Zalo</span>
+      <style id="zalo-floating-motion-style">
+        .zalo-floating-btn {
+          position: relative;
+          box-shadow: 0 4px 16px rgba(0, 104, 255, 0.45);
+          transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+        }
+        .zalo-floating-btn:hover {
+          transform: scale(1.15) !important;
+          box-shadow: 0 6px 22px rgba(0, 104, 255, 0.65);
+        }
+        .zalo-icon-inner {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          animation: zaloWiggle 2.6s infinite ease-in-out;
+          transform-origin: center center;
+        }
+        .zalo-pulse-ring {
+          position: absolute;
+          inset: -4px;
+          border-radius: 9999px;
+          background: rgba(0, 104, 255, 0.45);
+          animation: zaloPulseRing 2s infinite cubic-bezier(0.24, 0, 0.38, 1);
+          z-index: 1;
+          pointer-events: none;
+        }
+        .zalo-pulse-wave {
+          position: absolute;
+          inset: -10px;
+          border-radius: 9999px;
+          border: 2px solid rgba(0, 104, 255, 0.35);
+          animation: zaloPulseWave 2s infinite cubic-bezier(0.24, 0, 0.38, 1);
+          animation-delay: 0.4s;
+          z-index: 1;
+          pointer-events: none;
+        }
+        @keyframes zaloWiggle {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          8%, 22% { transform: scale(1.12) rotate(-12deg); }
+          15%, 28% { transform: scale(1.12) rotate(12deg); }
+          35% { transform: scale(1.05) rotate(0deg); }
+          45% { transform: scale(1) rotate(0deg); }
+        }
+        @keyframes zaloPulseRing {
+          0% { transform: scale(0.9); opacity: 0.85; }
+          70% { transform: scale(1.35); opacity: 0; }
+          100% { transform: scale(1.4); opacity: 0; }
+        }
+        @keyframes zaloPulseWave {
+          0% { transform: scale(0.85); opacity: 0.9; }
+          80% { transform: scale(1.5); opacity: 0; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* Hotline Floating Motion */
+        .hotline-floating-btn {
+          position: relative;
+          box-shadow: 0 4px 16px rgba(22, 163, 74, 0.45);
+          transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+        }
+        .hotline-floating-btn:hover {
+          transform: scale(1.15) !important;
+          box-shadow: 0 6px 22px rgba(22, 163, 74, 0.65);
+        }
+        .hotline-icon-inner {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          animation: phoneRing 2.6s infinite ease-in-out;
+          animation-delay: 1.3s;
+          transform-origin: center center;
+        }
+        .hotline-pulse-ring {
+          position: absolute;
+          inset: -4px;
+          border-radius: 9999px;
+          background: rgba(22, 163, 74, 0.45);
+          animation: hotlinePulseRing 2s infinite cubic-bezier(0.24, 0, 0.38, 1);
+          z-index: 1;
+          pointer-events: none;
+        }
+        .hotline-pulse-wave {
+          position: absolute;
+          inset: -10px;
+          border-radius: 9999px;
+          border: 2px solid rgba(22, 163, 74, 0.35);
+          animation: hotlinePulseWave 2s infinite cubic-bezier(0.24, 0, 0.38, 1);
+          animation-delay: 0.4s;
+          z-index: 1;
+          pointer-events: none;
+        }
+        @keyframes phoneRing {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          8%, 22% { transform: scale(1.15) rotate(-15deg); }
+          15%, 28% { transform: scale(1.15) rotate(15deg); }
+          35% { transform: scale(1.05) rotate(0deg); }
+          45% { transform: scale(1) rotate(0deg); }
+        }
+        @keyframes hotlinePulseRing {
+          0% { transform: scale(0.9); opacity: 0.85; }
+          70% { transform: scale(1.35); opacity: 0; }
+          100% { transform: scale(1.4); opacity: 0; }
+        }
+        @keyframes hotlinePulseWave {
+          0% { transform: scale(0.85); opacity: 0.9; }
+          80% { transform: scale(1.5); opacity: 0; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+      </style>
+      <div class="fixed right-3 sm:right-5 bottom-4 sm:bottom-6 z-40 flex flex-col gap-2.5 pointer-events-auto">
+        <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="zalo-floating-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center font-bold text-[11px] sm:text-xs" title="Chat Zalo hỗ trợ 24/7">
+          <span class="zalo-pulse-ring"></span>
+          <span class="zalo-pulse-wave"></span>
+          <span class="zalo-icon-inner relative z-10 text-[11px] sm:text-xs font-black tracking-tighter drop-shadow-sm">Zalo</span>
         </a>
-        <a href="tel:0352313548" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-base sm:text-lg" title="Gọi Hotline đặt sân 0352 313 548">
-          <svg class="w-5 h-5 text-white fill-current" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z"/></svg>
+        <a href="tel:0352313548" class="hotline-floating-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-base sm:text-lg" title="Gọi Hotline đặt sân 0352 313 548">
+          <span class="hotline-pulse-ring"></span>
+          <span class="hotline-pulse-wave"></span>
+          <span class="hotline-icon-inner relative z-10 flex items-center justify-center">
+            <svg class="w-5 h-5 text-white fill-current drop-shadow-sm" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z"/></svg>
+          </span>
         </a>
       </div>
     </footer>`;
@@ -676,6 +835,161 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
     showToast(String(msg), 'warning');
   };
 
+  function buildNotificationsFromBookings(bookings, currentUser) {
+    if (!Array.isArray(bookings) || !currentUser) return [];
+    const uId = currentUser.id ? Number(currentUser.id) : null;
+    const uPhone = String(currentUser.phone || currentUser.username || '').replace(/\D+/g, '');
+    const isAdmin = ['admin', 'manager', 'staff'].includes(String(currentUser.role || '').toLowerCase());
+
+    const mine = bookings.filter(b => {
+      if (isAdmin) return true;
+      const bUid = b.user_id ? Number(b.user_id) : null;
+      const bPhone = String(b.phone || '').replace(/\D+/g, '');
+      return (uId && bUid && uId === bUid) || (uPhone && bPhone && uPhone === bPhone);
+    });
+
+    const fmtDate = (iso) => {
+      const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso || '');
+    };
+
+    return mine.slice(0, 10).map(b => {
+      const st = String(b.status || '');
+      const ps = String(b.paymentStatus || b.payment_status || '');
+      let icon = '🔔', title = `Cập nhật đơn #${b.code}`, tone = 'text-slate-700 bg-slate-100';
+      if (st === 'Đã hủy' || ps === 'Đã hủy') {
+        icon = '✕'; title = `Đơn #${b.code} đã hủy`; tone = 'text-rose-700 bg-rose-100';
+      } else if (st === 'Hoàn thành' || st.toLowerCase() === 'completed') {
+        icon = '✓'; title = `Hoàn thành ca đá #${b.code}`; tone = 'text-emerald-700 bg-emerald-100';
+      } else if (st === 'Đang đá') {
+        icon = '⚽'; title = `Ca đá #${b.code} đang diễn ra`; tone = 'text-blue-700 bg-blue-100';
+      } else if (ps.includes('Đã cọc') || ps.includes('Đã thanh toán')) {
+        icon = '✓'; title = `Đã xác nhận cọc đơn #${b.code}`; tone = 'text-emerald-700 bg-emerald-100';
+      } else {
+        icon = '⏳'; title = `Đơn #${b.code} đang chờ cọc`; tone = 'text-amber-700 bg-amber-100';
+      }
+      return {
+        code: b.code || '',
+        icon,
+        title,
+        tone,
+        desc: `${b.pitchName || b.pitch_name || b.pitchId || 'Sân bóng'} · ${fmtDate(b.date || b.booking_date)} (${b.slotTime || b.slot_time || ''})`,
+        time: b.createdAt || b.created_at || ''
+      };
+    });
+  }
+
+  async function loadAndRenderNotifications() {
+    const listEl = document.getElementById('notif-list-container');
+    const dotEl = document.getElementById('notif-unread-dot');
+    const badgeEl = document.getElementById('notif-count-badge');
+    if (!listEl) return;
+
+    let currentUser = null;
+    try {
+      currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || 'null');
+    } catch (e) {}
+
+    let bookings = (window.SanBongDB && typeof window.SanBongDB.getAllBookings === 'function')
+      ? window.SanBongDB.getAllBookings()
+      : [];
+
+    if ((!bookings || bookings.length === 0) && currentUser) {
+      try {
+        const res = await fetch(getRelativePath('api/bookings.php'), { credentials: 'same-origin', cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        if (res.ok && json && Array.isArray(json.data)) {
+          bookings = json.data;
+        }
+      } catch (e) {}
+    }
+
+    const items = buildNotificationsFromBookings(bookings, currentUser);
+    const seenCount = Number(localStorage.getItem('sb_notif_seen_count') || '0');
+    const hasUnread = items.length > seenCount;
+
+    if (dotEl) dotEl.classList.toggle('hidden', !hasUnread);
+    if (badgeEl) {
+      badgeEl.textContent = String(items.length);
+      badgeEl.classList.toggle('hidden', items.length === 0);
+    }
+
+    if (items.length === 0) {
+      listEl.innerHTML = '<div class="p-6 text-center text-xs text-[#64748B]">Chưa có thông báo nào.</div>';
+      return;
+    }
+
+    listEl.innerHTML = items.map(it => {
+      const targetHref = it.code
+        ? `${getRelativePath('history')}?code=${encodeURIComponent(it.code)}`
+        : getRelativePath('history');
+      const safeCodeJs = String(it.code || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      return `
+      <a href="${targetHref}" onclick="if(typeof window.focusHistoryBooking==='function'&&'${safeCodeJs}'){event.preventDefault();window.SanBongUI&&window.SanBongUI.closeNotificationsDropdown&&window.SanBongUI.closeNotificationsDropdown();window.focusHistoryBooking('${safeCodeJs}');}" class="flex items-start gap-3 px-4 py-3 hover:bg-[#ECFDF3]/70 transition-colors">
+        <span class="w-7 h-7 rounded-full ${it.tone} flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">${it.icon}</span>
+        <div class="min-w-0 flex-1">
+          <div class="text-xs font-bold text-[#0F172A] truncate">${escapeHTML(it.title)}</div>
+          <div class="text-[11px] text-[#475569] mt-0.5 leading-snug">${escapeHTML(it.desc)}</div>
+          ${it.time ? `<div class="text-[10px] text-[#94A3B8] mt-1">${escapeHTML(it.time)}</div>` : ''}
+        </div>
+      </a>`;
+    }).join('');
+  }
+
+  function toggleNotificationsDropdown(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const menu = document.getElementById('notif-dropdown-menu');
+    const btn = document.getElementById('notif-bell-btn');
+    if (!menu || !btn) return;
+    const willOpen = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !willOpen);
+    btn.setAttribute('aria-expanded', String(willOpen));
+    if (willOpen) {
+      loadAndRenderNotifications();
+    }
+  }
+
+  function markNotificationsRead() {
+    const dotEl = document.getElementById('notif-unread-dot');
+    const badgeEl = document.getElementById('notif-count-badge');
+    const cnt = Number(badgeEl?.textContent || '0') || 0;
+    try { localStorage.setItem('sb_notif_seen_count', String(cnt)); } catch (e) {}
+    if (dotEl) dotEl.classList.add('hidden');
+    showToast('Đã đánh dấu tất cả thông báo là đã đọc.', 'success');
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('notif-bell-wrap');
+      const menu = document.getElementById('notif-dropdown-menu');
+      const btn = document.getElementById('notif-bell-btn');
+      if (wrap && menu && !menu.classList.contains('hidden') && !wrap.contains(e.target)) {
+        menu.classList.add('hidden');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const menu = document.getElementById('notif-dropdown-menu');
+        const btn = document.getElementById('notif-bell-btn');
+        if (menu && !menu.classList.contains('hidden')) {
+          menu.classList.add('hidden');
+          if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+        }
+      }
+    });
+  }
+
+  function closeNotificationsDropdown() {
+    const menu = document.getElementById('notif-dropdown-menu');
+    const btn = document.getElementById('notif-bell-btn');
+    if (menu) menu.classList.add('hidden');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
   window.SanBongUI = {
     renderNavbar,
     renderFooter,
@@ -684,7 +998,10 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
     showModal,
     showPrivacyPolicyModal,
     showTermsModal,
-    syncAuthMe
+    syncAuthMe,
+    toggleNotificationsDropdown,
+    closeNotificationsDropdown,
+    markNotificationsRead
   };
 
   window.showToast = showToast;

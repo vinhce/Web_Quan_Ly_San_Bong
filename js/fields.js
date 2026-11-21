@@ -227,8 +227,8 @@ function openPitchDetail(pitchId) {
       <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
         <div class="text-xs font-bold text-[#16A34A] mt-1">
-          Thường: ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/h<br>
-          Giờ cao điểm (17:30-21:00): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : esc(pitch.peakPrice)}/h
+          Thường (05:30-16:30): ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/h<br>
+          Giờ cao điểm (16:30-20:30): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : esc(pitch.peakPrice)}/h
         </div>
       </div>
     </div>
