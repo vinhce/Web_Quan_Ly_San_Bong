@@ -1,212 +1,241 @@
       <!-- TAB 9: BÁO CÁO DOANH THU & HIỆU SUẤT -->
       <!-- ========================================== -->
-      <div id="tab-content-reports" class="space-y-6 hidden">
-        <div class="ui-card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div>
-            <h3 class="font-heading font-bold text-base text-[#0F172A]">Báo cáo hiệu suất & Doanh thu sân bóng</h3>
-            <p class="text-xs text-[#64748B]">Tổng hợp số liệu thực tế từ cơ sở dữ liệu hệ thống (Không cộng số ảo)</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <div class="flex items-center gap-1.5">
-              <span class="text-[#64748B] font-semibold">Từ:</span>
-              <input type="date" id="rpt-from-date" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] bg-white font-bold text-[#0F172A]">
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="text-[#64748B] font-semibold">Đến:</span>
-              <input type="date" id="rpt-to-date" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] bg-white font-bold text-[#0F172A]">
-            </div>
-            <button type="button" onclick="renderAdminReports()" class="h-8 px-3 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white font-bold cursor-pointer">Lọc báo cáo</button>
-            <button type="button" id="btn-export-reports-csv" onclick="exportAdminReportsCSV()" class="h-8 px-3 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-sm">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              Xuất Excel / CSV
-            </button>
-            <div class="flex items-center gap-1 border-l border-[#E2E8F0] pl-2">
-              <button type="button" onclick="setReportDateRange('today')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[#334155] font-semibold cursor-pointer">Hôm nay</button>
-              <button type="button" onclick="setReportDateRange('yesterday')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[#334155] font-semibold cursor-pointer">Hôm qua</button>
-              <button type="button" onclick="setReportDateRange('7days')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[#334155] font-semibold cursor-pointer">7 ngày qua</button>
-              <button type="button" onclick="setReportDateRange('month')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[#334155] font-semibold cursor-pointer">Tháng này</button>
-              <button type="button" onclick="setReportDateRange('last_month')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[#334155] font-semibold cursor-pointer">Tháng trước</button>
-              <button type="button" onclick="setReportDateRange('all')" class="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-[#15803D] font-bold cursor-pointer">Tất cả</button>
-            </div>
-          </div>
-        </div>
+      <div id="tab-content-reports" class="space-y-5 hidden">
+        <!-- BỘ LỌC 1 HÀNG DÍNH KHI CUỘN -->
+        <div id="rpt-filter-bar" class="sticky top-0 z-10 ui-card px-4 py-3 bg-white/95 backdrop-blur border border-[#E2E8F0] shadow-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2.5 text-xs">
+            <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn kỳ báo cáo">
+              <button type="button" data-rpt-preset="today" onclick="setReportDateRange('today')" class="rpt-preset-btn h-8 px-3 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-[#334155] font-semibold cursor-pointer transition-colors">Hôm nay</button>
+              <button type="button" data-rpt-preset="7days" onclick="setReportDateRange('7days')" class="rpt-preset-btn h-8 px-3 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-[#334155] font-semibold cursor-pointer transition-colors">7 ngày</button>
+              <button type="button" data-rpt-preset="month" onclick="setReportDateRange('month')" class="rpt-preset-btn h-8 px-3 rounded-lg border border-[#16A34A] bg-[#16A34A] text-white font-bold cursor-pointer transition-colors">Tháng này</button>
+              <button type="button" data-rpt-preset="last_month" onclick="setReportDateRange('last_month')" class="rpt-preset-btn h-8 px-3 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-[#334155] font-semibold cursor-pointer transition-colors">Tháng trước</button>
+              <button type="button" data-rpt-preset="custom" onclick="setReportDateRange('custom')" class="rpt-preset-btn h-8 px-3 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-[#334155] font-semibold cursor-pointer transition-colors">Tùy chọn</button>
 
-        <!-- ĐỐI CHIẾU SỐ LIỆU 2 CÔNG THỨC & CẢNH BÁO LỆCH -->
-        <div id="rpt-reconciliation-card" class="ui-card p-4 space-y-3 bg-slate-50 border border-slate-200">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <span class="font-heading font-bold text-sm text-[#0F172A]">Đối chiếu số liệu tài chính</span>
-              <span id="rpt-formula-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">Khớp số liệu 100% (0đ lệch)</span>
+              <div id="rpt-custom-date-wrap" class="hidden flex-wrap items-center gap-1.5 pl-1">
+                <input type="date" id="rpt-from-date" onchange="handleReportCustomDateChange()" aria-label="Từ ngày" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] bg-white font-semibold text-[#0F172A]">
+                <span class="text-[#64748B] font-semibold">→</span>
+                <input type="date" id="rpt-to-date" onchange="handleReportCustomDateChange()" aria-label="Đến ngày" class="h-8 px-2.5 rounded-lg border border-[#CBD5E1] bg-white font-semibold text-[#0F172A]">
+              </div>
+              <span id="rpt-date-error" class="hidden text-[11px] font-semibold text-rose-600 pl-1">Ngày bắt đầu phải ≤ ngày kết thúc</span>
             </div>
-            <span class="text-xs text-[#64748B]">2 công thức đối soát độc lập từng đồng</span>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div id="rpt-formula-1-box" class="p-3 rounded-xl bg-white border border-emerald-200 shadow-sm space-y-1.5">
-              <div class="font-bold text-[#0F172A] flex items-center justify-between">
-                <span>Công thức 1 (Theo dòng tiền):</span>
-                <span id="rpt-f1-status" class="text-emerald-600 font-extrabold">Khớp 100%</span>
-              </div>
-              <div class="text-[#475569] font-mono text-[11px] bg-slate-50 p-2 rounded border border-slate-100">
-                Tiền mặt (<span id="rpt-f1-cash" class="font-bold text-amber-700">0đ</span>) + Chuyển khoản (<span id="rpt-f1-transfer" class="font-bold text-purple-700">0đ</span>) = <span id="rpt-f1-total" class="font-extrabold text-[#16A34A]">0đ</span>
-              </div>
-            </div>
-            <div id="rpt-formula-2-box" class="p-3 rounded-xl bg-white border border-emerald-200 shadow-sm space-y-1.5">
-              <div class="font-bold text-[#0F172A] flex items-center justify-between">
-                <span>Công thức 2 (Theo cấu phần dịch vụ):</span>
-                <span id="rpt-f2-status" class="text-emerald-600 font-extrabold">Khớp 100%</span>
-              </div>
-              <div class="text-[#475569] font-mono text-[11px] bg-slate-50 p-2 rounded border border-slate-100">
-                Tiền cọc (<span id="rpt-f2-deposit" class="font-bold text-emerald-700">0đ</span>) + Thu còn lại (<span id="rpt-f2-remaining" class="font-bold text-blue-700">0đ</span>) + Nước/Dịch vụ (<span id="rpt-f2-services" class="font-bold text-sky-700">0đ</span>) = <span id="rpt-f2-total" class="font-extrabold text-[#16A34A]">0đ</span>
+
+            <div class="relative shrink-0">
+              <button type="button" id="btn-export-reports-menu" onclick="toggleReportExportMenu(event)" class="h-8 px-3 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Xuất file</span>
+                <svg class="w-3 h-3 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div id="rpt-export-dropdown" class="hidden absolute right-0 top-10 w-44 bg-white rounded-xl shadow-xl border border-[#E2E8F0] py-1 z-30 text-xs">
+                <button type="button" onclick="exportAdminReportsCSV('excel')" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 font-semibold text-[#0F172A] flex items-center justify-between cursor-pointer">
+                  <span>Xuất Excel (.xls)</span>
+                  <span class="text-[10px] text-[#16A34A] font-bold">XLS</span>
+                </button>
+                <button type="button" onclick="exportAdminReportsCSV('csv')" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 font-semibold text-[#0F172A] flex items-center justify-between cursor-pointer">
+                  <span>Xuất CSV (.csv)</span>
+                  <span class="text-[10px] text-[#64748B] font-bold">UTF-8</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- TRẠNG THÁI RỖNG KHI KỲ KHÔNG CÓ DỮ LIỆU -->
+        <div id="rpt-empty-state" class="hidden ui-card p-8 text-center space-y-2 border border-dashed border-[#CBD5E1] bg-white">
+          <div class="text-sm font-heading font-bold text-[#0F172A]">Không có phát sinh doanh thu trong kỳ đã chọn</div>
+          <p class="text-xs text-[#64748B]">Thử chọn khoảng thời gian khác hoặc mở rộng bộ lọc để xem dữ liệu.</p>
+        </div>
+
+        <!-- HÀNG 1: 4 SỐ LỚN TÀI CHÍNH + ±% SO KỲ TRƯỚC -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="ui-card p-4 border-l-4 border-l-[#16A34A]">
-            <div class="text-xs text-[#64748B]">Tổng doanh thu thực</div>
-            <div id="rpt-total-revenue" class="font-heading font-extrabold text-2xl text-[#16A34A] mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Bao gồm tiền sân & dịch vụ thực thu</div>
-          </div>
-          <div class="ui-card p-4 border-l-4 border-l-emerald-600">
-            <div class="text-xs text-[#64748B]">Doanh thu thực thu</div>
-            <div id="rpt-collected-revenue" class="font-heading font-extrabold text-2xl text-emerald-700 mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Tiền mặt + Chuyển khoản VietQR</div>
-          </div>
-          <div class="ui-card p-4 border-l-4 border-l-blue-600">
-            <div class="text-xs text-[#64748B]">Lợi nhuận gộp</div>
-            <div id="rpt-gross-profit" class="font-heading font-extrabold text-2xl text-blue-700 mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Thực thu trừ tổng chi phí vận hành</div>
-          </div>
-          <div class="ui-card p-4 border-l-4 border-l-[#D97706]">
-            <div class="text-xs text-[#64748B]">Doanh thu TB / ca</div>
-            <div id="rpt-avg-revenue" class="font-heading font-extrabold text-2xl text-[#D97706] mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Trung bình mỗi trận đấu</div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="ui-card p-4 border-l-4 border-l-purple-600">
-            <div class="text-xs text-[#64748B]">Tỷ lệ lấp đầy sân</div>
-            <div id="rpt-occupancy-rate" class="font-heading font-extrabold text-2xl text-purple-700 mt-1">0%</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Số giờ đã đặt / Tổng giờ mở cửa</div>
-          </div>
-          <div class="ui-card p-4 border-l-4 border-l-[#0F172A]">
-            <div class="text-xs text-[#64748B]">Tổng số ca thi đấu</div>
-            <div id="rpt-total-matches" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">0 ca</div>
-            <div class="text-[11px] text-[#16A34A] mt-1">Đơn hợp lệ trong kỳ lọc</div>
-          </div>
-          <div class="ui-card p-4 border-l-4 border-l-[#2563EB]">
-            <div class="text-xs text-[#64748B]">Doanh thu dịch vụ (Nước/Bib)</div>
-            <div id="rpt-services-revenue" class="font-heading font-extrabold text-2xl text-[#2563EB] mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Dịch vụ gia tăng tại sân & quầy</div>
-          </div>
-          <div class="ui-card p-4 border-l-4 border-l-rose-500">
-            <div class="text-xs text-[#64748B]">Tổng chi phí vận hành</div>
-            <div id="rpt-total-expenses" class="font-heading font-extrabold text-2xl text-rose-600 mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Điện nước, bảo trì, nhập hàng, lương</div>
-          </div>
-        </div>
-
-        <!-- Bóc tách dòng tiền: Cọc 30% / Thu 70% còn lại / Tiền mặt / Chuyển khoản VietQR -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="ui-card p-4 bg-emerald-50/40 border border-emerald-200">
-            <div class="text-xs font-semibold text-[#475569]">Tiền cọc 30% đã thu</div>
-            <div id="rpt-deposit-revenue" class="font-heading font-extrabold text-xl text-[#15803D] mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-0.5">Cọc giữ sân đã xác nhận</div>
-          </div>
-          <div class="ui-card p-4 bg-blue-50/40 border border-blue-200">
-            <div class="text-xs font-semibold text-[#475569]">Tiền thu 70% còn lại</div>
-            <div id="rpt-remaining-revenue" class="font-heading font-extrabold text-xl text-[#2563EB] mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-0.5">Tất toán sau khi kết thúc ca</div>
-          </div>
-          <div class="ui-card p-4 bg-amber-50/40 border border-amber-200">
-            <div class="text-xs font-semibold text-[#475569]">Thu Tiền mặt tại quầy</div>
-            <div id="rpt-cash-revenue" class="font-heading font-extrabold text-xl text-[#D97706] mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-0.5">Khách thanh toán tiền mặt</div>
-          </div>
-          <div class="ui-card p-4 bg-purple-50/40 border border-purple-200">
-            <div class="text-xs font-semibold text-[#475569]">Thu Chuyển khoản VietQR</div>
-            <div id="rpt-vietqr-revenue" class="font-heading font-extrabold text-xl text-purple-700 mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-0.5">Qua cổng VietQR / SePay</div>
-          </div>
-        </div>
-
-        <!-- Phân bổ theo loại sân -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="ui-card p-5 flex items-center justify-between">
-            <div>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Sân 5 người (9 sân)</span>
-              <div id="rpt-p5-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
-              <div id="rpt-p5-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-[#475569]">Doanh thu ghi nhận</span>
+              <span id="rpt-delta-recognized" class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-[#64748B]">—</span>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xl">5v5</div>
+            <div id="rpt-total-revenue" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1.5">0đ</div>
+            <div class="text-[11px] text-[#64748B] mt-1">Đơn hợp lệ (không tính đơn hủy) + quầy</div>
           </div>
-          <div class="ui-card p-5 flex items-center justify-between">
-            <div>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Sân 7 người (10 sân)</span>
-              <div id="rpt-p7-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
-              <div id="rpt-p7-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
+
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-[#475569]">Đã thu</span>
+              <span id="rpt-delta-collected" class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-[#64748B]">—</span>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl">7v7</div>
+            <div id="rpt-collected-revenue" class="font-heading font-extrabold text-2xl text-[#16A34A] mt-1.5">0đ</div>
+            <div class="text-[11px] text-[#64748B] mt-1">Tiền mặt + Chuyển khoản VietQR thực nhận</div>
           </div>
-          <div class="ui-card p-5 flex items-center justify-between">
-            <div>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800">Sân 11 người (7 sân)</span>
-              <div id="rpt-p11-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-2">0đ</div>
-              <div id="rpt-p11-count" class="text-xs text-[#64748B] mt-0.5">0 ca đặt</div>
+
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-[#475569]">Chưa thu</span>
+              <span id="rpt-delta-uncollected" class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-[#64748B]">—</span>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xl">11v11</div>
+            <div id="rpt-uncollected-revenue" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1.5">0đ</div>
+            <div class="mt-2 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+              <button type="button" onclick="openUncollectedDrawer('upcoming')" class="w-full flex items-center justify-between text-left hover:text-[#16A34A] cursor-pointer">
+                <span class="text-[#64748B] underline decoration-dotted">Chưa đến giờ đá (dự kiến thu)</span>
+                <span id="rpt-uncollected-upcoming" class="font-bold text-[#0F172A]">0đ</span>
+              </button>
+              <button type="button" onclick="openUncollectedDrawer('overdue')" class="w-full flex items-center justify-between text-left hover:text-amber-700 cursor-pointer">
+                <span class="text-amber-700 font-semibold underline decoration-dotted">Đã đá chưa tất toán (cần xử lý)</span>
+                <span id="rpt-uncollected-overdue" class="font-bold text-amber-700">0đ</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-[#475569]">Lợi nhuận</span>
+              <span id="rpt-delta-profit" class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-[#64748B]">—</span>
+            </div>
+            <div id="rpt-net-profit" class="font-heading font-extrabold text-2xl text-[#16A34A] mt-1.5">0đ</div>
+            <div id="rpt-profit-note" class="text-[11px] text-[#64748B] mt-1">Tính theo cơ sở Đã thu − Chi phí vận hành</div>
           </div>
         </div>
 
-        <!-- BIỂU ĐỒ SVG NỘI BỘ (DOANH THU THEO NGÀY & PHÂN BỔ LOẠI SÂN) -->
+        <!-- HÀNG 2: 4 CHỈ SỐ VẬN HÀNH -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="text-xs text-[#64748B]">Ca thi đấu</div>
+            <div id="rpt-total-matches" class="font-heading font-extrabold text-xl text-[#0F172A] mt-1">0 ca</div>
+            <div id="rpt-matches-sub" class="text-[11px] text-[#64748B] mt-0.5">Đơn hợp lệ trong kỳ lọc</div>
+          </div>
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="text-xs text-[#64748B]">Tỷ lệ lấp đầy</div>
+            <div id="rpt-occupancy-rate" class="font-heading font-extrabold text-xl text-[#0F172A] mt-1">0%</div>
+            <div id="rpt-occupancy-sub" class="text-[11px] text-[#64748B] mt-0.5">Giờ đã đặt / Giờ mở cửa sân hoạt động</div>
+          </div>
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="text-xs text-[#64748B]">Trung bình / ca</div>
+            <div id="rpt-avg-revenue" class="font-heading font-extrabold text-xl text-[#0F172A] mt-1">0đ</div>
+            <div class="text-[11px] text-[#64748B] mt-0.5">Doanh thu ghi nhận bình quân</div>
+          </div>
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+            <div class="text-xs text-[#64748B]">Chi phí vận hành</div>
+            <div id="rpt-total-expenses" class="font-heading font-extrabold text-xl text-[#0F172A] mt-1">—</div>
+            <div id="rpt-expenses-sub" class="text-[11px] text-[#64748B] mt-0.5">
+              Chưa nhập chi phí · <a href="#expenses-crud-card" onclick="document.getElementById('expenses-crud-card')?.scrollIntoView({behavior:'smooth'});return false;" class="text-[#16A34A] font-semibold hover:underline">Mở sổ chi ↓</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 THANH XẾP CHỒNG: CƠ CẤU THANH TOÁN & CƠ CẤU DOANH THU -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="ui-card p-4 space-y-3">
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0] space-y-2.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-heading font-bold text-[#0F172A]">Cơ cấu thanh toán</span>
+              <span id="rpt-stack-pay-total" class="font-bold text-[#475569]">0đ</span>
+            </div>
+            <div id="rpt-stack-pay-bar" class="w-full h-3.5 rounded-full bg-slate-100 overflow-hidden flex"></div>
+            <div id="rpt-stack-pay-legend" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#475569]"></div>
+          </div>
+
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0] space-y-2.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-heading font-bold text-[#0F172A]">Cơ cấu doanh thu (Tiền sân / Dịch vụ)</span>
+              <span id="rpt-stack-rev-total" class="font-bold text-[#475569]">0đ</span>
+            </div>
+            <div id="rpt-stack-rev-bar" class="w-full h-3.5 rounded-full bg-slate-100 overflow-hidden flex"></div>
+            <div id="rpt-stack-rev-legend" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#475569]"></div>
+          </div>
+        </div>
+
+        <!-- ĐỐI SOÁT ĐỘC LẬP (THU GỌN MẶC ĐỊNH KHI KHỚP) -->
+        <div id="rpt-reconciliation-card" class="ui-card bg-white border border-[#E2E8F0] overflow-hidden">
+          <details id="rpt-recon-details" class="group">
+            <summary class="px-4 py-3 flex flex-wrap items-center justify-between gap-2 cursor-pointer select-none list-none hover:bg-slate-50/70">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-heading font-bold text-sm text-[#0F172A]">Đối soát độc lập 3 nguồn dữ liệu</span>
+                <span id="rpt-formula-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Khớp</span>
+              </div>
+              <span class="text-xs font-semibold text-[#64748B] flex items-center gap-1">
+                <span>Xem chi tiết công thức &amp; đối chiếu</span>
+                <svg class="w-3.5 h-3.5 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </summary>
+            <div id="rpt-recon-body" class="px-4 pb-4 pt-2 border-t border-[#E2E8F0] space-y-3 text-xs bg-[#F8FAFC]">
+              <div id="rpt-recon-items" class="grid grid-cols-1 lg:grid-cols-3 gap-3"></div>
+              <div id="rpt-recon-deviants" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-2"></div>
+            </div>
+          </details>
+        </div>
+
+        <!-- 2 BIỂU ĐỒ SVG CỤC BỘ: THEO NGÀY & THEO KHUNG GIỜ -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0] space-y-3">
             <div class="flex items-center justify-between">
-              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Doanh thu theo ngày (Biểu đồ cột)</h3>
-              <span class="text-[11px] text-[#64748B]">Rê chuột xem chi tiết số tiền</span>
+              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Doanh thu theo ngày</h3>
+              <span class="text-[11px] text-[#64748B]">Rê chuột xem chi tiết</span>
             </div>
             <div id="rpt-daily-svg-container" class="w-full h-52 flex items-center justify-center border border-slate-100 rounded-xl bg-slate-50/50 p-2 overflow-x-auto relative">
               <span class="text-xs text-slate-400">Đang tạo biểu đồ...</span>
             </div>
           </div>
-          <div class="ui-card p-4 space-y-3">
+          <div class="ui-card p-4 bg-white border border-[#E2E8F0] space-y-3">
             <div class="flex items-center justify-between">
-              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Tỷ trọng doanh thu theo loại sân</h3>
-              <span class="text-[11px] text-[#64748B]">Sân 5 / Sân 7 / Sân 11</span>
+              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Doanh thu theo khung giờ</h3>
+              <span class="text-[11px] text-[#64748B]">Gom theo ca thi đấu</span>
             </div>
-            <div id="rpt-pitch-type-svg-container" class="w-full h-52 flex items-center justify-center border border-slate-100 rounded-xl bg-slate-50/50 p-2">
+            <div id="rpt-slot-svg-container" class="w-full h-52 flex items-center justify-center border border-slate-100 rounded-xl bg-slate-50/50 p-2 overflow-y-auto">
               <span class="text-xs text-slate-400">Đang tạo biểu đồ...</span>
             </div>
           </div>
         </div>
 
-        <!-- BẢNG KÊ CHI TIẾT MỌI CA ĐẶT TRONG KỲ (CÓ TÌM KIẾM & PHÂN TRANG) -->
-        <div class="ui-card overflow-hidden space-y-3 p-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#E2E8F0]">
+        <!-- BẢNG HIỆU SUẤT THEO SÂN (ẨN SÂN 0 CA, CÓ CÔNG TẮC HIỆN TẤT CẢ, SORT, % LẤP ĐẦY, DÒNG TỔNG) -->
+        <div class="ui-card bg-white border border-[#E2E8F0] overflow-hidden">
+          <div class="p-4 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Bảng kê chi tiết mọi ca đặt trong kỳ</h3>
-              <p class="text-xs text-[#64748B]">Liệt kê chi tiết từng ca đặt sân, tiền cọc, tiền nước và thanh toán</p>
+              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Hiệu suất khai thác theo từng sân</h3>
+              <p class="text-[11px] text-[#64748B]">Bấm tiêu đề cột để sắp xếp · Mặc định chỉ hiện sân có phát sinh ca</p>
             </div>
-            <div class="flex items-center gap-2">
-              <input type="text" id="rpt-ledger-search" oninput="handleReportLedgerSearch()" placeholder="Tìm mã đơn, khách, SĐT, sân..." class="h-8 px-3 rounded-lg border border-[#CBD5E1] bg-white text-xs w-60">
-            </div>
+            <label class="inline-flex items-center gap-2 text-xs font-semibold text-[#334155] cursor-pointer select-none">
+              <input type="checkbox" id="rpt-show-zero-pitches" onchange="renderAdminPitchTable()" class="w-4 h-4 rounded accent-[#16A34A] cursor-pointer">
+              <span>Hiện tất cả sân (gồm 0 ca)</span>
+            </label>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs min-w-[950px]">
+            <table class="w-full text-left text-xs min-w-[640px]">
+              <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
+                <tr>
+                  <th class="py-3 px-4 cursor-pointer hover:text-[#0F172A] select-none" onclick="sortAdminPitchTable('name')">Tên sân <span data-sort-ind="name" class="text-[10px]"></span></th>
+                  <th class="py-3 px-4">Loại sân</th>
+                  <th class="py-3 px-4">Trạng thái</th>
+                  <th class="py-3 px-4 text-center cursor-pointer hover:text-[#0F172A] select-none" onclick="sortAdminPitchTable('matches')">Số ca <span data-sort-ind="matches" class="text-[10px]"></span></th>
+                  <th class="py-3 px-4 text-right cursor-pointer hover:text-[#0F172A] select-none" onclick="sortAdminPitchTable('occupancyRate')">% Lấp đầy <span data-sort-ind="occupancyRate" class="text-[10px]"></span></th>
+                  <th class="py-3 px-4 text-right cursor-pointer hover:text-[#0F172A] select-none" onclick="sortAdminPitchTable('collectedRevenue')">Đã thu <span data-sort-ind="collectedRevenue" class="text-[10px]"></span></th>
+                  <th class="py-3 px-4 text-right cursor-pointer hover:text-[#0F172A] select-none" onclick="sortAdminPitchTable('revenue')">Doanh thu ghi nhận <span data-sort-ind="revenue" class="text-[10px]">↓</span></th>
+                </tr>
+              </thead>
+              <tbody id="admin-reports-tbody" class="divide-y divide-[#E2E8F0]"></tbody>
+              <tfoot id="admin-reports-tfoot" class="bg-[#F8FAFC] border-t-2 border-[#CBD5E1] font-bold text-[#0F172A]"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- BẢNG KÊ CHI TIẾT MỌI CA ĐẶT TRONG KỲ -->
+        <div class="ui-card bg-white border border-[#E2E8F0] overflow-hidden space-y-3 p-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#E2E8F0]">
+            <div>
+              <h3 class="font-heading font-bold text-sm text-[#0F172A]">Bảng kê chi tiết ca đặt trong kỳ</h3>
+              <p class="text-xs text-[#64748B]">Chi tiết từng ca hợp lệ, số tiền đã thu và còn lại chưa thu</p>
+            </div>
+            <input type="text" id="rpt-ledger-search" oninput="handleReportLedgerSearch()" placeholder="Tìm mã đơn, khách, SĐT, sân..." class="h-8 px-3 rounded-lg border border-[#CBD5E1] bg-white text-xs w-full sm:w-60">
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs min-w-[900px]">
               <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
                 <tr>
                   <th class="py-2.5 px-3">Mã đơn</th>
                   <th class="py-2.5 px-3">Ngày &amp; Giờ đá</th>
                   <th class="py-2.5 px-3">Sân bóng</th>
                   <th class="py-2.5 px-3">Khách hàng</th>
-                  <th class="py-2.5 px-3 text-right">Tổng tiền</th>
-                  <th class="py-2.5 px-3 text-right">Cọc</th>
-                  <th class="py-2.5 px-3 text-right">Đã thanh toán</th>
-                  <th class="py-2.5 px-3 text-right">Tiền nước</th>
-                  <th class="py-2.5 px-3">Trạng thái ca</th>
-                  <th class="py-2.5 px-3">Phương thức TT</th>
+                  <th class="py-2.5 px-3 text-right">Ghi nhận</th>
+                  <th class="py-2.5 px-3 text-right">Đã thu</th>
+                  <th class="py-2.5 px-3 text-right">Chưa thu</th>
+                  <th class="py-2.5 px-3 text-right">Dịch vụ</th>
+                  <th class="py-2.5 px-3">Trạng thái</th>
+                  <th class="py-2.5 px-3">Phương thức</th>
                 </tr>
               </thead>
               <tbody id="rpt-ledger-tbody" class="divide-y divide-[#E2E8F0]">
@@ -217,59 +246,46 @@
           <div class="flex items-center justify-between pt-2 border-t border-[#E2E8F0] text-xs">
             <span id="rpt-ledger-count-info" class="text-[#64748B]">Hiển thị 0 / 0 ca</span>
             <div class="flex items-center gap-2">
-              <button type="button" id="rpt-ledger-prev-btn" onclick="changeReportLedgerPage(-1)" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 font-semibold cursor-pointer disabled:opacity-50">« Trang trước</button>
+              <button type="button" id="rpt-ledger-prev-btn" onclick="changeReportLedgerPage(-1)" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 font-semibold cursor-pointer disabled:opacity-50">« Trước</button>
               <span id="rpt-ledger-page-info" class="font-bold text-[#0F172A]">Trang 1 / 1</span>
-              <button type="button" id="rpt-ledger-next-btn" onclick="changeReportLedgerPage(1)" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 font-semibold cursor-pointer disabled:opacity-50">Trang sau »</button>
+              <button type="button" id="rpt-ledger-next-btn" onclick="changeReportLedgerPage(1)" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 font-semibold cursor-pointer disabled:opacity-50">Sau »</button>
             </div>
           </div>
         </div>
 
-        <!-- Bảng kê doanh thu theo từng sân -->
-        <div class="ui-card overflow-hidden">
-          <div class="p-4 border-b border-[#E2E8F0] font-heading font-bold text-sm text-[#0F172A]">
-            Bảng kê hiệu suất khai thác chi tiết theo từng sân bóng
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs min-w-[600px]">
-              <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
-                <tr>
-                  <th class="py-3 px-4">Tên sân</th>
-                  <th class="py-3 px-4">Loại sân</th>
-                  <th class="py-3 px-4">Trạng thái</th>
-                  <th class="py-3 px-4 text-center">Số ca đã đá</th>
-                  <th class="py-3 px-4 text-right">Tổng doanh thu</th>
-                </tr>
-              </thead>
-              <tbody id="admin-reports-tbody" class="divide-y divide-[#E2E8F0]">
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 6.4 KPI Chi Phí & Lãi Ròng -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="ui-card p-5 border-l-4 border-l-rose-500">
-            <div class="text-xs font-semibold text-[#64748B]">Tổng chi phí vận hành</div>
-            <div id="rpt-expense-list-total" class="font-heading font-extrabold text-2xl text-rose-600 mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Điện nước, bảo trì, nhập hàng, nhân sự</div>
-          </div>
-          <div class="ui-card p-5 border-l-4 border-l-[#16A34A]">
-            <div class="text-xs font-semibold text-[#64748B]">Lãi ròng thực tế</div>
-            <div id="rpt-net-profit" class="font-heading font-extrabold text-2xl text-[#16A34A] mt-1">0đ</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Doanh thu thực trừ tổng chi phí kỳ lọc</div>
-          </div>
-          <div class="ui-card p-5 border-l-4 border-l-sky-600">
-            <div class="text-xs font-semibold text-[#64748B]">Biên lợi nhuận ròng</div>
-            <div id="rpt-profit-margin" class="font-heading font-extrabold text-2xl text-sky-700 mt-1">0%</div>
-            <div class="text-[11px] text-[#64748B] mt-1">Tỷ suất lãi ròng trên tổng doanh thu</div>
+        <!-- MODAL XEM DANH SÁCH ĐƠN CHƯA THU -->
+        <div id="rpt-uncollected-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs items-center justify-center p-4" onclick="if(event.target===this) closeUncollectedDrawer()">
+          <div class="bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC]">
+              <div>
+                <h4 id="rpt-uncollected-modal-title" class="font-heading font-bold text-sm text-[#0F172A]">Danh sách đơn chưa thu</h4>
+                <p id="rpt-uncollected-modal-sub" class="text-[11px] text-[#64748B]"></p>
+              </div>
+              <button type="button" onclick="closeUncollectedDrawer()" class="w-8 h-8 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-100 text-xs font-bold cursor-pointer">✕</button>
+            </div>
+            <div class="overflow-y-auto p-4 flex-1">
+              <table class="w-full text-left text-xs min-w-[600px]">
+                <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
+                  <tr>
+                    <th class="py-2 px-3">Mã đơn</th>
+                    <th class="py-2 px-3">Ngày &amp; Giờ</th>
+                    <th class="py-2 px-3">Sân &amp; Khách</th>
+                    <th class="py-2 px-3 text-right">Đã thu</th>
+                    <th class="py-2 px-3 text-right">Chưa thu</th>
+                    <th class="py-2 px-3 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="rpt-uncollected-tbody" class="divide-y divide-[#E2E8F0]"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <!-- Biểu đồ phân bổ chi phí theo danh mục -->
-        <div class="ui-card p-5 space-y-3">
+        <!-- PHÂN BỔ CHI PHÍ THEO DANH MỤC -->
+        <div class="ui-card p-5 bg-white border border-[#E2E8F0] space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="font-heading font-bold text-sm text-[#0F172A]">Phân bổ chi phí vận hành theo danh mục</h3>
-            <span class="text-[11px] text-[#64748B]">Tự động tổng hợp theo kỳ báo cáo</span>
+            <span id="rpt-expense-list-total" class="text-xs font-bold text-[#475569]">0đ</span>
           </div>
           <div id="rpt-expense-categories-chart" class="space-y-2.5 text-xs"></div>
         </div>
