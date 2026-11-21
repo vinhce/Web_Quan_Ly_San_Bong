@@ -34,12 +34,12 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
         return true;
     }
 
-    // 5.4 Vouchers: Lưu mã giảm giá (Admin hoặc Manager)
+    // 5.4 Vouchers: Lưu mã giảm giá (Chỉ Chủ sân Admin)
     if ($action === 'save_voucher') {
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $mgr = require_manager_or_admin($pdo);
+        $mgr = require_admin($pdo);
 
         $code = preg_replace('/\s+/', '', strtoupper(sanitize_string((string)($data['code'] ?? ''), 30)));
         if ($code === '' || !preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) {
@@ -199,12 +199,12 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
         return true;
     }
 
-    // 5.4 Vouchers: Bật / Tắt mã giảm giá (Admin hoặc Manager)
+    // 5.4 Vouchers: Bật / Tắt mã giảm giá (Chỉ Chủ sân Admin)
     if ($action === 'toggle_voucher') {
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $mgr = require_manager_or_admin($pdo);
+        $mgr = require_admin($pdo);
         $code = preg_replace('/\s+/', '', strtoupper(sanitize_string((string)($data['code'] ?? $data['id'] ?? ''), 30)));
         if ($code === '') {
             json_error('Thiếu mã voucher cần thay đổi trạng thái.', 400, 'ERR_VOUCHER_CODE_INVALID');
@@ -240,12 +240,12 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
         return true;
     }
 
-    // 5.4 Vouchers: Xóa mã (Admin hoặc Manager)
+    // 5.4 Vouchers: Xóa mã (Chỉ Chủ sân Admin)
     if ($action === 'delete_voucher') {
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $mgr = require_manager_or_admin($pdo);
+        $mgr = require_admin($pdo);
         $code = preg_replace('/\s+/', '', strtoupper(sanitize_string((string)($data['code'] ?? $data['id'] ?? ''), 30)));
         if ($code === '') {
             json_error('Thiếu mã voucher cần xóa.', 400, 'ERR_VOUCHER_CODE_INVALID');
