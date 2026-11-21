@@ -59,10 +59,97 @@ try {
         if ($p['weekendPrice'] <= 0) {
             $p['weekendPrice'] = $p['type'] === 5 ? 380000 : ($p['type'] === 7 ? 700000 : 1400000);
         }
-        $p['rating'] = $ratingMap[$p['id']]['avg'] ?? 5.0;
+        $p['rating'] = $ratingMap[$p['id']]['avg'] ?? 0;
         $p['reviewCount'] = $ratingMap[$p['id']]['count'] ?? 0;
         $p['inMaintenance'] = isset($maintMap[$p['id']]);
         $p['maintenanceReason'] = $maintMap[$p['id']] ?? null;
+    }
+    unset($p);
+
+    $availableOn = trim((string)($_GET['available_on'] ?? ''));
+    $timeBand = strtolower(trim((string)($_GET['time_band'] ?? 'all')));
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $availableOn)) {
+        $bandSlotsStmt = $pdo->query("SELECT id, start_time, end_time FROM time_slots ORDER BY id ASC");
+        $allSlotsForBand = $bandSlotsStmt ? $bandSlotsStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        $targetSlots = array_values(array_filter($allSlotsForBand, static function ($sl) use ($timeBand) {
+            $st = substr((string)($sl['start_time'] ?? ''), 0, 5);
+            $en = substr((string)($sl['end_time'] ?? ''), 0, 5);
+            if ($timeBand === 'morning') return $st >= '05:00' && $en <= '12:00';
+            if ($timeBand === 'afternoon') return $st >= '12:00' && $en <= '17:00';
+            if ($timeBand === 'peak') return $st >= '16:30' && $en <= '21:00';
+            if ($timeBand === 'evening') return $st >= '20:30';
+            return true;
+        }));
+
+        $bookedByPitch = [];
+        try {
+            $bkAvailStmt = $pdo->prepare("
+                SELECT DISTINCT b.pitch_id, b.slot_id
+                FROM bookings b
+                WHERE b.status NOT IN ('Đã hủy', 'Khách chưa đến')
+                  AND b.payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
+                  AND (
+                    b.paid_amount > 0
+                    OR b.status IN ('Đã xác nhận', 'Đang đá', 'Hoàn thành', 'completed', 'Đã đá - chưa tất toán')
+                    OR b.expires_at IS NULL
+                    OR b.expires_at > NOW()
+                  )
+                  AND (
+                    b.booking_date = ?
+                    OR (
+                      COALESCE(b.weeks_count, 1) > 1
+                      AND DATEDIFF(?, b.booking_date) BETWEEN 0 AND 7 * (GREATEST(1, COALESCE(b.weeks_count, 1)) - 1)
+                      AND MOD(DATEDIFF(?, b.booking_date), 7) = 0
+                    )
+                  )
+            ");
+            $bkAvailStmt->execute([$availableOn, $availableOn, $availableOn]);
+            foreach ($bkAvailStmt->fetchAll(PDO::FETCH_ASSOC) as $bkRow) {
+                $bookedByPitch[(string)$bkRow['pitch_id']][(string)$bkRow['slot_id']] = true;
+            }
+        } catch (PDOException $bex) {}
+
+        $maintByPitch = [];
+        try {
+            $mtDateStmt = $pdo->prepare("SELECT pitch_id, start_time, end_time FROM pitch_maintenance WHERE status IN ('scheduled', 'in_progress') AND ? BETWEEN start_date AND end_date");
+            $mtDateStmt->execute([$availableOn]);
+            foreach ($mtDateStmt->fetchAll(PDO::FETCH_ASSOC) as $mRow) {
+                $maintByPitch[(string)$mRow['pitch_id']][] = $mRow;
+            }
+        } catch (PDOException $mex3) {}
+
+        foreach ($pitches as &$p) {
+            $pid = (string)$p['id'];
+            if (($p['status'] ?? '') !== 'Hoạt động') {
+                $p['availableSlotIds'] = [];
+                $p['availableSlotCount'] = 0;
+                continue;
+            }
+            $freeIds = [];
+            foreach ($targetSlots as $sl) {
+                $sid = (string)$sl['id'];
+                if (!empty($bookedByPitch[$pid][$sid])) {
+                    continue;
+                }
+                $sStart = substr((string)$sl['start_time'], 0, 5);
+                $sEnd = substr((string)$sl['end_time'], 0, 5);
+                $blockedByMaint = false;
+                foreach ($maintByPitch[$pid] ?? [] as $mw) {
+                    $mStart = substr((string)($mw['start_time'] ?? ''), 0, 5);
+                    $mEnd = substr((string)($mw['end_time'] ?? ''), 0, 5);
+                    if (($mStart === '' && $mEnd === '') || ($sStart < $mEnd && $sEnd > $mStart)) {
+                        $blockedByMaint = true;
+                        break;
+                    }
+                }
+                if (!$blockedByMaint) {
+                    $freeIds[] = $sid;
+                }
+            }
+            $p['availableSlotIds'] = $freeIds;
+            $p['availableSlotCount'] = count($freeIds);
+        }
+        unset($p);
     }
 
     $all = isset($_GET['all']) && $_GET['all'] == '1';
@@ -92,12 +179,16 @@ try {
 
         $hasRequiredTier = db_table_has_column($pdo, 'vouchers', 'required_tier');
         $hasMaxPerUser   = db_table_has_column($pdo, 'vouchers', 'max_per_user');
+        $hasMaxDiscount  = db_table_has_column($pdo, 'vouchers', 'max_discount_amount');
         $extraCols = '';
         if ($hasRequiredTier) {
             $extraCols .= ', required_tier as requiredTier';
         }
         if ($hasMaxPerUser) {
             $extraCols .= ', max_per_user as maxPerUser';
+        }
+        if ($hasMaxDiscount) {
+            $extraCols .= ', max_discount_amount as maxDiscountAmount';
         }
 
         $vouchersStmt = $pdo->query("
@@ -137,9 +228,36 @@ try {
             if (isset($vRow['maxPerUser'])) {
                 $vRow['maxPerUser'] = (int)$vRow['maxPerUser'];
             }
+            $maxDiscAmt = (int)($vRow['maxDiscountAmount'] ?? 0);
+            $vRow['maxDiscountAmount'] = $maxDiscAmt > 0 ? $maxDiscAmt : null;
             $visibleVouchers[] = $vRow;
         }
         $data['vouchers'] = $visibleVouchers;
+
+        $totalPubReviews = 0;
+        $weightedRatingSum = 0.0;
+        foreach ($ratingMap as $rm) {
+            $cnt = (int)($rm['count'] ?? 0);
+            $totalPubReviews += $cnt;
+            $weightedRatingSum += ((float)($rm['avg'] ?? 0)) * $cnt;
+        }
+        $completedMatchesCount = 0;
+        try {
+            $cmStmt = $pdo->query("
+                SELECT COUNT(*)
+                FROM bookings
+                WHERE status IN ('Hoàn thành', 'completed', 'Đã xác nhận', 'Đang đá')
+                  AND COALESCE(customer_name, '') NOT LIKE '%[TEST]%'
+                  AND COALESCE(code, '') NOT LIKE '%[TEST]%'
+            ");
+            $completedMatchesCount = (int)($cmStmt ? $cmStmt->fetchColumn() : 0);
+        } catch (PDOException $cex) {}
+        $data['publicStats'] = [
+            'pitchCount'            => count($pitches),
+            'completedMatchesCount' => $completedMatchesCount,
+            'publishedReviewsCount' => $totalPubReviews,
+            'avgRating'             => $totalPubReviews > 0 ? round($weightedRatingSum / $totalPubReviews, 1) : 0
+        ];
 
         $goldenRules = [];
         try {
@@ -192,7 +310,7 @@ try {
         $data['settings'] = [
             'depositRate'                => (int)($settingsMap['deposit_rate'] ?? 30),
             'hotline'                    => $settingsMap['hotline'] ?? '0352 313 548',
-            'openHours'                  => $settingsMap['open_hours'] ?? '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+            'openHours'                  => $settingsMap['open_hours'] ?? '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
             'holdMinutes'                => max(5, min(120, (int)($settingsMap['hold_minutes'] ?? 15))),
             'refundFullHours'            => max(1, (int)($settingsMap['refund_full_hours'] ?? 24)),
             'refundPartialHours'         => max(0, (int)($settingsMap['refund_partial_hours'] ?? 4)),
