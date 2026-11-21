@@ -1,6 +1,62 @@
 
 let currentFilter = 'all';
 let reviewedMap = {};
+let pendingFocusBookingCode = (() => {
+  try {
+    return (new URLSearchParams(window.location.search).get('code') || '').trim().toUpperCase();
+  } catch (e) {
+    return '';
+  }
+})();
+
+function focusHistoryBooking(code) {
+  const cleanCode = String(code || '').trim().toUpperCase();
+  if (!cleanCode) return;
+  pendingFocusBookingCode = cleanCode;
+
+  // Chuyển sang tab "Tất cả" và lọc đúng mã đơn để hiển thị ngay
+  currentFilter = 'all';
+  document.querySelectorAll('.history-tab-btn').forEach(btn => {
+    const isAll = btn.dataset.filter === 'all';
+    btn.classList.toggle('bg-[#16A34A]', isAll);
+    btn.classList.toggle('text-white', isAll);
+    btn.classList.toggle('bg-white', !isAll);
+    btn.classList.toggle('text-[#475569]', !isAll);
+  });
+
+  const searchInput = document.getElementById('history-search-input');
+  if (searchInput) {
+    searchInput.value = cleanCode;
+  }
+
+  if (typeof renderHistory === 'function') {
+    renderHistory();
+  }
+
+  setTimeout(() => {
+    const card = document.getElementById(`booking-card-${cleanCode}`) || document.querySelector(`[data-booking-code="${cleanCode}"]`);
+    if (card) {
+      pendingFocusBookingCode = '';
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('ring-2', 'ring-[#16A34A]', 'ring-offset-2', 'bg-[#ECFDF3]/40');
+      setTimeout(() => {
+        card.classList.remove('ring-2', 'ring-[#16A34A]', 'ring-offset-2', 'bg-[#ECFDF3]/40');
+      }, 3000);
+    }
+  }, 80);
+}
+window.focusHistoryBooking = focusHistoryBooking;
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (pendingFocusBookingCode) {
+    setTimeout(() => focusHistoryBooking(pendingFocusBookingCode), 150);
+  }
+});
+window.addEventListener('sb-data-synced', () => {
+  if (pendingFocusBookingCode) {
+    setTimeout(() => focusHistoryBooking(pendingFocusBookingCode), 100);
+  }
+});
 
 async function updateHistoryUserInfo() {
   const db = window.SanBongApp?.SanBongDB;
@@ -282,13 +338,18 @@ function renderHistory() {
         ? `<button type="button" data-action="review" data-code="${safeCode}" data-pitch="${safePitch}" class="btn-base bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-bold">⭐ Đánh giá sân</button>`
         : '');
 
+    const isDuplicatePayBadge = Boolean(b.paymentStatus && b.status && String(b.paymentStatus).trim() === String(b.status).trim());
+    const paidDisplayAmt = (b.status === 'Đã hủy' && (!b.paidAmount || Number(b.paidAmount) <= 0))
+      ? 0
+      : (typeof b.paidAmount === 'number' && b.paidAmount > 0 ? b.paidAmount : (b.status === 'Đã hủy' ? 0 : b.depositAmount));
+
     return `
-      <div class="ui-card p-5 space-y-4 hover:shadow-md transition-shadow">
+      <div id="booking-card-${safeCode}" data-booking-code="${safeCode}" class="ui-card p-5 space-y-4 hover:shadow-md transition-all">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E2E8F0] gap-2">
           <div class="flex flex-wrap items-center gap-2.5">
             <span class="font-mono font-bold text-sm px-2.5 py-0.5 rounded bg-slate-100 text-[#0F172A]">${safeCode}</span>
             ${window.SanBongApp.statusPill(b.status)}
-            ${b.paymentStatus ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold">${esc(b.paymentStatus)}</span>` : ''}
+            ${(b.paymentStatus && !isDuplicatePayBadge) ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold">${esc(b.paymentStatus)}</span>` : ''}
             ${monthlyTag}
             ${overtimeTag}
           </div>
@@ -303,7 +364,7 @@ function renderHistory() {
             </div>
             <div class="text-xs text-[#64748B] mt-1">
               Tổng tiền: <b class="text-[#0F172A]">${window.SanBongApp.formatVND(b.totalPrice)}</b>
-              (Đã cọc: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(b.depositAmount)}</span> · Còn lại: <b class="${b.remainingAmount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(b.remainingAmount)}</b>)
+              (Đã cọc: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(paidDisplayAmt)}</span> · Còn lại: <b class="${b.remainingAmount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(b.remainingAmount)}</b>)
             </div>
             ${b.note ? `<div class="text-[11px] text-slate-500 mt-1 italic">${esc(b.note)}</div>` : ''}
           </div>
@@ -313,7 +374,6 @@ function renderHistory() {
               📷 Xem vé QR & Hóa đơn
             </button>
             ${reviewBtnHtml}
-            <button type="button" data-action="team-split" data-code="${safeCode}" class="btn-base btn-secondary text-xs font-bold">👥 Chia tiền theo đội</button>
             ${isConfirmed ? `
               <button type="button" data-action="cancel-booking" data-code="${safeCode}" class="btn-base btn-danger-outline text-xs font-bold">
                 🛑 Hủy trước hạn & Hoàn cọc
@@ -349,8 +409,15 @@ function viewQRCode(bookingCode) {
 
   const qrMount = document.getElementById('modal-qr-mount');
   if (qrMount) {
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(b.code)}`;
-    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(b.code, 150);
+    qrMount.classList.add('relative');
+    const stLower = String(b.status || '').trim().toLowerCase();
+    const isCheckedIn = stLower === 'đang đá' || stLower === 'hoàn thành' || stLower === 'completed';
+    const checkBadgeHtml = isCheckedIn
+      ? `<span title="Đã quét QR Check-in" aria-label="Đã quét QR Check-in" class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-[#16A34A] text-white ring-2 ring-white shadow-md flex items-center justify-center">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+         </span>`
+      : '';
+    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(b.code, 150) + checkBadgeHtml;
   }
 
   const modal = document.getElementById('ticket-modal');
@@ -623,8 +690,6 @@ document.addEventListener('click', (e) => {
     openReviewModal(btn.getAttribute('data-code'), btn.getAttribute('data-pitch'));
   } else if (action === 'cancel-booking') {
     cancelBooking(btn.getAttribute('data-code'));
-  } else if (action === 'team-split') {
-    window.openTeamSplit(btn.getAttribute('data-code'));
   }
 });
 
