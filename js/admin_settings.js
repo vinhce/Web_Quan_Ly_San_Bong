@@ -6,7 +6,7 @@
   let cfg = db.getSystemConfig ? db.getSystemConfig() : {
     depositRate: 30,
     hotline: '0352 313 548',
-    openHours: '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+    openHours: '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
     holdMinutes: 15,
     waitlistHoldMinutes: 15,
     matchmakingEnabled: true,
@@ -47,7 +47,7 @@
     cfg = {
       depositRate: Number(s.depositRate ?? s.deposit_rate ?? cfg.depositRate ?? 30),
       hotline: s.hotline || cfg.hotline || '0352 313 548',
-      openHours: s.openHours || s.open_hours || cfg.openHours || '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+      openHours: s.openHours || s.open_hours || cfg.openHours || '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
       holdMinutes: Math.max(5, Math.min(120, Number(s.holdMinutes ?? s.hold_minutes ?? cfg.holdMinutes ?? 15))),
       waitlistHoldMinutes: Math.max(5, Math.min(120, Number(s.waitlistHoldMinutes ?? s.waitlist_hold_minutes ?? cfg.waitlistHoldMinutes ?? 15))),
       matchmakingEnabled: boolVal(s.matchmakingEnabled ?? s.matchmaking_enabled, true),
@@ -91,7 +91,7 @@
   setVal('cfg-bank-acc', bank.accountNo || bank.accountNumber || '0123456789');
   setVal('cfg-bank-holder', bank.accountName || 'CONG TY CP SAN BONG PRO');
   setVal('cfg-hotline', cfg.hotline || '0352 313 548');
-  setVal('cfg-open-hours', cfg.openHours || '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)');
+  setVal('cfg-open-hours', cfg.openHours || '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)');
   setVal('cfg-hold-minutes', cfg.holdMinutes ?? 15);
   setVal('cfg-refund-full-hours', cfg.refundFullHours ?? 24);
   setVal('cfg-refund-partial-hours', cfg.refundPartialHours ?? 4);
@@ -173,7 +173,7 @@ async function saveAdminSettings(e) {
   const accountNo = (document.getElementById('cfg-bank-acc')?.value || '0123456789').trim();
   const accountName = (document.getElementById('cfg-bank-holder')?.value || 'CONG TY CP SAN BONG PRO').trim().toUpperCase();
   const hotline = (document.getElementById('cfg-hotline')?.value || '0352 313 548').trim();
-  const openHours = (document.getElementById('cfg-open-hours')?.value || '05:30 - 23:00').trim();
+  const openHours = (document.getElementById('cfg-open-hours')?.value || '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)').trim();
   const holdMinutes = Math.max(5, Math.min(120, parseInt(document.getElementById('cfg-hold-minutes')?.value || '15', 10) || 15));
   const waitlistHoldMinutes = Math.max(5, Math.min(120, parseInt(document.getElementById('cfg-waitlist-hold-minutes')?.value || '15', 10) || 15));
   const matchmakingEnabled = Boolean(document.getElementById('cfg-matchmaking-enabled')?.checked ?? true);

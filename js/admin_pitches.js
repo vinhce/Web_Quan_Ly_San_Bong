@@ -514,6 +514,18 @@ function renderAdminPitches() {
       </div>
     ` : '';
 
+    const maintControls = isManagerOrAdmin() ? `
+          <div class="p-4 pt-2 flex items-center justify-between border-t border-[#F1F5F9]">
+            <span class="text-xs font-semibold text-[#475569]">Bảo trì mặt cỏ:</span>
+            <button type="button" data-pitch-id="${safePitchAttr}" onclick="toggleMaintenance(this.getAttribute('data-pitch-id'))" class="btn-sm ${isMaint ? 'btn-primary' : 'btn-danger-outline'} font-bold cursor-pointer">
+              ${isMaint ? '✓ Mở hoạt động lại' : '⚠️ Bật bảo trì'}
+            </button>
+          </div>` : `
+          <div class="p-4 pt-2 flex items-center justify-between border-t border-[#F1F5F9]">
+            <span class="text-xs font-semibold text-[#475569]">Tình trạng:</span>
+            <span class="text-xs font-bold ${isMaint ? 'text-amber-600' : (isHidden ? 'text-slate-500' : 'text-[#16A34A]')}">${isMaint ? 'Đang bảo trì' : (isHidden ? 'Đang ẩn' : 'Sẵn sàng')}</span>
+          </div>`;
+
     return `
       <div class="ui-card overflow-hidden flex flex-col justify-between ${isHidden ? 'opacity-75 border-dashed border-slate-300' : ''}">
         <div>
@@ -529,7 +541,7 @@ function renderAdminPitches() {
           <div class="p-4 space-y-2">
             <div class="flex items-center justify-between gap-2">
               <h4 class="font-heading font-bold text-sm text-[#0F172A]">${escapeSearchHTML(p.name)}</h4>
-              <span class="text-xs font-bold text-[#16A34A]">${fmt(p.basePrice)}/h</span>
+              <span class="text-xs font-bold text-[#16A34A]">${fmt(p.basePrice)}/ca 2h</span>
             </div>
             <div class="text-[11px] text-[#64748B]">${escapeSearchHTML(p.grass || '')} ${p.size ? '· ' + escapeSearchHTML(p.size) : ''}</div>
             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] text-[#334155] leading-relaxed">
@@ -539,12 +551,7 @@ function renderAdminPitches() {
         </div>
 
         <div>
-          <div class="p-4 pt-2 flex items-center justify-between border-t border-[#F1F5F9]">
-            <span class="text-xs font-semibold text-[#475569]">Bảo trì mặt cỏ:</span>
-            <button type="button" data-pitch-id="${safePitchAttr}" onclick="toggleMaintenance(this.getAttribute('data-pitch-id'))" class="btn-sm ${isMaint ? 'btn-primary' : 'btn-danger-outline'} font-bold cursor-pointer">
-              ${isMaint ? '✓ Mở hoạt động lại' : '⚠️ Bật bảo trì'}
-            </button>
-          </div>
+          ${maintControls}
           ${adminControls}
         </div>
       </div>
