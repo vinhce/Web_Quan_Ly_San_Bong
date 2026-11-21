@@ -96,24 +96,31 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                 $sessionCodes = [];
             }
 
+            $recurCond = "(
+                b.booking_date = ?
+                OR (
+                    DATEDIFF(?, b.booking_date) BETWEEN 0 AND 7 * (GREATEST(1, COALESCE(b.weeks_count, 1)) - 1)
+                    AND MOD(DATEDIFF(?, b.booking_date), 7) = 0
+                )
+            )";
             if (!empty($pitchId)) {
-                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone, b.user_id
+                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.paid_amount, b.customer_name, b.phone, b.user_id
                                        FROM bookings b
                                        LEFT JOIN time_slots ts ON ts.id = b.slot_id
-                                       WHERE b.pitch_id = ? AND b.booking_date = ?
+                                       WHERE b.pitch_id = ? AND {$recurCond}
                                          AND b.status NOT IN ('Đã hủy', 'Khách chưa đến')
                                          AND b.payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
                                        ORDER BY ts.start_time ASC, b.slot_id ASC");
-                $stmt->execute([$pitchId, $date]);
+                $stmt->execute([$pitchId, $date, $date, $date]);
             } else {
-                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone, b.user_id
+                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.paid_amount, b.customer_name, b.phone, b.user_id
                                        FROM bookings b
                                        LEFT JOIN time_slots ts ON ts.id = b.slot_id
-                                       WHERE b.booking_date = ?
+                                       WHERE {$recurCond}
                                          AND b.status NOT IN ('Đã hủy', 'Khách chưa đến')
                                          AND b.payment_status NOT IN ('Đã hủy', 'Tịch thu cọc 30%', 'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc')
                                        ORDER BY b.pitch_id ASC, ts.start_time ASC, b.slot_id ASC");
-                $stmt->execute([$date]);
+                $stmt->execute([$date, $date, $date]);
             }
 
             $rows = $stmt->fetchAll() ?: [];
@@ -122,9 +129,11 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                 $rawStart = !empty($r['start_time']) ? trim($r['start_time']) : trim(explode('-', (string)$r['slot_time'])[0] ?? '');
                 $rawEnd   = !empty($r['end_time'])   ? trim($r['end_time'])   : trim(explode('-', (string)$r['slot_time'])[1] ?? '');
 
-                $isDeposited = in_array($r['payment_status'], ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)
-                    || (stripos((string)$r['payment_status'], 'Đã cọc') !== false)
-                    || in_array($r['status'], ['Đã xác nhận', 'Đang đá', 'completed', 'Hoàn thành'], true);
+                $paidRowAmt = max(0, (int)($r['paid_amount'] ?? 0));
+                $isDeposited = ($paidRowAmt > 0)
+                    || in_array($r['payment_status'], ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'Còn thiếu phần phát sinh', 'deposited', 'completed', 'paid'], true)
+                    || (mb_stripos((string)$r['payment_status'], 'Đã cọc') !== false)
+                    || in_array($r['status'], ['Đang đá', 'completed', 'Hoàn thành', 'Đã đá - chưa tất toán'], true);
 
                 $isOwner = false;
                 if ($currentUser) {
@@ -285,8 +294,9 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
         $userId = $currentUser ? (int)$currentUser['id'] : null;
         $userPhone = $currentUser ? normalize_phone($currentUser['phone'] ?? '') : '';
 
+        $hasMaxDiscCol = db_table_has_column($pdo, 'vouchers', 'max_discount_amount');
         $stmt = $pdo->prepare("
-            SELECT code, description, discount_type, discount_value, min_order, required_tier, max_usage, used_count, max_per_user
+            SELECT code, description, discount_type, discount_value" . ($hasMaxDiscCol ? ", max_discount_amount" : "") . ", min_order, required_tier, max_usage, used_count, max_per_user
             FROM vouchers
             WHERE is_active = 1
               AND (valid_from IS NULL OR valid_from <= CURDATE())
@@ -323,12 +333,13 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                 }
             }
             $eligible[] = [
-                'code' => $v['code'],
-                'description' => $v['description'],
-                'type' => $v['discount_type'],
-                'value' => (int)$v['discount_value'],
-                'minOrder' => (int)$v['min_order'],
-                'requiredTier' => $reqTier
+                'code'              => $v['code'],
+                'description'       => $v['description'],
+                'type'              => $v['discount_type'],
+                'value'             => (int)$v['discount_value'],
+                'maxDiscountAmount' => (int)($v['max_discount_amount'] ?? 0),
+                'minOrder'          => (int)$v['min_order'],
+                'requiredTier'      => $reqTier
             ];
         }
         json_response(['success' => true, 'data' => $eligible]);
@@ -387,12 +398,13 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
         json_response([
             'success' => true,
             'data' => [
-                'code' => $v['code'],
-                'description' => $v['description'],
-                'type' => $v['discount_type'],
-                'value' => (int)$v['discount_value'],
-                'minOrder' => (int)$v['min_order'],
-                'requiredTier' => $reqTier
+                'code'              => $v['code'],
+                'description'       => $v['description'],
+                'type'              => $v['discount_type'],
+                'value'             => (int)$v['discount_value'],
+                'maxDiscountAmount' => (int)($v['max_discount_amount'] ?? 0),
+                'minOrder'          => (int)$v['min_order'],
+                'requiredTier'      => $reqTier
             ]
         ]);
         return true;
