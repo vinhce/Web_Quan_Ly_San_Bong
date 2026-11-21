@@ -8,87 +8,11 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
     exit;
 }
 
+require_once __DIR__ . '/finance_metrics_helper.php';
+
 function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor): void {
-    $computeShiftTotals = function (PDO $pdo, int $staffId, string $startTime, ?string $endTime = null): array {
-        try {
-            $endBound = $endTime ?: date('Y-m-d H:i:s');
-            
-            $hasStaffCol = function_exists('db_table_has_column') ? db_table_has_column($pdo, 'bookings', 'staff_id') : true;
-            $staffCondition = $hasStaffCol
-                ? "(staff_id = :staff_id1 OR user_id = :staff_id2 OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id3 AND action = 'WALKIN_BOOKING'))"
-                : "(user_id = :staff_id1 OR code IN (SELECT booking_id FROM audit_logs WHERE user_id = :staff_id2 AND action = 'WALKIN_BOOKING'))";
-
-            $walkinParams = [
-                ':start_time' => $startTime,
-                ':end_bound'  => $endBound,
-                ':staff_id1'  => $staffId,
-                ':staff_id2'  => $staffId,
-            ];
-            if ($hasStaffCol) {
-                $walkinParams[':staff_id3'] = $staffId;
-            }
-
-            $stmtWalkin = $pdo->prepare("SELECT COALESCE(SUM(deposit_amount), 0) AS total_walkin_cash
-                FROM bookings
-                WHERE created_at >= :start_time AND created_at <= :end_bound
-                  AND status != 'Đã hủy'
-                  AND payment_method LIKE '%Tiền mặt%'
-                  AND {$staffCondition}");
-            $stmtWalkin->execute($walkinParams);
-            $walkinCash = (int)$stmtWalkin->fetchColumn();
-
-            // Tuyệt đối không dùng SQL REGEXP_REPLACE (MySQL < 8.0 crash 1305). Fetch giá trị về và preg_replace bằng PHP.
-            $stmtRemaining = $pdo->prepare("SELECT old_value
-                FROM audit_logs
-                WHERE user_id = :staff_id
-                  AND action = 'COLLECT_PAYMENT'
-                  AND (new_value LIKE '%Tiền mặt%' OR new_value LIKE '%quầy%')
-                  AND created_at >= :start_time AND created_at <= :end_bound");
-            $stmtRemaining->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
-            $remCash = 0;
-            while ($row = $stmtRemaining->fetch(PDO::FETCH_ASSOC)) {
-                $rawOld = (string)($row['old_value'] ?? '');
-                $digits = preg_replace('/[^0-9]/', '', $rawOld);
-                if ($digits !== '') {
-                    $remCash += (int)$digits;
-                }
-            }
-
-            $stmtSales = $pdo->prepare("SELECT COALESCE(SUM(total_amount), 0) AS total_service_cash
-                FROM service_sales
-                WHERE created_at >= :start_time AND created_at <= :end_bound
-                  AND payment_method LIKE '%Tiền mặt%'
-                  AND (booking_code IS NULL OR booking_code = '')
-                  AND staff_id = :staff_id");
-            $stmtSales->execute([':start_time' => $startTime, ':end_bound' => $endBound, ':staff_id' => $staffId]);
-            $serviceCash = (int)$stmtSales->fetchColumn();
-
-            $cashTotal = $walkinCash + $remCash + $serviceCash;
-
-            $stmtTransfer = $pdo->prepare("SELECT COALESCE(SUM(transfer_amount), 0) AS total_transfer
-                FROM bank_transactions
-                WHERE created_at >= :start_time AND created_at <= :end_bound
-                  AND match_status IN ('matched', 'overpaid', 'underpaid', 'resolved')");
-            $stmtTransfer->execute([':start_time' => $startTime, ':end_bound' => $endBound]);
-            $transferTotal = (int)$stmtTransfer->fetchColumn();
-
-            return [
-                'cashTotal'     => $cashTotal,
-                'transferTotal' => $transferTotal,
-                'walkinCash'    => $walkinCash,
-                'remCash'       => $remCash,
-                'serviceCash'   => $serviceCash
-            ];
-        } catch (Throwable $e) {
-            error_log("[COMPUTE_SHIFT_TOTALS ERROR] " . $e->getMessage());
-            return [
-                'cashTotal'     => 0,
-                'transferTotal' => 0,
-                'walkinCash'    => 0,
-                'remCash'       => 0,
-                'serviceCash'   => 0
-            ];
-        }
+    $computeShiftTotals = static function (PDO $pdo, int $staffId, string $startTime, ?string $endTime = null): array {
+        return finance_compute_shift_totals($pdo, $staffId, $startTime, $endTime);
     };
 
     if ($method === 'GET') {
@@ -368,7 +292,7 @@ function handle_admin_shifts(PDO $pdo, string $method, array $data, array $actor
                     json_error('Ca trực này đã được đối soát rồi, không thể đối soát lại!', 400, 'ERR_SHIFT_ALREADY_CONFIRMED');
                 }
 
-                $actualCash = isset($data['actual_cash_received']) ? (int)$data['actual_cash_received'] : (int)($shift['actual_cash_received'] ?? $shift['cash_total']);
+                $actualCash = isset($data['actual_cash_received']) ? (int)$data['actual_cash_received'] : (int)($shift['actual_cash_received'] ?? ((int)$shift['cash_total'] + (int)($shift['initial_cash'] ?? 0)));
                 $expectedTotal = (int)$shift['cash_total'] + (int)($shift['initial_cash'] ?? 0);
                 $discrepancy = $actualCash - $expectedTotal;
 
