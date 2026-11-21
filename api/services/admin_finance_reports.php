@@ -6,6 +6,8 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
     exit;
 }
 
+require_once __DIR__ . '/finance_metrics_helper.php';
+
 /**
  * Parse slot duration in hours from slot_time string (e.g. "16:30 - 18:30" -> 2.0).
  */
@@ -135,137 +137,63 @@ function report_compute_period_core(PDO $pdo, string $fromDate, string $toDate, 
 
         $totPrice  = max(0, (int)($row['total_price'] ?? 0));
         $depAmt    = max(0, (int)($row['deposit_amount'] ?? 0));
-        $paidAmt   = max(0, (int)($row['paid_amount'] ?? 0));
 
-        $isCancelledOrForfeit = ($bStatus === 'Đã hủy' || $bStatus === 'Khách chưa đến'
-            || in_array($payStatus, ['Đã hủy', 'Đã hoàn cọc 100%', 'Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%'], true));
-        if ($isCancelledOrForfeit) {
+        $eval = finance_evaluate_booking_row($row);
+        if ($eval['isCancelled']) {
             $cancelledBookingsCount++;
         }
-        $isCompleted = ($bStatus === 'Hoàn thành' || strtolower($bStatus) === 'completed'
-            || in_array($payStatus, ['Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid'], true));
-        if ($isCompleted) {
+        if ($eval['isCompleted']) {
             $completedBookingsCount++;
         }
-
-        // Bỏ qua đơn hủy hoàn toàn / đã hoàn cọc 100%
-        if ($payStatus === 'Đã hủy' || $payStatus === 'Đã hoàn cọc 100%'
-            || ($bStatus === 'Đã hủy' && !in_array($payStatus, ['Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%'], true))) {
+        if ($eval['excluded']) {
             continue;
         }
 
-        $validBookingCodes[] = $code;
+        $validBookingCodes[]   = $code;
+        $orderRevenue          = $eval['orderRevenue'];
+        $orderPitchRecognized  = $eval['orderPitchRecognized'];
+        $orderServices         = $eval['orderServices'];
+        $orderPaid             = $eval['orderPaid'];
+        $orderUncollected      = $eval['orderUncollected'];
+        $orderDepositCollected = $eval['orderDepositCollected'];
+        $orderRemCollected     = $eval['orderRemCollected'];
+        $orderPitchCollected   = $eval['orderPitchCollected'];
+        $orderSrvCollected     = $eval['orderSrvCollected'];
+        $isMatchCounted        = $eval['isMatchCounted'];
+        $isDepositConfirmed    = $eval['isDepositConfirmed'];
+        $isCompleted           = $eval['isCompleted'];
 
-        $orderRevenue          = 0;
-        $orderPitchRecognized  = 0;
-        $orderServices         = 0;
-        $orderPaid             = 0;
-        $orderUncollected      = 0;
-        $orderDepositCollected = 0;
-        $orderRemCollected     = 0;
-        $orderPitchCollected   = 0;
-        $orderSrvCollected     = 0;
-        $isMatchCounted        = false;
-        $isDepositConfirmed    = false;
-
-        if ($payStatus === 'Tịch thu cọc 30%' || $bStatus === 'Khách chưa đến') {
-            $orderRevenue          = $depAmt;
-            $orderPitchRecognized  = $depAmt;
-            $orderPaid             = $depAmt;
-            $orderDepositCollected = $depAmt;
-            $orderPitchCollected   = $depAmt;
-            $isDepositConfirmed    = true;
-        } elseif ($payStatus === 'Phạt 50% cọc') {
-            $forfeited             = (int)round($depAmt * 0.5);
-            $orderRevenue          = $forfeited;
-            $orderPitchRecognized  = $forfeited;
-            $orderPaid             = $forfeited;
-            $orderDepositCollected = $forfeited;
-            $orderPitchCollected   = $forfeited;
-            $isDepositConfirmed    = true;
-        } elseif ($payStatus === 'Bảo lưu cọc 30%') {
-            $orderRevenue          = $depAmt;
-            $orderPitchRecognized  = $depAmt;
-            $orderPaid             = $depAmt;
-            $orderDepositCollected = $depAmt;
-            $orderPitchCollected   = $depAmt;
-            $isDepositConfirmed    = true;
-        } else {
-            $isMatchCounted = true;
-            $orderRevenue   = $totPrice;
-
-            $srvs = !empty($row['services_json']) ? json_decode((string)$row['services_json'], true) : [];
-            if (is_array($srvs)) {
-                foreach ($srvs as $s) {
-                    $sTotal = isset($s['total']) ? (int)$s['total'] : ((int)($s['price'] ?? 0) * max(1, (int)($s['quantity'] ?? 1)));
-                    $orderServices += max(0, $sTotal);
-                }
-            }
-
-            $pitchNet = max(0, $totPrice - $orderServices);
-            $orderPitchRecognized = $pitchNet;
-
-            // Nhận cả Đã cọc 30%, Đã cọc 60%, Đã cọc ..., Đã thanh toán đủ/100%
-            $isDepositConfirmed = $isCompleted
-                || in_array($payStatus, ['Đã cọc 30%', 'Đã cọc 60%', 'deposited', 'completed', 'paid'], true)
-                || (mb_stripos($payStatus, 'Đã cọc') !== false);
-
-            if ($isCompleted) {
-                $orderPaid        = $totPrice;
-                $orderUncollected = 0;
-            } elseif ($isDepositConfirmed) {
-                $effectiveDep     = ($depAmt > 0) ? min($depAmt, $totPrice) : (int)round($pitchNet * 0.3);
-                $orderPaid        = ($paidAmt > 0) ? min($totPrice, $paidAmt) : $effectiveDep;
-                $orderUncollected = max(0, $totPrice - $orderPaid);
-            } else {
-                // Chờ duyệt cọc / chưa thanh toán
-                $orderPaid        = ($paidAmt > 0) ? min($totPrice, $paidAmt) : 0;
-                $orderUncollected = max(0, $totPrice - $orderPaid);
-            }
-
-            // Phân bổ tiền đã thu vào: Tiền cọc đã thu + Tiền sân còn lại đã thu + Dịch vụ đã thu
-            $orderPitchCollected   = min($pitchNet, $orderPaid);
-            $orderSrvCollected     = max(0, $orderPaid - $orderPitchCollected);
-            if ($isDepositConfirmed) {
-                $orderDepositCollected = min($depAmt > 0 ? $depAmt : (int)round($pitchNet * 0.3), $orderPitchCollected);
-                $orderRemCollected     = max(0, $orderPitchCollected - $orderDepositCollected);
-            } else {
-                $orderDepositCollected = 0;
-                $orderRemCollected     = $orderPitchCollected;
-            }
-
-            // Kiểm tra lệch cọc so với 30% (hoặc 60% gói tháng) để liệt kê trong mục đối soát
-            if ($includeDetails && $pitchNet > 0) {
-                $isMonthly = ((int)($row['weeks_count'] ?? 1) > 1) || (mb_stripos($payStatus, '60%') !== false) || (mb_stripos($noteStr, 'Gói') !== false);
-                $expectedRate = $isMonthly ? 0.60 : 0.30;
-                $expectedDep  = (int)round($totPrice * $expectedRate);
-                $expectedDepPitch = (int)round($pitchNet * $expectedRate);
-                $diffTot = abs($depAmt - $expectedDep);
-                $diffPitch = abs($depAmt - $expectedDepPitch);
-                if (!$isDepositConfirmed) {
-                    $depositDeviantOrders[] = [
-                        'code'         => $code,
-                        'booking_date' => $bDate,
-                        'customer'     => (string)($row['customer_name'] ?? ''),
-                        'pitch_name'   => (string)($row['pitch_name'] ?? $pId),
-                        'total_price'  => $totPrice,
-                        'deposit'      => $depAmt,
-                        'expected'     => $expectedDep,
-                        'reason'       => 'Trạng thái "' . $payStatus . '" (chưa xác nhận cọc)'
-                    ];
-                } elseif (min($diffTot, $diffPitch) > 1000) {
-                    $actualPct = $totPrice > 0 ? round(($depAmt / $totPrice) * 100, 1) : 0;
-                    $depositDeviantOrders[] = [
-                        'code'         => $code,
-                        'booking_date' => $bDate,
-                        'customer'     => (string)($row['customer_name'] ?? ''),
-                        'pitch_name'   => (string)($row['pitch_name'] ?? $pId),
-                        'total_price'  => $totPrice,
-                        'deposit'      => $depAmt,
-                        'expected'     => $expectedDep,
-                        'reason'       => "Cọc {$actualPct}% (chuẩn " . ($expectedRate * 100) . "%)"
-                    ];
-                }
+        // Kiểm tra lệch cọc so với 30% (hoặc 60% gói tháng) để liệt kê trong mục đối soát
+        if ($isMatchCounted && $includeDetails && $orderPitchRecognized > 0) {
+            $isMonthly = ((int)($row['weeks_count'] ?? 1) > 1) || (mb_stripos($payStatus, '60%') !== false) || (mb_stripos($noteStr, 'Gói') !== false);
+            $expectedRate = $isMonthly ? 0.60 : 0.30;
+            $expectedDep  = (int)round($totPrice * $expectedRate);
+            $expectedDepPitch = (int)round($orderPitchRecognized * $expectedRate);
+            $diffTot = abs($depAmt - $expectedDep);
+            $diffPitch = abs($depAmt - $expectedDepPitch);
+            if (!$isDepositConfirmed) {
+                $depositDeviantOrders[] = [
+                    'code'         => $code,
+                    'booking_date' => $bDate,
+                    'customer'     => (string)($row['customer_name'] ?? ''),
+                    'pitch_name'   => (string)($row['pitch_name'] ?? $pId),
+                    'total_price'  => $totPrice,
+                    'deposit'      => $depAmt,
+                    'expected'     => $expectedDep,
+                    'reason'       => 'Trạng thái "' . $payStatus . '" (chưa xác nhận cọc)'
+                ];
+            } elseif (min($diffTot, $diffPitch) > 1000) {
+                $actualPct = $totPrice > 0 ? round(($depAmt / $totPrice) * 100, 1) : 0;
+                $depositDeviantOrders[] = [
+                    'code'         => $code,
+                    'booking_date' => $bDate,
+                    'customer'     => (string)($row['customer_name'] ?? ''),
+                    'pitch_name'   => (string)($row['pitch_name'] ?? $pId),
+                    'total_price'  => $totPrice,
+                    'deposit'      => $depAmt,
+                    'expected'     => $expectedDep,
+                    'reason'       => "Cọc {$actualPct}% (chuẩn " . ($expectedRate * 100) . "%)"
+                ];
             }
         }
 
@@ -381,45 +309,25 @@ function report_compute_period_core(PDO $pdo, string $fromDate, string $toDate, 
         }
     }
 
-    // Bán lẻ nước / dịch vụ tại quầy
-    $salesWhere = ["(booking_code IS NULL OR booking_code = '')", "total_amount > 0"];
-    $salesParams = [];
-    if ($fromDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate)) {
-        $salesWhere[] = "DATE(created_at) >= ?";
-        $salesParams[] = $fromDate;
-    }
-    if ($toDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
-        $salesWhere[] = "DATE(created_at) <= ?";
-        $salesParams[] = $toDate;
-    }
-    $counterSalesRows = [];
-    try {
-        $sWhereSql = 'WHERE ' . implode(' AND ', $salesWhere);
-        $sStmt = $pdo->prepare("SELECT * FROM service_sales {$sWhereSql} ORDER BY id DESC");
-        $sStmt->execute($salesParams);
-        $counterSalesRows = $sStmt->fetchAll();
+    // Bán lẻ nước / dịch vụ tại quầy (dùng chung finance_query_counter_sales)
+    $counterSalesData    = finance_query_counter_sales($pdo, $fromDate, $toDate);
+    $counterSalesRows    = $counterSalesData['rows'];
+    $counterSalesRevenue += $counterSalesData['totalAmount'];
+    $servicesRecognized  += $counterSalesData['totalAmount'];
+    $servicesCollected   += $counterSalesData['totalAmount'];
+    $recognizedRevenue   += $counterSalesData['totalAmount'];
+    $cashRevenue         += $counterSalesData['cashAmount'];
+    $vietqrRevenue       += $counterSalesData['transferAmount'];
+    if ($includeDetails) {
         foreach ($counterSalesRows as $sRow) {
-            $sAmt = max(0, (int)($sRow['total_amount'] ?? 0));
-            $counterSalesRevenue += $sAmt;
-            $servicesRecognized  += $sAmt;
-            $servicesCollected   += $sAmt;
-            $recognizedRevenue   += $sAmt;
-            if (mb_stripos((string)($sRow['payment_method'] ?? ''), 'Tiền mặt') !== false) {
-                $cashRevenue += $sAmt;
-            } else {
-                $vietqrRevenue += $sAmt;
+            $sAmt  = max(0, (int)($sRow['total_amount'] ?? 0));
+            $sDate = substr((string)($sRow['created_at'] ?? date('Y-m-d')), 0, 10);
+            if (!isset($dailyMap[$sDate])) {
+                $dailyMap[$sDate] = ['date' => $sDate, 'revenue' => 0, 'collected' => 0, 'matches' => 0];
             }
-            if ($includeDetails) {
-                $sDate = substr((string)($sRow['created_at'] ?? date('Y-m-d')), 0, 10);
-                if (!isset($dailyMap[$sDate])) {
-                    $dailyMap[$sDate] = ['date' => $sDate, 'revenue' => 0, 'collected' => 0, 'matches' => 0];
-                }
-                $dailyMap[$sDate]['revenue']   += $sAmt;
-                $dailyMap[$sDate]['collected'] += $sAmt;
-            }
+            $dailyMap[$sDate]['revenue']   += $sAmt;
+            $dailyMap[$sDate]['collected'] += $sAmt;
         }
-    } catch (Exception $sEx) {
-        error_log("[REPORTS COUNTER SALES WARN] " . $sEx->getMessage());
     }
 
     // Chi phí vận hành trong kỳ
@@ -666,7 +574,7 @@ function handle_admin_finance_reports(string $action, string $method, PDO $pdo, 
             $shWhere[] = "DATE(start_time) <= ?";
             $shParams[] = $toDate;
         }
-        $shStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(actual_cash_received, cash_total)), 0) AS total_cash, COUNT(*) AS cnt FROM shifts WHERE " . implode(' AND ', $shWhere));
+        $shStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(actual_cash_received - COALESCE(initial_cash, 0), cash_total)), 0) AS total_cash, COUNT(*) AS cnt FROM shifts WHERE " . implode(' AND ', $shWhere));
         $shStmt->execute($shParams);
         $shRow = $shStmt->fetch();
         $shiftCashTotal = (int)($shRow['total_cash'] ?? 0);
