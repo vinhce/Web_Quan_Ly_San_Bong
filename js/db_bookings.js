@@ -276,8 +276,8 @@
         weekendPrice,
         status: pitchData.status || (oldPitch ? oldPitch.status : 'Hoạt động'),
         badge: oldPitch?.badge || `Sân ${pType} Tiêu Chuẩn`,
-        rating: oldPitch?.rating || 4.9,
-        reviews: oldPitch?.reviews || 20,
+        rating: oldPitch?.rating || 0,
+        reviews: oldPitch?.reviews || 0,
         amenities: oldPitch?.amenities || ['Đèn LED chống chói', 'Lưới chắn mới', 'Nước uống tại sân']
       });
 

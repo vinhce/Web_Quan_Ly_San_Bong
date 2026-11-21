@@ -4,13 +4,7 @@
   Object.assign(window.SanBongDB, {
     getUser() {
       try {
-        let sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-        if (!sessionUser) {
-          sessionUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
-          if (sessionUser) {
-            try { sessionStorage.setItem('sb_current_user', JSON.stringify(sessionUser)); } catch (e) {}
-          }
-        }
+        const sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
         const rawName = sessionUser ? (sessionUser.full_name || sessionUser.name || sessionUser.username) : '';
         if (sessionUser && rawName) {
           const customerTier = String(sessionUser.customer_tier || sessionUser.customerTier || sessionUser.tier || 'standard').trim().toLowerCase();
@@ -52,14 +46,11 @@
 
     updateUser(updates) {
       try {
-        let sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-        if (!sessionUser) {
-          sessionUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
-        }
+        const sessionUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
         if (sessionUser) {
           const updated = Object.assign({}, sessionUser, updates);
           sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
-          try { localStorage.setItem('sb_current_user', JSON.stringify(updated)); } catch (e) {}
+          try { localStorage.removeItem('sb_current_user'); } catch (e) {}
           return updated;
         }
         return null;
@@ -150,8 +141,8 @@
         servicesList.forEach(item => {
           const srvDef = allServices.find(s => s.id === item.id);
           if (srvDef && item.quantity > 0) {
-            const lineTotal = srvDef.price * item.quantity * weeks;
-            singleServiceTotal += srvDef.price * item.quantity;
+            const lineTotal = srvDef.price * item.quantity;
+            singleServiceTotal += lineTotal;
             appliedServices.push({
               id: srvDef.id,
               name: srvDef.name,
@@ -164,7 +155,7 @@
         });
       }
 
-      const serviceTotal = singleServiceTotal * weeks;
+      const serviceTotal = singleServiceTotal;
       const packagePromotion = this.getPackagePromotion(weeks);
       let monthlyDiscountRate = packagePromotion ? packagePromotion.discountRate : 0;
       if (!monthlyDiscountRate) {
@@ -173,8 +164,8 @@
         else if (weeks >= 4) monthlyDiscountRate = 0.05;
       }
 
-      const pitchPriceBeforeRule = Math.round(rawPitchTotal * (1 - monthlyDiscountRate));
-      const monthlyDiscountAmount = Math.max(0, rawPitchTotal - pitchPriceBeforeRule);
+      let monthlyDiscountAmount = monthlyDiscountRate > 0 ? Math.round(rawPitchTotal * monthlyDiscountRate) : 0;
+      const pitchPriceBeforeRule = Math.max(0, rawPitchTotal - monthlyDiscountAmount);
 
       // Tính năng quy tắc giá giờ vàng / thấp điểm đã được gỡ bỏ
       let netPitchPrice = pitchPriceBeforeRule;
@@ -219,7 +210,8 @@
       }
 
       const pitchPrice = rawPitchTotal;
-      const subtotal = netPitchPrice + serviceTotal;
+      const rawSubtotal = rawPitchTotal + serviceTotal + goldenHourDelta;
+      const netPitchPriceFull = Math.max(0, rawPitchTotal + goldenHourDelta);
 
       let discountAmount = 0;
       let appliedVoucher = null;
@@ -252,31 +244,53 @@
             const isQualified = unrestricted || requiredTiers.some(t => (tierRank[canonicalTier] || 1) >= (tierRank[t] || 99));
             if (!isQualified) {
               voucherError = 'Bạn chưa đủ điều kiện. Mã này chỉ dành riêng cho hội viên hạng Vàng và Kim Cương.';
-            } else if (subtotal < (v.minOrder || 0)) {
+            } else if (rawSubtotal < (v.minOrder || 0)) {
               voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
             } else {
               appliedVoucher = v;
               if (v.type === 'percent') {
-                discountAmount = Math.round((subtotal * v.value) / 100);
+                discountAmount = Math.round((rawSubtotal * v.value) / 100);
+                const maxDisc = Number(v.maxDiscountAmount ?? v.max_discount_amount ?? 0);
+                if (maxDisc > 0 && discountAmount > maxDisc) discountAmount = maxDisc;
               } else {
-                discountAmount = Math.min(v.value, subtotal);
+                discountAmount = Math.min(v.value, rawSubtotal);
               }
             }
           }
-        } else if (subtotal < (v.minOrder || 0)) {
+        } else if (rawSubtotal < (v.minOrder || 0)) {
           voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
         } else {
           appliedVoucher = v;
           if (v.type === 'percent') {
-            discountAmount = Math.round((subtotal * v.value) / 100);
+            discountAmount = Math.round((rawSubtotal * v.value) / 100);
+            const maxDisc = Number(v.maxDiscountAmount ?? v.max_discount_amount ?? 0);
+            if (maxDisc > 0 && discountAmount > maxDisc) discountAmount = maxDisc;
           } else {
-            discountAmount = Math.min(v.value, subtotal);
+            discountAmount = Math.min(v.value, rawSubtotal);
           }
         }
       }
 
+      // Non-stacking: chọn ưu đãi có lợi nhất giữa gói tháng và voucher
+      let appliedDiscountSource = 'none';
+      if (discountAmount > 0 && monthlyDiscountAmount > 0) {
+        if (discountAmount >= monthlyDiscountAmount) {
+          monthlyDiscountAmount = 0;
+          appliedDiscountSource = 'voucher';
+        } else {
+          discountAmount = 0;
+          appliedVoucher = null;
+          appliedDiscountSource = 'monthly_package';
+        }
+      } else if (discountAmount > 0) {
+        appliedDiscountSource = 'voucher';
+      } else if (monthlyDiscountAmount > 0) {
+        appliedDiscountSource = 'monthly_package';
+      }
+
       const totalDiscount = monthlyDiscountAmount + discountAmount + Math.max(0, -goldenHourDelta);
-      const totalPrice = Math.max(0, subtotal - discountAmount);
+      const totalPrice = Math.max(0, rawSubtotal - (monthlyDiscountAmount + discountAmount));
+      netPitchPrice = Math.max(0, netPitchPriceFull - monthlyDiscountAmount);
       const isMonthly = Number(weeks) > 1;
       const sysCfg = this.getSystemConfig ? this.getSystemConfig() : { depositRate: 30 };
       const defaultDepositRate = isMonthly ? 60 : (Number(sysCfg.depositRate) || 30);
@@ -295,14 +309,15 @@
         serviceTotal,
         singleServiceTotal,
         appliedServices,
-        subtotal: rawPitchTotal + serviceTotal,
-        netSubtotal: subtotal,
+        subtotal: rawSubtotal,
+        netSubtotal: rawSubtotal,
         weeksCount: weeks,
         packagePromotion,
         isMonthly,
         depositRatePct: isMonthly ? 60 : Math.round(depositRate * 100),
         monthlyDiscountRate,
         monthlyDiscountAmount,
+        appliedDiscountSource,
         voucherCode: appliedVoucher ? appliedVoucher.code : '',
         voucherError,
         discountAmount,
