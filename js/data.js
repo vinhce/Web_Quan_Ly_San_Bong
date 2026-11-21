@@ -523,24 +523,13 @@ const DEFAULT_PITCHES = [
 ];
 
 const DEFAULT_TIME_SLOTS = [
-  { id: 'S01', time: '05:30 - 06:30', start: '05:30', end: '06:30', isPeak: false },
-  { id: 'S02', time: '06:30 - 07:30', start: '06:30', end: '07:30', isPeak: false },
-  { id: 'S03', time: '07:30 - 08:30', start: '07:30', end: '08:30', isPeak: false },
-  { id: 'S04', time: '08:30 - 09:30', start: '08:30', end: '09:30', isPeak: false },
-  { id: 'S05', time: '09:30 - 10:30', start: '09:30', end: '10:30', isPeak: false },
-  { id: 'S06', time: '14:00 - 15:00', start: '14:00', end: '15:00', isPeak: false },
-  { id: 'S07', time: '15:00 - 16:00', start: '15:00', end: '16:00', isPeak: false },
-  { id: 'S08', time: '16:00 - 17:00', start: '16:00', end: '17:00', isPeak: false },
-  { id: 'S09', time: '17:00 - 18:00', start: '17:00', end: '18:00', isPeak: true },
-  { id: 'S10', time: '17:30 - 19:00', start: '17:30', end: '19:00', isPeak: true, duration: 1.5 },
-  { id: 'S11', time: '18:00 - 19:00', start: '18:00', end: '19:00', isPeak: true },
-  { id: 'S12', time: '19:00 - 20:00', start: '19:00', end: '20:00', isPeak: true },
-  { id: 'S13', time: '19:00 - 20:30', start: '19:00', end: '20:30', isPeak: true, duration: 1.5 },
-  { id: 'S14', time: '20:00 - 21:00', start: '20:00', end: '21:00', isPeak: true },
-  { id: 'S15', time: '20:30 - 22:00', start: '20:30', end: '22:00', isPeak: true, duration: 1.5 },
-  { id: 'S16', time: '21:00 - 22:00', start: '21:00', end: '22:00', isPeak: false },
-  { id: 'S17', time: '21:00 - 22:30', start: '21:00', end: '22:30', isPeak: false, duration: 1.5 },
-  { id: 'S18', time: '22:00 - 23:00', start: '22:00', end: '23:00', isPeak: false }
+  { id: 'S01', time: '05:30 - 07:30', start: '05:30', end: '07:30', isPeak: false, duration: 2.0 },
+  { id: 'S02', time: '07:30 - 09:30', start: '07:30', end: '09:30', isPeak: false, duration: 2.0 },
+  { id: 'S03', time: '09:30 - 11:30', start: '09:30', end: '11:30', isPeak: false, duration: 2.0 },
+  { id: 'S04', time: '14:30 - 16:30', start: '14:30', end: '16:30', isPeak: false, duration: 2.0 },
+  { id: 'S05', time: '16:30 - 18:30', start: '16:30', end: '18:30', isPeak: true, duration: 2.0 },
+  { id: 'S06', time: '18:30 - 20:30', start: '18:30', end: '20:30', isPeak: true, duration: 2.0 },
+  { id: 'S07', time: '20:30 - 22:30', start: '20:30', end: '22:30', isPeak: false, duration: 2.0 }
 ];
 
 const DEFAULT_EXTRA_SERVICES = [

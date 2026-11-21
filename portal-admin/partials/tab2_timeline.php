@@ -27,11 +27,11 @@
             <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[#15803D] font-semibold">Gợi ý: Bấm vào ca đá trên Timeline để mở Popup Điều Hành Ca Đá &amp; Thanh Toán</span>
           </div>
           <div class="min-w-[900px]">
-            <!-- Timeline Hours Header 05:30 -> 22:30 -->
+            <!-- Timeline Hours Header 05:30 -> 22:30 (Mỗi ca 2 tiếng · Nghỉ trưa 11:30 - 14:30) -->
             <div class="grid grid-cols-12 border-b border-[#E2E8F0] pb-2 text-[11px] font-bold text-[#64748B] pl-28 text-center">
-              <div>05:30</div><div>07:00</div><div>08:30</div><div>14:00</div><div>15:30</div>
-              <div>17:00</div><div class="text-[#DC2626] font-extrabold">17:30 ▼</div><div>18:30</div>
-              <div>20:00</div><div>21:30</div><div>22:30</div><div>23:00</div>
+              <div>05:30</div><div>07:30</div><div>09:30</div><div class="text-amber-600">11:30 (Trưa)</div><div class="text-amber-600 col-span-2">Nghỉ trưa (11:30-14:30)</div>
+              <div>14:30</div><div class="text-[#DC2626] font-extrabold">16:30 ▼</div><div class="text-[#DC2626] font-extrabold">18:30 (Cao điểm)</div>
+              <div>20:30</div><div class="col-span-2">22:30 (Hết ca)</div>
             </div>
 
             <!-- 6 Rows for 6 Pitches (Frame 12) -->

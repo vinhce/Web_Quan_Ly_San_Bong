@@ -89,11 +89,11 @@ $noToastOnUnauth = (strpos($jsBooking, '!isCustomer') !== false &&
                     strpos($jsBooking, 'sb_login_notice') !== false &&
                     strpos($jsBooking, 'window.location.href = loginUrl') !== false);
 $hasNoticeHandler = (strpos($jsLogin, 'Đăng nhập để tiếp tục đặt sân') !== false);
-$hasDefaultLoginText = (strpos($htmlBooking, 'id="proceed-checkout-btn"') !== false && strpos($htmlBooking, 'Đăng nhập để đặt sân') !== false);
+$hasDefaultLoginText = (strpos($htmlBooking, 'id="proceed-checkout-btn"') !== false && strpos($htmlBooking, 'Đặt sân ngay') !== false);
 
 assertTest($noToastOnUnauth, "1.1 Khách chưa đăng nhập bấm nút không bắn toast, lưu draft và chuyển thẳng sang login");
 assertTest($hasNoticeHandler, "1.2 Trang login nhận diện và hiển thị thông báo 1 dòng 'Đăng nhập để tiếp tục đặt sân'");
-assertTest($hasDefaultLoginText, "1.3 Nút đặt sân mặc định đổi chữ thành 'Đăng nhập để đặt sân'");
+assertTest($hasDefaultLoginText, "1.3 Nút đặt sân mặc định mang text và màu chuẩn 'Đặt sân ngay'");
 
 // -------------------------------------------------------------
 // TEST 2: Đăng nhập, bỏ trống trường bắt buộc: đúng 1 thông báo, ô lỗi được đánh dấu
