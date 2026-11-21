@@ -74,3 +74,20 @@
 - **D. Server hardening (`create_booking`)**: Bắt buộc đăng nhập (chưa đăng nhập trả 401). Tự lấy `user_id` và thông tin mặc định từ session server, triệt tiêu nguy cơ IDOR/mạo danh. Chỉ nhận tên/SĐT khi đánh dấu "Đặt hộ bạn bè" (vẫn gán `user_id` người đặt). Điểm thưởng (`points_log`) luôn gán cho khách đặt sân.
 - **E. Bảo mật & Giao diện**: Header `Cache-Control` no-store. Bỏ toàn bộ emoji, dùng 100% SVG cục bộ. Widget rác "hi — Blocked" bị chặn và ẩn hoàn toàn.
 - **F. Nghiệm thu 9 kịch bản bắt buộc**: Đạt 25/25 test asserts (100% PASS trên `tests/test_v9_booking_streamline.php`). Không phát sinh lỗi cú pháp hay file rác.
+
+## Tối ưu Tab "9. Báo cáo doanh thu" (`admin_finance_reports.php`, `tab8_reports.php`, `admin_reports.js`)
+### Pha 1: Kết luận kiểm toán công thức hiện tại & 4 điểm nghi
+- **Định nghĩa hiện tại (`api/services/admin_finance_reports.php`)**:
+  - `totalRevenue`: Tổng `total_price` đơn không hủy hoàn toàn + cọc giữ lại của đơn hủy/No-Show + `service_sales` bán lẻ tại quầy.
+  - `collectedRevenue`: `cashRevenue + vietqrRevenue` (tổng `orderPaid` + bán lẻ tại quầy).
+  - `uncollectedRevenue`: `SUM(max(0, total_price - orderPaid))` trên mọi đơn chưa tất toán.
+  - `depositRevenue`: `min(deposit_amount, pitchNet)` khi `payment_status` thuộc whitelist (`Đã cọc 30%`, `Đã thanh toán đủ/100%`, `deposited/completed/paid`), chưa gồm `Đã cọc 60%`; đơn `Chờ duyệt cọc` = 0.
+  - `remaining70Revenue`: `max(0, pitchNet - orderDeposit)` cho mọi đơn (kể cả chưa thanh toán phần còn lại).
+  - Lợi nhuận không nhất quán: `grossProfit = collectedRevenue - totalExpenses` (cơ sở đã thu), còn `netProfit = totalRevenue - totalExpenses` (cơ sở ghi nhận).
+  - `occupancyRate`: `(totalMatches * 1.5) / (count(dailyRevenue) * 17 * 17.5) * 100`.
+- **Xác minh 4 điểm nghi**:
+  - **(a) Cọc 27,1% thay vì 30%**: Do đơn `Chờ duyệt cọc` (hoặc `Đã cọc 60%` chưa có trong whitelist dòng 144) bị ép `orderDeposit = 0` nhưng tiền sân vẫn cộng vào mẫu số; cộng thêm các đơn có `deposit_amount` thực tế khác 30% (đặt tại quầy/gói tháng/voucher).
+  - **(b) "Thu còn lại" (9.451.900đ) > "Đã thu" (8.359.100đ)**: `remaining70Revenue` đang tính **số phải thu** (`pitchNet - orderDeposit` của toàn bộ đơn, kể cả chưa thanh toán), không phải số đã thu; nhãn UI ghi *"Tiền thu 70% còn lại"* gây hiểu nhầm.
+  - **(c) Tỷ lệ lấp đầy 1%**: Mẫu số hardcode sai `$totalPitches = 17` (thực tế 26 sân), `$totalHoursOpenPerDay = 17.5`, `$bookedHours = totalMatches * 1.5` (ca thực tế 2h) và `$numDays = count($dailyRevenue)` thay vì số ngày trong kỳ lọc × số sân hoạt động (trừ bảo trì/ẩn).
+  - **(d) Đối soát "Khớp 100%" không độc lập**: `formula1` (`paid + (total - paid)`) và `formula2` (`dep + (pitchNet - dep) + srv`) là đồng nhất thức đại số trên cùng 1 tập `$bookingsRows`, không đối chiếu với `bank_transactions` hay `shifts`.
+
