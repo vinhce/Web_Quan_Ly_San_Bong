@@ -20,21 +20,8 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <script>(function(){const w=console.warn;console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('cdn.tailwindcss.com'))return;w.apply(console,a);};})();</script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            heading: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
-          }
-        }
-      }
-    };
-  </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v78">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261122_v128">
+  <link rel="stylesheet" href="../css/style.css?v=20261122_v128">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -77,6 +64,20 @@
         </div>
 
         <div>
+          <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2">Ngày &amp; Khung giờ trống</label>
+          <div class="space-y-2.5">
+            <input type="date" id="fields-filter-date" data-vn-datepicker="1" class="input-field h-10 px-3 text-xs font-semibold w-full bg-white" aria-label="Ngày đá">
+            <select id="fields-filter-time" class="input-field h-10 px-3 text-xs font-semibold w-full bg-white cursor-pointer" aria-label="Khung giờ ưa thích">
+              <option value="all">Tất cả khung giờ (05:30 - 22:30)</option>
+              <option value="morning">Buổi sáng (05:30 - 11:30)</option>
+              <option value="afternoon">Buổi chiều (14:30 - 16:30)</option>
+              <option value="peak">Giờ cao điểm (16:30 - 20:30)</option>
+              <option value="evening">Tối muộn (20:30 - 22:30)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
           <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2.5">Loại sân bóng</label>
           <div class="space-y-2 text-sm font-medium">
             <label class="flex items-center gap-2.5 cursor-pointer">
@@ -111,7 +112,7 @@
         <div>
           <div class="flex items-center justify-between text-xs font-bold text-[#475569] uppercase tracking-wider mb-2">
             <span>Mức giá tối đa</span>
-            <span id="price-val-label" class="text-sm font-extrabold text-[#16A34A]">1.500.000đ/h</span>
+            <span id="price-val-label" class="text-sm font-extrabold text-[#16A34A]">1.500.000đ/ca 2h</span>
           </div>
           <input type="range" id="price-range" min="200000" max="1500000" step="50000" value="1500000" class="w-full accent-[#16A34A]">
           <div class="flex justify-between text-[11px] text-[#94A3B8] mt-1 font-semibold">
@@ -153,7 +154,7 @@
     </div>
   </main>
 
-  <div id="pitch-detail-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="pitch-detail-modal" role="dialog" aria-modal="true" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeModal()">
     <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div id="modal-content" class="p-6 space-y-6">
         
@@ -162,17 +163,18 @@
   </div>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-  <script src="../js/data.js?v=20261115_v78"></script>
-  <script src="../js/helpers.js?v=20261115_v78"></script>
-  <script src="../js/db_core.js?v=20261115_v78"></script>
-  <script src="../js/db_pricing.js?v=20261115_v78"></script>
-  <script src="../js/db_bookings.js?v=20261115_v78"></script>
-  <script src="../js/db_operations.js?v=20261115_v78"></script>
-  <script src="../js/db.js?v=20261115_v78"></script>
-  <script src="../js/ui.js?v=20261121_v115"></script>
-  <script src="../js/app.js?v=20261115_v78"></script>
-  <script src="../js/api.js?v=20261115_v78"></script>
-  <script src="../js/fields.js?v=20261115_v78"></script>
+  <script src="../js/data.js?v=20261122_v128"></script>
+  <script src="../js/helpers.js?v=20261122_v128"></script>
+  <script src="../js/db_core.js?v=20261122_v128"></script>
+  <script src="../js/db_pricing.js?v=20261122_v128"></script>
+  <script src="../js/db_bookings.js?v=20261122_v128"></script>
+  <script src="../js/db_operations.js?v=20261122_v128"></script>
+  <script src="../js/db.js?v=20261122_v128"></script>
+  <script src="../js/ui.js?v=20261122_v128"></script>
+  <script src="../js/vn_datepicker.js?v=20261122_v128"></script>
+  <script src="../js/app.js?v=20261122_v128"></script>
+  <script src="../js/api.js?v=20261122_v128"></script>
+  <script src="../js/fields.js?v=20261122_v128"></script>
 </body>
 </html>
 

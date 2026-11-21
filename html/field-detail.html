@@ -20,21 +20,8 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <script>(function(){const w=console.warn;console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('cdn.tailwindcss.com'))return;w.apply(console,a);};})();</script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            heading: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
-          }
-        }
-      }
-    };
-  </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v78">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261122_v128">
+  <link rel="stylesheet" href="../css/style.css?v=20261122_v128">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -75,8 +62,8 @@
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-[#16A34A] uppercase tracking-wider">Cụm sân Mỹ Đình · Khu A</span>
-            <div id="detail-hero-rating" class="flex items-center gap-1 text-xs font-bold text-[#0F172A] bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              <span class="text-[#F59E0B]">★</span> 5.0 (Mới)
+            <div id="detail-hero-rating" class="flex items-center gap-1 text-xs font-bold text-[#64748B] bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200">
+              Chưa có đánh giá
             </div>
           </div>
 
@@ -91,14 +78,14 @@
           <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-medium text-[#64748B]">Khung giờ thường (05:30 - 16:30)</span>
-              <span id="detail-price-base" class="font-heading font-bold text-base text-[#0F172A]">0đ/h</span>
+              <span id="detail-price-base" class="font-heading font-bold text-base text-[#0F172A]">0đ/ca 2h</span>
             </div>
             <div class="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
               <div class="flex items-center gap-1.5">
                 <span class="text-xs font-bold text-[#16A34A]">Khung giờ cao điểm (16:30 - 20:30)</span>
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#DCFCE7] text-[#16A34A]">Hot</span>
               </div>
-              <span id="detail-price-peak" class="font-heading font-extrabold text-lg text-[#16A34A]">0đ/h</span>
+              <span id="detail-price-peak" class="font-heading font-extrabold text-lg text-[#16A34A]">0đ/ca 2h</span>
             </div>
           </div>
         </div>
@@ -108,9 +95,9 @@
             Đặt khung giờ sân này ngay →
           </a>
           <div class="flex items-center justify-center gap-2 text-xs text-[#64748B]">
-            <span>✓ Giữ chỗ tự động 30 giây</span>
+            <span>✓ Giữ chỗ 15 phút khi chờ QR</span>
             <span>·</span>
-            <span>✓ Cọc 30% VietQR tức thì</span>
+            <span>✓ Cọc 30% (đặt lẻ) · 60% (gói tháng)</span>
           </div>
         </div>
       </div>
@@ -203,7 +190,7 @@
         <div class="ui-card p-6 space-y-5 border-slate-300 shadow-xl">
           <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Đặt sân nhanh</h3>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#DCFCE7] text-[#16A34A]">Giữ chỗ 30s</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#DCFCE7] text-[#16A34A]">Giữ chỗ 15p</span>
           </div>
 
           <div class="space-y-3.5 text-xs">
@@ -246,7 +233,7 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-[#16A34A] font-bold">✓</span>
-              <span>Hỗ trợ đổi dời lịch trước 6 tiếng</span>
+              <span>Hủy trước 24 giờ hoàn 100% tiền cọc</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-[#16A34A] font-bold">✓</span>
@@ -265,18 +252,18 @@
   </main>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-  <script src="../js/data.js?v=20261119_v97"></script>
-  <script src="../js/helpers.js?v=20261119_v97"></script>
-  <script src="../js/db_core.js?v=20261119_v97"></script>
-  <script src="../js/db_pricing.js?v=20261119_v97"></script>
-  <script src="../js/db_bookings.js?v=20261119_v97"></script>
-  <script src="../js/db_operations.js?v=20261119_v97"></script>
-  <script src="../js/db.js?v=20261119_v97"></script>
-  <script src="../js/ui.js?v=20261121_v115"></script>
-  <script src="../js/vn_datepicker.js?v=20261121_v112"></script>
-  <script src="../js/app.js?v=20261119_v97"></script>
-  <script src="../js/api.js?v=20261119_v97"></script>
-  <script src="../js/field-detail.js?v=20261119_v97"></script>
+  <script src="../js/data.js?v=20261122_v128"></script>
+  <script src="../js/helpers.js?v=20261122_v128"></script>
+  <script src="../js/db_core.js?v=20261122_v128"></script>
+  <script src="../js/db_pricing.js?v=20261122_v128"></script>
+  <script src="../js/db_bookings.js?v=20261122_v128"></script>
+  <script src="../js/db_operations.js?v=20261122_v128"></script>
+  <script src="../js/db.js?v=20261122_v128"></script>
+  <script src="../js/ui.js?v=20261122_v128"></script>
+  <script src="../js/vn_datepicker.js?v=20261122_v128"></script>
+  <script src="../js/app.js?v=20261122_v128"></script>
+  <script src="../js/api.js?v=20261122_v128"></script>
+  <script src="../js/field-detail.js?v=20261122_v128"></script>
 </body>
 </html>
 
