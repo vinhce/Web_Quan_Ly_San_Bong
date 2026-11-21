@@ -41,7 +41,7 @@ ErrorDocument 500 /html/500.html
     RewriteRule ^(api|logs)/.*\.(json|log)$ - [F,L]
 
     # Chặn truy cập trực tiếp vào các thư mục nội bộ & partials (áp dụng trước mọi Clean URL rewrite)
-    RewriteRule ^(config|database|sql|logs|scripts|backups|cron|portal-admin/partials|docs|tests)(/|$) - [NC,F,L]
+    RewriteRule ^(config|database|sql|logs|scripts|backups|cron|portal-admin/partials|docs|tests|node_modules)(/|$) - [NC,F,L]
 
     # Route /portal-admin/ và /portal-admin/index.html qua cổng kiểm tra session PHP
     RewriteRule ^portal-admin/?$ portal-admin/index.php [L,QSA]
@@ -93,8 +93,8 @@ LimitRequestBody 10485760
     # Chống truy cập thiết bị ngoại vi không mong muốn (cho phép camera tại chính domain để quét QR Admin)
     Header always set Permissions-Policy "geolocation=(), camera=(self), microphone=()"
 
-    # Content Security Policy (CSP) cho phép CDN Tailwind, Lucide, Fonts, VietQR API, SePay API, Turnstile
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://api.sepay.vn https://userapi.sepay.vn https://userapi-sandbox.sepay.vn https://api.telegram.org https://api.open-meteo.com https://api.vietqr.io; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self';"
+    # Content Security Policy (CSP) dùng Tailwind & Fonts nội bộ, cho phép Turnstile, VietQR API, SePay API, Open-Meteo
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https: blob:; connect-src 'self' https://challenges.cloudflare.com https://api.sepay.vn https://userapi.sepay.vn https://userapi-sandbox.sepay.vn https://api.telegram.org https://api.open-meteo.com https://api.vietqr.io; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self';"
 
     # Chống lưu cache cũ trên HTML, PHP và API động (Bảo vệ dữ liệu cá nhân theo NĐ 13/2023)
     <FilesMatch "\.(html|htm|php|json)$">
