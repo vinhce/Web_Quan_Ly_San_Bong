@@ -138,6 +138,42 @@
       }
     };
 
+    const updateHomeHeroStats = (stats) => {
+      if (!stats || typeof stats !== 'object') return;
+      const pitchEl = document.getElementById('hero-stat-pitches');
+      const matchEl = document.getElementById('hero-stat-matches');
+      const matchLblEl = document.getElementById('hero-stat-matches-label');
+      const rateWrap = document.getElementById('hero-stat-rating-wrap');
+      const rateEl = document.getElementById('hero-stat-rating');
+      const rateLblEl = document.getElementById('hero-stat-rating-label');
+
+      if (pitchEl && Number(stats.pitchCount) > 0) {
+        pitchEl.textContent = `${Number(stats.pitchCount)} sân`;
+      }
+      const matchesCnt = Number(stats.completedMatchesCount || 0);
+      if (matchEl && matchesCnt > 0) {
+        matchEl.textContent = `${matchesCnt.toLocaleString('vi-VN')} đơn`;
+        if (matchLblEl) matchLblEl.textContent = 'Đặt sân trực tuyến đã xác nhận';
+      }
+      const pubRevCount = Number(stats.publishedReviewsCount || 0);
+      if (rateWrap) {
+        if (pubRevCount > 0 && Number(stats.avgRating) > 0) {
+          rateWrap.classList.remove('hidden');
+          rateWrap.classList.add('flex');
+          if (rateEl) rateEl.textContent = `${Number(stats.avgRating).toFixed(1)}/5 ★`;
+          if (rateLblEl) rateLblEl.textContent = `(${pubRevCount} đánh giá thực tế)`;
+        } else {
+          rateWrap.classList.add('hidden');
+          rateWrap.classList.remove('flex');
+        }
+      }
+    };
+
+    try {
+      const cachedStats = JSON.parse(localStorage.getItem('sb_public_stats_v1') || 'null');
+      if (cachedStats) updateHomeHeroStats(cachedStats);
+    } catch (e) {}
+
     const grid = document.getElementById('featured-pitches-grid');
     if (grid && app) {
       const localPitches = (db?.getPitches && db.getPitches().length > 0)
@@ -146,12 +182,19 @@
 
       renderFeaturedGrid(grid, localPitches);
 
-      if (app.SanBongAPI?.getPitches) {
-        app.SanBongAPI.getPitches()
-          .then(pitches => {
+      const initPromise = app.SanBongAPI?.fetchInitialData
+        ? app.SanBongAPI.fetchInitialData()
+        : (app.SanBongAPI?.getPitches ? app.SanBongAPI.getPitches().then(p => ({ pitches: p })) : null);
+      if (initPromise) {
+        initPromise
+          .then(initData => {
+            const pitches = initData?.pitches;
             if (Array.isArray(pitches) && pitches.length > 0) {
               renderFeaturedGrid(grid, pitches);
               renderHomePricingTable(pitches);
+            }
+            if (initData?.publicStats) {
+              updateHomeHeroStats(initData.publicStats);
             }
           })
           .catch(err => {
@@ -180,7 +223,8 @@
         e.preventDefault();
         const d = document.getElementById('search-date')?.value || '';
         const t = document.getElementById('search-type')?.value || 'all';
-        window.location.href = `/fields?date=${encodeURIComponent(d)}&type=${encodeURIComponent(t)}`;
+        const tm = document.getElementById('search-time')?.value || 'all';
+        window.location.href = `/fields?date=${encodeURIComponent(d)}&type=${encodeURIComponent(t)}&time=${encodeURIComponent(tm)}`;
       });
     }
   }
@@ -207,8 +251,8 @@
         <tr>
           <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">${esc(t.label)}</td>
           <td class="py-3.5 px-3.5 text-[#64748B]">${esc(sizeText)}</td>
-          <td class="py-3.5 px-3.5">${minBase ? esc(app.formatVND(minBase)) + '/h' : 'Liên hệ'}</td>
-          <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">${minPeak ? esc(app.formatVND(minPeak)) + '/h' : 'Liên hệ'}</td>
+          <td class="py-3.5 px-3.5">${minBase ? esc(app.formatVND(minBase)) + '/ca 2h' : 'Liên hệ'}</td>
+          <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">${minPeak ? esc(app.formatVND(minPeak)) + '/ca 2h' : 'Liên hệ'}</td>
         </tr>
       `;
     }).filter(Boolean).join('');
@@ -368,10 +412,10 @@
             <div class="text-xs font-bold text-[#0F172A] mt-1">${esc(pitch.grass)}</div>
           </div>
           <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
-            <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
+            <div class="text-xs text-[#64748B]">Bảng giá theo ca (2 tiếng)</div>
             <div class="text-xs font-bold text-[#16A34A] mt-1">
-              Thường (05:30-16:30): ${app.formatVND(pitch.basePrice)}/h<br>
-              Giờ cao điểm (16:30-20:30): ${app.formatVND(pitch.peakPrice)}/h
+              Thường (05:30-16:30): ${app.formatVND(pitch.basePrice)}/ca 2h<br>
+              Giờ cao điểm (16:30-20:30): ${app.formatVND(pitch.peakPrice)}/ca 2h
             </div>
           </div>
         </div>
