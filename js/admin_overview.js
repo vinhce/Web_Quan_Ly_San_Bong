@@ -42,8 +42,8 @@ function normalizeOverviewStatus(raw) {
 function matchesOverviewFilter(booking, filterType) {
   if (!filterType || filterType === 'all') return true;
   const st = normalizeOverviewStatus(booking.status);
-  if (filterType === 'playing') return st === 'Đang đá';
-  if (filterType === 'confirmed') return st === 'Đã xác nhận' || st === 'Chờ duyệt cọc';
+  if (filterType === 'playing') return st === 'Đang đá' || st === 'Đã đá - chưa tất toán';
+  if (filterType === 'confirmed') return st === 'Đã xác nhận' || st === 'Chờ duyệt cọc' || st === 'Giữ chỗ';
   if (filterType === 'completed') return st === 'Hoàn thành';
   if (filterType === 'noshow') return st === 'Khách chưa đến' || st === 'Đã hủy';
   return true;
@@ -371,17 +371,21 @@ function buildBookingRowHTML(b, isOverdue) {
 
   const statusPill = st === 'Đang đá'
     ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] whitespace-nowrap">Đang đá</span>'
-    : (st === 'Hoàn thành'
-      ? '<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] whitespace-nowrap">Hoàn thành</span>'
-      : (st === 'Khách chưa đến' || st === 'Đã hủy'
-        ? `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold text-[10px] whitespace-nowrap">${escapeSearchHTML(st)}</span>`
-        : '<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold text-[10px] whitespace-nowrap">Chờ Check-in</span>'));
+    : (st === 'Đã đá - chưa tất toán'
+      ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[10px] whitespace-nowrap">Đã đá - chưa tất toán</span>'
+      : (st === 'Hoàn thành'
+        ? '<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] whitespace-nowrap">Hoàn thành</span>'
+        : (st === 'Khách chưa đến' || st === 'Đã hủy'
+          ? `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold text-[10px] whitespace-nowrap">${escapeSearchHTML(st)}</span>`
+          : (st === 'Giữ chỗ'
+            ? '<span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px] whitespace-nowrap">Giữ chỗ (chờ cọc)</span>'
+            : '<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold text-[10px] whitespace-nowrap">Chờ Check-in</span>'))));
 
   // Mỗi dòng chỉ 1 nút chính theo trạng thái, còn lại vào menu "⋯"; không có nút bị disable
   let primaryBtn = '';
   let menuItems = [];
 
-  if (st === 'Đã xác nhận' || st === 'Chờ duyệt cọc') {
+  if (st === 'Đã xác nhận' || st === 'Chờ duyệt cọc' || st === 'Giữ chỗ') {
     if (!isOverdue) {
       primaryBtn = `<button type="button" onclick="handleCheckIn('${code}')" class="h-8 px-3 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white font-bold text-xs whitespace-nowrap cursor-pointer">Check-in</button>`;
       menuItems.push(`<button type="button" onclick="openInPlayModal('${code}')" class="w-full text-left px-3 py-2 hover:bg-slate-50 font-semibold text-[#0F172A] cursor-pointer">Điều hành &amp; Thanh toán</button>`);
@@ -389,7 +393,7 @@ function buildBookingRowHTML(b, isOverdue) {
     } else {
       primaryBtn = `<button type="button" onclick="openInPlayModal('${code}')" class="h-8 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs whitespace-nowrap cursor-pointer">Xử lý tồn đọng</button>`;
     }
-  } else if (st === 'Đang đá') {
+  } else if (st === 'Đang đá' || st === 'Đã đá - chưa tất toán') {
     primaryBtn = `<button type="button" onclick="openInPlayModal('${code}')" class="h-8 px-3 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs whitespace-nowrap cursor-pointer">Thu tiền &amp; Kết thúc</button>`;
   } else if (st === 'Hoàn thành') {
     primaryBtn = `<button type="button" onclick="openInPlayModal('${code}')" class="h-8 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-[#334155] font-semibold text-xs whitespace-nowrap cursor-pointer">Xem hóa đơn</button>`;

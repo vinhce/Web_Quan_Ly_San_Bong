@@ -2,8 +2,8 @@
       <!-- ========================================== -->
       <div id="tab-content-overview" class="space-y-5">
         <!-- 1. KPI ROW -->
-        <div id="overview-kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 <?php echo (!isset($isOwnerAdmin) || $isOwnerAdmin) ? 'lg:grid-cols-4' : 'lg:grid-cols-3'; ?> gap-4">
-          <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
+        <div id="overview-kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 <?php echo (!isset($isManagerOrAdmin) || $isManagerOrAdmin) ? 'lg:grid-cols-4' : 'lg:grid-cols-3'; ?> gap-4">
+          <?php if (!isset($isManagerOrAdmin) || $isManagerOrAdmin): ?>
           <div id="kpi-card-revenue" class="ui-card p-4 bg-white border border-[#E2E8F0]">
             <div class="flex items-center justify-between text-xs font-semibold text-[#64748B]">
               <span>Doanh thu ghi nhận hôm nay</span>
@@ -131,7 +131,7 @@
         </div>
 
         <!-- 4. BIỂU ĐỒ 7 NGÀY (TRỤC Y, TOOLTIP, ĐƯỜNG TUẦN TRƯỚC) + TỶ TRỌNG SÂN -->
-        <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
+        <?php if (!isset($isManagerOrAdmin) || $isManagerOrAdmin): ?>
         <div id="overview-charts-row" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
           <div class="lg:col-span-8 ui-card p-4 sm:p-5 bg-white border border-[#E2E8F0]">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
