@@ -83,7 +83,7 @@ function admin_build_settings_response(?PDO $pdo): array {
         'settings' => [
             'depositRate'                => (int)($settingsMap['deposit_rate'] ?? 30),
             'hotline'                    => $settingsMap['hotline'] ?? '0352 313 548',
-            'openHours'                  => $settingsMap['open_hours'] ?? '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+            'openHours'                  => $settingsMap['open_hours'] ?? '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
             'holdMinutes'                => max(5, min(120, (int)($settingsMap['hold_minutes'] ?? 15))),
             'waitlistHoldMinutes'        => max(5, min(120, (int)($settingsMap['waitlist_hold_minutes'] ?? 15))),
             'matchmakingEnabled'         => ((string)($settingsMap['matchmaking_enabled'] ?? '1') !== '0'),
@@ -306,7 +306,7 @@ if (!$pdo) {
         }
     }
     if ($action === 'save_pricing') {
-        require_manager_or_admin($pdo);
+        require_admin($pdo);
         json_response(['success' => true, 'message' => 'Đã lưu cấu hình bảng giá (chế độ dự phòng).']);
     }
     if ($action === 'settings') {

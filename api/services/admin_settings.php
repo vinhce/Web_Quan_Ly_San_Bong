@@ -38,7 +38,7 @@ function handle_admin_settings_or_audit(PDO $pdo, string $action, string $method
             $accountNo           = sanitize_string($data['accountNo'] ?? $data['accountNumber'] ?? $data['bank_account'] ?? ($oldSettings['bank_account'] ?? '0352313548'), 40);
             $accountName         = strtoupper(sanitize_string($data['accountName'] ?? $data['bank_holder'] ?? ($oldSettings['bank_holder'] ?? 'NGUYEN QUANG VINH'), 100));
             $hotline             = sanitize_string($data['hotline'] ?? ($oldSettings['hotline'] ?? '0352 313 548'), 40);
-            $openHours           = sanitize_string($data['openHours'] ?? $data['open_hours'] ?? ($oldSettings['open_hours'] ?? '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)'), 120);
+            $openHours           = sanitize_string($data['openHours'] ?? $data['open_hours'] ?? ($oldSettings['open_hours'] ?? '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)'), 120);
             $holdMinutes         = max(5, min(120, (int)($data['holdMinutes'] ?? $data['hold_minutes'] ?? ($oldSettings['hold_minutes'] ?? 15))));
             $waitlistHoldMinutes = max(5, min(120, (int)($data['waitlistHoldMinutes'] ?? $data['waitlist_hold_minutes'] ?? ($oldSettings['waitlist_hold_minutes'] ?? 15))));
             $refundFullHours     = max(1, min(168, (int)($data['refundFullHours'] ?? $data['refund_full_hours'] ?? ($oldSettings['refund_full_hours'] ?? 24))));

@@ -961,7 +961,7 @@ function get_system_settings_map(?PDO $pdo): array {
         'bank_account'                 => '0352313548',
         'bank_holder'                  => 'NGUYEN QUANG VINH',
         'hotline'                      => '0352 313 548',
-        'open_hours'                   => '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+        'open_hours'                   => '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
         'hold_minutes'                 => '15',
         'refund_full_hours'            => '24',
         'refund_partial_hours'         => '4',
