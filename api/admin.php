@@ -385,7 +385,7 @@ try {
         $todayCondition = booking_date_condition_sql('b');
         // Đếm buổi theo lịch; tiền của gói chỉ ghi nhận một lần vào ngày bắt đầu.
         $todayStmt = $pdo->prepare("SELECT COUNT(*) as count,
-                                   COALESCE(SUM(CASE WHEN b.booking_date = ? AND b.payment_status IN ('Đã cọc 30%', 'Đã cọc 50%', 'Đã thanh toán đủ', 'Đã thanh toán 100%') THEN b.deposit_amount ELSE 0 END), 0) as today_deposit,
+                                   COALESCE(SUM(CASE WHEN b.booking_date = ? AND (b.payment_status IN ('Đã cọc 30%', 'Đã cọc 50%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%') OR b.payment_status LIKE '%Đã cọc%') THEN b.deposit_amount ELSE 0 END), 0) as today_deposit,
                                    COALESCE(SUM(CASE WHEN b.booking_date = ? THEN b.total_price ELSE 0 END), 0) as today_total
                                    FROM bookings b WHERE {$todayCondition}
                                      AND b.status NOT IN ('Đã hủy') AND b.payment_status != 'Đã hủy'");

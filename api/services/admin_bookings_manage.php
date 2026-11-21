@@ -10,7 +10,7 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
     $status = sanitize_string($data['status'] ?? '', 50);
 
     $allowedStatuses = [
-        'Chờ duyệt cọc', 'Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%',
+        'Chờ duyệt cọc', 'Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%',
         'Đã hoàn cọc 100%', 'Bảo lưu cọc 30%', 'Phạt 50% cọc', 'Đã hủy',
         'Tịch thu cọc 30%', 'Chưa cọc (Khách quen)', 'completed', 'Hoàn thành'
     ];
@@ -483,7 +483,8 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             $isPaidOrDeposited = (
                 (int)($lockedBooking['deposit_amount'] ?? 0) > 0 ||
                 (int)($lockedBooking['paid_amount'] ?? 0) > 0 ||
-                in_array($lockedBooking['payment_status'] ?? '', ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)
+                in_array($lockedBooking['payment_status'] ?? '', ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true) ||
+                (stripos((string)($lockedBooking['payment_status'] ?? ''), 'Đã cọc') !== false)
             );
             if ($isPaidOrDeposited && $rawReason === '') {
                 $pdo->rollBack();

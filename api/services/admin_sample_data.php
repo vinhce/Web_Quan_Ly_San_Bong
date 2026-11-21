@@ -50,9 +50,9 @@ function seed_sample_test_data(PDO $pdo, int $staffId = 2): array {
     ];
 
     $p5Configs = [
-        ['date' => $dYesterday, 'slot_id' => 'S10', 'slot_time' => '17:30 - 19:00', 'price' => 350000, 'dep' => 105000, 'paid' => 350000, 'rem' => 0, 'status' => 'Hoàn thành', 'payment_status' => 'Đã thanh toán 100%', 'method' => 'Tiền mặt tại quầy'],
-        ['date' => $dToday,     'slot_id' => 'S13', 'slot_time' => '19:00 - 20:30', 'price' => 350000, 'dep' => 105000, 'paid' => 105000, 'rem' => 245000, 'status' => 'Đã xác nhận', 'payment_status' => 'Đã cọc 30%', 'method' => 'VietQR SePay'],
-        ['date' => $dTomorrow,  'slot_id' => 'S03', 'slot_time' => '07:30 - 08:30', 'price' => 250000, 'dep' => 75000,  'paid' => 0,      'rem' => 250000, 'status' => 'Giữ chỗ',    'payment_status' => 'Chờ cọc 30%', 'method' => 'VietQR SePay']
+        ['date' => $dYesterday, 'slot_id' => 'S05', 'slot_time' => '16:30 - 18:30', 'price' => 700000, 'dep' => 210000, 'paid' => 700000, 'rem' => 0, 'status' => 'Hoàn thành', 'payment_status' => 'Đã thanh toán 100%', 'method' => 'Tiền mặt tại quầy'],
+        ['date' => $dToday,     'slot_id' => 'S06', 'slot_time' => '18:30 - 20:30', 'price' => 700000, 'dep' => 210000, 'paid' => 210000, 'rem' => 490000, 'status' => 'Đã xác nhận', 'payment_status' => 'Đã cọc 30%', 'method' => 'VietQR SePay'],
+        ['date' => $dTomorrow,  'slot_id' => 'S02', 'slot_time' => '07:30 - 09:30', 'price' => 500000, 'dep' => 150000,  'paid' => 0,      'rem' => 500000, 'status' => 'Giữ chỗ',    'payment_status' => 'Chờ cọc 30%', 'method' => 'VietQR SePay']
     ];
 
     $insB = $pdo->prepare("
@@ -90,39 +90,39 @@ function seed_sample_test_data(PDO $pdo, int $staffId = 2): array {
     // 2. SÂN 11: 7 ca trải trên ít nhất 3 sân khác nhau (P11-A, P11-B, P11-C), đủ trạng thái
     $p11Configs = [
         [
-            'code' => '[TEST]P11_DONE_01', 'pitch_id' => 'P11-A', 'date' => $dYesterday, 'slot_id' => 'S10', 'slot_time' => '17:30 - 19:00',
-            'price' => 1400000, 'dep' => 450000, 'paid' => 1400000, 'rem' => 0, 'status' => 'Hoàn thành', 'payment_status' => 'Đã thanh toán 100%',
+            'code' => '[TEST]P11_DONE_01', 'pitch_id' => 'P11-A', 'date' => $dYesterday, 'slot_id' => 'S05', 'slot_time' => '16:30 - 18:30',
+            'price' => 2400000, 'dep' => 720000, 'paid' => 2400000, 'rem' => 0, 'status' => 'Hoàn thành', 'payment_status' => 'Đã thanh toán 100%',
             'method' => 'Tiền mặt tại quầy', 'voucher' => 'BANGLOI100', 'water_qty' => 5
         ],
         [
-            'code' => '[TEST]P11_PLAY_02', 'pitch_id' => 'P11-A', 'date' => $dToday, 'slot_id' => 'S13', 'slot_time' => '19:00 - 20:30',
-            'price' => 1500000, 'dep' => 450000, 'paid' => 1500000, 'rem' => 0, 'status' => 'Đang đá', 'payment_status' => 'Đã thanh toán 100%',
+            'code' => '[TEST]P11_PLAY_02', 'pitch_id' => 'P11-A', 'date' => $dToday, 'slot_id' => 'S06', 'slot_time' => '18:30 - 20:30',
+            'price' => 2400000, 'dep' => 720000, 'paid' => 2400000, 'rem' => 0, 'status' => 'Đang đá', 'payment_status' => 'Đã thanh toán 100%',
             'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 3
         ],
         [
-            'code' => '[TEST]P11_CONF_03', 'pitch_id' => 'P11-B', 'date' => $dToday, 'slot_id' => 'S10', 'slot_time' => '17:30 - 19:00',
-            'price' => 1500000, 'dep' => 450000, 'paid' => 450000, 'rem' => 1050000, 'status' => 'Đã xác nhận', 'payment_status' => 'Đã cọc 30%',
+            'code' => '[TEST]P11_CONF_03', 'pitch_id' => 'P11-B', 'date' => $dToday, 'slot_id' => 'S05', 'slot_time' => '16:30 - 18:30',
+            'price' => 2400000, 'dep' => 720000, 'paid' => 720000, 'rem' => 1680000, 'status' => 'Đã xác nhận', 'payment_status' => 'Đã cọc 30%',
             'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0
         ],
         [
-            'code' => '[TEST]P11_UNDER_04', 'pitch_id' => 'P11-B', 'date' => $dToday, 'slot_id' => 'S13', 'slot_time' => '19:00 - 20:30',
-            'price' => 1500000, 'dep' => 450000, 'paid' => 300000, 'rem' => 1200000, 'status' => 'Chờ duyệt cọc', 'payment_status' => 'Chờ duyệt cọc',
-            'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0, 'tx_amount' => 300000, 'tx_status' => 'underpaid'
+            'code' => '[TEST]P11_UNDER_04', 'pitch_id' => 'P11-B', 'date' => $dToday, 'slot_id' => 'S06', 'slot_time' => '18:30 - 20:30',
+            'price' => 2400000, 'dep' => 720000, 'paid' => 500000, 'rem' => 1900000, 'status' => 'Chờ duyệt cọc', 'payment_status' => 'Chờ duyệt cọc',
+            'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0, 'tx_amount' => 500000, 'tx_status' => 'underpaid'
         ],
         [
-            'code' => '[TEST]P11_OVER_05', 'pitch_id' => 'P11-C', 'date' => $dTomorrow, 'slot_id' => 'S10', 'slot_time' => '17:30 - 19:00',
-            'price' => 1500000, 'dep' => 450000, 'paid' => 600000, 'rem' => 900000, 'status' => 'Chờ duyệt cọc', 'payment_status' => 'Chờ duyệt cọc',
-            'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0, 'tx_amount' => 600000, 'tx_status' => 'overpaid'
+            'code' => '[TEST]P11_OVER_05', 'pitch_id' => 'P11-C', 'date' => $dTomorrow, 'slot_id' => 'S05', 'slot_time' => '16:30 - 18:30',
+            'price' => 2400000, 'dep' => 720000, 'paid' => 900000, 'rem' => 1500000, 'status' => 'Chờ duyệt cọc', 'payment_status' => 'Chờ duyệt cọc',
+            'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0, 'tx_amount' => 900000, 'tx_status' => 'overpaid'
         ],
         [
-            'code' => '[TEST]P11_UNPAID_06', 'pitch_id' => 'P11-C', 'date' => $dTomorrow, 'slot_id' => 'S13', 'slot_time' => '19:00 - 20:30',
-            'price' => 1500000, 'dep' => 450000, 'paid' => 0, 'rem' => 1500000, 'status' => 'Chờ duyệt cọc', 'payment_status' => 'Chờ duyệt cọc',
+            'code' => '[TEST]P11_UNPAID_06', 'pitch_id' => 'P11-C', 'date' => $dTomorrow, 'slot_id' => 'S06', 'slot_time' => '18:30 - 20:30',
+            'price' => 2400000, 'dep' => 720000, 'paid' => 0, 'rem' => 2400000, 'status' => 'Chờ duyệt cọc', 'payment_status' => 'Chờ duyệt cọc',
             'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0
         ],
         [
-            'code' => '[TEST]P11_CANC_07', 'pitch_id' => 'P11-C', 'date' => $dYesterday, 'slot_id' => 'S03', 'slot_time' => '07:30 - 08:30',
-            'price' => 1000000, 'dep' => 300000, 'paid' => 0, 'rem' => 0, 'status' => 'Đã hủy', 'payment_status' => 'Đã hoàn cọc 100%',
-            'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0, 'refund' => 300000
+            'code' => '[TEST]P11_CANC_07', 'pitch_id' => 'P11-C', 'date' => $dYesterday, 'slot_id' => 'S02', 'slot_time' => '07:30 - 09:30',
+            'price' => 1800000, 'dep' => 540000, 'paid' => 0, 'rem' => 0, 'status' => 'Đã hủy', 'payment_status' => 'Đã hoàn cọc 100%',
+            'method' => 'VietQR SePay', 'voucher' => null, 'water_qty' => 0, 'refund' => 540000
         ]
     ];
 

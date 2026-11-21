@@ -161,7 +161,7 @@ function applyOverviewKPIsData(data) {
     if (st !== 'Đã hủy' && st !== 'Khách chưa đến') activeTodayBookings++;
   });
 
-  const slotsPerDay = (db?.getTimeSlots?.().length || 18);
+  const slotsPerDay = (db?.getTimeSlots?.().length || 7);
   const capacity = activePitches * slotsPerDay;
   const occupancyPct = capacity > 0 ? Math.min(100, Math.round((activeTodayBookings / capacity) * 100)) : 0;
 
@@ -638,51 +638,51 @@ function renderOverviewTodayBookings() {
     let actionButtons = "";
     if (normStatus === "Đang đá") {
       const overtimeAlert = isPastSlot
-        ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">⏱️ Đã qua giờ đá</span>'
+        ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 whitespace-nowrap">⏱️ Đã qua giờ đá</span>'
         : '';
       actionButtons =
-        '<div class="flex items-center gap-1.5">' +
+        '<div class="flex flex-wrap items-center gap-1.5">' +
           overtimeAlert +
-          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" title="Đá thêm giờ, Đổi sân, Gọi thêm nước, Hủy trước hạn">⚙️ Quản lý đang chơi</button>' +
-          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\', \'pay\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" title="Thu phần tiền còn lại & Hoàn thành ca">💰 Thu còn lại (' + window.SanBongApp.formatVND(remaining) + ')</button>' +
-          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer whitespace-nowrap" title="Đá thêm giờ, Đổi sân, Gọi thêm nước, Hủy trước hạn">⚙️ Quản lý đang chơi</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\', \'pay\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-2xs flex items-center gap-1 cursor-pointer whitespace-nowrap" title="Thu phần tiền còn lại & Hoàn thành ca">💰 Thu còn lại (' + window.SanBongApp.formatVND(remaining) + ')</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer whitespace-nowrap" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
         '</div>';
-    } else if (normStatus === "Hoàn thành") {
+    } else if (normStatus === "Hoàn thành" || normStatus === "completed") {
       actionButtons =
-        '<div class="flex items-center gap-1.5">' +
-          '<span class="px-2 py-0.5 text-[11px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Đã thu đủ 100%</span>' +
-          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer">⚙️ Xem & Điều hành</button>' +
-          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#0F172A] text-white hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer">🖨️ In hóa đơn</button>' +
+        '<div class="flex flex-wrap items-center gap-1.5">' +
+          '<span class="px-2 py-0.5 text-[11px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">✓ Đã thu đủ 100%</span>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer whitespace-nowrap">⚙️ Xem & Điều hành</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#0F172A] text-white hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap">🖨️ In hóa đơn</button>' +
         '</div>';
     } else if (normStatus === "Khách chưa đến" || normStatus === "Đã hủy") {
       actionButtons =
-        '<div class="flex items-center gap-1.5">' +
-          '<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">✓ Đã nhả sân</span>' +
-          '<button type="button" onclick="event.stopPropagation(); restoreCancelledBooking(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-2xs cursor-pointer" title="Khách đã tới sân - Khôi phục lại ca đá này">🔄 Khôi phục ca</button>' +
-          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer" title="Mở bảng điều hành chi tiết ca đá">⚙️ Xem & Điều hành</button>' +
-          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-[#475569] hover:bg-slate-200 border border-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+        '<div class="flex flex-wrap items-center gap-1.5">' +
+          '<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200 whitespace-nowrap">✓ Đã nhả sân</span>' +
+          '<button type="button" onclick="event.stopPropagation(); restoreCancelledBooking(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-2xs cursor-pointer whitespace-nowrap" title="Khách đã tới sân - Khôi phục lại ca đá này">🔄 Khôi phục ca</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 cursor-pointer whitespace-nowrap" title="Mở bảng điều hành chi tiết ca đá">⚙️ Xem & Điều hành</button>' +
+          '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-[#475569] hover:bg-slate-200 border border-slate-200 cursor-pointer whitespace-nowrap" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
         '</div>';
     } else {
       if (isPastSlot) {
         // Đối với các ca đã qua giờ (ca quá hạn): Khóa nút Check-in / Nhả sân (thêm disabled, opacity-50, cursor-not-allowed, tooltip "Ca đã kết thúc")
         actionButtons =
-          '<div class="flex items-center gap-1.5">' +
+          '<div class="flex flex-wrap items-center gap-1.5">' +
             '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 border border-slate-300 whitespace-nowrap" title="Ca đã kết thúc thời gian thi đấu">⏱️ Ca đã kết thúc</span>' +
-            '<button type="button" disabled class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#16A34A] text-white opacity-50 cursor-not-allowed transition-colors shadow-2xs flex items-center gap-1" title="Ca đã kết thúc"><span>✓</span> Check-in</button>' +
-            '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1 cursor-pointer" title="Mở bảng điều hành chi tiết ca đá để xử lý hoặc hủy">⚙️ Quản lý / Hủy</button>' +
-            '<button type="button" disabled class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-400 text-white opacity-50 cursor-not-allowed transition-colors shadow-2xs flex items-center gap-1" title="Ca đã kết thúc"><span>⚠️</span> Chưa đến: Nhả sân</button>' +
-            '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+            '<button type="button" disabled class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#16A34A] text-white opacity-50 cursor-not-allowed transition-colors shadow-2xs flex items-center gap-1 whitespace-nowrap" title="Ca đã kết thúc"><span>✓</span> Check-in</button>' +
+            '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap" title="Mở bảng điều hành chi tiết ca đá để xử lý hoặc hủy">⚙️ Quản lý / Hủy</button>' +
+            '<button type="button" disabled class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-400 text-white opacity-50 cursor-not-allowed transition-colors shadow-2xs flex items-center gap-1 whitespace-nowrap" title="Ca đã kết thúc"><span>⚠️</span> Chưa đến: Nhả sân</button>' +
+            '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 cursor-pointer whitespace-nowrap" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
           '</div>';
       } else {
         const lateBadge = isLateOver15 ? ('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 animate-pulse border border-red-300 whitespace-nowrap">⚠️ Quá ' + lateMinutes + 'p chưa đến</span>') : '';
         const btnClass = isLateOver15 ? "bg-red-600 hover:bg-red-700 animate-bounce" : "bg-amber-600 hover:bg-amber-700";
         actionButtons =
-          '<div class="flex items-center gap-1.5">' +
+          '<div class="flex flex-wrap items-center gap-1.5">' +
             lateBadge +
-            '<button type="button" onclick="event.stopPropagation(); window.handleCheckIn(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
-            '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1 cursor-pointer" title="Đổi sân, Gọi thêm nước, Hủy lịch trước hạn">⚙️ Quản lý / Đổi sân / Hủy</button>' +
-            '<button type="button" onclick="event.stopPropagation(); window.handleNoShowRelease(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" title="Quá 15 phút khách chưa đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Chưa đến: Nhả sân</button>' +
-            '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 cursor-pointer" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
+            '<button type="button" onclick="event.stopPropagation(); window.handleCheckIn(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#16A34A] text-white hover:bg-[#15803D] transition-colors shadow-2xs flex items-center gap-1 cursor-pointer whitespace-nowrap" title="Khách đã đến sân - Xác nhận vào đá"><span>✓</span> Check-in</button>' +
+            '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-[#0F172A] hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap" title="Đổi sân, Gọi thêm nước, Hủy lịch trước hạn">⚙️ Quản lý / Đổi sân / Hủy</button>' +
+            '<button type="button" onclick="event.stopPropagation(); window.handleNoShowRelease(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg ' + btnClass + ' text-white transition-colors shadow-2xs flex items-center gap-1 cursor-pointer whitespace-nowrap" title="Quá 15 phút khách chưa đến: Tịch thu cọc 30% & Giải phóng nhả sân trống đón khách mới"><span>⚠️</span> Chưa đến: Nhả sân</button>' +
+            '<button type="button" onclick="event.stopPropagation(); openInvoicePrintModal(\'' + safeCodeAttr + '\')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 cursor-pointer whitespace-nowrap" title="Xem & In hóa đơn">🖨️ Hóa đơn</button>' +
           '</div>';
       }
     }
@@ -734,32 +734,33 @@ function renderOverviewTodayBookings() {
         '</div>';
     }
 
-    return '<div onclick="openInPlayModal(\'' + safeCodeAttr + '\')" class="py-2.5 px-3.5 rounded-lg border ' + cardColorCls + ' shadow-2xs flex flex-col gap-2 transition-all cursor-pointer">' +
-      '<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">' +
-        '<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 flex-1 min-w-0">' +
-          '<div class="flex items-center gap-2 shrink-0">' +
-            '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 hover:bg-emerald-50 text-slate-800 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer" title="Bấm để mở popup chi tiết ca đá">' + safeCodeHtml + '</button>' +
-            '<span class="font-bold text-[#0F172A] text-xs whitespace-nowrap min-w-[110px]">' + safePitchHtml + '</span>' +
+    const displayStatus = (normStatus === 'completed') ? 'Hoàn thành' : normStatus;
+    return '<div onclick="openInPlayModal(\'' + safeCodeAttr + '\')" class="py-2.5 px-3.5 rounded-lg border ' + cardColorCls + ' shadow-2xs flex flex-col gap-2 transition-all cursor-pointer overflow-hidden">' +
+      '<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 min-w-0">' +
+        '<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 flex-1 min-w-0">' +
+          '<div class="flex flex-wrap items-center gap-1.5 min-w-0">' +
+            '<button type="button" onclick="event.stopPropagation(); openInPlayModal(\'' + safeCodeAttr + '\')" class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 hover:bg-emerald-50 text-slate-800 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer whitespace-nowrap" title="Bấm để mở popup chi tiết ca đá">' + safeCodeHtml + '</button>' +
+            '<span class="font-bold text-[#0F172A] text-xs whitespace-nowrap">' + safePitchHtml + '</span>' +
             '<span class="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded whitespace-nowrap">⏰ ' + safeSlotHtml + '</span>' +
             dateBadge +
             monthlyBadge +
             overtimeBadge +
             needActionBadge +
           '</div>' +
-          '<div class="flex items-center gap-1.5 text-xs text-[#475569] shrink-0 min-w-[170px] max-w-[220px]">' +
+          '<div class="flex items-center gap-1.5 text-xs text-[#475569] min-w-0 max-w-full">' +
             '<span class="font-semibold text-slate-800 truncate">👤 ' + escapeSearchHTML(b.customerName || "") + '</span>' +
             '<span class="text-slate-400 font-mono text-[11px] whitespace-nowrap">(' + escapeSearchHTML(b.phone || "") + ')</span>' +
           '</div>' +
-          '<div class="flex items-center gap-2 text-[11px] text-[#64748B] shrink-0">' +
-            '<span>Tổng: <b class="text-[#0F172A] font-semibold">' + window.SanBongApp.formatVND(total) + '</b></span>' +
+          '<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#64748B]">' +
+            '<span class="whitespace-nowrap">Tổng: <b class="text-[#0F172A] font-semibold">' + window.SanBongApp.formatVND(total) + '</b></span>' +
             '<span class="text-slate-300">·</span>' +
-            '<span>Cọc: <b class="text-[#16A34A] font-semibold">' + window.SanBongApp.formatVND(deposit) + '</b></span>' +
+            '<span class="whitespace-nowrap">Cọc: <b class="text-[#16A34A] font-semibold">' + window.SanBongApp.formatVND(deposit) + '</b></span>' +
             '<span class="text-slate-300">·</span>' +
-            '<span>Còn: <b class="' + (remaining > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]') + ' font-bold">' + window.SanBongApp.formatVND(remaining) + '</b></span>' +
+            '<span class="whitespace-nowrap">Còn: <b class="' + (remaining > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]') + ' font-bold">' + window.SanBongApp.formatVND(remaining) + '</b></span>' +
           '</div>' +
         '</div>' +
-        '<div class="flex flex-wrap items-center gap-2 shrink-0 justify-end">' +
-          window.SanBongApp.statusPill(normStatus) +
+        '<div class="flex flex-wrap items-center gap-1.5 justify-start xl:justify-end min-w-0">' +
+          window.SanBongApp.statusPill(displayStatus) +
           actionButtons +
         '</div>' +
       '</div>' +

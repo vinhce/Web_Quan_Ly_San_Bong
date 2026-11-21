@@ -253,6 +253,10 @@ const ADMIN_LOG_CATALOG = {
       "label": "Cập nhật hội viên",
       "group": "members"
     },
+    "UPDATE_PROFILE": {
+      "label": "Cập nhật hồ sơ cá nhân",
+      "group": "members"
+    },
     "USER_EDIT": {
       "label": "Sửa thông tin hội viên",
       "group": "members"
