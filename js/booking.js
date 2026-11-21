@@ -196,8 +196,8 @@ function renderSlots(skipServerFetch = false) {
         s.isDeposited = Boolean(
           foundSrv.isDeposited ||
           bPayStatus.includes('Đã cọc') ||
-          ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'].includes(bPayStatus) ||
-          ['Đã xác nhận', 'Đang đá', 'completed', 'Hoàn thành'].includes(bStatus)
+          ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'Còn thiếu phần phát sinh'].includes(bPayStatus) ||
+          ['Đang đá', 'completed', 'Hoàn thành', 'Đã đá - chưa tất toán'].includes(bStatus)
         );
         s.isOwner = Boolean(foundSrv.isOwner);
 
@@ -238,7 +238,7 @@ function renderSlots(skipServerFetch = false) {
     if (s.booking && !s.isDeposited) {
       const bPayStatus = s.booking.paymentStatus || s.booking.payment_status || '';
       const bStatus = s.booking.status || '';
-      if (bPayStatus.includes('Đã cọc') || ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'].includes(bPayStatus) || ['Đã xác nhận', 'Đang đá', 'completed', 'Hoàn thành'].includes(bStatus)) {
+      if (bPayStatus.includes('Đã cọc') || ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'Còn thiếu phần phát sinh'].includes(bPayStatus) || ['Đang đá', 'completed', 'Hoàn thành', 'Đã đá - chưa tất toán'].includes(bStatus)) {
         s.isDeposited = true;
         const bPhone = String(s.booking.phone || '').replace(/[^0-9]/g, '');
         const isMatchedUser = Boolean(userPhoneClean && bPhone && userPhoneClean === bPhone);
@@ -366,7 +366,7 @@ function renderSlots(skipServerFetch = false) {
   }
   if (!skipServerFetch) {
     fetchServerBookedSlots(selectedPitchId, selectedDate).then(entry => {
-      if (entry && ((entry.bookedList && entry.bookedList.length > 0) || (entry.maintenanceWindows && entry.maintenanceWindows.length > 0))) {
+      if (entry) {
         renderSlots(true);
         updateBillSummary();
       }
@@ -496,10 +496,115 @@ function quickApplyVoucher(code) {
   }
 }
 window.quickApplyVoucher = quickApplyVoucher;
+let _serverQuoteTimer = null;
+let _serverQuoteSeq = 0;
+
+function initBookingWaterRedemption() {
+  const db = window.SanBongApp?.SanBongDB;
+  const user = db && db.getUser ? db.getUser() : null;
+  const isLoggedIn = Boolean(user && user.id && user.role !== 'guest' && !user.is_guest);
+  const sysCfg = db && db.getSystemConfig ? db.getSystemConfig() : null;
+  const bottleCost = Math.max(1, Number(sysCfg?.loyaltyBottleCostPoints || 100) || 100);
+  const userPoints = isLoggedIn ? Math.max(0, Number(user.points || 0)) : 0;
+  const maxBottles = isLoggedIn ? Math.min(20, Math.floor(userPoints / bottleCost)) : 0;
+
+  if (!isLoggedIn || Number(window.bookingRedeemedBottles || 0) > maxBottles) {
+    window.bookingRedeemedBottles = Math.min(maxBottles, Math.max(0, Number(window.bookingRedeemedBottles || 0)));
+  }
+
+  const ptsEl = document.getElementById('booking-user-points');
+  const maxEl = document.getElementById('booking-max-bottles');
+  const cntEl = document.getElementById('booking-redeemed-bottles-count');
+  const sumEl = document.getElementById('booking-redeem-summary');
+  const dedEl = document.getElementById('booking-points-to-deduct');
+  const recEl = document.getElementById('booking-bottles-received');
+  const subBtn = document.getElementById('booking-btn-sub-water');
+  const addBtn = document.getElementById('booking-btn-add-water');
+  const ctrlBox = document.getElementById('booking-redeem-controls');
+  const guestNote = document.getElementById('booking-redeem-guest-note');
+
+  const syncWaterUI = () => {
+    const qty = Math.min(maxBottles, Math.max(0, Number(window.bookingRedeemedBottles || 0)));
+    window.bookingRedeemedBottles = qty;
+    if (ptsEl) ptsEl.textContent = `${userPoints} điểm`;
+    if (maxEl) maxEl.textContent = `${maxBottles} chai`;
+    if (cntEl) cntEl.textContent = String(qty);
+    if (subBtn) subBtn.disabled = (!isLoggedIn || qty <= 0);
+    if (addBtn) addBtn.disabled = (!isLoggedIn || qty >= maxBottles);
+    if (ctrlBox) ctrlBox.classList.toggle('hidden', !isLoggedIn);
+    if (guestNote) guestNote.classList.toggle('hidden', isLoggedIn);
+    if (sumEl) {
+      if (isLoggedIn && qty > 0) {
+        sumEl.classList.remove('hidden');
+        if (dedEl) dedEl.textContent = String(qty * bottleCost);
+        if (recEl) recEl.textContent = String(qty);
+      } else {
+        sumEl.classList.add('hidden');
+      }
+    }
+  };
+
+  if (subBtn && !subBtn._bound) {
+    subBtn._bound = true;
+    subBtn.addEventListener('click', () => {
+      if (Number(window.bookingRedeemedBottles || 0) > 0) {
+        window.bookingRedeemedBottles = Number(window.bookingRedeemedBottles) - 1;
+        syncWaterUI();
+        if (typeof saveCurrentBookingDraft === 'function') saveCurrentBookingDraft();
+      }
+    });
+  }
+  if (addBtn && !addBtn._bound) {
+    addBtn._bound = true;
+    addBtn.addEventListener('click', () => {
+      const latestUser = db && db.getUser ? db.getUser() : null;
+      const latestCost = Math.max(1, Number(db?.getSystemConfig?.()?.loyaltyBottleCostPoints || 100) || 100);
+      const latestMax = (latestUser && latestUser.id) ? Math.min(20, Math.floor(Number(latestUser.points || 0) / latestCost)) : 0;
+      if (Number(window.bookingRedeemedBottles || 0) < latestMax) {
+        window.bookingRedeemedBottles = Number(window.bookingRedeemedBottles || 0) + 1;
+        syncWaterUI();
+        if (typeof saveCurrentBookingDraft === 'function') saveCurrentBookingDraft();
+      }
+    });
+  }
+
+  syncWaterUI();
+}
+window.initBookingWaterRedemption = initBookingWaterRedemption;
+
+function applyQuoteToSummaryUI(quote, weeks) {
+  if (!quote) return;
+  const elPitch = document.getElementById('summary-pitch-price');
+  const elSrv = document.getElementById('summary-services-price');
+  const elDisc = document.getElementById('summary-discount-price');
+  const elTot = document.getElementById('summary-total-price');
+  const elDep = document.getElementById('summary-deposit-price');
+  const elRem = document.getElementById('summary-remaining-price');
+
+  const rawPitchAmt = Number(quote.rawPitchPriceFull ?? quote.pitchPrice ?? 0);
+  const srvAmt = Number(quote.servicesTotal ?? quote.serviceTotal ?? 0);
+  const totalDisc = Number(quote.discountAmount ?? ((quote.monthlyDiscountAmount || 0) + (quote.voucherDiscountAmount || 0)));
+  if (elPitch) {
+    elPitch.textContent = weeks > 1
+      ? `${window.SanBongApp.formatVND(rawPitchAmt)} (${weeks} buổi)`
+      : window.SanBongApp.formatVND(rawPitchAmt);
+  }
+  if (elSrv) elSrv.textContent = window.SanBongApp.formatVND(srvAmt);
+  if (elDisc) elDisc.textContent = `-${window.SanBongApp.formatVND(totalDisc)}`;
+  if (elTot) elTot.textContent = window.SanBongApp.formatVND(quote.totalPrice);
+  if (elDep) elDep.textContent = window.SanBongApp.formatVND(quote.depositAmount);
+  if (elRem) elRem.textContent = window.SanBongApp.formatVND(quote.remainingAmount);
+
+  const depRatePct = String(quote.depositRate ?? quote.depositRatePct ?? (weeks > 1 ? 60 : 30));
+  const depPctEl = document.getElementById('summary-deposit-rate-pct');
+  if (depPctEl) depPctEl.textContent = depRatePct;
+}
+
 function updateBillSummary() {
   const db = window.SanBongApp.SanBongDB;
   const pitch = db.getPitchById(selectedPitchId);
   if (!pitch) return;
+  initBookingWaterRedemption();
   const svgContainer = document.getElementById('summary-pitch-svg');
   if (svgContainer) {
     svgContainer.innerHTML = window.SanBongApp.renderPitchSVG(pitch.variant || 'standard', 'h-24');
@@ -552,7 +657,7 @@ function updateBillSummary() {
     }
     if (elSrv) elSrv.textContent = window.SanBongApp.formatVND(calc.serviceTotal);
     if (elDisc) {
-      const totalDisc = (calc.monthlyDiscountAmount || 0) + (calc.discountAmount || 0);
+      const totalDisc = Number(calc.totalDiscount ?? ((calc.monthlyDiscountAmount || 0) + (calc.discountAmount || 0)));
       elDisc.textContent = `-${window.SanBongApp.formatVND(totalDisc)}`;
     }
     if (elTot) elTot.textContent = window.SanBongApp.formatVND(calc.totalPrice);
@@ -595,6 +700,39 @@ function updateBillSummary() {
       }
     }
   }
+
+  // T3-01: Lấy báo giá chuẩn từ server để bảo đảm 100% khớp giữa giao diện & Checkout
+  if (selectedPitchId && selectedSlotId && selectedDate) {
+    clearTimeout(_serverQuoteTimer);
+    const seq = ++_serverQuoteSeq;
+    _serverQuoteTimer = setTimeout(async () => {
+      try {
+        const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+        const res = await fetch(getRel('api/bookings.php?action=quote'), {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'quote',
+            pitchId: selectedPitchId,
+            date: selectedDate,
+            slotId: selectedSlotId,
+            weeksCount: weeks,
+            bookingMode: bookingMode,
+            services: appliedServices,
+            voucherCode: appliedVoucherCode,
+            redeemedBottles: Number(window.bookingRedeemedBottles || 0)
+          })
+        });
+        if (seq !== _serverQuoteSeq || !res.ok) return;
+        const json = await res.json().catch(() => null);
+        if (json && json.success && json.data) {
+          window._lastServerQuote = json.data;
+          applyQuoteToSummaryUI(json.data, weeks);
+        }
+      } catch (e) {}
+    }, 150);
+  }
 }
 
 function saveCurrentBookingDraft() {
@@ -626,6 +764,7 @@ function saveCurrentBookingDraft() {
     packagePromotion: promo,
     services: appliedServices,
     voucherCode: appliedVoucherCode,
+    redeemedBottles: Number(window.bookingRedeemedBottles || 0),
     customerName: name,
     phone: phone,
     note: note,
@@ -799,7 +938,18 @@ function proceedToCheckout() {
     note = (note ? note + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]${giftNote}`;
   }
 
+  const newIdemKey = (window.crypto && typeof window.crypto.randomUUID === 'function')
+    ? window.crypto.randomUUID()
+    : ('sb-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+
+  const prevHoldCode = sessionStorage.getItem('sb_active_hold_code');
+  if (prevHoldCode && window.SanBongApp?.SanBongAPI?.requestJSON) {
+    sessionStorage.removeItem('sb_active_hold_code');
+    window.SanBongApp.SanBongAPI.requestJSON('api/bookings.php?action=release_draft_hold', { action: 'release_draft_hold', code: prevHoldCode }).catch(() => {});
+  }
+
   const bookingDraft = {
+    idempotencyKey: newIdemKey,
     pitchId: selectedPitchId,
     date: selectedDate,
     slotId: selectedSlotId,
@@ -809,6 +959,8 @@ function proceedToCheckout() {
     packagePromotion: promo,
     services: appliedServices,
     voucherCode: appliedVoucherCode,
+    redeemedBottles: Number(window.bookingRedeemedBottles || 0),
+    serverQuote: window._lastServerQuote || null,
     customerName: name,
     phone: phone,
     note: note,
@@ -952,6 +1104,15 @@ window.openWaitlistPrompt = function(slotId, slotTime) {
           note: note || `Đăng ký chờ slot ${slotTime}`
         })
       });
+      if (res.status === 401) {
+        closeFn();
+        if (window.SanBongApp?.handleUnauthorizedSession) {
+          window.SanBongApp.handleUnauthorizedSession('booking');
+        } else {
+          window.location.replace(getRel('login?redirect=booking&expired=1'));
+        }
+        return;
+      }
       const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
       if (tokenHeader && window.SanBongHelpers?.setCsrfToken) {
         window.SanBongHelpers.setCsrfToken(tokenHeader);
