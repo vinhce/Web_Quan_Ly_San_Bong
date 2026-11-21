@@ -6,10 +6,9 @@
           <div class="xl:col-span-5 ui-card p-5 sm:p-6 space-y-4">
             <div class="border-b border-[#E2E8F0] pb-3 flex items-center justify-between gap-2">
               <div>
-                <h3 class="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">1. Đặt sân tại quầy &amp; Khóa lịch tức thì</h3>
-                <p class="text-xs text-[#64748B] mt-0.5">Nhân viên trực sân điền thông tin để khóa lịch tức thì, chống đè lịch khách online.</p>
+                <h3 class="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">Đặt sân tại quầy</h3>
+                <p class="text-xs text-[#64748B] mt-0.5">Tạo lịch trực tiếp cho khách vãng lai hoặc khách gọi điện.</p>
               </div>
-              <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold shrink-0">Khóa sân 1 chạm</span>
             </div>
 
             <form id="admin-walkin-form" class="space-y-4 text-xs">
