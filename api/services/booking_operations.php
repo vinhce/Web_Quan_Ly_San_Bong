@@ -43,18 +43,20 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
             }
 
             $totPrice = max(0, (int)($oldRow['total_price'] ?? 0));
-            $depAmt = max(0, (int)($oldRow['deposit_amount'] ?? 0));
+            $depRate  = ((int)($oldRow['weeks_count'] ?? 1) > 1) ? 60 : 30;
+            $depAmt   = max(0, (int)($oldRow['deposit_amount'] ?? 0));
             if ($depAmt === 0 && $totPrice > 0) {
-                $depAmt = (int)round($totPrice * 0.3);
+                $depAmt = (int)round($totPrice * ($depRate / 100));
             }
             $remAmt = max(0, $totPrice - $depAmt);
+            $newPayStatus = "Đã cọc {$depRate}%";
 
-            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = 'Đã cọc 30%', paid_amount = ?, remaining_amount = ? WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
-            $stmt->execute([$depAmt, $remAmt, $code]);
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = ?, paid_amount = ?, remaining_amount = ? WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
+            $stmt->execute([$newPayStatus, $depAmt, $remAmt, $code]);
             if ($stmt->rowCount() === 0) {
                 json_error('Mã QR này đã được quét check-in trước đó. Mỗi mã QR chỉ có hiệu lực 1 lần duy nhất!', 409, 'ERR_ALREADY_CHECKED_IN');
             }
-            $newPayStatus = 'Đã cọc 30%';
+            write_audit_log($pdo, 'COLLECT_PAYMENT', $code, (string)$depAmt, "Thu cọc tại quầy khi check-in qua Tiền mặt tại quầy (Số tiền: {$depAmt}đ)", $actor);
         } else {
             $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá' WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
             $stmt->execute([$code]);
@@ -127,14 +129,16 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
             json_error('Không thể đăng ký danh sách chờ cho ngày trong quá khứ.', 400, 'ERR_PAST_DATE');
         }
 
-        // Chặn đăng ký chờ khi khung giờ đã có người cọc thành công
+        // Chặn đăng ký chờ khi khung giờ đã có người cọc thành công (đơn 'Giữ chỗ' chưa cọc vẫn cho phép đăng ký chờ)
         $depStmt = $pdo->prepare("
             SELECT id FROM bookings 
             WHERE pitch_id = ? AND booking_date = ? AND slot_id = ? 
-              AND status NOT IN ('Đã hủy', 'cancelled', 'noshow')
+              AND status NOT IN ('Đã hủy', 'Khách chưa đến', 'cancelled', 'noshow')
               AND (
-                  payment_status IN ('Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%')
-                  OR status IN ('Đã xác nhận', 'Đang đá', 'completed')
+                  paid_amount > 0
+                  OR payment_status IN ('Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'Còn thiếu phần phát sinh')
+                  OR payment_status LIKE 'Đã cọc%'
+                  OR status IN ('Đang đá', 'completed', 'Hoàn thành', 'Đã đá - chưa tất toán')
               )
             LIMIT 1
         ");
@@ -173,13 +177,17 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
     }
 
     if ($action === 'early_cancel') {
+        $currentUser = get_authenticated_user($pdo);
+        if (!$currentUser) {
+            json_error('Vui lòng đăng nhập để hủy đơn đặt sân.', 401, 'ERR_UNAUTHORIZED');
+        }
+
         $code = sanitize_string($data['code'] ?? '', 40);
         $reason = sanitize_string($data['reason'] ?? '', 255);
         if (empty($code)) {
             json_error('Thiếu mã đơn đặt sân.', 400, 'ERR_MISSING_CODE');
         }
 
-        $currentUser = get_authenticated_user($pdo);
         $isOperator = is_portal_operator($currentUser);
 
         $pdo->beginTransaction();
@@ -194,7 +202,12 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                 json_error('Không tìm thấy đơn đặt sân.', 404, 'ERR_BOOKING_NOT_FOUND');
             }
 
-            $isOwner = $currentUser && !empty($booking['user_id']) && (int)$currentUser['id'] === (int)$booking['user_id'];
+            $userPhone = normalize_phone((string)($currentUser['phone'] ?? ''));
+            $bookingPhone = normalize_phone((string)($booking['phone'] ?? ''));
+            $ownedCodes = $_SESSION['owned_booking_codes'] ?? [];
+            $isOwner = (!empty($booking['user_id']) && (int)$currentUser['id'] === (int)$booking['user_id'])
+                || ($userPhone !== '' && $userPhone === $bookingPhone)
+                || (is_array($ownedCodes) && in_array($code, $ownedCodes, true));
             if (!$isOperator && !$isOwner) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
@@ -209,47 +222,30 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                 json_error('Đơn đặt sân này không thể hủy do trạng thái hiện tại là: ' . $booking['status'], 400, 'ERR_INVALID_STATUS');
             }
 
-            $now = new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh'));
-            $slotStartStr = trim($booking['booking_date'] . ' ' . explode(' - ', (string)$booking['slot_time'])[0]);
-            $matchStart = DateTime::createFromFormat('Y-m-d H:i', $slotStartStr, new DateTimeZone('Asia/Ho_Chi_Minh'));
-            if (!$matchStart) {
-                $matchStart = new DateTime($booking['booking_date'] . ' 00:00:00', new DateTimeZone('Asia/Ho_Chi_Minh'));
-            }
-
-            $hoursUntil = ($matchStart->getTimestamp() - $now->getTimestamp()) / 3600;
-            $paidAmount = max(0, (int)($booking['paid_amount'] ?? 0));
             $sysSettings = get_system_settings_map($pdo);
-            $refundFullHours = max(1, (int)($sysSettings['refund_full_hours'] ?? 24));
-            $refundPartialHours = max(0, min($refundFullHours, (int)($sysSettings['refund_partial_hours'] ?? 4)));
+            if (!function_exists('evaluate_cancellation_policy')) {
+                require_once __DIR__ . '/cancellation_helper.php';
+            }
+            $eval = evaluate_cancellation_policy($booking, $sysSettings);
+            $cancelPolicyCode   = $eval['policy'];
+            $paymentStatus      = $eval['payment_status'];
+            $refundAmount       = $eval['refund_amount'];
+            $refundFullHours    = $eval['refund_full_hours'];
+            $refundPartialHours = $eval['refund_partial_hours'];
 
-            if ($paidAmount <= 0) {
+            if ($cancelPolicyCode === 'unpaid_free_cancel') {
                 $policyApplied = 'Hủy đơn chưa thanh toán cọc';
-                $cancelPolicyCode = 'unpaid_free_cancel';
-                $refundAmount = 0;
-                $paymentStatus = 'Đã hủy';
-            } elseif ($hoursUntil >= $refundFullHours) {
+            } elseif ($cancelPolicyCode === 'refund_100') {
                 $policyApplied = "Hủy trước {$refundFullHours}h: Hoàn 100% số tiền đã thanh toán";
-                $cancelPolicyCode = 'refund_100';
-                $refundAmount = $paidAmount;
-                $paymentStatus = 'Đã hoàn cọc 100%';
-            } elseif ($hoursUntil >= $refundPartialHours) {
+            } elseif ($cancelPolicyCode === 'forfeit_50') {
                 $policyApplied = "Hủy trước {$refundPartialHours}h - {$refundFullHours}h: Hoàn 50% số tiền đã thanh toán (Phạt 50%)";
-                $cancelPolicyCode = 'forfeit_50';
-                $refundAmount = (int)round($paidAmount * 0.5);
-                $paymentStatus = 'Phạt 50% cọc';
             } else {
                 $policyApplied = "Hủy sát giờ dưới {$refundPartialHours}h: Không hoàn tiền theo quy định";
-                $cancelPolicyCode = 'forfeit_100';
-                $refundAmount = 0;
-                $paymentStatus = 'Tịch thu cọc 30%';
             }
 
             $upd = $pdo->prepare("UPDATE bookings SET status = 'Đã hủy', payment_status = ?, remaining_amount = 0, cancel_policy_applied = ?, refund_amount = ?, note = CONCAT(IFNULL(note,''), ' [Hủy lúc: ', NOW(), ' - ', ?, ']') WHERE id = ?");
             $upd->execute([$paymentStatus, $cancelPolicyCode, $refundAmount, $reason, (int)$booking['id']]);
 
-            if (!function_exists('restore_booking_resources_on_cancel')) {
-                require_once __DIR__ . '/cancellation_helper.php';
-            }
             restore_booking_resources_on_cancel($pdo, $booking, true);
 
             write_audit_log($pdo, 'EARLY_CANCEL', $booking['code'], $booking['status'], 'Đã hủy (' . $paymentStatus . ')', $currentUser);
@@ -305,8 +301,9 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
         }
 
         $pdo->beginTransaction();
+        $isPaidNoShow = false;
         try {
-            $oldStmt = $pdo->prepare("SELECT id, code, pitch_id, booking_date, slot_id, slot_time, status, payment_status, phone FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+            $oldStmt = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
             $oldStmt->execute([$code]);
             $oldRow = $oldStmt->fetch();
             if (!$oldRow) {
@@ -322,11 +319,23 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                 json_error('Đơn đặt sân này không thể đánh dấu quá giờ do trạng thái hiện tại là: ' . $oldRow['status'], 400, 'ERR_INVALID_STATUS');
             }
             $oldStatus = $oldRow['status'] . ' (' . $oldRow['payment_status'] . ')';
+            $paidAmt = max(0, (int)($oldRow['paid_amount'] ?? 0));
+            $payStCur = (string)($oldRow['payment_status'] ?? '');
+            $isPaidNoShow = ($paidAmt > 0)
+                || in_array($payStCur, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'deposited', 'completed', 'paid'], true)
+                || (mb_stripos($payStCur, 'Đã cọc') !== false);
 
-            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Khách chưa đến', payment_status = 'Tịch thu cọc 30%', remaining_amount = 0, note = CONCAT(IFNULL(note,''), ' [Quá 15p khách chưa đến - Tịch thu cọc 30% & Nhả sân trống]') WHERE id = ?");
-            $stmt->execute([(int)$oldRow['id']]);
-
-            write_audit_log($pdo, 'NOSHOW_RELEASE_SLOT', $code, $oldStatus, 'Khách chưa đến (Tịch thu cọc 30% & Nhả sân)', $actor);
+            if ($isPaidNoShow) {
+                $stmt = $pdo->prepare("UPDATE bookings SET status = 'Khách chưa đến', payment_status = 'Tịch thu cọc 30%', remaining_amount = 0, cancel_policy_applied = 'noshow_forfeit', refund_amount = 0, note = CONCAT(IFNULL(note,''), ' [Quá 15p khách chưa đến - Tịch thu cọc 30% & Nhả sân trống]') WHERE id = ?");
+                $stmt->execute([(int)$oldRow['id']]);
+                restore_booking_resources_on_cancel($pdo, $oldRow, true);
+                write_audit_log($pdo, 'NOSHOW_RELEASE_SLOT', $code, $oldStatus, 'Khách chưa đến (Tịch thu cọc 30% & Nhả sân)', $actor);
+            } else {
+                $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đã hủy', payment_status = 'Đã hủy', remaining_amount = 0, cancel_policy_applied = 'unpaid_noshow_cancel', refund_amount = 0, note = CONCAT(IFNULL(note,''), ' [Quá 15p khách chưa đến (chưa cọc) - Đã hủy & Nhả sân trống]') WHERE id = ?");
+                $stmt->execute([(int)$oldRow['id']]);
+                restore_booking_resources_on_cancel($pdo, $oldRow, false);
+                write_audit_log($pdo, 'NOSHOW_RELEASE_SLOT', $code, $oldStatus, 'Đã hủy (Chưa cọc - Nhả sân, doanh thu 0đ)', $actor);
+            }
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -352,8 +361,15 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
 
         json_response([
             'success' => true,
-            'message' => 'Đã đánh dấu khách chưa đến (quá 15 phút), tịch thu cọc 30% và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!',
-            'data'    => ['code' => $code, 'status' => 'Khách chưa đến', 'paymentStatus' => 'Tịch thu cọc 30%', 'released' => true]
+            'message' => $isPaidNoShow
+                ? 'Đã đánh dấu khách chưa đến (quá 15 phút), tịch thu cọc và LẬP TỨC NHẢ SÂN TRỐNG để đón khách khác!'
+                : 'Đơn chưa đặt cọc đã quá 15 phút — hệ thống chuyển sang Đã hủy (doanh thu 0đ) và LẬP TỨC NHẢ SÂN TRỐNG!',
+            'data'    => [
+                'code'          => $code,
+                'status'        => $isPaidNoShow ? 'Khách chưa đến' : 'Đã hủy',
+                'paymentStatus' => $isPaidNoShow ? 'Tịch thu cọc 30%' : 'Đã hủy',
+                'released'      => true
+            ]
         ]);
         return true;
     }
