@@ -12,7 +12,7 @@ function handleLogout() {
         const headers = window.SanBongHelpers?.getAuthFetchHeaders
           ? window.SanBongHelpers.getAuthFetchHeaders()
           : { 'Content-Type': 'application/json' };
-        if (!headers['X-CSRF-Token'] && (sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user'))) {
+        if (!headers['X-CSRF-Token'] && sessionStorage.getItem('sb_current_user')) {
           const meRes = await fetch(getRelativePath('api/auth.php?action=me'), { cache: 'no-store' });
           const meJson = await meRes.json().catch(() => null);
           if (meJson?.csrf_token) {
@@ -55,12 +55,7 @@ function handleLogout() {
     let currentUser = null;
     try {
       currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-      if (!currentUser) {
-        currentUser = JSON.parse(localStorage.getItem('sb_current_user') || 'null');
-        if (currentUser) {
-          try { sessionStorage.setItem('sb_current_user', JSON.stringify(currentUser)); } catch (e) {}
-        }
-      }
+      try { localStorage.removeItem('sb_current_user'); } catch (e) {}
     } catch(e) {}
 
     const sysCfg = (window.SanBongDB && typeof window.SanBongDB.getSystemConfig === 'function')
@@ -108,12 +103,12 @@ function handleLogout() {
       authSectionHtml = `
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <div id="notif-bell-wrap" class="relative shrink-0">
-          <button type="button" id="notif-bell-btn" aria-label="Thông báo" aria-haspopup="true" aria-expanded="false" onclick="window.SanBongUI && window.SanBongUI.toggleNotificationsDropdown(event)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#ECFDF3] hover:text-[#15803D] hover:border-[#86EFAC] transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16A34A]">
+          <button type="button" id="notif-bell-btn" aria-label="Thông báo" aria-haspopup="true" aria-expanded="false" onclick="window.SanBongUI && window.SanBongUI.toggleNotificationsDropdown(event)" class="w-11 h-11 sm:w-10 sm:h-10 rounded-full border border-[#E2E8F0] flex items-center justify-center relative text-[#475569] hover:bg-[#ECFDF3] hover:text-[#15803D] hover:border-[#86EFAC] transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16A34A]">
             ${Icons.bell}
             <span id="notif-unread-dot" class="hidden absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
           </button>
 
-          <div id="notif-dropdown-menu" role="region" aria-label="Danh sách thông báo" class="hidden absolute right-0 top-full mt-2 w-80 sm:w-96 max-w-[calc(100vw-24px)] bg-white rounded-xl shadow-2xl border border-[#E2E8F0] z-50 overflow-hidden">
+          <div id="notif-dropdown-menu" role="region" aria-label="Danh sách thông báo" class="hidden absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] max-w-sm sm:w-80 bg-white rounded-xl shadow-2xl border border-[#E2E8F0] z-50 overflow-hidden">
             <div class="px-4 py-3 border-b border-[#F1F5F9] flex items-center justify-between bg-[#F8FAFC]">
               <div class="flex items-center gap-2">
                 <span class="font-heading font-bold text-sm text-[#0F172A]">Thông báo</span>
@@ -131,7 +126,7 @@ function handleLogout() {
         </div>
 
         <div id="user-menu-container" class="relative group shrink-0">
-          <button id="user-menu-btn" aria-expanded="false" class="flex items-center gap-2 pl-1.5 py-1 pr-2 sm:pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0] text-left whitespace-nowrap">
+          <button id="user-menu-btn" aria-expanded="false" class="min-h-[44px] flex items-center gap-1.5 sm:gap-2 pl-1.5 py-1 pr-2 sm:pr-3 rounded-full hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0] text-left whitespace-nowrap">
             <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-xs sm:text-sm flex items-center justify-center shrink-0">
               ${escapeHTML(user.avatar || 'VIP')}
             </div>
@@ -176,11 +171,11 @@ function handleLogout() {
       </div>`;
     } else {
       authSectionHtml = `
-      <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
-        <a href="${getRelativePath('login')}" class="h-9 px-3 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold text-[#16A34A] border border-[#16A34A] hover:bg-[#ECFDF3] hover:text-[#15803D] transition-all whitespace-nowrap">
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
+        <a href="${getRelativePath('login')}" class="min-h-[44px] sm:min-h-0 sm:h-9 px-3 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold text-[#16A34A] border border-[#16A34A] hover:bg-[#ECFDF3] hover:text-[#15803D] transition-all whitespace-nowrap">
           Đăng nhập
         </a>
-        <a href="${getRelativePath('login')}?tab=register" class="h-9 px-3 sm:px-4 rounded-lg flex items-center justify-center text-xs font-bold bg-[#16A34A] text-white hover:bg-[#15803D] shadow-sm transition-all whitespace-nowrap">
+        <a href="${getRelativePath('login')}?tab=register" class="hidden sm:flex h-9 px-4 rounded-lg items-center justify-center text-xs font-bold bg-[#16A34A] text-white hover:bg-[#15803D] shadow-sm transition-all whitespace-nowrap">
           Đăng ký
         </a>
       </div>`;
@@ -189,22 +184,22 @@ function handleLogout() {
     const mobileNavHtml = navItems.map(item => {
       const isAct = item.label === activePage;
       return `
-      <a href="${item.href}" class="block px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+      <a href="${item.href}" class="min-h-[44px] flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
         isAct ? 'bg-[#ECFDF3] text-[#15803D]' : 'text-[#334155] hover:bg-[#F8FAFC] hover:text-[#15803D]'
       }">${escapeHTML(item.label)}</a>`;
     }).join('');
 
     return `
     <header class="w-full bg-white border-b border-[#E2E8F0] sticky top-0 z-50 shadow-sm">
-      <div class="h-[72px] px-3 sm:px-4 lg:px-6 xl:px-10 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-4 lg:gap-6 xl:gap-8 min-w-0">
-          <a href="${getRelativePath('')}" class="flex items-center gap-2.5 group shrink-0 whitespace-nowrap">
+      <div class="h-[72px] px-2.5 sm:px-4 lg:px-6 xl:px-10 flex items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center gap-4 lg:gap-6 xl:gap-8 shrink-0">
+          <a href="${getRelativePath('')}" class="min-h-[44px] flex items-center gap-2 sm:gap-2.5 group shrink-0 whitespace-nowrap">
             <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] bg-[#16A34A] text-white flex items-center justify-center shadow-md group-hover:bg-[#15803D] transition-all shrink-0">
               ${Icons.ball}
             </div>
             <div class="leading-none">
-              <span class="block font-heading font-extrabold text-[17px] sm:text-[19px] text-[#0F172A] tracking-tight whitespace-nowrap">Sân Bóng Pro</span>
-              <span class="block text-[9px] sm:text-[10px] font-medium text-[#16A34A] uppercase tracking-wider mt-0.5 whitespace-nowrap">Hệ thống sân đỉnh cao</span>
+              <span class="block font-heading font-extrabold text-[15px] sm:text-[19px] text-[#0F172A] tracking-tight whitespace-nowrap">Sân Bóng Pro</span>
+              <span class="hidden sm:block text-[10px] font-medium text-[#16A34A] uppercase tracking-wider mt-0.5 whitespace-nowrap">Hệ thống sân đỉnh cao</span>
             </div>
           </a>
 
@@ -222,9 +217,9 @@ function handleLogout() {
           </nav>
         </div>
 
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
           ${authSectionHtml}
-          <button type="button" id="mobile-nav-toggle-btn" aria-label="Mở menu điều hướng" aria-expanded="false" onclick="(function(btn){var m=document.getElementById('mobile-nav-drawer');if(!m)return;var open=m.classList.toggle('hidden');btn.setAttribute('aria-expanded',String(!open));})(this)" class="lg:hidden w-9 h-9 rounded-lg border border-[#E2E8F0] flex items-center justify-center text-[#334155] hover:bg-[#ECFDF3] hover:text-[#15803D] transition-colors shrink-0">
+          <button type="button" id="mobile-nav-toggle-btn" aria-label="Mở menu điều hướng" aria-expanded="false" onclick="(function(btn){var m=document.getElementById('mobile-nav-drawer');if(!m)return;var open=m.classList.toggle('hidden');btn.setAttribute('aria-expanded',String(!open));})(this)" class="lg:hidden w-11 h-11 rounded-lg border border-[#E2E8F0] flex items-center justify-center text-[#334155] hover:bg-[#ECFDF3] hover:text-[#15803D] transition-colors shrink-0">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
         </div>
@@ -232,11 +227,20 @@ function handleLogout() {
 
       <nav id="mobile-nav-drawer" class="hidden lg:hidden border-t border-[#E2E8F0] bg-white px-3 py-2.5 space-y-1 shadow-md">
         ${mobileNavHtml}
+        ${!currentUser ? `
+        <div class="sm:hidden pt-2 mt-2 border-t border-[#E2E8F0] grid grid-cols-2 gap-2">
+          <a href="${getRelativePath('login')}" class="min-h-[44px] rounded-lg flex items-center justify-center text-xs font-bold text-[#16A34A] border border-[#16A34A] hover:bg-[#ECFDF3] hover:text-[#15803D] transition-all">Đăng nhập</a>
+          <a href="${getRelativePath('login')}?tab=register" class="min-h-[44px] rounded-lg flex items-center justify-center text-xs font-bold bg-[#16A34A] text-white hover:bg-[#15803D] shadow-sm transition-all">Đăng ký</a>
+        </div>` : ''}
       </nav>
     </header>`;
   }
 
   function renderFooter() {
+    const sysCfg = (window.SanBongDB && typeof window.SanBongDB.getSystemConfig === 'function')
+      ? window.SanBongDB.getSystemConfig()
+      : null;
+    const openHoursText = escapeHTML(sysCfg?.openHours || '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)');
     return `
     <footer class="w-full bg-[#0F172A] text-white pt-14 pb-8 border-t border-[#1E293B]">
       <div class="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
@@ -286,8 +290,8 @@ function handleLogout() {
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span class="text-emerald-400 font-semibold">Đang mở cửa:</span>
-            <span>24/24</span>
+            <span class="text-emerald-400 font-semibold">Giờ mở cửa:</span>
+            <span>${openHoursText}</span>
           </div>
         </div>
       </div>
@@ -528,6 +532,9 @@ function handleLogout() {
 
     const overlay = document.createElement('div');
     overlay.id = modalId;
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'sb-dialog-modal-title');
     overlay.className = 'fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-200';
 
     const card = document.createElement('div');
@@ -600,7 +607,7 @@ function handleLogout() {
       <div class="flex items-start gap-4">
         ${headerBadge}
         <div class="flex-1 min-w-0 pr-6">
-          <h3 class="font-heading font-bold text-lg text-slate-900 tracking-tight leading-snug">${escapeHTML(title || 'Thông báo')}</h3>
+          <h3 id="sb-dialog-modal-title" class="font-heading font-bold text-lg text-slate-900 tracking-tight leading-snug">${escapeHTML(title || 'Thông báo')}</h3>
           <div class="text-sm text-slate-600 leading-relaxed mt-1 whitespace-pre-line max-h-[60vh] overflow-y-auto pr-1">${escapeHTML(message || '')}</div>
         </div>
       </div>
@@ -688,7 +695,7 @@ function handleLogout() {
       message: `1. Mục đích thu thập & xử lý dữ liệu:
 Hệ thống thu thập Họ tên, Số điện thoại, Email và thông tin giao dịch nhằm:
 • Xác thực lệnh đặt sân, phát hành vé điện tử QR check-in vào sân.
-• Liên hệ xác nhận lịch thi đấu, hỗ trợ dời lịch hoặc xử lý hoàn cọc.
+• Liên hệ xác nhận lịch thi đấu, hỗ trợ hủy lịch hoặc xử lý hoàn cọc.
 • Tích lũy điểm hội viên và nâng hạng thành viên thân thiết.
 • Phòng chống gian lận đặt ảo và bảo vệ an ninh trật tự khu sân.
 
@@ -722,10 +729,10 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
 • Hết thời gian giữ chỗ nếu chưa nhận được tiền cọc, hệ thống sẽ tự động hủy đơn và nhả slot cho các đội bóng khác.
 
 2. Chính sách cọc & Hoàn tiền:
-• Tỷ lệ đặt cọc: Áp dụng từ 30% đến 100% tổng giá trị khung giờ tùy chính sách.
+• Tỷ lệ đặt cọc: Áp dụng 30% cho đặt lẻ hoặc 60% cho gói theo tháng.
 • Hủy trước 24 giờ so với giờ bắt đầu: Hoàn 100% tiền cọc.
-• Hủy trước 4 giờ đến 24 giờ: Hỗ trợ dời lịch thi đấu hoặc hoàn cọc theo chính sách ưu đãi.
-• Hủy dưới 4 giờ hoặc vắng mặt (No-Show): Không hỗ trợ hoàn cọc nhằm bù đắp chi phí vận hành và giữ sân.
+• Hủy trước từ 4 giờ đến dưới 24 giờ: Hoàn 50% tiền cọc (phạt 50% chi phí giữ chỗ).
+• Hủy sát giờ dưới 4 giờ hoặc vắng mặt (No-Show): Không hoàn cọc nhằm bù đắp chi phí vận hành sân.
 
 3. Quy định trang thiết bị & An toàn:
 • Cầu thủ sử dụng giày thi đấu chuyên dụng cho sân cỏ nhân tạo (giày đinh dăm TF hoặc đế bệt IC). Nghiêm cấm giày đinh sắt SG gây rách mặt cỏ.
@@ -755,10 +762,10 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
             const rawName = data.user.full_name || data.user.name || data.user.username || 'Hội viên';
             data.user.name = rawName;
             data.user.full_name = rawName;
-            const current = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || '{}');
+            const current = JSON.parse(sessionStorage.getItem('sb_current_user') || '{}');
             const updated = Object.assign({}, current, data.user);
             sessionStorage.setItem('sb_current_user', JSON.stringify(updated));
-            try { localStorage.setItem('sb_current_user', JSON.stringify(updated)); } catch (e) {}
+            try { localStorage.removeItem('sb_current_user'); } catch (e) {}
             // If navbar is already rendered, update points / tier if changed
             const navPlaceholder = document.getElementById('app-navbar');
             if (navPlaceholder && window.SanBongUI && typeof window.SanBongUI.renderNavbar === 'function') {
@@ -887,7 +894,7 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
 
     let currentUser = null;
     try {
-      currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || 'null');
+      currentUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
     } catch (e) {}
 
     let bookings = (window.SanBongDB && typeof window.SanBongDB.getAllBookings === 'function')
@@ -905,7 +912,8 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
     }
 
     const items = buildNotificationsFromBookings(bookings, currentUser);
-    const seenCount = Number(localStorage.getItem('sb_notif_seen_count') || '0');
+    const notifSeenKey = currentUser?.id ? `sb_notif_seen_count_${currentUser.id}` : 'sb_notif_seen_count';
+    const seenCount = Number(localStorage.getItem(notifSeenKey) || '0');
     const hasUnread = items.length > seenCount;
 
     if (dotEl) dotEl.classList.toggle('hidden', !hasUnread);
@@ -953,10 +961,16 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
   }
 
   function markNotificationsRead() {
+    let curUid = null;
+    try {
+      const u = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+      curUid = u?.id || null;
+    } catch (e) {}
+    const notifSeenKey = curUid ? `sb_notif_seen_count_${curUid}` : 'sb_notif_seen_count';
     const dotEl = document.getElementById('notif-unread-dot');
     const badgeEl = document.getElementById('notif-count-badge');
     const cnt = Number(badgeEl?.textContent || '0') || 0;
-    try { localStorage.setItem('sb_notif_seen_count', String(cnt)); } catch (e) {}
+    try { localStorage.setItem(notifSeenKey, String(cnt)); } catch (e) {}
     if (dotEl) dotEl.classList.add('hidden');
     showToast('Đã đánh dấu tất cả thông báo là đã đọc.', 'success');
   }
@@ -990,6 +1004,21 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
     if (btn) btn.setAttribute('aria-expanded', 'false');
   }
 
+  function handleUnauthorizedSession(redirectRoute) {
+    try {
+      sessionStorage.removeItem('sb_current_user');
+      sessionStorage.removeItem('sb_csrf_token');
+      localStorage.removeItem('sb_current_user');
+    } catch (e) {}
+    if (typeof window !== 'undefined') {
+      window.sb_current_user = null;
+      if (window._sbRedirecting401) return;
+      window._sbRedirecting401 = true;
+      const route = String(redirectRoute || '').trim().replace(/^\/+/, '') || 'history';
+      window.location.replace(getRelativePath(`login?redirect=${encodeURIComponent(route)}&expired=1`));
+    }
+  }
+
   window.SanBongUI = {
     renderNavbar,
     renderFooter,
@@ -999,6 +1028,7 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
     showPrivacyPolicyModal,
     showTermsModal,
     syncAuthMe,
+    handleUnauthorizedSession,
     toggleNotificationsDropdown,
     closeNotificationsDropdown,
     markNotificationsRead
