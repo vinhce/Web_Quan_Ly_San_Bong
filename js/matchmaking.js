@@ -188,7 +188,7 @@
   function prefillUserInfo(nameId, phoneId, specificUser) {
     try {
       const user = specificUser
-        || JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user') || 'null')
+        || JSON.parse(sessionStorage.getItem('sb_current_user') || 'null')
         || (window.SanBongApp?.SanBongDB?.getUser ? window.SanBongApp.SanBongDB.getUser() : null);
       if (user) {
         const nEl = document.getElementById(nameId);
@@ -353,6 +353,15 @@
           post_code: postCode
         })
       });
+      if (res.status === 401) {
+        closeCancelModal();
+        if (window.SanBongApp?.handleUnauthorizedSession) {
+          window.SanBongApp.handleUnauthorizedSession('matchmaking');
+        } else {
+          window.location.replace(getRel('login?redirect=matchmaking&expired=1'));
+        }
+        return;
+      }
 
       const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
       if (tokenHeader && window.SanBongApp?.setCsrfToken) {
@@ -429,7 +438,35 @@
     }
   }
 
+  function populateMatchmakingSlots() {
+    const sel = document.getElementById('post-slot-time');
+    if (!sel) return;
+    const dbSlots = window.SanBongApp?.SanBongDB?.getTimeSlots?.() || [
+      { id: 'S01', time: '05:30 - 07:30', isPeak: false },
+      { id: 'S02', time: '07:30 - 09:30', isPeak: false },
+      { id: 'S03', time: '09:30 - 11:30', isPeak: false },
+      { id: 'S04', time: '14:30 - 16:30', isPeak: false },
+      { id: 'S05', time: '16:30 - 18:30', isPeak: true },
+      { id: 'S06', time: '18:30 - 20:30', isPeak: true },
+      { id: 'S07', time: '20:30 - 22:30', isPeak: false }
+    ];
+    if (!Array.isArray(dbSlots) || dbSlots.length === 0) return;
+    const prevVal = sel.value;
+    sel.innerHTML = dbSlots.map(s => {
+      const peakLabel = s.isPeak ? ' (Cao điểm)' : '';
+      return `<option value="${esc(s.time)}" data-slot-id="${esc(s.id)}">${esc(s.time)}${peakLabel}</option>`;
+    }).join('');
+    if (prevVal && [...sel.options].some(o => o.value === prevVal)) {
+      sel.value = prevVal;
+    } else {
+      const hotOpt = [...sel.options].find(o => o.dataset.slotId === 'S06' || o.dataset.slotId === 'S05');
+      if (hotOpt) sel.value = hotOpt.value;
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    populateMatchmakingSlots();
+    window.addEventListener('sb-data-synced', populateMatchmakingSlots);
     loadMatches();
 
     const postFormEl = document.getElementById('post-match-form');
@@ -497,6 +534,8 @@
         return;
       }
 
+      const slotSelect = document.getElementById('post-slot-time');
+      const selectedSlotOpt = slotSelect?.options?.[slotSelect.selectedIndex];
       const payload = {
         action: 'create_post',
         team_name: teamNameEl.value.trim(),
@@ -504,7 +543,8 @@
         phone: phoneVal,
         pitch_type: document.getElementById('post-pitch-type').value,
         match_date: dateVal,
-        slot_time: document.getElementById('post-slot-time').value,
+        slot_id: selectedSlotOpt?.dataset?.slotId || '',
+        slot_time: slotSelect?.value || '',
         skill_level: document.getElementById('post-skill-level').value,
         fee_mode: document.getElementById('post-fee-mode').value,
         note: document.getElementById('post-note').value.trim()
@@ -516,6 +556,15 @@
         const res = await fetch(getRel('api/matchmaking.php'), {
           method: 'POST', headers, credentials: 'same-origin', body: JSON.stringify(payload)
         });
+        if (res.status === 401) {
+          closePostModal();
+          if (window.SanBongApp?.handleUnauthorizedSession) {
+            window.SanBongApp.handleUnauthorizedSession('matchmaking');
+          } else {
+            window.location.replace(getRel('login?redirect=matchmaking&expired=1'));
+          }
+          return;
+        }
         const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
         if (tokenHeader && window.SanBongApp?.setCsrfToken) window.SanBongApp.setCsrfToken(tokenHeader);
         const json = await res.json();
@@ -602,6 +651,15 @@
           credentials: 'same-origin',
           body: JSON.stringify(payload)
         });
+        if (res.status === 401) {
+          closeJoinModal();
+          if (window.SanBongApp?.handleUnauthorizedSession) {
+            window.SanBongApp.handleUnauthorizedSession('matchmaking');
+          } else {
+            window.location.replace(getRel('login?redirect=matchmaking&expired=1'));
+          }
+          return;
+        }
         const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
         if (tokenHeader && window.SanBongApp?.setCsrfToken) {
           window.SanBongApp.setCsrfToken(tokenHeader);
