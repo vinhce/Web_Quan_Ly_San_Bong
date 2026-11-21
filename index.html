@@ -8,24 +8,8 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="favicon.svg">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <script>(function(){const w=console.warn;console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('cdn.tailwindcss.com'))return;w.apply(console,a);};})();</script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            heading: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
-          }
-        }
-      }
-    };
-  </script>
-  <link rel="stylesheet" href="css/style.css?v=20261119_v96">
+  <link rel="stylesheet" href="css/tailwind.generated.css?v=20261122_v128">
+  <link rel="stylesheet" href="css/style.css?v=20261122_v128">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -84,9 +68,10 @@
             <div class="relative">
               <select id="search-time" class="appearance-none bg-white w-full h-11 pl-3 pr-9 rounded-lg border border-[#E2E8F0] font-medium text-sm leading-[42px] text-[#0F172A] whitespace-nowrap truncate focus:outline-none focus:border-[#16A34A] focus:ring-2 focus:ring-[#16A34A]/15 cursor-pointer">
                 <option value="all">Tất cả (05:30 - 22:30)</option>
-                <option value="peak">Cao điểm (16:30 - 20:30)</option>
-                <option value="afternoon">Chiều mát (14:30 - 16:30)</option>
-                <option value="morning">Sáng sớm (05:30 - 11:30)</option>
+                <option value="morning">Buổi sáng (05:30 - 11:30)</option>
+                <option value="afternoon">Buổi chiều (14:30 - 16:30)</option>
+                <option value="peak">Giờ cao điểm (16:30 - 20:30)</option>
+                <option value="evening">Tối muộn (20:30 - 22:30)</option>
               </select>
               <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
@@ -102,16 +87,16 @@
 
       <div class="flex flex-wrap items-center gap-6 sm:gap-10 mt-6 pt-6 border-t border-slate-800 text-xs sm:text-sm text-slate-300">
         <div class="flex items-center gap-2">
-          <span class="font-heading font-extrabold text-lg sm:text-xl text-[#4ADE80]">26 sân</span>
+          <span id="hero-stat-pitches" class="font-heading font-extrabold text-lg sm:text-xl text-[#4ADE80]">26 sân</span>
           <span>FIFA Quality Pro</span>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="font-heading font-extrabold text-lg sm:text-xl text-[#4ADE80]">1.200+</span>
-          <span>Trận bóng/tháng</span>
+        <div id="hero-stat-matches-wrap" class="flex items-center gap-2">
+          <span id="hero-stat-matches" class="font-heading font-extrabold text-lg sm:text-xl text-[#4ADE80]">7 ca / ngày</span>
+          <span id="hero-stat-matches-label">Khung 2 tiếng (05:30 - 22:30)</span>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="font-heading font-extrabold text-lg sm:text-xl text-[#4ADE80]">4.9/5 ★</span>
-          <span>Đánh giá cộng đồng phủi</span>
+        <div id="hero-stat-rating-wrap" class="hidden items-center gap-2">
+          <span id="hero-stat-rating" class="font-heading font-extrabold text-lg sm:text-xl text-[#4ADE80]"></span>
+          <span id="hero-stat-rating-label">Đánh giá thực tế</span>
         </div>
       </div>
     </div>
@@ -163,7 +148,7 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="font-heading font-bold text-xl text-[#0F172A]">Bảng giá niêm yết công khai</h3>
-            <p class="text-xs text-[#64748B] mt-0.5">Giá theo giờ (60 phút) – Đã bao gồm đèn chiếu sáng cao cấp</p>
+            <p class="text-xs text-[#64748B] mt-0.5">Giá cố định theo ca 2 tiếng (120 phút) – Đã bao gồm đèn chiếu sáng cao cấp</p>
           </div>
           <span class="px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">Chuẩn niêm yết</span>
         </div>
@@ -182,26 +167,26 @@
               <tr>
                 <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">Sân 5 người</td>
                 <td class="py-3.5 px-3.5 text-[#64748B]">20m × 40m</td>
-                <td class="py-3.5 px-3.5">250.000đ/h</td>
-                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">350.000đ/h</td>
+                <td class="py-3.5 px-3.5">250.000đ/ca 2h</td>
+                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">350.000đ/ca 2h</td>
               </tr>
               <tr>
                 <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">Sân 7 người</td>
                 <td class="py-3.5 px-3.5 text-[#64748B]">30m × 50m</td>
-                <td class="py-3.5 px-3.5">450.000đ/h</td>
-                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">650.000đ/h</td>
+                <td class="py-3.5 px-3.5">450.000đ/ca 2h</td>
+                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">650.000đ/ca 2h</td>
               </tr>
               <tr>
                 <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">Sân 11 người (Ghép)</td>
                 <td class="py-3.5 px-3.5 text-[#64748B]">60m × 100m</td>
-                <td class="py-3.5 px-3.5">900.000đ/h</td>
-                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">1.200.000đ/h</td>
+                <td class="py-3.5 px-3.5">900.000đ/ca 2h</td>
+                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">1.200.000đ/ca 2h</td>
               </tr>
             </tbody>
           </table>
         </div>
         <div class="mt-4 pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-[#64748B]">
-          <span>* Cuối tuần (T7, CN) áp dụng mức giá giờ cao điểm từ 15:00</span>
+          <span>* Cuối tuần (T7, CN) áp dụng biểu giá cuối tuần niêm yết (Sân 5: 380k · Sân 7: 700k · Sân 11: 1.400k/ca)</span>
           <a href="booking" class="text-[#16A34A] font-bold hover:underline">Chọn khung giờ cụ thể →</a>
         </div>
       </div>
@@ -226,8 +211,8 @@
           <div class="flex items-start gap-3.5">
             <div class="w-8 h-8 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center shrink-0">3</div>
             <div>
-              <div class="text-sm font-bold text-[#0F172A]">Quét VietQR cọc 30%</div>
-              <p class="text-xs text-[#64748B] mt-0.5">Mã QR động chuẩn ngân hàng, giữ chỗ trong 10 phút.</p>
+              <div class="text-sm font-bold text-[#0F172A]">Quét VietQR cọc 30% – 60%</div>
+              <p class="text-xs text-[#64748B] mt-0.5">Mã QR động chuẩn ngân hàng, giữ chỗ trong 15 phút.</p>
             </div>
           </div>
           <div class="flex items-start gap-3.5">
@@ -322,7 +307,7 @@
 
   </main>
 
-  <div id="pitch-detail-modal" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeModal()">
+  <div id="pitch-detail-modal" role="dialog" aria-modal="true" class="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeModal()">
     <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div id="modal-content" class="p-6 space-y-6">
         
@@ -332,18 +317,18 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="js/data.js?v=20261119_v97"></script>
-  <script src="js/helpers.js?v=20261119_v97"></script>
-  <script src="js/db_core.js?v=20261119_v97"></script>
-  <script src="js/db_pricing.js?v=20261119_v97"></script>
-  <script src="js/db_bookings.js?v=20261119_v97"></script>
-  <script src="js/db_operations.js?v=20261119_v97"></script>
-  <script src="js/db.js?v=20261119_v97"></script>
-  <script src="js/ui.js?v=20261121_v116"></script>
-  <script src="js/vn_datepicker.js?v=20261121_v114"></script>
-  <script src="js/app.js?v=20261119_v97"></script>
-  <script src="js/api.js?v=20261119_v97"></script>
-  <script src="js/index.js?v=20261119_v97"></script>
+  <script src="js/data.js?v=20261122_v128"></script>
+  <script src="js/helpers.js?v=20261122_v128"></script>
+  <script src="js/db_core.js?v=20261122_v128"></script>
+  <script src="js/db_pricing.js?v=20261122_v128"></script>
+  <script src="js/db_bookings.js?v=20261122_v128"></script>
+  <script src="js/db_operations.js?v=20261122_v128"></script>
+  <script src="js/db.js?v=20261122_v128"></script>
+  <script src="js/ui.js?v=20261122_v128"></script>
+  <script src="js/vn_datepicker.js?v=20261122_v128"></script>
+  <script src="js/app.js?v=20261122_v128"></script>
+  <script src="js/api.js?v=20261122_v128"></script>
+  <script src="js/index.js?v=20261122_v128"></script>
 
 </body>
 </html>
