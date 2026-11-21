@@ -1,17 +1,18 @@
 
-let selectedPitchId = 'P7-A';
-let selectedPitchType = 7;
-let selectedDate = '';
-let selectedSlotId = '';
-let bookingMode = 'single';
-let monthlyWeeks = 12;
-let monthlyDates = [];
-let extraServicesCollapsed = false;
-let appliedServices = window.appliedServices || [];
-let appliedVoucherCode = '';
-let isCurrentPhoneBlacklisted = false;
-let preselectedSlotId = '';
-let bookingTurnstileToken = '';
+var selectedPitchId = window.selectedPitchId || 'P7-A';
+var selectedPitchType = window.selectedPitchType || 7;
+var selectedDate = window.selectedDate || '';
+var selectedSlotId = window.selectedSlotId || '';
+var bookingMode = window.bookingMode || 'single';
+var monthlyWeeks = window.monthlyWeeks || 12;
+var monthlyDates = window.monthlyDates || [];
+var extraServicesCollapsed = window.extraServicesCollapsed || false;
+var appliedServices = window.appliedServices || [];
+var appliedVoucherCode = window.appliedVoucherCode || '';
+var isCurrentPhoneBlacklisted = window.isCurrentPhoneBlacklisted || false;
+var preselectedSlotId = window.preselectedSlotId || '';
+var bookingTurnstileToken = window.bookingTurnstileToken || '';
+var bookingRedeemedBottles = window.bookingRedeemedBottles || 0;
 
 function initBookingTurnstile(siteKey) {
   const wrap = document.getElementById('booking-turnstile-wrap');
@@ -475,17 +476,20 @@ function initBookingPage() {
   window.addEventListener('sb-auth-synced', (e) => {
     _cachedEligibleVouchers = null;
     fillBookingUserInfo(e.detail);
+    if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
     renderVoucherQuickList();
   });
   window.addEventListener('sb-auth-unauthenticated', () => {
     _cachedEligibleVouchers = null;
     fillBookingUserInfo(null);
+    if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
     renderVoucherQuickList();
   });
   if (window.SanBongApp?.authReady) {
     window.SanBongApp.authReady.then(() => {
       _cachedEligibleVouchers = null;
       fillBookingUserInfo();
+      if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
       renderVoucherQuickList();
     });
   }
@@ -713,7 +717,7 @@ function renderPitchTypeSelector() {
       ? Math.min(...matching.map(p => Number(p.basePrice)))
       : fallbackNum;
     const fmt = window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(minVal) : (minVal.toLocaleString('vi-VN') + 'đ');
-    return `Từ ${fmt}/h`;
+    return `Từ ${fmt}/ca 2h`;
   };
 
   const types = [
@@ -779,7 +783,7 @@ function initPitchSelect() {
   const esc = window.SanBongApp?.escapeHTML || (s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
   select.innerHTML = pitches.map(p => `
     <option value="${esc(p.id)}" ${p.id === selectedPitchId ? 'selected' : ''} ${p.status === 'Bảo trì' ? 'disabled' : ''}>
-      ${esc(p.name)} - ${window.SanBongApp ? window.SanBongApp.formatVND(p.basePrice) : (Number(p.basePrice) || 0) + 'đ'}/h ${p.status === 'Bảo trì' ? ' [ĐANG BẢO TRÌ]' : ''}
+      ${esc(p.name)} - ${window.SanBongApp ? window.SanBongApp.formatVND(p.basePrice) : (Number(p.basePrice) || 0) + 'đ'}/ca 2h ${p.status === 'Bảo trì' ? ' [ĐANG BẢO TRÌ]' : ''}
     </option>
   `).join('');
 }
