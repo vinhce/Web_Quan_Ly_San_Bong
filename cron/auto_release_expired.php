@@ -2,40 +2,17 @@
 
 require_once __DIR__ . '/../api/security_helper.php';
 require_once __DIR__ . '/../api/services/cancellation_helper.php';
+require_once __DIR__ . '/../api/services/cron_ops_service.php';
 
-$isCli = (php_sapi_name() === 'cli' || PHP_SAPI === 'cli');
-
-if (!$isCli) {
-    loadEnv();
-    $cronSecret = trim($_ENV['CRON_SECRET'] ?? getenv('CRON_SECRET') ?: '');
-    $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? ''));
-
-    $authorized = ($cronSecret !== '' && $provided !== '' && hash_equals($cronSecret, $provided));
-
-    if (!$authorized) {
-        http_response_code(403);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode([
-            'success'  => false,
-            'message'  => 'Forbidden: Cron endpoint only allows CLI or valid X-Cron-Secret.',
-            'ref_code' => 'ERR_FORBIDDEN'
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-    header('Content-Type: application/json; charset=utf-8');
-}
+cron_authorize_request();
 
 $logDir = __DIR__ . '/../logs';
 if (!is_dir($logDir)) {
     @mkdir($logDir, 0750, true);
 }
 
-$lockPath = $logDir . '/.cron_auto_release.lock';
-$lockFp = @fopen($lockPath, 'c+');
-if (!$lockFp || !@flock($lockFp, LOCK_EX | LOCK_NB)) {
-    if ($lockFp) {
-        @fclose($lockFp);
-    }
+$lockFp = cron_acquire_lock('cron_auto_release');
+if (!$lockFp) {
     $lockedResp = [
         'success'   => true,
         'skipped'   => 'locked',
@@ -72,8 +49,5 @@ try {
         'error'     => 'Lỗi thực thi cron tự động nhả sân.'
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
 } finally {
-    if ($lockFp) {
-        @flock($lockFp, LOCK_UN);
-        @fclose($lockFp);
-    }
+    cron_release_lock($lockFp);
 }
