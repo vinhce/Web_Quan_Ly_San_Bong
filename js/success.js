@@ -87,10 +87,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           totalPrice: Number(bData.totalPrice ?? bData.total_price ?? booking?.totalPrice ?? 0),
           depositAmount: Number(bData.depositAmount ?? bData.deposit_amount ?? booking?.depositAmount ?? 0),
           remainingAmount: Number(bData.remainingAmount ?? bData.remaining_amount ?? booking?.remainingAmount ?? 0),
+          depositRate: Number(bData.depositRate ?? bData.deposit_rate ?? ((Number(bData.weeksCount ?? bData.weeks_count ?? booking?.weeksCount ?? 1) > 1) ? 60 : 30)),
           paymentStatus: bData.paymentStatus || bData.payment_status || booking?.paymentStatus || 'Đã cọc 30%',
           status: bData.status || booking?.status || 'Đã xác nhận',
           services: Array.isArray(bData.services) ? bData.services : (booking?.services || []),
           weeksCount: Number(bData.weeksCount ?? bData.weeks_count ?? booking?.weeksCount ?? 1),
+          pointsUsed: Number(bData.pointsUsed ?? bData.points_used ?? booking?.pointsUsed ?? 0),
+          redeemedBottles: Number(bData.redeemedBottles ?? bData.redeemed_bottles ?? booking?.redeemedBottles ?? 0),
           note: bData.note || booking?.note || ''
         };
         booking = Object.assign({}, booking || {}, freshBooking);
@@ -106,21 +109,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  booking.status = booking.status && booking.status !== 'Chờ duyệt cọc' ? booking.status : 'Đã xác nhận';
-  if (!booking.paymentStatus || booking.paymentStatus === 'Chờ cọc 30%') {
-    booking.paymentStatus = 'Đã cọc 30%';
+  const weeksCount = Number(booking.weeksCount || 1);
+  const depositPct = String(booking.paymentStatus || '').includes('60%') || weeksCount > 1
+    ? 60
+    : (Number(booking.depositRate || 30) || 30);
+
+  booking.status = booking.status && booking.status !== 'Chờ duyệt cọc' && booking.status !== 'Giữ chỗ' ? booking.status : 'Đã xác nhận';
+  if (!booking.paymentStatus || booking.paymentStatus === 'Chờ cọc 30%' || booking.paymentStatus === 'Chờ duyệt cọc') {
+    booking.paymentStatus = `Đã cọc ${depositPct}%`;
   }
   db.updateBookingStatus(booking.code, booking.status, booking.paymentStatus);
 
   const codeEl = document.getElementById('ticket-booking-code');
   if (codeEl) codeEl.textContent = booking.code;
 
+  const payStr = String(booking.paymentStatus || '');
+  const isFullPaid = payStr === 'Đã thanh toán đủ' || payStr === 'Đã thanh toán 100%';
+  const isPaid = isFullPaid || payStr === 'Đã cọc 30%' || payStr === 'Đã cọc 60%' || payStr.includes('Đã cọc');
+
+  const subtitleEl = document.getElementById('success-page-subtitle');
+  if (subtitleEl) {
+    subtitleEl.textContent = isFullPaid
+      ? 'Hệ thống đã tự động ghi nhận thanh toán đủ 100%. Vui lòng đưa mã vé dưới đây cho nhân viên khi đến sân.'
+      : `Hệ thống đã tự động ghi nhận tiền cọc ${depositPct}%. Vui lòng đưa mã vé dưới đây cho nhân viên khi đến sân.`;
+  }
+
+  const depLabelEl = document.getElementById('ticket-deposit-label');
+  if (depLabelEl) {
+    depLabelEl.textContent = isFullPaid
+      ? 'Đã thanh toán VietQR (100%):'
+      : `Đã đặt cọc VietQR (${depositPct}%):`;
+  }
+
   const badgeEl = document.getElementById('ticket-status-badge');
-  const isPaid = booking.paymentStatus === 'Đã cọc 30%' || booking.paymentStatus === 'Đã thanh toán đủ';
   if (badgeEl) {
     if (isPaid) {
       badgeEl.className = 'px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold';
-      badgeEl.textContent = '✓ Đã xác nhận & Cọc 30%';
+      badgeEl.textContent = isFullPaid
+        ? '✓ Đã xác nhận & Thanh toán 100%'
+        : `✓ Đã xác nhận & Cọc ${depositPct}%`;
     } else {
       badgeEl.className = 'px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold';
       badgeEl.textContent = '⏳ Chờ duyệt cọc (Chưa thanh toán)';
@@ -147,7 +174,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       srvList = booking.services.map(s => `${s.name} × ${s.quantity}`);
     }
     if (booking.redeemedBottles && booking.redeemedBottles > 0) {
-      srvList.push(`💧 Nước suối miễn phí (${booking.redeemedBottles} chai - Đổi từ ${booking.pointsUsed || (booking.redeemedBottles * 100)}đ)`);
+      const bottleCost = Math.max(1, Number(db?.getSystemConfig?.()?.loyaltyBottleCostPoints || 100) || 100);
+      const usedPts = Number(booking.pointsUsed || (booking.redeemedBottles * bottleCost));
+      srvList.push(`💧 Nước suối miễn phí (${booking.redeemedBottles} chai - Đổi từ ${usedPts} điểm)`);
     }
     srvEl.textContent = srvList.length > 0 ? srvList.join(', ') : 'Không có dịch vụ thêm';
   }
@@ -156,7 +185,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (pointsNoteEl) {
     if (booking.redeemedBottles && booking.redeemedBottles > 0) {
       const bottles = Number(booking.redeemedBottles || 0);
-      const ptsUsed = Number(booking.pointsUsed || bottles * 100);
+      const bottleCost = Math.max(1, Number(db?.getSystemConfig?.()?.loyaltyBottleCostPoints || 100) || 100);
+      const ptsUsed = Number(booking.pointsUsed || bottles * bottleCost);
       pointsNoteEl.innerHTML = `Đã đổi nước: <strong class="text-[#DC2626]">-${ptsUsed} điểm</strong> (${bottles} chai Aquafina)`;
     } else {
       pointsNoteEl.textContent = 'Đã đổi nước: 0 điểm (0 chai)';
@@ -197,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const qrBox = document.getElementById('ticket-qr-box');
   const qrMount = document.getElementById('ticket-qr-mount');
   const titleEl = document.getElementById('success-page-title') || document.querySelector('main h1');
-  const subtitleEl = document.getElementById('success-page-subtitle') || document.querySelector('main h1 + p');
+  const checkedInSubtitleEl = subtitleEl || document.querySelector('main h1 + p');
 
   const renderTicketQR = (checkedIn) => {
     if (checkedIn) {
@@ -209,8 +239,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const st = String(booking.status || '');
       const isDone = st === 'Hoàn thành' || st.toLowerCase() === 'completed';
-      if (subtitleEl) {
-        subtitleEl.textContent = isDone
+      if (checkedInSubtitleEl) {
+        checkedInSubtitleEl.textContent = isDone
           ? 'Trận đấu đã hoàn thành. Cảm ơn bạn đã sử dụng dịch vụ tại Sân Bóng Pro!'
           : 'Vé check-in đã được xác nhận thành công. Chúc đội bạn có một trận đấu thật bùng nổ!';
       }
