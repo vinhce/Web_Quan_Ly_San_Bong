@@ -302,7 +302,7 @@ try {
                 : 'Khách chuyển khoản cho đơn đã bị hủy/quá hạn — cần đối soát hoàn tiền';
             $auditAction    = 'WEBHOOK_UNMATCHED';
             $newAuditVal    = "Nhận " . number_format($transferAmount) . ($isExpiredHold ? "đ cho đơn hết hạn giữ chỗ #{$bCode}" : "đ cho đơn đã hủy/quá hạn #{$bCode}");
-        } elseif (!in_array($pStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)) {
+        } elseif (!in_array($pStatus, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true) && stripos($pStatus, 'Đã cọc') === false) {
             $expectedAmount  = $targetDep;
             $remainingNeeded = max(0, $targetDep - $alreadyPaid);
             $newTotalPaid    = $alreadyPaid + $transferAmount;
@@ -318,7 +318,9 @@ try {
                 $auditAction    = 'WEBHOOK_UNDERPAID';
                 $newAuditVal    = $mismatchReason;
             } elseif ($newTotalPaid === $targetDep) {
-                $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
+                $isMonthlyBooking = (!empty($booking['weeks_count']) && (int)$booking['weeks_count'] > 1) || (!empty($booking['booking_mode']) && $booking['booking_mode'] === 'monthly');
+                $depLabel     = $isMonthlyBooking ? 'Đã cọc 60%' : 'Đã cọc 30%';
+                $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : $depLabel;
                 $newStatus    = ($bStatus === 'Chờ duyệt cọc') ? 'Đã xác nhận' : $bStatus;
                 $updB = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
                 $updB->execute([$newStatus, $newPayStatus, $newTotalPaid, $newTotalPaid, (int)$booking['id']]);
@@ -333,7 +335,9 @@ try {
                 $recordPaidLedger($bCode, $newTotalPaid, $targetDep, $referenceCode, $content);
                 award_booking_loyalty_points($pdo, $booking);
             } else {
-                $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
+                $isMonthlyBooking = (!empty($booking['weeks_count']) && (int)$booking['weeks_count'] > 1) || (!empty($booking['booking_mode']) && $booking['booking_mode'] === 'monthly');
+                $depLabel     = $isMonthlyBooking ? 'Đã cọc 60%' : 'Đã cọc 30%';
+                $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : $depLabel;
                 $newRem       = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 0 : max(0, $totalPrice - $newTotalPaid);
                 $updB = $pdo->prepare("UPDATE bookings SET status = IF(status IN ('Đang đá', 'completed', 'Hoàn thành'), status, 'Đã xác nhận'), payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = ? WHERE id = ?");
                 $updB->execute([$newPayStatus, $newTotalPaid, $newRem, (int)$booking['id']]);
@@ -347,7 +351,7 @@ try {
                 $recordPaidLedger($bCode, $newTotalPaid, $targetDep, $referenceCode, $content);
                 award_booking_loyalty_points($pdo, $booking);
             }
-        } elseif ($pStatus === 'Đã cọc 30%') {
+        } elseif ($pStatus === 'Đã cọc 30%' || $pStatus === 'Đã cọc 60%' || stripos($pStatus, 'Đã cọc') !== false) {
             $paidBase     = max($alreadyPaid, $targetDep);
             $expectedRem  = max(0, (int)($booking['remaining_amount'] ?? max(0, $totalPrice - $paidBase)));
             $newTotalPaid = $paidBase + $transferAmount;

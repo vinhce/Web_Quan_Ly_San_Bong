@@ -64,7 +64,12 @@
         if (pChanged) localStorage.setItem(STORAGE_KEYS.PITCHES, JSON.stringify(pList));
       } catch (e) {}
 
-      if (!localStorage.getItem(STORAGE_KEYS.TIME_SLOTS)) {
+      try {
+        const curSlots = JSON.parse(localStorage.getItem(STORAGE_KEYS.TIME_SLOTS) || '[]');
+        if (!Array.isArray(curSlots) || curSlots.length !== 7 || Number(curSlots[0]?.duration) !== 2) {
+          localStorage.setItem(STORAGE_KEYS.TIME_SLOTS, JSON.stringify(data.DEFAULT_TIME_SLOTS || []));
+        }
+      } catch (e) {
         localStorage.setItem(STORAGE_KEYS.TIME_SLOTS, JSON.stringify(data.DEFAULT_TIME_SLOTS || []));
       }
       if (!localStorage.getItem(STORAGE_KEYS.SERVICES)) {

@@ -15,7 +15,7 @@ function handle_create_booking(?PDO $pdo, array $data): void {
             json_error('Số điện thoại khách tại quầy không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).', 400, 'ERR_INVALID_PHONE');
         }
     } else {
-        $customer = currentCustomer($pdo);
+        $customer = get_authenticated_user($pdo);
         if (!$customer) {
             json_response([
                 'success'  => false,
@@ -195,6 +195,10 @@ function handle_create_booking(?PDO $pdo, array $data): void {
     if ($bookingDateStr < $todayStr) {
         json_error('Không thể đặt sân cho ngày trong quá khứ.', 400, 'ERR_DATE_IN_PAST');
     }
+    $maxFutureDateStr = date('Y-m-d', strtotime('+180 days', $today));
+    if ($bookingDateStr > $maxFutureDateStr) {
+        json_error('Chỉ hỗ trợ đặt lịch trước tối đa 180 ngày.', 400, 'ERR_DATE_TOO_FAR');
+    }
 
     $allowPastSlot = !empty($data['allow_past_slot']) || !empty($data['allowPastSlot']);
     $pastSlotReason = trim((string)($data['past_slot_reason'] ?? $data['pastSlotReason'] ?? $data['allow_past_slot_reason'] ?? ''));
@@ -216,12 +220,9 @@ function handle_create_booking(?PDO $pdo, array $data): void {
         }
         if ($slotTime === '') {
             $fallbackSlotTimes = [
-                'S01' => '05:30 - 06:30', 'S02' => '06:30 - 07:30', 'S03' => '07:30 - 08:30',
-                'S04' => '08:30 - 09:30', 'S05' => '09:30 - 10:30', 'S06' => '14:00 - 15:00',
-                'S07' => '15:00 - 16:00', 'S08' => '16:00 - 17:00', 'S09' => '17:00 - 18:00',
-                'S10' => '17:30 - 19:00', 'S11' => '18:00 - 19:00', 'S12' => '19:00 - 20:00',
-                'S13' => '19:00 - 20:30', 'S14' => '20:00 - 21:00', 'S15' => '20:30 - 22:00',
-                'S16' => '21:00 - 22:00', 'S17' => '21:00 - 22:30', 'S18' => '22:00 - 23:00'
+                'S01' => '05:30 - 07:30', 'S02' => '07:30 - 09:30', 'S03' => '09:30 - 11:30',
+                'S04' => '14:30 - 16:30', 'S05' => '16:30 - 18:30', 'S06' => '18:30 - 20:30',
+                'S07' => '20:30 - 22:30'
             ];
             $slotTime = $fallbackSlotTimes[$slotId] ?? (string)($data['slotTime'] ?? $data['slot_time'] ?? '');
         }
@@ -434,11 +435,21 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 } else {
                     $uname = 'kh_' . $cleanCustPhone;
                     $cName = $customerName ?: ('Khách hàng ' . substr($cleanCustPhone, -4));
-                    $cEmail = $email ?: ($cleanCustPhone . '@sanbongpro.local');
-                    $pwdHash = '$argon2id$v=19$m=65536,t=4,p=1$DISABLED_NON_LOGIN$disabled';
-                    $newUStmt = $pdo->prepare("INSERT INTO users (username, full_name, phone, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?, 'user', 'active')");
-                    $newUStmt->execute([$uname, $cName, $cleanCustPhone, $cEmail, $pwdHash]);
-                    $userId = (int)$pdo->lastInsertId();
+                    $rawInputEmail = trim((string)($data['email'] ?? ''));
+                    $cEmail = ($rawInputEmail !== '' && $rawInputEmail !== 'khachhang@sanbongpro.vn' && filter_var($rawInputEmail, FILTER_VALIDATE_EMAIL))
+                        ? $rawInputEmail
+                        : ($cleanCustPhone . '@sanbongpro.local');
+                    $chkDup = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1");
+                    $chkDup->execute([$uname, $cEmail]);
+                    $dupUser = $chkDup->fetch(PDO::FETCH_ASSOC);
+                    if ($dupUser) {
+                        $userId = (int)$dupUser['id'];
+                    } else {
+                        $pwdHash = '$argon2id$v=19$m=65536,t=4,p=1$DISABLED_NON_LOGIN$disabled';
+                        $newUStmt = $pdo->prepare("INSERT INTO users (username, full_name, phone, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?, 'user', 'active')");
+                        $newUStmt->execute([$uname, $cName, $cleanCustPhone, $cEmail, $pwdHash]);
+                        $userId = (int)$pdo->lastInsertId();
+                    }
                 }
             } else {
                 $wStmt = $pdo->prepare("SELECT id FROM users WHERE role = 'walkin' LIMIT 1");
@@ -563,7 +574,8 @@ function handle_create_booking(?PDO $pdo, array $data): void {
         $discountAmount = max(0, $originalPrice - $totalPrice);
 
         $sysSettings = $settings;
-        $depositRate = max(10, min(100, (int)($sysSettings['deposit_rate'] ?? 30)));
+        $isMonthlyBooking = ($weeksCount > 1) || (!empty($data['booking_mode']) && $data['booking_mode'] === 'monthly') || (!empty($data['bookingMode']) && $data['bookingMode'] === 'monthly');
+        $depositRate = $isMonthlyBooking ? 60 : max(10, min(100, (int)($sysSettings['deposit_rate'] ?? 30)));
         $holdMinutes = max(5, min(120, (int)($sysSettings['hold_minutes'] ?? 15)));
 
         $depositAmount = (int)round($totalPrice * ($depositRate / 100));

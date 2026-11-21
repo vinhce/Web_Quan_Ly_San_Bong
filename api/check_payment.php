@@ -18,7 +18,7 @@ if (empty($code)) {
 try {
     $booking = null;
     if ($pdo) {
-        $stmt = $pdo->prepare("SELECT id, user_id, code, deposit_amount, paid_amount, total_price, status, payment_status, expires_at FROM bookings WHERE code = ? OR REPLACE(code, '-', '') = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, user_id, code, deposit_amount, paid_amount, total_price, status, payment_status, expires_at, weeks_count, booking_mode FROM bookings WHERE code = ? OR REPLACE(code, '-', '') = ? LIMIT 1");
         $cleanCode = str_replace('-', '', strtoupper($code));
         $stmt->execute([$code, $cleanCode]);
         $booking = $stmt->fetch();
@@ -55,7 +55,8 @@ try {
                 !empty($booking['expires_at']) &&
                 strtotime((string)$booking['expires_at']) <= time() &&
                 $paidAmt < $depositAmt &&
-                !in_array($payStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)
+                !in_array($payStatus, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true) &&
+                (stripos($payStatus, 'Đã cọc') === false)
             );
 
             if ($isCancelledOrExpiredStatus || $isPastHold) {
@@ -71,7 +72,7 @@ try {
                 ]);
             }
 
-            $isPaidByStatus = in_array($payStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true);
+            $isPaidByStatus = in_array($payStatus, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true) || (stripos($payStatus, 'Đã cọc') !== false);
             $isPaidByAmount = ($depositAmt > 0 && $paidAmt >= $depositAmt);
             if ($isPaidByStatus || $isPaidByAmount) {
                 json_response([
@@ -115,7 +116,7 @@ try {
         if ($pdo && $booking) {
             try {
                 $pdo->beginTransaction();
-                $lockStmt = $pdo->prepare("SELECT id, user_id, code, status, payment_status, total_price, deposit_amount, paid_amount FROM bookings WHERE id = ? FOR UPDATE");
+                $lockStmt = $pdo->prepare("SELECT id, user_id, code, status, payment_status, total_price, deposit_amount, paid_amount, weeks_count, booking_mode FROM bookings WHERE id = ? FOR UPDATE");
                 $lockStmt->execute([(int)$booking['id']]);
                 $freshBooking = $lockStmt->fetch();
                 if ($freshBooking) {
@@ -174,7 +175,8 @@ try {
                         $txDateDb
                     ]);
 
-                    $alreadyConfirmed = in_array($freshPayStatus, ['Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)
+                    $alreadyConfirmed = in_array($freshPayStatus, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)
+                        || (stripos($freshPayStatus, 'Đã cọc') !== false)
                         || ($freshDeposit > 0 && $currentPaid >= $freshDeposit);
 
                     if ($alreadyConfirmed) {
@@ -184,7 +186,9 @@ try {
                         $targetAmount = $receivedAmount > 0 ? $receivedAmount : $expectedAmount;
                         $newPaid = max($currentPaid, $targetAmount);
                         $remainingAmount = max(0, (int)($freshBooking['total_price'] ?? 0) - $newPaid);
-                        $newPaymentStatus = ($remainingAmount <= 0) ? 'Đã thanh toán đủ' : 'Đã cọc 30%';
+                        $isMonthlyBooking = (!empty($freshBooking['weeks_count']) && (int)$freshBooking['weeks_count'] > 1) || (!empty($freshBooking['booking_mode']) && $freshBooking['booking_mode'] === 'monthly');
+                        $depLabel = $isMonthlyBooking ? 'Đã cọc 60%' : 'Đã cọc 30%';
+                        $newPaymentStatus = ($remainingAmount <= 0) ? 'Đã thanh toán đủ' : $depLabel;
                         $newStatus = in_array($freshStatus, ['Chờ duyệt cọc', 'Giữ chỗ'], true) ? 'Đã xác nhận' : $freshStatus;
                         $updateStmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
                         $updateStmt->execute([$newStatus, $newPaymentStatus, $newPaid, $newPaid, (int)$freshBooking['id']]);

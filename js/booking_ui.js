@@ -290,6 +290,10 @@ function initBookingPage() {
   const paramMode = urlParams.get('mode');
   const paramDate = urlParams.get('date');
   const paramSlotId = urlParams.get('slotId');
+  const paramVoucher = urlParams.get('voucher');
+  if (paramVoucher) {
+    appliedVoucherCode = paramVoucher.trim().toUpperCase();
+  }
 
   const today = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
 
@@ -316,6 +320,11 @@ function initBookingPage() {
         if (Array.isArray(draft.services)) appliedServices = draft.services;
         if (draft.voucherCode) appliedVoucherCode = draft.voucherCode;
         if (draft.is_booking_for_friend) window.isBookingForFriend = true;
+
+        if (draft.policy_agree) {
+          const agreeBox = document.getElementById('policy-agree');
+          if (agreeBox) agreeBox.checked = true;
+        }
 
         if (draft.note) {
           const noteInput = document.getElementById('cust-note');
@@ -361,8 +370,13 @@ function initBookingPage() {
     selectedSlotId = paramSlotId;
   }
   const dateInput = document.getElementById('booking-date-input');
+  const maxBookingDateObj = new Date(today + 'T00:00:00');
+  maxBookingDateObj.setDate(maxBookingDateObj.getDate() + 180);
+  const maxBookingDateISO = `${maxBookingDateObj.getFullYear()}-${String(maxBookingDateObj.getMonth() + 1).padStart(2, '0')}-${String(maxBookingDateObj.getDate()).padStart(2, '0')}`;
+  window._maxBookingDateISO = maxBookingDateISO;
   if (dateInput) {
     dateInput.min = today;
+    dateInput.max = maxBookingDateISO;
     dateInput.value = selectedDate;
   }
 
@@ -375,13 +389,17 @@ function initBookingPage() {
   updateMonthlyPackage();
   updateBillSummary();
 
+  if (appliedVoucherCode) {
+    const voucherInput = document.getElementById('voucher-input');
+    if (voucherInput) voucherInput.value = appliedVoucherCode;
+  }
+
   function fillBookingUserInfo(u) {
     let curUser = u;
-    if (!curUser && window.SanBongApp?.SanBongDB?.getCustomer) {
-      curUser = window.SanBongApp.SanBongDB.getCustomer();
+    if (!curUser && window.SanBongApp?.SanBongDB?.getUser) {
+      curUser = window.SanBongApp.SanBongDB.getUser();
     }
-    // Operator (admin/manager/staff) không coi là khách đang đặt sân trên trang khách
-    if (curUser && ['admin', 'manager', 'staff'].includes(String(curUser.role).toLowerCase())) {
+    if (curUser && (curUser.role === 'guest' || curUser.is_guest)) {
       curUser = null;
     }
 
@@ -402,7 +420,7 @@ function initBookingPage() {
       if (summaryCard) summaryCard.classList.remove('hidden');
       if (loginReminder) loginReminder.classList.add('hidden');
       if (proceedBtn) {
-        proceedBtn.textContent = 'Tiến hành chuyển khoản cọc →';
+        proceedBtn.textContent = 'Đặt sân ngay';
         proceedBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
         proceedBtn.classList.add('btn-primary');
       }
@@ -434,17 +452,17 @@ function initBookingPage() {
         if (friendAlert) friendAlert.classList.remove('hidden');
       }
     } else {
-      // CHƯA ĐĂNG NHẬP: KHÔNG CÓ MỤC 4, hiện nhắc nhở trong tóm tắt & đổi nút thành "Đăng nhập để đặt sân"
+      // CHƯA ĐĂNG NHẬP: KHÔNG CÓ MỤC 4, ẩn nhắc nhở & nút luôn xanh lá "Đặt sân ngay"
       if (step4Card) step4Card.classList.add('hidden');
       if (summaryCard) summaryCard.classList.add('hidden');
       if (inputFieldsWrap) inputFieldsWrap.classList.add('hidden');
       if (friendAlert) friendAlert.classList.add('hidden');
       if (missingPhoneWrap) missingPhoneWrap.classList.add('hidden');
-      if (loginReminder) loginReminder.classList.remove('hidden');
+      if (loginReminder) loginReminder.classList.add('hidden');
       if (proceedBtn) {
-        proceedBtn.textContent = 'Đăng nhập để đặt sân';
-        proceedBtn.classList.remove('btn-primary');
-        proceedBtn.classList.add('bg-amber-600', 'hover:bg-amber-700');
+        proceedBtn.textContent = 'Đặt sân ngay';
+        proceedBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+        proceedBtn.classList.add('btn-primary');
       }
       if (nameInput) nameInput.value = '';
       if (phoneInput) phoneInput.value = '';
@@ -589,9 +607,27 @@ function initBookingPage() {
   if (dateInputEl && !dateInputEl._bound) {
     dateInputEl._bound = true;
     dateInputEl.addEventListener('change', (e) => {
-      selectedDate = e.target.value;
+      const val = String(e.target.value || '').trim();
+      const todayISO = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
+      const maxISO = window._maxBookingDateISO || '';
+      if (!val || val < todayISO) {
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Không thể đặt sân cho ngày trong quá khứ.', 'warning');
+        }
+        e.target.value = todayISO;
+        selectedDate = todayISO;
+      } else if (maxISO && val > maxISO) {
+        if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast('Chỉ hỗ trợ đặt lịch trước tối đa 180 ngày.', 'warning');
+        }
+        e.target.value = maxISO;
+        selectedDate = maxISO;
+      } else {
+        selectedDate = val;
+      }
       initDateStrip();
       renderSlots();
+      if (bookingMode === 'monthly') updateMonthlyPackage();
       updateBillSummary();
     });
   }
@@ -611,6 +647,16 @@ function initBookingPage() {
       _voucherTimer = setTimeout(() => {
         applyVoucher();
       }, 300);
+    });
+  }
+
+  const agreeCheckEl = document.getElementById('policy-agree');
+  if (agreeCheckEl && !agreeCheckEl._clearErrBound) {
+    agreeCheckEl._clearErrBound = true;
+    agreeCheckEl.addEventListener('change', () => {
+      if (agreeCheckEl.checked && agreeCheckEl.parentElement) {
+        agreeCheckEl.parentElement.classList.remove('text-rose-600', 'font-bold');
+      }
     });
   }
 

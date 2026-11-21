@@ -91,8 +91,18 @@
                 <div class="w-6 h-6 border-2 border-[#16A34A] border-t-transparent rounded-full animate-spin"></div>
                 <span>Đang tạo mã VietQR...</span>
               </div>
+              <!-- Overlay khóa mã QR khi chưa đăng nhập -->
+              <div id="sepay-qr-locked-overlay" class="hidden absolute inset-0 bg-white/95 backdrop-blur-xs flex flex-col items-center justify-center p-3 text-center rounded-xl z-10 space-y-2">
+                <div class="w-12 h-12 rounded-full bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center text-2xl shadow-xs">
+                  🔒
+                </div>
+                <div class="text-xs font-bold text-[#0F172A]">Chưa đăng nhập</div>
+                <div class="text-[11px] text-[#64748B] leading-tight">Đăng nhập tài khoản để hiển thị mã QR thanh toán</div>
+              </div>
             </div>
-            <div class="flex-1 space-y-2 text-center md:text-left">
+
+            <!-- Giao diện khi ĐÃ ĐĂNG NHẬP -->
+            <div id="qr-info-logged-in" class="flex-1 space-y-2 text-center md:text-left">
               <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#DBEAFE] text-[#1E40AF] text-xs font-bold">
                 <span class="w-2 h-2 rounded-full bg-[#2563EB] animate-pulse"></span>
                 Cổng thanh toán tự động VietQR
@@ -103,6 +113,29 @@
               <div id="payment-status-badge" class="p-2.5 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-xs font-bold flex items-center justify-center md:justify-start gap-2">
                 <div class="w-2 h-2 rounded-full bg-[#F59E0B] animate-ping"></div>
                 <span id="payment-status-text">Đang tự động kiểm tra giao dịch chuyển khoản VietQR...</span>
+              </div>
+            </div>
+
+            <!-- Giao diện khi CHƯA ĐĂNG NHẬP: Bắt buộc đăng nhập để quét mã QR -->
+            <div id="qr-info-guest" class="hidden flex-1 space-y-3 text-center md:text-left">
+              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-bold">
+                <span>🔒</span> Bắt buộc đăng nhập để quét mã QR
+              </div>
+              <h3 class="font-heading font-bold text-base text-[#0F172A]">Vui lòng đăng nhập để mở mã VietQR</h3>
+              <p class="text-xs text-[#64748B] leading-relaxed">
+                Hệ thống yêu cầu đăng nhập tài khoản trước khi thanh toán cọc nhằm:
+                <br>• Gắn mã đặt sân và vé điện tử chính chủ vào tài khoản của bạn.
+                <br>• Hiển thị trạng thái <strong>✓ Đã cọc</strong> trong lịch cá nhân.
+                <br>• Tự động tích lũy điểm thưởng hội viên để đổi nước suối miễn phí.
+              </p>
+              <div class="pt-1 flex flex-col sm:flex-row items-center gap-2.5">
+                <a href="/login?redirect=checkout" id="btn-login-to-scan" class="btn-base btn-primary w-full sm:w-auto px-5 py-2.5 text-xs sm:text-sm font-bold shadow-md flex items-center justify-center gap-2">
+                  <span>🔐</span>
+                  <span>Đăng nhập để quét mã QR</span>
+                </a>
+                <a href="/register?redirect=checkout" class="btn-base btn-secondary w-full sm:w-auto px-4 py-2.5 text-xs font-bold">
+                  Đăng ký tài khoản mới
+                </a>
               </div>
             </div>
           </div>
@@ -132,8 +165,8 @@
             </div>
             <div class="md:col-span-2 p-4 rounded-xl bg-[#DCFCE7] border border-[#BBF7D0] flex items-center justify-between">
               <div>
-                <span class="text-[#15803D] font-bold text-sm block">Số tiền cọc cần chuyển (30%):</span>
-                <span class="text-xs text-[#166534]">Thanh toán 70% số tiền còn lại tại quầy khi nhận sân</span>
+                <span id="checkout-deposit-label" class="text-[#15803D] font-bold text-sm block">Số tiền cọc cần chuyển (<span id="checkout-deposit-pct">30</span>%):</span>
+                <span id="checkout-remaining-note" class="text-xs text-[#166534]">Thanh toán 70% số tiền còn lại tại quầy khi nhận sân</span>
               </div>
               <div class="flex items-center gap-2 font-heading font-extrabold text-xl text-[#16A34A]">
                 <span id="bank-amount">306.000đ</span>
@@ -192,6 +225,10 @@
             <button type="button" id="confirm-payment-btn" class="btn-base btn-primary w-full sm:flex-1 text-base font-bold shadow-lg">
               ✓ Tôi đã chuyển khoản thành công
             </button>
+            <a href="/login?redirect=checkout" id="guest-login-checkout-btn" class="hidden btn-base btn-primary w-full sm:flex-1 text-base font-bold shadow-lg flex items-center justify-center gap-2">
+              <span>🔐</span>
+              <span>Đăng nhập để quét mã QR &amp; Thanh toán</span>
+            </a>
             <a href="/booking" class="btn-base btn-secondary w-full sm:w-auto text-xs text-[#64748B]">
               ← Quay lại chỉnh sửa
             </a>
@@ -247,16 +284,16 @@
               <span>Số tiền cọc cần chuyển (<span id="co-deposit-pct">30</span>%):</span>
               <span id="co-deposit-amount" class="text-xl font-extrabold">306.000đ</span>
             </div>
-                        <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-[#92400E] space-y-1 mt-2">
+            <div id="co-policy-box" class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-[#92400E] space-y-1 mt-2">
               <div class="font-bold flex items-center gap-1.5 text-[#B45309]">
-                <span>⏱️</span> Quy định giữ sân & Ân hạn 15 phút:
+                <span>⏱️</span> <span id="co-policy-title">Quy định giữ sân & Ân hạn 15 phút:</span>
               </div>
-              <div class="text-[11px] leading-relaxed text-[#78350F]">
+              <div id="co-policy-desc" class="text-[11px] leading-relaxed text-[#78350F]">
                 Sân bóng được giữ tối đa <b>15 phút</b> kể từ giờ bắt đầu ca đá. Quý khách vui lòng đến đúng giờ làm thủ tục check-in. Quá 15 phút không đến và không liên hệ, hệ thống sẽ tự động hủy đơn do khách chưa đến, tịch thu cọc 30% và nhả sân trống đón khách mới.
               </div>
             </div>
             <div class="flex justify-between text-xs text-[#64748B]">
-              <span>Phần còn lại thanh toán tại sân:</span>
+              <span id="co-remaining-label">Phần còn lại thanh toán tại sân:</span>
               <span id="co-remaining-amount" class="font-bold text-[#0F172A]">714.000đ</span>
             </div>
           </div>
@@ -267,17 +304,17 @@
   </main>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-  <script src="../js/data.js?v=20261115_v78"></script>
-  <script src="../js/helpers.js?v=20261115_v78"></script>
-  <script src="../js/db_core.js?v=20261115_v78"></script>
-  <script src="../js/db_pricing.js?v=20261115_v78"></script>
-  <script src="../js/db_bookings.js?v=20261115_v78"></script>
-  <script src="../js/db_operations.js?v=20261115_v78"></script>
-  <script src="../js/db.js?v=20261115_v78"></script>
-  <script src="../js/ui.js?v=20261115_v78"></script>
-  <script src="../js/app.js?v=20261115_v78"></script>
-  <script src="../js/api.js?v=20261115_v78"></script>
-  <script src="../js/checkout.js?v=20261115_v78"></script>
+  <script src="../js/data.js?v=20261120_v108"></script>
+  <script src="../js/helpers.js?v=20261120_v108"></script>
+  <script src="../js/db_core.js?v=20261120_v108"></script>
+  <script src="../js/db_pricing.js?v=20261120_v108"></script>
+  <script src="../js/db_bookings.js?v=20261120_v108"></script>
+  <script src="../js/db_operations.js?v=20261120_v108"></script>
+  <script src="../js/db.js?v=20261120_v108"></script>
+  <script src="../js/ui.js?v=20261121_v115"></script>
+  <script src="../js/app.js?v=20261120_v108"></script>
+  <script src="../js/api.js?v=20261120_v108"></script>
+  <script src="../js/checkout.js?v=20261121_v110"></script>
 </body>
 </html>
 

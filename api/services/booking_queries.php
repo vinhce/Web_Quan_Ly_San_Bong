@@ -91,9 +91,13 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
             $date = sanitize_string($_GET['date'] ?? date('Y-m-d'), 15);
             $currentUser = get_authenticated_user($pdo);
             $isStaffOrAdmin = is_portal_operator($currentUser);
+            $sessionCodes = $_SESSION['owned_booking_codes'] ?? [];
+            if (!is_array($sessionCodes)) {
+                $sessionCodes = [];
+            }
 
             if (!empty($pitchId)) {
-                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone
+                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone, b.user_id
                                        FROM bookings b
                                        LEFT JOIN time_slots ts ON ts.id = b.slot_id
                                        WHERE b.pitch_id = ? AND b.booking_date = ?
@@ -102,7 +106,7 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                                        ORDER BY ts.start_time ASC, b.slot_id ASC");
                 $stmt->execute([$pitchId, $date]);
             } else {
-                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone
+                $stmt = $pdo->prepare("SELECT b.code, b.pitch_id, b.slot_id, b.slot_time, ts.start_time, ts.end_time, b.status, b.payment_status, b.customer_name, b.phone, b.user_id
                                        FROM bookings b
                                        LEFT JOIN time_slots ts ON ts.id = b.slot_id
                                        WHERE b.booking_date = ?
@@ -117,6 +121,25 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
             foreach ($rows as $r) {
                 $rawStart = !empty($r['start_time']) ? trim($r['start_time']) : trim(explode('-', (string)$r['slot_time'])[0] ?? '');
                 $rawEnd   = !empty($r['end_time'])   ? trim($r['end_time'])   : trim(explode('-', (string)$r['slot_time'])[1] ?? '');
+
+                $isDeposited = in_array($r['payment_status'], ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true)
+                    || (stripos((string)$r['payment_status'], 'Đã cọc') !== false)
+                    || in_array($r['status'], ['Đã xác nhận', 'Đang đá', 'completed', 'Hoàn thành'], true);
+
+                $isOwner = false;
+                if ($currentUser) {
+                    $uPhone = preg_replace('/\D+/', '', (string)($currentUser['phone'] ?? $currentUser['username'] ?? ''));
+                    $bPhone = preg_replace('/\D+/', '', (string)($r['phone'] ?? ''));
+                    if (!empty($r['user_id']) && (int)$r['user_id'] === (int)$currentUser['id']) {
+                        $isOwner = true;
+                    } elseif (!empty($uPhone) && !empty($bPhone) && $uPhone === $bPhone) {
+                        $isOwner = true;
+                    }
+                }
+                if (!$isOwner && in_array($r['code'], $sessionCodes, true)) {
+                    $isOwner = true;
+                }
+
                 $entry = [
                     'pitchId'       => $r['pitch_id'],
                     'slotId'        => $r['slot_id'],
@@ -124,9 +147,11 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
                     'startTime'     => $rawStart,
                     'endTime'       => $rawEnd,
                     'status'        => $r['status'],
-                    'paymentStatus' => $r['payment_status']
+                    'paymentStatus' => $r['payment_status'],
+                    'isDeposited'   => $isDeposited,
+                    'isOwner'       => $isOwner
                 ];
-                if ($isStaffOrAdmin) {
+                if ($isStaffOrAdmin || $isOwner) {
                     $entry['code'] = $r['code'];
                     $entry['customerName'] = $r['customer_name'];
                     $entry['phone'] = $r['phone'];
