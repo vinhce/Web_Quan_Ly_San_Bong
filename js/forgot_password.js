@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const GMAIL_RE = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+  const PHONE_RE = /^0\d{9}$/;
   const TIMEOUT_MS = 15000;
   let csrfToken = '';
   let sessionBootstrapped = false;
@@ -91,8 +91,8 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const $ = (id) => document.getElementById(id);
-    const [form, emailInput, emailError, usernameInput, usernameError, honeypotInput, submitBtn, alertBox, alertText, successPanel, successMessage, resendBtn, pitchBg] = [
-      'forgot-password-form', 'forgot-email', 'forgot-email-error', 'forgot-username', 'forgot-username-error',
+    const [form, phoneInput, phoneError, honeypotInput, submitBtn, alertBox, alertText, successPanel, successMessage, resendBtn, pitchBg] = [
+      'forgot-password-form', 'forgot-phone', 'forgot-phone-error',
       'forgot-website', 'forgot-submit-btn', 'forgot-alert-box', 'forgot-alert-text', 'forgot-success-panel',
       'forgot-success-message', 'forgot-resend-btn', 'forgot-pitch-bg'
     ].map($);
@@ -126,12 +126,12 @@
       let left = Math.max(0, Number(seconds) || 0);
       if (left <= 0) {
         resendBtn.disabled = false;
-        resendBtn.textContent = 'Kiểm tra lại';
+        resendBtn.textContent = 'Gửi lại SMS';
         return;
       }
       const tick = () => {
         resendBtn.disabled = left > 0;
-        resendBtn.textContent = left > 0 ? `Kiểm tra lại (${left}s)` : 'Kiểm tra lại';
+        resendBtn.textContent = left > 0 ? `Gửi lại SMS (${left}s)` : 'Gửi lại SMS';
         if (left <= 0) clearCountdown();
       };
       tick();
@@ -139,31 +139,30 @@
     }
 
     function validateForm() {
-      setFieldError(emailInput, emailError, '');
-      setFieldError(usernameInput, usernameError, '');
-      const email = emailInput ? emailInput.value.trim() : '';
-      const username = usernameInput ? usernameInput.value.trim() : '';
-      const emailMsg = !email ? 'Vui lòng nhập địa chỉ Gmail.' : (email.length > 100 || !GMAIL_RE.test(email) ? 'Vui lòng nhập địa chỉ Gmail hợp lệ (ví dụ: tenban@gmail.com).' : '');
-      const userMsg = !username ? 'Vui lòng nhập tên đăng nhập.' : (username.length < 3 || username.length > 50 || /[\x00-\x1F\x7F]/.test(username) ? 'Tên đăng nhập phải từ 3 đến 50 ký tự.' : '');
-      if (emailMsg) setFieldError(emailInput, emailError, emailMsg);
-      if (userMsg) setFieldError(usernameInput, usernameError, userMsg);
-      const firstInvalid = emailMsg ? emailInput : (userMsg ? usernameInput : null);
-      if (firstInvalid) { firstInvalid.focus(); return null; }
-      return { email, username };
+      setFieldError(phoneInput, phoneError, '');
+      const cleanPhone = (phoneInput ? phoneInput.value : '').replace(/\D+/g, '');
+      const phoneMsg = !cleanPhone
+        ? 'Vui lòng nhập số điện thoại đã đăng ký.'
+        : (!PHONE_RE.test(cleanPhone) ? 'Số điện thoại không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).' : '');
+      if (phoneMsg) {
+        setFieldError(phoneInput, phoneError, phoneMsg);
+        phoneInput?.focus();
+        return null;
+      }
+      return { phone: cleanPhone };
     }
 
     async function handleHttpFailure(status, res, payload, allowCsrfRetry) {
       const code = res?.error?.code || res?.ref_code || '';
       if (status === 422) {
         const fe = res?.error?.fieldErrors || {};
-        if (fe.email) setFieldError(emailInput, emailError, String(fe.email));
-        if (fe.username) setFieldError(usernameInput, usernameError, String(fe.username));
-        setAlert(res?.message || 'Vui lòng kiểm tra lại thông tin đã nhập.', 'error');
-        return (fe.email ? emailInput : (fe.username ? usernameInput : null))?.focus();
+        if (fe.phone) setFieldError(phoneInput, phoneError, String(fe.phone));
+        setAlert(res?.message || 'Vui lòng kiểm tra lại số điện thoại đã nhập.', 'error');
+        return phoneInput?.focus();
       }
       if (status === 404) {
         resetTurnstile();
-        return setAlert(res?.message || 'Không có người dùng khớp với Gmail và Tên đăng nhập đã nhập.', 'error');
+        return setAlert(res?.message || 'Số điện thoại này chưa được đăng ký trong hệ thống.', 'error');
       }
       if (status === 403) {
         if (code === 'ERR_TURNSTILE_FAILED') {
@@ -178,7 +177,7 @@
         return setAlert(res?.message || 'Phiên bảo mật không hợp lệ hoặc đã hết hạn. Vui lòng tải lại trang.', 'error');
       }
       const fallback = status === 429
-        ? 'Bạn đã kiểm tra quá nhiều lần. Vui lòng thử lại sau ít phút.'
+        ? 'Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.'
         : (status >= 500 ? 'Máy chủ đang bận. Vui lòng thử lại sau ít phút.' : 'Không thể xử lý yêu cầu lúc này.');
       setAlert(res?.message || fallback, 'error');
     }
@@ -197,7 +196,7 @@
           headers,
           credentials: 'same-origin',
           signal: req.signal,
-          body: JSON.stringify({ csrf_token: token, email: payload.email, username: payload.username, website: honeypotInput?.value || '', cf_turnstile_response: turnstileToken || '' })
+          body: JSON.stringify({ csrf_token: token, phone: payload.phone, website: honeypotInput?.value || '', cf_turnstile_response: turnstileToken || '' })
         });
         saveCsrf(response.headers?.get('X-CSRF-Token'));
         const res = await response.json().catch(() => null);
@@ -207,7 +206,7 @@
           setAlert('');
           setVisible(form, false);
           setVisible(successPanel, true);
-          if (successMessage) successMessage.textContent = res.message || 'Thành công: Tài khoản tồn tại trên hệ thống.';
+          if (successMessage) successMessage.textContent = res.message || 'Hệ thống đã gửi mã khôi phục mật khẩu qua SMS tới số điện thoại của bạn.';
           return startResendCooldown(res?.data?.cooldown_seconds);
         }
         await handleHttpFailure(response.status, res, payload, allowCsrfRetry);
@@ -226,19 +225,18 @@
       isSubmitting = loading;
       if (!submitBtn) return;
       submitBtn.disabled = loading;
-      submitBtn.textContent = loading ? 'Đang kiểm tra...' : 'Kiểm tra tài khoản';
+      submitBtn.textContent = loading ? 'Đang kiểm tra...' : 'Gửi mã SMS khôi phục';
       submitBtn.setAttribute('aria-busy', loading ? 'true' : 'false');
     };
 
-    emailInput?.addEventListener('input', () => { setFieldError(emailInput, emailError, ''); setAlert(''); });
-    usernameInput?.addEventListener('input', () => { setFieldError(usernameInput, usernameError, ''); setAlert(''); });
+    phoneInput?.addEventListener('input', () => { setFieldError(phoneInput, phoneError, ''); setAlert(''); });
     resendBtn?.addEventListener('click', () => {
       if (resendBtn.disabled) return;
       clearCountdown();
       setVisible(successPanel, false);
       setVisible(form, true);
       setAlert('');
-      emailInput?.focus();
+      phoneInput?.focus();
     });
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();

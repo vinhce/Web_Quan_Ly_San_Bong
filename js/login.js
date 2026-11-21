@@ -68,32 +68,20 @@ function handleLoginRedirect(user) {
   const urlParams = new URLSearchParams(window.location.search);
   const redirectParam = urlParams.get('redirect');
 
-  if (isPortalRole) {
-    if (redirectParam) {
-      const cleanParam = String(redirectParam).trim().replace(/^\/+/, '').replace(/^html\//, '');
-      const baseRoute = cleanParam.split(/[?#]/)[0].replace(/\/+$/, '');
-      if (baseRoute === 'portal-admin' || baseRoute === 'portal-admin/index') {
-        window.location.href = resolveAppUrl(cleanParam);
-        return;
-      }
-    }
-    window.location.href = resolveAppUrl('portal-admin/');
-    return;
-  }
-
-  // Khách hàng thường (customer/user):
+  // Ưu tiên chuyển hướng tới trang đích nếu có tham số redirect (kể cả admin đang đặt sân test ?redirect=checkout)
   if (redirectParam) {
     const cleanParam = String(redirectParam).trim().replace(/^\/+/, '').replace(/^html\//, '');
-    const baseRoute = cleanParam.split(/[?#]/)[0].replace(/\.html$/, '');
-    if (baseRoute === 'portal-admin' || baseRoute === 'portal-admin/') {
-      window.location.href = resolveAppUrl('');
-      return;
-    }
-    const ALLOWED = new Set(['fields', 'booking', 'checkout', 'success', 'history', 'field-detail', 'matchmaking']);
+    const baseRoute = cleanParam.split(/[?#]/)[0].replace(/\.html$/, '').replace(/\/+$/, '');
+    const ALLOWED = new Set(['fields', 'booking', 'checkout', 'success', 'history', 'field-detail', 'matchmaking', 'portal-admin']);
     if (ALLOWED.has(baseRoute)) {
       window.location.href = resolveAppUrl(cleanParam);
       return;
     }
+  }
+
+  if (isPortalRole) {
+    window.location.href = resolveAppUrl('portal-admin/');
+    return;
   }
 
   // Mặc định khách hàng thường chuyển về trang chủ
@@ -465,25 +453,39 @@ document.addEventListener('DOMContentLoaded', () => {
               : (window.location.pathname.includes('/Quan_Ly_San_Bong') ? '/Quan_Ly_San_Bong' : ''));
         const apiBase = rootBase ? (String(rootBase).replace(/\/+$/, '') + '/') : '/';
         await window.SanBongApp.ensureCsrfToken(apiBase);
+        window._lastAuthApiBase = apiBase;
       }
-      const headers = window.SanBongApp?.getAuthFetchHeaders
-        ? window.SanBongApp.getAuthFetchHeaders()
-        : { 'Content-Type': 'application/json' };
 
-      const response = await fetch(getAuthApiUrl('register'), {
-        method: 'POST',
-        headers,
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          username: cleanPhone,
-          email: `${cleanPhone}@sanbongpro.vn`,
-          phone: cleanPhone,
-          full_name: fullName,
-          password: password,
-          privacy_consent: true,
-          turnstile_token: loginTurnstileToken || ''
-        })
-      });
+      const sendRegisterRequest = async () => {
+        const reqHeaders = window.SanBongApp?.getAuthFetchHeaders
+          ? window.SanBongApp.getAuthFetchHeaders()
+          : { 'Content-Type': 'application/json' };
+        return fetch(getAuthApiUrl('register'), {
+          method: 'POST',
+          headers: reqHeaders,
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            username: cleanPhone,
+            email: `${cleanPhone}@sanbongpro.vn`,
+            phone: cleanPhone,
+            full_name: fullName,
+            password: password,
+            privacy_consent: true,
+            turnstile_token: loginTurnstileToken || ''
+          })
+        });
+      };
+
+      let response = await sendRegisterRequest();
+
+      if (response.status === 403) {
+        const peekText = await response.clone().text().catch(() => '');
+        if (peekText.includes('ERR_CSRF_INVALID') && window.SanBongApp?.ensureCsrfToken) {
+          if (window.SanBongApp?.clearCsrfToken) window.SanBongApp.clearCsrfToken();
+          await window.SanBongApp.ensureCsrfToken(window._lastAuthApiBase || '/');
+          response = await sendRegisterRequest();
+        }
+      }
 
       const tokenHeader = response.headers ? response.headers.get('X-CSRF-Token') : null;
       if (tokenHeader && window.SanBongApp?.setCsrfToken) {

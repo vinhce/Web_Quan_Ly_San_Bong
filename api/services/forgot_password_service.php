@@ -20,36 +20,31 @@ function handle_forgot_password(PDO $pdo, array $data): void {
         forgot_password_success_response();
     }
 
-    $emailRaw = $data['email'] ?? '';
-    $usernameRaw = $data['username'] ?? '';
-    $email = is_scalar($emailRaw) ? strtolower(trim((string)$emailRaw)) : '';
-    $username = is_scalar($usernameRaw) ? trim((string)$usernameRaw) : '';
+    $phoneRaw = $data['phone'] ?? ($data['username'] ?? '');
+    $phone = is_scalar($phoneRaw) ? preg_replace('/\D+/', '', trim((string)$phoneRaw)) : '';
     $fieldErrors = [];
-    if ($email === '' || strlen($email) > 100 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $fieldErrors['email'] = 'Vui lòng nhập địa chỉ Gmail hợp lệ.';
-    }
-    if ($username === '' || strlen($username) < 3 || strlen($username) > 50 || preg_match('/[\x00-\x1F\x7F]/', $username) === 1) {
-        $fieldErrors['username'] = 'Tên đăng nhập phải từ 3 đến 50 ký tự.';
+    if ($phone === '' || !preg_match('/^0\d{9}$/', $phone)) {
+        $fieldErrors['phone'] = 'Vui lòng nhập số điện thoại hợp lệ (10 chữ số bắt đầu bằng 0).';
     }
     if (!empty($fieldErrors)) {
         json_response([
             'success' => false,
-            'message' => 'Vui lòng kiểm tra lại thông tin đã nhập.',
+            'message' => 'Vui lòng nhập số điện thoại hợp lệ (10 chữ số bắt đầu bằng 0).',
             'ref_code' => 'ERR_VALIDATION',
             'error' => ['code' => 'ERR_VALIDATION', 'message' => 'Dữ liệu không hợp lệ.', 'fieldErrors' => $fieldErrors],
         ], 422);
     }
 
-    $acctKey = hash('sha256', strtolower($username) . '|' . $email);
-    if (!check_rate_limit($pdo, 'forgot_pw_ip', 5, 3600) || !check_rate_limit($pdo, 'forgot_pw_acct', 3, 3600, $acctKey)) {
+    $acctKey = hash('sha256', 'phone|' . $phone);
+    if (!check_rate_limit($pdo, 'forgot_pw_ip', 10, 3600) || !check_rate_limit($pdo, 'forgot_pw_acct', 5, 3600, $acctKey)) {
         header('Retry-After: 3600');
         json_error('Bạn đã yêu cầu gửi mã quá nhiều lần. Vui lòng thử lại sau ít phút.', 429, 'ERR_RATE_LIMITED');
     }
     increment_rate_limit($pdo, 'forgot_pw_ip', 3600);
     increment_rate_limit($pdo, 'forgot_pw_acct', 3600, $acctKey);
 
-    $stmt = $pdo->prepare('SELECT id, username, email, full_name, role, status FROM users WHERE username = ? AND LOWER(email) = ? LIMIT 1');
-    $stmt->execute([$username, $email]);
+    $stmt = $pdo->prepare("SELECT id, username, phone, email, full_name, role, status FROM users WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? OR username = ? LIMIT 1");
+    $stmt->execute([$phone, $phone]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user || ($user['role'] ?? '') === 'walkin' || ($user['status'] ?? '') !== 'active') {
@@ -57,30 +52,34 @@ function handle_forgot_password(PDO $pdo, array $data): void {
             'success' => false,
             'error' => [
                 'code' => 'ERR_USER_NOT_FOUND',
-                'message' => 'Không có người dùng khớp với email và tên đăng nhập đã nhập.',
+                'message' => 'Số điện thoại này chưa được đăng ký trong hệ thống.',
             ],
-            'message' => 'Không có người dùng khớp với email và tên đăng nhập đã nhập.',
+            'message' => 'Số điện thoại này chưa được đăng ký trong hệ thống.',
         ], 404);
     }
 
+    $maskedPhone = substr($phone, 0, 4) . '***' . substr($phone, -3);
     write_audit_log(
         $pdo,
         'FORGOT_PASSWORD_REQUEST',
         null,
         null,
-        'Kiểm tra tài khoản khôi phục mật khẩu cho ' . mask_email_for_log($email),
+        'Yêu cầu khôi phục mật khẩu qua SMS cho SĐT ' . $maskedPhone,
         ['id' => (int)$user['id'], 'username' => $user['username'], 'role' => $user['role']],
         'user'
     );
-    forgot_password_success_response();
+    forgot_password_success_response($maskedPhone);
 }
 
-function forgot_password_success_response(): void {
+function forgot_password_success_response(string $maskedPhone = ''): void {
+    $msg = $maskedPhone !== ''
+        ? "Hệ thống đã gửi mã khôi phục mật khẩu qua SMS tới số điện thoại {$maskedPhone}. Vui lòng kiểm tra tin nhắn."
+        : 'Hệ thống đã gửi mã khôi phục mật khẩu qua SMS tới số điện thoại của bạn. Vui lòng kiểm tra tin nhắn.';
     json_response([
         'success' => true,
-        'data' => ['exists' => true],
-        'message' => 'Thành công! Tài khoản tồn tại trong hệ thống.',
-        'ref_code' => 'OK_FORGOT_PASSWORD_USER_FOUND',
+        'data' => ['exists' => true, 'sms_sent' => true, 'cooldown_seconds' => 30],
+        'message' => $msg,
+        'ref_code' => 'OK_FORGOT_PASSWORD_SMS_SENT',
     ], 200);
 }
 
