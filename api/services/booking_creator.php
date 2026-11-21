@@ -372,10 +372,25 @@ function handle_create_booking(?PDO $pdo, array $data): void {
             $basePrice = $isPeak ? (int)$pitch['peak_price'] : (int)$pitch['base_price'];
         }
         $duration = (float)$slot['duration'];
-        $pitchPriceBeforeRule = (int)round($basePrice * ($duration ?: 1.0) * $weeksCount * (1 - $packageDiscountRate));
+        $rawPitchPriceFull = (int)round($basePrice * ($duration ?: 1.0) * $weeksCount);
+
+        // Nếu có bảng monthly_packages đang hoạt động cho số trận tương ứng, ưu tiên dùng discount_percent trong DB
+        if ($weeksCount >= 4) {
+            try {
+                $mpStmt = $pdo->prepare("SELECT discount_percent FROM monthly_packages WHERE is_active = 1 AND matches_count = ? ORDER BY sort_order ASC, id ASC LIMIT 1");
+                $mpStmt->execute([$weeksCount]);
+                $mpRow = $mpStmt->fetch(PDO::FETCH_ASSOC);
+                if ($mpRow && isset($mpRow['discount_percent'])) {
+                    $packageDiscountRate = max(0.0, min(1.0, ((int)$mpRow['discount_percent']) / 100));
+                }
+            } catch (Throwable $mpEx) {
+                error_log('[MONTHLY_PACKAGE LOOKUP WARN] ' . $mpEx->getMessage());
+            }
+        }
+        $monthlyDiscountAmount = ($packageDiscountRate > 0) ? (int)round($rawPitchPriceFull * $packageDiscountRate) : 0;
 
         $ghDay = (int)date('N', $bookingDateTime);
-        $ghEval = resolve_golden_hour_adjustment($pdo, (int)$pitch['type'], $ghDay, $slotId, $pitchPriceBeforeRule);
+        $ghEval = resolve_golden_hour_adjustment($pdo, (int)$pitch['type'], $ghDay, $slotId, $rawPitchPriceFull);
         $pitchPrice = (int)$ghEval['adjustedPitchPrice'];
         $appliedGoldenHourRule = $ghEval['rule'] ? [
             'id'              => (int)$ghEval['rule']['id'],
@@ -555,21 +570,57 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 }
             }
 
-            $voucherDiscountAmount = ($vData['discount_type'] === 'percent') ? (int)round($subtotal * ((int)$vData['discount_value'] / 100)) : min((int)$vData['discount_value'], $subtotal);
-            $appliedVoucher = $vData['code'];
-
-            if (db_table_has_column($pdo, 'vouchers', 'used_count')) {
-                $updVStmt = $pdo->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ? AND is_active = 1 AND (max_usage <= 0 OR used_count < max_usage)");
-                $updVStmt->execute([$appliedVoucher]);
-                if ($updVStmt->rowCount() < 1) {
-                    $pdo->rollBack();
-                    json_error('Mã giảm giá vừa hết lượt sử dụng. Vui lòng thử lại.', 409, 'ERR_INVALID_VOUCHER');
+            if ($vData['discount_type'] === 'percent') {
+                $voucherDiscountAmount = (int)round($subtotal * ((int)$vData['discount_value'] / 100));
+                $maxDiscAmt = (int)($vData['max_discount_amount'] ?? 0);
+                if ($maxDiscAmt > 0 && $voucherDiscountAmount > $maxDiscAmt) {
+                    $voucherDiscountAmount = $maxDiscAmt;
                 }
+            } else {
+                $voucherDiscountAmount = min((int)$vData['discount_value'], $subtotal);
+            }
+            $appliedVoucher = $vData['code'];
+        }
+
+        // Non-stacking rule: không cộng dồn voucher và ưu đãi gói tháng — áp dụng mức giảm cao hơn
+        $appliedDiscountSource = 'none';
+        if ($voucherDiscountAmount > 0 && $monthlyDiscountAmount > 0) {
+            if ($voucherDiscountAmount >= $monthlyDiscountAmount) {
+                $monthlyDiscountAmount = 0;
+                $appliedDiscountSource = 'voucher';
+                $choiceTag = "[Áp dụng Voucher {$appliedVoucher}, không cộng dồn gói tháng]";
+                if (mb_stripos($note, 'không cộng dồn') === false) {
+                    $note = trim($note . ' ' . $choiceTag);
+                }
+            } else {
+                $voucherDiscountAmount = 0;
+                $rejectedVoucherCode = $appliedVoucher;
+                $appliedVoucher = null;
+                $appliedDiscountSource = 'monthly_package';
+                $choiceTag = "[Áp dụng ưu đãi gói tháng, không cộng dồn voucher {$rejectedVoucherCode}]";
+                if (mb_stripos($note, 'không cộng dồn') === false) {
+                    $note = trim($note . ' ' . $choiceTag);
+                }
+            }
+        } elseif ($voucherDiscountAmount > 0) {
+            $appliedDiscountSource = 'voucher';
+        } elseif ($monthlyDiscountAmount > 0) {
+            $appliedDiscountSource = 'monthly_package';
+        }
+
+        // Tăng vouchers.used_count nguyên tử trong cùng DB transaction chỉ khi voucher thực sự được áp dụng
+        if ($appliedVoucher !== null && db_table_has_column($pdo, 'vouchers', 'used_count')) {
+            $updVStmt = $pdo->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ? AND is_active = 1 AND (max_usage = 0 OR used_count < max_usage)");
+            $updVStmt->execute([$appliedVoucher]);
+            if ($updVStmt->rowCount() === 0) {
+                $pdo->rollBack();
+                json_error('Mã giảm giá vừa hết lượt sử dụng. Vui lòng thử lại.', 409, 'ERR_VOUCHER_LIMIT_REACHED');
             }
         }
 
-        $totalPrice = max(0, $subtotal - $voucherDiscountAmount);
-        $preDiscountPitchPrice = max($pitchPriceBeforeRule, $pitchPrice);
+        $effectiveDiscount = $monthlyDiscountAmount + $voucherDiscountAmount;
+        $totalPrice = max(0, $subtotal - $effectiveDiscount);
+        $preDiscountPitchPrice = max($rawPitchPriceFull, $pitchPrice);
         $originalPrice = $preDiscountPitchPrice + $totalServicesPrice;
         $discountAmount = max(0, $originalPrice - $totalPrice);
 
@@ -716,9 +767,12 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 'email'           => $email,
                 'weeksCount'      => $weeksCount,
                 'bookingMode'     => $bookingMode,
-                'originalPrice'   => $originalPrice,
-                'discountAmount'  => $discountAmount,
-                'goldenHourRule'  => $appliedGoldenHourRule,
+                'originalPrice'         => $originalPrice,
+                'discountAmount'        => $discountAmount,
+                'monthlyDiscountAmount' => $monthlyDiscountAmount,
+                'voucherDiscountAmount' => $voucherDiscountAmount,
+                'appliedDiscountSource' => $appliedDiscountSource,
+                'goldenHourRule'        => $appliedGoldenHourRule,
                 'totalPrice'      => $totalPrice,
                 'depositAmount'   => $depositAmount,
                 'paidAmount'      => $paidAmount,

@@ -31,9 +31,9 @@
           <span class="hidden sm:inline 2xl:hidden">Quét QR</span>
           <span class="sm:hidden">QR</span>
         </button>
-        <button type="button" onclick="switchAdminTab('quick-booking')" class="h-9 px-2.5 sm:px-3 rounded-lg text-xs btn-primary font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer" title="Đặt sân nhanh tại quầy">
-          <span class="hidden 2xl:inline">+ Đặt sân tại quầy</span>
-          <span class="hidden sm:inline 2xl:hidden">+ Đặt sân</span>
+        <button type="button" onclick="switchAdminTab('quick-booking')" class="h-9 px-2.5 sm:px-3 rounded-lg text-xs btn-primary font-bold flex items-center gap-1.5 whitespace-nowrap cursor-pointer" title="Đặt sân tại quầy">
+          <svg class="hidden sm:inline-block shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span class="hidden sm:inline">Đặt sân tại quầy</span>
           <span class="sm:hidden">+ Đặt</span>
         </button>
       </div>

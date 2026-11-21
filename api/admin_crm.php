@@ -26,7 +26,8 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
         'adjust_points', 'adjust_customer_points', 'update_customer_crm', 'update_customer',
         'update_member', 'create_recurring_schedule', 'cancel_recurring_schedule',
         'skip_recurring_booking', 'assign_waitlist', 'notify_waitlist', 'cancel_waitlist',
-        'save_voucher', 'delete_voucher', 'save_golden_hour', 'delete_golden_hour',
+        'save_voucher', 'delete_voucher', 'toggle_voucher', 'save_golden_hour', 'delete_golden_hour',
+        'save_pricing', 'save_monthly_package', 'delete_monthly_package', 'toggle_monthly_package',
         'save_maintenance', 'update_maintenance'
     ];
     if (in_array($action, $postOnlyActions, true) && strtoupper($method) !== 'POST') {
@@ -1185,6 +1186,11 @@ if (!function_exists('admin_map_booking')) {
 
     require_once __DIR__ . '/services/admin_recurring_waitlist.php';
     if (handle_admin_recurring_waitlist($action, $method, $pdo, $data, $actor)) {
+        exit;
+    }
+
+    require_once __DIR__ . '/services/admin_pricing_packages.php';
+    if (handle_admin_pricing_packages($action, $method, $pdo, $data, $actor)) {
         exit;
     }
 

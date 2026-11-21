@@ -10,97 +10,165 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
     // 5.4 Vouchers: Danh sách
     if ($action === 'get_vouchers') {
         $stmt = $pdo->query("SELECT * FROM vouchers ORDER BY is_active DESC, code ASC");
-        $vouchers = $stmt->fetchAll();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $vouchers = array_map(static function (array $v): array {
+            return [
+                'id'                  => (string)$v['code'],
+                'code'                => (string)$v['code'],
+                'description'         => (string)($v['description'] ?? ''),
+                'discount_type'       => (string)($v['discount_type'] ?? 'percent'),
+                'discount_value'      => (int)($v['discount_value'] ?? 0),
+                'max_discount_amount' => (int)($v['max_discount_amount'] ?? 0),
+                'min_order'           => (int)($v['min_order'] ?? 0),
+                'max_usage'           => (int)($v['max_usage'] ?? 0),
+                'used_count'          => (int)($v['used_count'] ?? 0),
+                'max_per_user'        => (int)($v['max_per_user'] ?? 0),
+                'valid_from'          => !empty($v['valid_from']) ? substr((string)$v['valid_from'], 0, 10) : null,
+                'valid_to'            => !empty($v['valid_to']) ? substr((string)$v['valid_to'], 0, 10) : null,
+                'pitch_type_limit'    => $v['pitch_type_limit'] !== null ? (int)$v['pitch_type_limit'] : null,
+                'required_tier'       => $v['required_tier'] ?? null,
+                'is_active'           => (int)($v['is_active'] ?? 1),
+            ];
+        }, $rows);
         json_response(['success' => true, 'data' => $vouchers]);
         return true;
     }
 
-    // 5.4 Vouchers: Lưu mã giảm giá (Chỉ Admin)
+    // 5.4 Vouchers: Lưu mã giảm giá (Admin hoặc Manager)
     if ($action === 'save_voucher') {
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $admin = require_admin($pdo);
-        $code = strtoupper(sanitize_string($data['code'] ?? '', 30));
-        $desc = sanitize_string($data['description'] ?? '', 255);
-        $type = ($data['discount_type'] ?? 'percent') === 'fixed' ? 'fixed' : 'percent';
-        $val = max(1, (int)($data['discount_value'] ?? 10));
-        if ($type === 'percent') {
-            $val = min(100, $val);
+        $mgr = require_manager_or_admin($pdo);
+
+        $code = preg_replace('/\s+/', '', strtoupper(sanitize_string((string)($data['code'] ?? ''), 30)));
+        if ($code === '' || !preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) {
+            json_error('Mã voucher không hợp lệ (2–30 ký tự chữ in hoa, số, gạch ngang hoặc gạch dưới, không chứa khoảng trắng).', 400, 'ERR_VOUCHER_CODE_INVALID');
         }
+
+        $desc = trim(sanitize_string((string)($data['description'] ?? ''), 255));
+        $type = (($data['discount_type'] ?? 'percent') === 'fixed') ? 'fixed' : 'percent';
+        $rawVal = $data['discount_value'] ?? null;
+        $val = is_numeric($rawVal) ? (int)$rawVal : 0;
+
+        if ($type === 'percent') {
+            if ($val < 1 || $val > 100) {
+                json_error('Mức giảm theo phần trăm phải từ 1% đến 100%.', 400, 'ERR_INVALID_DISCOUNT_PERCENT');
+            }
+        } else {
+            if ($val < 1) {
+                json_error('Mức giảm cố định phải lớn hơn 0đ.', 400, 'ERR_INVALID_DISCOUNT_VALUE');
+            }
+        }
+
+        $rawMaxDisc = $data['max_discount_amount'] ?? $data['maxDiscountAmount'] ?? 0;
+        if (!is_numeric($rawMaxDisc) || (int)$rawMaxDisc < 0) {
+            json_error('Mức giảm tối đa (max_discount_amount) phải là số nguyên >= 0.', 400, 'ERR_INVALID_MAX_DISCOUNT');
+        }
+        $maxDiscountAmount = ($type === 'percent') ? max(0, (int)$rawMaxDisc) : 0;
+
         $minOrder = max(0, (int)($data['min_order'] ?? 0));
         $maxUsage = max(0, (int)($data['max_usage'] ?? 100));
-        $validFrom = !empty($data['valid_from']) ? sanitize_string($data['valid_from'], 15) : null;
-        $validTo = !empty($data['valid_to']) ? sanitize_string($data['valid_to'], 15) : null;
+        $validFrom = !empty($data['valid_from']) ? trim(sanitize_string((string)$data['valid_from'], 15)) : null;
+        $validTo = !empty($data['valid_to']) ? trim(sanitize_string((string)$data['valid_to'], 15)) : null;
+
+        if ($validFrom !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $validFrom)) {
+            json_error('Ngày bắt đầu (valid_from) không hợp lệ (YYYY-MM-DD).', 400, 'ERR_INVALID_DATE_RANGE');
+        }
+        if ($validTo !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $validTo)) {
+            json_error('Ngày kết thúc (valid_to) không hợp lệ (YYYY-MM-DD).', 400, 'ERR_INVALID_DATE_RANGE');
+        }
+        if ($validFrom !== null && $validTo !== null && $validTo < $validFrom) {
+            json_error('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.', 400, 'ERR_INVALID_DATE_RANGE');
+        }
+
         $rawPitchLimit = (int)($data['pitch_type_limit'] ?? 0);
         $pitchTypeLimit = in_array($rawPitchLimit, [5, 7, 11], true) ? $rawPitchLimit : null;
         $isActive = array_key_exists('is_active', $data) ? (!empty($data['is_active']) ? 1 : 0) : 1;
 
-        if (empty($code) || empty($desc)) {
-            json_error('Vui lòng điền mã và mô tả mã giảm giá.', 400, 'ERR_VOUCHER_PARAMS');
-        }
-
         $maxPerUser = max(0, (int)($data['max_per_user'] ?? $data['maxPerUser'] ?? 0));
-        $rawReqTier = strtolower(trim(sanitize_string($data['required_tier'] ?? $data['requiredTier'] ?? '', 20)));
+        $rawReqTier = strtolower(trim(sanitize_string((string)($data['required_tier'] ?? $data['requiredTier'] ?? ''), 20)));
         $requiredTier = in_array($rawReqTier, ['standard', 'bronze', 'silver', 'gold', 'diamond'], true) ? $rawReqTier : null;
 
+        $originalCode = preg_replace('/\s+/', '', strtoupper(sanitize_string((string)($data['original_code'] ?? $data['originalCode'] ?? ''), 30)));
+        $isEdit = !empty($data['is_edit']) || !empty($data['isEdit']) || (($data['mode'] ?? '') === 'edit') || $originalCode !== '';
+        $lookupCode = ($isEdit && $originalCode !== '') ? $originalCode : $code;
+
         $oldVStmt = $pdo->prepare("SELECT * FROM vouchers WHERE code = ? LIMIT 1");
-        $oldVStmt->execute([$code]);
+        $oldVStmt->execute([$lookupCode]);
         $oldVoucher = $oldVStmt->fetch(PDO::FETCH_ASSOC);
+
+        // On new insert: reject duplicate code with 409
+        if (!$isEdit && $oldVoucher) {
+            json_error("Mã voucher {$code} đã tồn tại. Vui lòng chọn mã khác hoặc mở chế độ chỉnh sửa.", 409, 'ERR_VOUCHER_DUPLICATE');
+        }
+
+        // On edit with code rename: check target code not colliding
+        if ($isEdit && $originalCode !== '' && $originalCode !== $code) {
+            $dupStmt = $pdo->prepare("SELECT code FROM vouchers WHERE code = ? LIMIT 1");
+            $dupStmt->execute([$code]);
+            if ($dupStmt->fetch()) {
+                json_error("Mã voucher {$code} đã tồn tại.", 409, 'ERR_VOUCHER_DUPLICATE');
+            }
+        }
 
         if ($oldVoucher) {
             $oldDataComp = [
-                'description'      => $oldVoucher['description'] ?? '',
-                'discount_type'    => $oldVoucher['discount_type'] ?? 'percent',
-                'discount_value'   => (int)($oldVoucher['discount_value'] ?? 0),
-                'min_order'        => (int)($oldVoucher['min_order'] ?? 0),
-                'max_usage'        => (int)($oldVoucher['max_usage'] ?? 0),
-                'valid_from'       => $oldVoucher['valid_from'] ? substr((string)$oldVoucher['valid_from'], 0, 10) : null,
-                'valid_to'         => $oldVoucher['valid_to'] ? substr((string)$oldVoucher['valid_to'], 0, 10) : null,
-                'pitch_type_limit' => $oldVoucher['pitch_type_limit'] !== null ? (int)$oldVoucher['pitch_type_limit'] : null,
-                'is_active'        => (int)($oldVoucher['is_active'] ?? 1),
-                'required_tier'    => $oldVoucher['required_tier'] ?? null,
-                'max_per_user'     => (int)($oldVoucher['max_per_user'] ?? 0)
+                'code'                => (string)$oldVoucher['code'],
+                'description'         => (string)($oldVoucher['description'] ?? ''),
+                'discount_type'       => (string)($oldVoucher['discount_type'] ?? 'percent'),
+                'discount_value'      => (int)($oldVoucher['discount_value'] ?? 0),
+                'max_discount_amount' => (int)($oldVoucher['max_discount_amount'] ?? 0),
+                'min_order'           => (int)($oldVoucher['min_order'] ?? 0),
+                'max_usage'           => (int)($oldVoucher['max_usage'] ?? 0),
+                'valid_from'          => $oldVoucher['valid_from'] ? substr((string)$oldVoucher['valid_from'], 0, 10) : null,
+                'valid_to'            => $oldVoucher['valid_to'] ? substr((string)$oldVoucher['valid_to'], 0, 10) : null,
+                'pitch_type_limit'    => $oldVoucher['pitch_type_limit'] !== null ? (int)$oldVoucher['pitch_type_limit'] : null,
+                'is_active'           => (int)($oldVoucher['is_active'] ?? 1),
+                'required_tier'       => $oldVoucher['required_tier'] ?? null,
+                'max_per_user'        => (int)($oldVoucher['max_per_user'] ?? 0),
             ];
             $newDataComp = [
-                'description'      => $desc,
-                'discount_type'    => $type,
-                'discount_value'   => $val,
-                'min_order'        => $minOrder,
-                'max_usage'        => $maxUsage,
-                'valid_from'       => $validFrom ? substr((string)$validFrom, 0, 10) : null,
-                'valid_to'         => $validTo ? substr((string)$validTo, 0, 10) : null,
-                'pitch_type_limit' => $pitchTypeLimit,
-                'is_active'        => $isActive,
-                'required_tier'    => $requiredTier,
-                'max_per_user'     => $maxPerUser
+                'code'                => $code,
+                'description'         => $desc,
+                'discount_type'       => $type,
+                'discount_value'      => $val,
+                'max_discount_amount' => $maxDiscountAmount,
+                'min_order'           => $minOrder,
+                'max_usage'           => $maxUsage,
+                'valid_from'          => $validFrom ? substr((string)$validFrom, 0, 10) : null,
+                'valid_to'            => $validTo ? substr((string)$validTo, 0, 10) : null,
+                'pitch_type_limit'    => $pitchTypeLimit,
+                'is_active'           => $isActive,
+                'required_tier'       => $requiredTier,
+                'max_per_user'        => $maxPerUser,
             ];
-            $changeCheck = logAdminChange($pdo, 'VOUCHER_SAVE', $oldDataComp, $newDataComp, "Voucher: {$code}", 'voucher', $admin);
+            $changeCheck = logAdminChange($pdo, 'VOUCHER_SAVE', $oldDataComp, $newDataComp, "Voucher: {$code}", 'voucher', $mgr);
             if (!$changeCheck['has_change']) {
                 json_response(['success' => true, 'has_changed' => false, 'message' => "Không có thay đổi để lưu cho mã voucher {$code}."]);
                 return true;
             }
-        }
 
-        $stmt = $pdo->prepare("
-            INSERT INTO vouchers (code, description, discount_type, discount_value, min_order, max_usage, valid_from, valid_to, pitch_type_limit, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                description = VALUES(description),
-                discount_type = VALUES(discount_type),
-                discount_value = VALUES(discount_value),
-                min_order = VALUES(min_order),
-                max_usage = VALUES(max_usage),
-                valid_from = VALUES(valid_from),
-                valid_to = VALUES(valid_to),
-                pitch_type_limit = VALUES(pitch_type_limit),
-                is_active = VALUES(is_active)
-        ");
-        $stmt->execute([$code, $desc, $type, $val, $minOrder, $maxUsage, $validFrom, $validTo, $pitchTypeLimit, $isActive]);
+            $updStmt = $pdo->prepare("
+                UPDATE vouchers
+                SET code = ?, description = ?, discount_type = ?, discount_value = ?,
+                    min_order = ?, max_usage = ?, valid_from = ?, valid_to = ?,
+                    pitch_type_limit = ?, is_active = ?
+                WHERE code = ?
+            ");
+            $updStmt->execute([$code, $desc, $type, $val, $minOrder, $maxUsage, $validFrom, $validTo, $pitchTypeLimit, $isActive, $lookupCode]);
+        } else {
+            $insStmt = $pdo->prepare("
+                INSERT INTO vouchers (code, description, discount_type, discount_value, min_order, max_usage, valid_from, valid_to, pitch_type_limit, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $insStmt->execute([$code, $desc, $type, $val, $minOrder, $maxUsage, $validFrom, $validTo, $pitchTypeLimit, $isActive]);
+        }
 
         $hasReqTier = db_table_has_column($pdo, 'vouchers', 'required_tier');
         $hasMaxUser = db_table_has_column($pdo, 'vouchers', 'max_per_user');
-        if ($hasReqTier || $hasMaxUser) {
+        $hasMaxDisc = db_table_has_column($pdo, 'vouchers', 'max_discount_amount');
+        if ($hasReqTier || $hasMaxUser || $hasMaxDisc) {
             $extraUpdates = [];
             $extraParams = [];
             if ($hasReqTier) {
@@ -110,6 +178,10 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
             if ($hasMaxUser) {
                 $extraUpdates[] = "max_per_user = ?";
                 $extraParams[] = $maxPerUser;
+            }
+            if ($hasMaxDisc) {
+                $extraUpdates[] = "max_discount_amount = ?";
+                $extraParams[] = $maxDiscountAmount;
             }
             $extraParams[] = $code;
             try {
@@ -121,22 +193,66 @@ function handle_admin_maintenance_vouchers(string $action, string $method, PDO $
         }
 
         if (!$oldVoucher) {
-            write_audit_log($pdo, 'VOUCHER_SAVE', "Voucher: {$code}", null, "Tạo mới voucher {$code}: Giảm {$val} ({$type}), Max {$maxUsage} lượt", $admin);
+            write_audit_log($pdo, 'VOUCHER_SAVE', "Voucher: {$code}", null, "Tạo mới voucher {$code}: Giảm {$val} ({$type}), Max {$maxUsage} lượt", $mgr, 'voucher');
         }
         json_response(['success' => true, 'has_changed' => true, 'message' => "Lưu voucher {$code} thành công!"]);
         return true;
     }
 
-    // 5.4 Vouchers: Xóa mã
+    // 5.4 Vouchers: Bật / Tắt mã giảm giá (Admin hoặc Manager)
+    if ($action === 'toggle_voucher') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
+        }
+        $mgr = require_manager_or_admin($pdo);
+        $code = preg_replace('/\s+/', '', strtoupper(sanitize_string((string)($data['code'] ?? $data['id'] ?? ''), 30)));
+        if ($code === '') {
+            json_error('Thiếu mã voucher cần thay đổi trạng thái.', 400, 'ERR_VOUCHER_CODE_INVALID');
+        }
+
+        $vStmt = $pdo->prepare("SELECT code, is_active FROM vouchers WHERE code = ? LIMIT 1");
+        $vStmt->execute([$code]);
+        $vRow = $vStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$vRow) {
+            json_error("Không tìm thấy mã voucher {$code}.", 404, 'ERR_VOUCHER_NOT_FOUND');
+        }
+
+        $oldActive = (int)$vRow['is_active'];
+        $newActive = array_key_exists('is_active', $data)
+            ? (!empty($data['is_active']) ? 1 : 0)
+            : ($oldActive === 1 ? 0 : 1);
+
+        $updStmt = $pdo->prepare("UPDATE vouchers SET is_active = ? WHERE code = ?");
+        $updStmt->execute([$newActive, $code]);
+
+        write_audit_log($pdo, 'VOUCHER_TOGGLE', "Voucher: {$code}", ['is_active' => $oldActive], ['is_active' => $newActive], $mgr, 'voucher');
+        json_response([
+            'success' => true,
+            'message' => $newActive === 1
+                ? "Đã kích hoạt mã voucher {$code}!"
+                : "Đã tạm ngừng mã voucher {$code}!",
+            'data'    => [
+                'id'        => $code,
+                'code'      => $code,
+                'is_active' => $newActive,
+            ],
+        ]);
+        return true;
+    }
+
+    // 5.4 Vouchers: Xóa mã (Admin hoặc Manager)
     if ($action === 'delete_voucher') {
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $admin = require_admin($pdo);
-        $code = strtoupper(sanitize_string($data['code'] ?? '', 30));
+        $mgr = require_manager_or_admin($pdo);
+        $code = preg_replace('/\s+/', '', strtoupper(sanitize_string((string)($data['code'] ?? $data['id'] ?? ''), 30)));
+        if ($code === '') {
+            json_error('Thiếu mã voucher cần xóa.', 400, 'ERR_VOUCHER_CODE_INVALID');
+        }
         $stmt = $pdo->prepare("DELETE FROM vouchers WHERE code = ?");
         $stmt->execute([$code]);
-        write_audit_log($pdo, 'VOUCHER_DELETE', "Voucher: {$code}", null, "Xóa voucher {$code}", $admin);
+        write_audit_log($pdo, 'VOUCHER_DELETE', "Voucher: {$code}", null, "Xóa voucher {$code}", $mgr, 'voucher');
         json_response(['success' => true, 'message' => "Đã xóa voucher {$code}!"]);
         return true;
     }

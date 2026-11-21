@@ -33,7 +33,8 @@ $postOnlyActions = [
     'upsert_pitch', 'manage_pitch', 'counter_sale', 'run_auto_release',
     'update_customer_crm', 'update_customer', 'adjust_points', 'create_recurring_schedule', 'cancel_recurring_schedule',
     'skip_recurring_booking', 'assign_waitlist', 'notify_waitlist', 'cancel_waitlist',
-    'save_voucher', 'delete_voucher', 'save_golden_hour', 'delete_golden_hour',
+    'save_voucher', 'delete_voucher', 'toggle_voucher', 'save_golden_hour', 'delete_golden_hour',
+    'save_monthly_package', 'delete_monthly_package', 'toggle_monthly_package',
     'save_maintenance', 'update_maintenance', 'add_expense', 'update_expense', 'delete_expense',
     'test_telegram', 'run_match_reminders', 'run_recurring_cron',
     'moderate_matchmaking', 'backup_database_now', 'update_member', 'adjust_customer_points'
@@ -304,14 +305,13 @@ if (!$pdo) {
             ]);
         }
     }
-    if ($action === 'save_pricing' || $action === 'settings') {
+    if ($action === 'save_pricing') {
+        require_manager_or_admin($pdo);
+        json_response(['success' => true, 'message' => 'Đã lưu cấu hình bảng giá (chế độ dự phòng).']);
+    }
+    if ($action === 'settings') {
         $admin = require_admin($pdo);
-        if ($action === 'save_pricing') {
-            json_response(['success' => true, 'message' => 'Đã lưu cấu hình bảng giá (chế độ dự phòng).']);
-        }
-        if ($action === 'settings') {
-            json_response(['success' => true, 'data' => admin_build_settings_response(null), 'message' => 'Đã xử lý cài đặt (chế độ dự phòng).']);
-        }
+        json_response(['success' => true, 'data' => admin_build_settings_response(null), 'message' => 'Đã xử lý cài đặt (chế độ dự phòng).']);
     }
     if ($action === 'reports' || $action === 'export_reports_csv') {
         $mgr = require_manager_or_admin($pdo);
@@ -645,6 +645,11 @@ try {
             'message' => 'Sao lưu cơ sở dữ liệu thành công.',
             'data'    => $result
         ]);
+        exit;
+    }
+
+    require_once __DIR__ . '/services/admin_pricing_packages.php';
+    if (handle_admin_pricing_packages($action, $method, $pdo, $data, $actor)) {
         exit;
     }
 

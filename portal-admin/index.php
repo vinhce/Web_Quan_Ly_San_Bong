@@ -536,8 +536,8 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261121_v124"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261121_v110"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261121_v126"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261121_v125"></script>
   <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v78"></script>
@@ -545,12 +545,12 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261121_v124"></script>
   <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261118_v95"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261116_v92"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261121_v126"></script>
   <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261121_v126"></script>
   <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261118_v95"></script>

@@ -505,9 +505,12 @@ function switchAdminTab(moduleKey) {
     if (typeof loadAdminReviews === 'function') loadAdminReviews();
   }
   if (moduleKey === 'pricing' && isOwnerAdmin()) {
-    renderAdminVouchers();
-    loadPricingTable();
-    // Quy tắc giá giờ vàng đã gỡ bỏ
+    if (typeof initPricingTab === 'function') {
+      initPricingTab();
+    } else {
+      renderAdminVouchers();
+      loadPricingTable();
+    }
   }
   if (moduleKey === 'customers') {
     renderAdminCustomers();
@@ -578,7 +581,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAdminProfile(localUser);
   }
   applyRolePermissions();
-  const initialUrlTab = new URLSearchParams(window.location.search).get('tab') || window.location.hash.replace('#', '');
+  const rawHash = window.location.hash.replace(/^#/, '');
+  const hashTab = rawHash.split('/')[0];
+  const initialUrlTab = new URLSearchParams(window.location.search).get('tab') || hashTab;
   if (initialUrlTab) {
     switchAdminTab(initialUrlTab);
   }
@@ -605,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
           [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
+          [renderAdminVouchers, loadPricingTable, loadMonthlyPackages, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         return;
       }
@@ -618,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
           [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
+          [renderAdminVouchers, loadPricingTable, loadMonthlyPackages, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         return;
       }
@@ -663,10 +668,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+      if (tag !== 'input' && tag !== 'textarea' && tag !== 'select' && !(e.target && e.target.isContentEditable)) {
+        const searchWrap = document.getElementById('admin-search-wrap');
+        const searchInput = document.getElementById('admin-global-search');
+        if (searchInput) {
+          e.preventDefault();
+          if (searchWrap && searchWrap.classList.contains('hidden')) {
+            searchWrap.classList.remove('hidden');
+          }
+          searchInput.focus();
+          if (typeof searchInput.select === 'function') searchInput.select();
+        }
+      }
+      return;
+    }
     if (e.key === 'Escape') {
       [closeInPlayModal, closeInvoiceModal, closeQRScannerModal, closeResetStaffPwModal,
        closeReconcileAssignModal, closeCustomerCrmModal, closeMaintenanceModal,
-       closeReviewReplyModal, closePitchModal, closeServiceModal].forEach(fn => {
+       closeReviewReplyModal, closePitchModal, closeServiceModal,
+       typeof closePackageModal === 'function' ? closePackageModal : null].forEach(fn => {
         if (typeof fn === 'function') fn();
       });
     }
