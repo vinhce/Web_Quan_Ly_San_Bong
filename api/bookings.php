@@ -70,6 +70,100 @@ if ($method === 'POST') {
         handle_booking_operation($action, $pdo, $data);
         exit;
     }
+    if ($action === 'batch_ops') {
+        $actor = require_staff_or_admin($pdo);
+        $codes = $data['codes'] ?? [];
+        $op = sanitize_string($data['op'] ?? '', 30);
+        if (!is_array($codes) || empty($codes)) {
+            json_error('Vui lòng chọn ít nhất 1 ca đặt sân.', 400, 'ERR_EMPTY_CODES');
+        }
+        if (!in_array($op, ['complete', 'noshow_release', 'collect_full'], true)) {
+            json_error('Thao tác hàng loạt không hợp lệ.', 400, 'ERR_INVALID_BATCH_OP');
+        }
+        $cleanCodes = array_values(array_unique(array_filter(array_map(
+            static fn($c) => sanitize_string((string)$c, 40),
+            array_slice($codes, 0, 100)
+        ))));
+        if (empty($cleanCodes)) {
+            json_error('Danh sách mã đơn không hợp lệ.', 400, 'ERR_EMPTY_CODES');
+        }
+
+        $processed = [];
+        $skipped = [];
+        $pdo->beginTransaction();
+        try {
+            $selStmt = $pdo->prepare("SELECT id, code, status, payment_status, total_price, deposit_amount, paid_amount FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+            foreach ($cleanCodes as $c) {
+                $selStmt->execute([$c]);
+                $b = $selStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$b) {
+                    $skipped[] = $c;
+                    continue;
+                }
+                $st = (string)($b['status'] ?? '');
+                $tot = max(0, (int)($b['total_price'] ?? 0));
+                $dep = max(0, (int)($b['deposit_amount'] ?? 0));
+
+                if ($op === 'complete') {
+                    if (in_array($st, ['Đã hủy', 'Khách chưa đến'], true)) {
+                        $skipped[] = $c;
+                        continue;
+                    }
+                    $pdo->prepare("UPDATE bookings SET status = 'Hoàn thành', payment_status = 'Đã thanh toán đủ', paid_amount = ?, remaining_amount = 0 WHERE id = ?")
+                        ->execute([$tot, (int)$b['id']]);
+                    $processed[] = $c;
+                } elseif ($op === 'collect_full') {
+                    if (in_array($st, ['Đã hủy', 'Khách chưa đến'], true)) {
+                        $skipped[] = $c;
+                        continue;
+                    }
+                    $pdo->prepare("UPDATE bookings SET payment_status = 'Đã thanh toán đủ', paid_amount = ?, remaining_amount = 0 WHERE id = ?")
+                        ->execute([$tot, (int)$b['id']]);
+                    $processed[] = $c;
+                } elseif ($op === 'noshow_release') {
+                    if (in_array($st, ['Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến'], true)) {
+                        $skipped[] = $c;
+                        continue;
+                    }
+                    $newPaySt = $dep > 0 ? 'Tịch thu cọc 30%' : 'Đã hủy';
+                    $pdo->prepare("UPDATE bookings SET status = 'Khách chưa đến', payment_status = ?, remaining_amount = 0 WHERE id = ?")
+                        ->execute([$newPaySt, (int)$b['id']]);
+                    $processed[] = $c;
+                }
+            }
+            $pdo->commit();
+
+            if (!empty($processed) && function_exists('write_audit_log')) {
+                $opLabels = [
+                    'complete'       => 'Hoàn tất & thu đủ hàng loạt',
+                    'collect_full'   => 'Thu đủ hàng loạt',
+                    'noshow_release' => 'Hủy no-show & nhả sân hàng loạt'
+                ];
+                write_audit_log(
+                    $pdo,
+                    'BOOKING_BATCH_OP',
+                    null,
+                    implode(', ', $processed),
+                    ($opLabels[$op] ?? $op) . ' (' . count($processed) . ' ca): ' . implode(', ', $processed),
+                    $actor
+                );
+            }
+
+            json_response([
+                'success'   => true,
+                'message'   => 'Đã xử lý thành công ' . count($processed) . ' ca' . (!empty($skipped) ? (' (bỏ qua ' . count($skipped) . ' ca không hợp lệ)') : '') . '.',
+                'processed' => $processed,
+                'skipped'   => $skipped
+            ]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('[BOOKING BATCH OP ERROR] ' . $e->getMessage());
+            json_error('Lỗi xử lý hàng loạt. Vui lòng thử lại.', 500, 'ERR_BATCH_FAILED');
+        }
+        exit;
+    }
     if ($action === 'adjust_discount') {
         require_once __DIR__ . '/services/admin_bookings_manage.php';
         $actor = require_staff_or_admin($pdo);
