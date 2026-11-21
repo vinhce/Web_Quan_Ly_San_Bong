@@ -26,6 +26,7 @@ function renderInlineInPlaySelector() {
       let badgeCls = 'bg-amber-100 text-amber-800 border border-amber-300';
       if (st === 'Đang đá') badgeCls = 'bg-blue-100 text-blue-700 border border-blue-300';
       else if (st === 'Đã xác nhận') badgeCls = 'bg-emerald-100 text-emerald-700 border border-emerald-300';
+      else if (st === 'Đã đá - chưa tất toán') badgeCls = 'bg-amber-100 text-amber-800 border border-amber-300';
       else if (st === 'Hoàn thành') badgeCls = 'bg-emerald-600 text-white border border-emerald-700';
       else if (st === 'Khách chưa đến' || st === 'Đã hủy') badgeCls = 'bg-red-100 text-red-700 border border-red-300';
       const safeCodeHtml = escapeSearchHTML(b.code || '');
@@ -95,7 +96,7 @@ function populateInPlayWorkspace(code) {
     const pitches = db.getPitches().filter(p => p.status !== 'Bảo trì' && p.status !== 'Ẩn');
     pitchSel.innerHTML = pitches.map(p => `
       <option value="${escapeSearchHTML(p.id)}" ${p.id === booking.pitchId ? 'selected' : ''}>
-        ${escapeSearchHTML(p.name)} (${window.SanBongApp.formatVND(p.basePrice)} - ${window.SanBongApp.formatVND(p.peakPrice)}/h) ${p.id === booking.pitchId ? '[Sân hiện tại]' : ''}
+        ${escapeSearchHTML(p.name)} (${window.SanBongApp.formatVND(p.basePrice)} - ${window.SanBongApp.formatVND(p.peakPrice)}/ca 2h) ${p.id === booking.pitchId ? '[Sân hiện tại]' : ''}
       </option>
     `).join('');
   }
@@ -295,8 +296,8 @@ function refreshInPlaySummaryUI(booking) {
   const normStatus = (booking.status === 'Vắng mặt (No-Show)' || String(booking.status || '').includes('No-Show')) ? 'Khách chưa đến' : (booking.status || 'Đang đá');
   const total = Number(booking.totalPrice || 0);
   const deposit = Number(booking.depositAmount || Math.round(total * 0.3));
-  const remaining = (normStatus === 'Hoàn thành' || normStatus === 'Đã hủy' || normStatus === 'Khách chưa đến') ? 0 : (typeof booking.remainingAmount === 'number' ? booking.remainingAmount : Math.max(0, total - deposit));
-  const paidRem = normStatus === 'Hoàn thành' ? Number(booking.paidRemainingAmount || Math.max(0, total - deposit)) : 0;
+  const remaining = ((normStatus === 'Hoàn thành' && Number(booking.remainingAmount ?? 0) <= 0) || normStatus === 'Đã hủy' || normStatus === 'Khách chưa đến') ? 0 : (typeof booking.remainingAmount === 'number' ? booking.remainingAmount : Math.max(0, total - deposit));
+  const paidRem = (normStatus === 'Hoàn thành' && remaining <= 0) ? Number(booking.paidRemainingAmount || Math.max(0, total - deposit)) : 0;
 
   const elTotal = document.getElementById('inplay-bill-total');
   const elDep = document.getElementById('inplay-bill-deposit');
@@ -326,7 +327,7 @@ function refreshInPlaySummaryUI(booking) {
       : 'font-heading font-extrabold text-2xl text-[#16A34A]';
   }
   if (elPayBtn) {
-    if (normStatus === 'Hoàn thành') {
+    if (normStatus === 'Hoàn thành' && remaining <= 0) {
       elPayBtn.innerHTML = '✓ Đã Thu Đủ 100% Tiền Sân (Hoàn Thành Ca)';
       elPayBtn.className = 'w-full rounded-xl bg-emerald-700 text-white font-extrabold text-xs py-2.5 shadow-sm cursor-default';
       if (elPayMethodWrap) elPayMethodWrap.classList.add('hidden');
@@ -399,6 +400,8 @@ async function submitInPlayOvertime() {
     if (idx >= 0 && r.data.totalPrice !== undefined) {
       allB[idx].totalPrice = Number(r.data.totalPrice);
       if (r.data.remainingAmount !== undefined) allB[idx].remainingAmount = Number(r.data.remainingAmount);
+      if (r.data.status) allB[idx].status = r.data.status;
+      if (r.data.paymentStatus) allB[idx].paymentStatus = r.data.paymentStatus;
       try { localStorage.setItem('sb_bookings_v1', JSON.stringify(allB)); } catch (e) {}
     }
   }
@@ -447,6 +450,8 @@ async function submitInPlayTransfer() {
       if (r.data.pitchName) allB[idx].pitchName = r.data.pitchName;
       if (r.data.totalPrice !== undefined) allB[idx].totalPrice = Number(r.data.totalPrice);
       if (r.data.remainingAmount !== undefined) allB[idx].remainingAmount = Number(r.data.remainingAmount);
+      if (r.data.status) allB[idx].status = r.data.status;
+      if (r.data.paymentStatus) allB[idx].paymentStatus = r.data.paymentStatus;
       try { localStorage.setItem('sb_bookings_v1', JSON.stringify(allB)); } catch (e) {}
     }
   }
@@ -490,6 +495,8 @@ async function submitInPlayService() {
       if (Array.isArray(r.data.services)) allB[idx].services = r.data.services;
       if (r.data.totalPrice !== undefined) allB[idx].totalPrice = Number(r.data.totalPrice);
       if (r.data.remainingAmount !== undefined) allB[idx].remainingAmount = Number(r.data.remainingAmount);
+      if (r.data.status) allB[idx].status = r.data.status;
+      if (r.data.paymentStatus) allB[idx].paymentStatus = r.data.paymentStatus;
       try { localStorage.setItem('sb_bookings_v1', JSON.stringify(allB)); } catch (e) {}
     }
   }

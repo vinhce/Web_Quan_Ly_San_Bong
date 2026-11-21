@@ -542,10 +542,13 @@ function renderReportLedger() {
   }
 
   tbody.innerHTML = pageItems.map(b => {
-    const isCompleted = (b.status === 'Hoàn thành' || String(b.status || '').toLowerCase() === 'completed');
+    const stRaw = String(b.status || '').trim();
+    const isCompleted = (stRaw === 'Hoàn thành' || stRaw.toLowerCase() === 'completed');
     const statusBadge = isCompleted
       ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700">Hoàn thành</span>'
-      : `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-[#334155]">${escapeSearchHTML(b.status || '')}</span>`;
+      : (stRaw === 'Đã đá - chưa tất toán'
+        ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">Đã đá - chưa tất toán</span>'
+        : `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-[#334155]">${escapeSearchHTML(stRaw)}</span>`);
     const paidVal = Number(b.paid_amount ?? (Number(b.total_price || 0) - Number(b.remaining_amount || 0)));
     const uncolVal = Number(b.remaining_amount || 0);
 
@@ -770,6 +773,17 @@ async function exportAdminReportsCSV(format) {
     if (fromDate) qs.set('from', fromDate);
     if (toDate) qs.set('to', toDate);
     const res = await fetch(`../api/admin.php?${qs.toString()}`, { cache: 'no-store', credentials: 'same-origin' });
+    if (res.status === 401 && !window._adminRedirecting401) {
+      window._adminRedirecting401 = true;
+      try {
+        sessionStorage.removeItem('sb_current_user');
+        sessionStorage.removeItem('sb_csrf_token');
+        localStorage.removeItem('sb_current_user');
+      } catch (e) {}
+      const loginUrl = (window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin&expired=1';
+      window.location.replace(loginUrl);
+      return;
+    }
     if (res.ok) {
       const ct = String(res.headers.get('content-type') || '').toLowerCase();
       if (ct.includes('text/csv') || ct.includes('application/vnd.ms-excel') || ct.includes('application/octet-stream')) {
