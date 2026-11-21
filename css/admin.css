@@ -7,14 +7,24 @@
 }
 
 /* Core Layout Safety for Admin Portal */
+html.admin-html {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body.admin-body {
   display: flex !important;
   flex-direction: row !important;
   height: 100vh !important;
+  height: 100dvh !important;
   overflow: hidden !important;
-  width: 100vw !important;
+  width: 100% !important;
+  max-width: 100vw !important;
   margin: 0 !important;
   padding: 0 !important;
+  overscroll-behavior: none;
 }
 
 .admin-workspace-col {
@@ -23,14 +33,18 @@ body.admin-body {
   display: flex !important;
   flex-direction: column !important;
   height: 100vh !important;
+  height: 100dvh !important;
   overflow: hidden !important;
   width: 100% !important;
 }
 
 .admin-header-bar {
-  height: 4rem !important;
-  min-height: 4rem !important;
-  max-height: 4rem !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  height: 3.5rem !important;
+  min-height: 3.5rem !important;
+  max-height: 3.5rem !important;
   width: 100% !important;
   flex-shrink: 0 !important;
   display: flex !important;
@@ -42,10 +56,20 @@ body.admin-body {
   border-bottom: 1px solid #E2E8F0 !important;
 }
 
+@media (min-width: 640px) {
+  .admin-header-bar {
+    height: 4rem !important;
+    min-height: 4rem !important;
+    max-height: 4rem !important;
+  }
+}
+
 .admin-main-scroll {
   flex: 1 1 0% !important;
+  min-height: 0 !important;
   width: 100% !important;
   overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box !important;
   background-color: #F8FAFC !important;
 }

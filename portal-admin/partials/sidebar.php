@@ -1,4 +1,4 @@
-  <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-[#E2E8F0] flex flex-col justify-between shrink-0 select-none transform -translate-x-full md:translate-x-0 md:static transition-transform duration-200 overflow-y-auto">
+  <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-40 w-64 max-w-[82vw] bg-white border-r border-[#E2E8F0] shadow-2xl md:shadow-none flex flex-col justify-between shrink-0 select-none transform -translate-x-full md:translate-x-0 md:static transition-transform duration-200 overflow-y-auto">
     <div class="p-4">
       
       <div class="flex items-center justify-between gap-2 px-2 py-2 mb-6">

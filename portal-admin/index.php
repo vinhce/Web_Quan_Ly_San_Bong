@@ -38,7 +38,7 @@ $safeUserPayload = [
 $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 ?>
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="admin-html">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -86,7 +86,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       }
     };
   </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v78">
+  <link rel="stylesheet" href="../css/style.css?v=20261121_v121">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -96,14 +96,23 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
     .animate-laser {
       animation: qrLaserAnim 1.8s infinite ease-in-out;
     }
+    html.admin-html {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
     body.admin-body {
       display: flex !important;
       flex-direction: row !important;
       height: 100vh !important;
+      height: 100dvh !important;
       overflow: hidden !important;
-      width: 100vw !important;
+      width: 100% !important;
+      max-width: 100vw !important;
       margin: 0 !important;
       padding: 0 !important;
+      overscroll-behavior: none;
     }
     .admin-workspace-col {
       flex: 1 1 0% !important;
@@ -111,18 +120,17 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       display: flex !important;
       flex-direction: column !important;
       height: 100vh !important;
+      height: 100dvh !important;
       overflow: hidden !important;
-      width: calc(100vw - 16rem) !important;
-    }
-    @media (max-width: 767px) {
-      .admin-workspace-col {
-        width: 100vw !important;
-      }
+      width: 100% !important;
     }
     .admin-header-bar {
-      height: 4rem !important;
-      min-height: 4rem !important;
-      max-height: 4rem !important;
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 20 !important;
+      height: 3.5rem !important;
+      min-height: 3.5rem !important;
+      max-height: 3.5rem !important;
       width: 100% !important;
       flex-shrink: 0 !important;
       display: flex !important;
@@ -131,15 +139,24 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       justify-content: space-between !important;
       box-sizing: border-box !important;
     }
+    @media (min-width: 640px) {
+      .admin-header-bar {
+        height: 4rem !important;
+        min-height: 4rem !important;
+        max-height: 4rem !important;
+      }
+    }
     .admin-main-scroll {
       flex: 1 1 0% !important;
+      min-height: 0 !important;
       width: 100% !important;
       overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
       box-sizing: border-box !important;
     }
   </style>
 </head>
-<body class="admin-body h-screen flex overflow-hidden antialiased">
+<body class="admin-body h-[100dvh] flex overflow-hidden antialiased">
 
   <!-- LEFT ADMIN SIDEBAR (Frame 11-19 Unified Shell) -->
   <!-- 1. LEFT ADMIN SIDEBAR -->
@@ -147,7 +164,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <?php include __DIR__ . '/partials/sidebar.php'; ?>
 
   <!-- RIGHT CONTENT WORKSPACE -->
-  <div class="admin-workspace-col flex-1 min-w-0 flex flex-col h-screen overflow-hidden" style="display:flex;flex-direction:column;flex:1 1 0%;min-width:0;height:100vh;overflow:hidden;">
+  <div class="admin-workspace-col flex-1 min-w-0 flex flex-col h-[100dvh] overflow-hidden">
 
     <!-- Top Admin Header Bar -->
     <!-- 2. TOPBAR HEADER -->
@@ -266,16 +283,12 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <select id="inline-inplay-select" onchange="openInPlayModal(this.value)" class="h-9 px-3 rounded-lg bg-slate-800 border border-slate-600 text-white text-xs font-bold w-full sm:w-auto sm:min-w-[240px]"></select>
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
           <button type="button" onclick="handleInlineCheckinCurrent()" id="inline-checkin-btn" class="h-9 px-3 rounded-lg bg-[#16A34A] hover:bg-emerald-500 text-white text-xs font-bold hidden items-center gap-1 cursor-pointer">✓ Check-in Nhận Sân</button>
           <button type="button" onclick="restoreCurrentCancelledBooking()" id="inline-restore-btn" class="hidden h-9 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold cursor-pointer">🔄 Khôi phục ca</button>
           <button type="button" onclick="closeInPlayModal()" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-sm flex items-center justify-center cursor-pointer transition-colors" title="Đóng cửa sổ">✕</button>
         </div>
       </div>
-
-      <!-- Thanh danh sách thẻ chọn nhanh các đơn đặt sân -->
-      <div id="inline-inplay-quick-cards" class="px-5 py-2.5 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center gap-2 text-xs shrink-0 max-h-20 overflow-y-auto"></div>
 
       <!-- Phần thân 2 cột (Scrollable) -->
       <div class="p-4 sm:p-6 overflow-y-auto flex-1 bg-white">
@@ -517,19 +530,20 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/db.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261121_v112"></script>
+  <script src="<?php echo $basePath; ?>/js/vn_datepicker.js?v=20261121_v112"></script>
   <script src="<?php echo $basePath; ?>/js/app.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/api.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261118_v95"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261121_v124"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261121_v110"></script>
   <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261115_v78"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261118_v95"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261121_v124"></script>
   <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261116_v92"></script>
   <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261118_v95"></script>
@@ -541,7 +555,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261118_v95"></script>
   <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261118_v95"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261115_v78"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261121_v119"></script>
   <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261115_v78"></script>
   <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261118_v95"></script>
