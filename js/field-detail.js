@@ -47,12 +47,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const priceBaseEl = document.getElementById('detail-price-base');
   if (priceBaseEl && window.SanBongApp) {
-    priceBaseEl.textContent = `${window.SanBongApp.formatVND(pitch.basePrice)}/h`;
+    priceBaseEl.textContent = `${window.SanBongApp.formatVND(pitch.basePrice)}/ca 2h`;
   }
 
   const pricePeakEl = document.getElementById('detail-price-peak');
   if (pricePeakEl && window.SanBongApp) {
-    pricePeakEl.textContent = `${window.SanBongApp.formatVND(pitch.peakPrice)}/h`;
+    pricePeakEl.textContent = `${window.SanBongApp.formatVND(pitch.peakPrice)}/ca 2h`;
   }
 
   const specSize = document.getElementById('detail-spec-size');
@@ -283,13 +283,18 @@ async function loadFieldReviews(pitchId) {
     if (!json.success || !json.data) throw new Error('Lỗi tải đánh giá');
 
     const { reviews, stats } = json.data;
-    if (avgEl) avgEl.textContent = `★ ${stats.avg_rating || 5.0}`;
-    if (countEl) countEl.textContent = stats.total_reviews > 0 ? `(${stats.total_reviews} lượt đánh giá thực tế)` : '(Chưa có đánh giá nào - 5.0★ mặc định)';
+    const revTotal = Number(stats.total_reviews || 0);
+    if (avgEl) avgEl.textContent = revTotal > 0 ? `★ ${Number(stats.avg_rating || 0).toFixed(1)}` : '★ —';
+    if (countEl) countEl.textContent = revTotal > 0 ? `(${revTotal} lượt đánh giá thực tế)` : '(Chưa có đánh giá nào)';
     const heroRatingEl = document.getElementById('detail-hero-rating');
     if (heroRatingEl) {
-      heroRatingEl.innerHTML = Number(stats.total_reviews || 0) > 0
-        ? `<span class="text-[#F59E0B]">★</span> ${Number(stats.avg_rating || 5).toFixed(1)} (${Number(stats.total_reviews)} lượt đánh giá)`
-        : `<span class="text-[#F59E0B]">★</span> 5.0 (Mới)`;
+      if (revTotal > 0) {
+        heroRatingEl.className = 'flex items-center gap-1 text-xs font-bold text-[#0F172A] bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200';
+        heroRatingEl.innerHTML = `<span class="text-[#F59E0B]">★</span> ${Number(stats.avg_rating || 0).toFixed(1)} (${revTotal} lượt đánh giá)`;
+      } else {
+        heroRatingEl.className = 'flex items-center gap-1 text-xs font-bold text-[#64748B] bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200';
+        heroRatingEl.textContent = 'Chưa có đánh giá';
+      }
     }
 
     if (!reviews || reviews.length === 0) {
