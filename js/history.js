@@ -14,24 +14,12 @@ function focusHistoryBooking(code) {
   if (!cleanCode) return;
   pendingFocusBookingCode = cleanCode;
 
-  // Chuyển sang tab "Tất cả" và lọc đúng mã đơn để hiển thị ngay
-  currentFilter = 'all';
-  document.querySelectorAll('.history-tab-btn').forEach(btn => {
-    const isAll = btn.dataset.filter === 'all';
-    btn.classList.toggle('bg-[#16A34A]', isAll);
-    btn.classList.toggle('text-white', isAll);
-    btn.classList.toggle('bg-white', !isAll);
-    btn.classList.toggle('text-[#475569]', !isAll);
-  });
-
   const searchInput = document.getElementById('history-search-input');
   if (searchInput) {
     searchInput.value = cleanCode;
   }
 
-  if (typeof renderHistory === 'function') {
-    renderHistory();
-  }
+  filterHistory('all');
 
   setTimeout(() => {
     const card = document.getElementById(`booking-card-${cleanCode}`) || document.querySelector(`[data-booking-code="${cleanCode}"]`);
@@ -63,9 +51,9 @@ async function updateHistoryUserInfo() {
   if (!db) return;
 
   let user = db.getUser();
-  if (!user && (sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user'))) {
+  if (!user && sessionStorage.getItem('sb_current_user')) {
     try {
-      user = JSON.parse(sessionStorage.getItem('sb_current_user') || localStorage.getItem('sb_current_user'));
+      user = JSON.parse(sessionStorage.getItem('sb_current_user'));
     } catch (e) {}
   }
 
@@ -97,12 +85,16 @@ async function updateHistoryUserInfo() {
     if (btnLogin) btnLogin.classList.remove('hidden');
     const btnEditProfile = document.getElementById('btn-edit-profile');
     if (btnEditProfile) btnEditProfile.classList.add('hidden');
+    const btnChangePwd = document.getElementById('btn-change-password');
+    if (btnChangePwd) btnChangePwd.classList.add('hidden');
     renderHistory();
     return;
   }
 
   const btnEditProfile = document.getElementById('btn-edit-profile');
   if (btnEditProfile) btnEditProfile.classList.remove('hidden');
+  const btnChangePwd = document.getElementById('btn-change-password');
+  if (btnChangePwd) btnChangePwd.classList.remove('hidden');
 
   const isAdmin = user.role === 'admin';
   const isManager = (user.role === 'manager');
@@ -135,12 +127,24 @@ async function updateHistoryUserInfo() {
   const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
   try {
     const res = await fetch(getRel('api/bookings.php'), { credentials: 'same-origin', cache: 'no-store' });
+    if (res.status === 401) {
+      if (window.SanBongApp?.handleUnauthorizedSession) {
+        window.SanBongApp.handleUnauthorizedSession('history');
+      } else {
+        try { sessionStorage.removeItem('sb_current_user'); sessionStorage.removeItem('sb_csrf_token'); localStorage.removeItem('sb_current_user'); } catch (e) {}
+        window.location.replace(getRel('login?redirect=history&expired=1'));
+      }
+      return;
+    }
     if (res.ok) {
       const json = await res.json();
       if (json?.success && Array.isArray(json.data)) {
         localStorage.setItem('sb_bookings_v1', JSON.stringify(json.data));
         renderHistory();
         await syncReviewedMap(db);
+        if (pendingFocusBookingCode) {
+          focusHistoryBooking(pendingFocusBookingCode);
+        }
       }
     }
   } catch (e) {}
@@ -233,9 +237,9 @@ function filterHistory(filter) {
     const btn = document.getElementById(`tab-${t}`);
     if (btn) {
       if (t === filter) {
-        btn.className = 'px-3.5 py-2 rounded-lg bg-[#16A34A] text-white';
+        btn.className = 'flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg bg-[#16A34A] text-white whitespace-nowrap text-center';
       } else {
-        btn.className = 'px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A]';
+        btn.className = 'flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A] whitespace-nowrap text-center';
       }
     }
   });
@@ -288,9 +292,17 @@ function renderHistory() {
   if (totBadge) totBadge.textContent = (isGuest && !searchVal) ? '0' : userBookings.length;
 
   let list = userBookings.filter(b => {
+    const stLower = String(b.status || '').trim().toLowerCase();
     if (currentFilter === 'all') return true;
-    if (currentFilter === 'upcoming') return b.status === 'Đã xác nhận' || b.status === 'Chờ thanh toán' || b.status === 'Đang đá' || b.status === 'Chờ duyệt cọc';
-    if (currentFilter === 'completed') return b.status === 'Hoàn thành';
+    if (currentFilter === 'upcoming') {
+      return b.status === 'Đã xác nhận'
+        || b.status === 'Chờ thanh toán'
+        || b.status === 'Đang đá'
+        || b.status === 'Chờ duyệt cọc'
+        || b.status === 'Giữ chỗ'
+        || b.status === 'Đã đá - chưa tất toán';
+    }
+    if (currentFilter === 'completed') return b.status === 'Hoàn thành' || stLower === 'completed';
     if (currentFilter === 'cancelled') return b.status === 'Đã hủy';
     return true;
   });
@@ -320,8 +332,9 @@ function renderHistory() {
   const esc = (s) => (window.SanBongApp?.escapeHTML ? window.SanBongApp.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
 
   container.innerHTML = list.map(b => {
-    const isConfirmed = b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc';
-    const isCompleted = b.status === 'Hoàn thành';
+    const stLower = String(b.status || '').trim().toLowerCase();
+    const isConfirmed = b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc' || b.status === 'Giữ chỗ';
+    const isCompleted = b.status === 'Hoàn thành' || stLower === 'completed';
     const safeCode = esc(b.code);
     const safePitch = esc(b.pitchName || b.pitchId);
     const revInfo = reviewedMap[b.code];
@@ -334,14 +347,20 @@ function renderHistory() {
 
     const reviewBtnHtml = revInfo
       ? `<span class="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">✓ Đã đánh giá (★ ${Number(revInfo.rating || 5)})</span>`
-      : (b.status !== 'Đã hủy' && b.status !== 'Khách chưa đến'
+      : (isCompleted
         ? `<button type="button" data-action="review" data-code="${safeCode}" data-pitch="${safePitch}" class="btn-base bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-bold">⭐ Đánh giá sân</button>`
         : '');
 
     const isDuplicatePayBadge = Boolean(b.paymentStatus && b.status && String(b.paymentStatus).trim() === String(b.status).trim());
-    const paidDisplayAmt = (b.status === 'Đã hủy' && (!b.paidAmount || Number(b.paidAmount) <= 0))
-      ? 0
-      : (typeof b.paidAmount === 'number' && b.paidAmount > 0 ? b.paidAmount : (b.status === 'Đã hủy' ? 0 : b.depositAmount));
+    const payStr = String(b.paymentStatus || '');
+    const hasPaidRecorded = typeof b.paidAmount === 'number';
+    const paidDisplayAmt = hasPaidRecorded
+      ? Math.max(0, b.paidAmount)
+      : ((b.status === 'Đã hủy' || b.status === 'Giữ chỗ' || payStr === 'Chờ duyệt cọc' || payStr === 'Chưa thanh toán') ? 0 : Number(b.depositAmount || 0));
+    const isUnpaidHold = paidDisplayAmt <= 0 && b.status !== 'Đã hủy' && b.status !== 'Khách chưa đến';
+    const paySummaryHtml = isUnpaidHold
+      ? `(Chưa thanh toán cọc: <span class="text-[#D97706] font-bold">${window.SanBongApp.formatVND(b.depositAmount)}</span> · Cần thanh toán: <b class="text-[#DC2626]">${window.SanBongApp.formatVND(b.totalPrice)}</b>)`
+      : `(Đã thu: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(paidDisplayAmt)}</span> · Còn lại: <b class="${b.remainingAmount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(b.remainingAmount)}</b>)`;
 
     return `
       <div id="booking-card-${safeCode}" data-booking-code="${safeCode}" class="ui-card p-5 space-y-4 hover:shadow-md transition-all">
@@ -349,7 +368,7 @@ function renderHistory() {
           <div class="flex flex-wrap items-center gap-2.5">
             <span class="font-mono font-bold text-sm px-2.5 py-0.5 rounded bg-slate-100 text-[#0F172A]">${safeCode}</span>
             ${window.SanBongApp.statusPill(b.status)}
-            ${(b.paymentStatus && !isDuplicatePayBadge) ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold">${esc(b.paymentStatus)}</span>` : ''}
+            ${(b.paymentStatus && !isDuplicatePayBadge) ? `<span class="text-xs px-2.5 py-0.5 rounded-full ${isUnpaidHold ? 'bg-[#FEF3C7] text-[#B45309]' : 'bg-[#DCFCE7] text-[#16A34A]'} font-bold">${esc(b.paymentStatus)}</span>` : ''}
             ${monthlyTag}
             ${overtimeTag}
           </div>
@@ -364,7 +383,7 @@ function renderHistory() {
             </div>
             <div class="text-xs text-[#64748B] mt-1">
               Tổng tiền: <b class="text-[#0F172A]">${window.SanBongApp.formatVND(b.totalPrice)}</b>
-              (Đã cọc: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(paidDisplayAmt)}</span> · Còn lại: <b class="${b.remainingAmount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(b.remainingAmount)}</b>)
+              ${paySummaryHtml}
             </div>
             ${b.note ? `<div class="text-[11px] text-slate-500 mt-1 italic">${esc(b.note)}</div>` : ''}
           </div>
@@ -376,7 +395,7 @@ function renderHistory() {
             ${reviewBtnHtml}
             ${isConfirmed ? `
               <button type="button" data-action="cancel-booking" data-code="${safeCode}" class="btn-base btn-danger-outline text-xs font-bold">
-                🛑 Hủy trước hạn & Hoàn cọc
+                ${isUnpaidHold ? '🛑 Hủy giữ chỗ' : '🛑 Hủy trước hạn & Hoàn cọc'}
               </button>
             ` : ''}
             ${isCompleted ? `
@@ -513,13 +532,28 @@ function cancelBooking(bookingCode) {
         finalPayStatus = d.paymentStatus || d.payment_status || expectedPayStatus;
         refundAmount = d.refundAmount ?? d.refund_amount ?? null;
         serverMessage = json.message || '';
-      } else if (!res.ok && json && json.message) {
+      } else if (res.status === 401) {
+        if (window.SanBongApp?.handleUnauthorizedSession) {
+          window.SanBongApp.handleUnauthorizedSession('history');
+        } else {
+          try { sessionStorage.removeItem('sb_current_user'); sessionStorage.removeItem('sb_csrf_token'); localStorage.removeItem('sb_current_user'); } catch (e) {}
+          window.location.replace(getRel('login?redirect=history&expired=1'));
+        }
+        return;
+      } else if (!res.ok || !json || !json.success) {
         if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast(json.message, 'error', 4000);
+          window.SanBongApp.showToast((json && json.message) || 'Không thể hủy lịch lúc này. Vui lòng thử lại.', 'error', 4500);
         }
         return;
       }
-    } catch (e) {}
+    } catch (e) {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast('Lỗi kết nối tới máy chủ. Không thể hủy lịch.', 'error', 4500);
+      }
+      return;
+    }
+
+    if (!serverHandled) return;
 
     if (db) {
       const all = db.getAllBookings();
@@ -530,8 +564,6 @@ function cancelBooking(bookingCode) {
         target.remainingAmount = 0;
         target.note = (target.note ? target.note + ' | ' : '') + `[Hủy trước hạn - ${finalPayStatus}]`;
         try { localStorage.setItem('sb_bookings_v1', JSON.stringify(all)); } catch (err) {}
-      } else if (db.cancelBookingEarly) {
-        db.cancelBookingEarly(bookingCode, expectedPolicy, 'Khách hàng chủ động hủy lịch trước thời hạn');
       }
     }
 
@@ -566,12 +598,15 @@ window.openReviewModal = function(bookingCode, pitchName) {
   const esc = (s) => (window.SanBongApp?.escapeHTML ? window.SanBongApp.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
   const overlay = document.createElement('div');
   overlay.id = 'customer-review-modal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'customer-review-modal-title');
   overlay.className = 'fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4';
   overlay.innerHTML = `
     <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 p-6 space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
-          <h3 class="font-heading font-bold text-lg text-[#0F172A]">Đánh Giá Chất Lượng Sân</h3>
+          <h3 id="customer-review-modal-title" class="font-heading font-bold text-lg text-[#0F172A]">Đánh Giá Chất Lượng Sân</h3>
           <div class="text-xs text-[#64748B] mt-0.5">${esc(pitchName)} (Mã vé: ${esc(bookingCode)})</div>
         </div>
         <button id="close-review-modal-btn" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
@@ -634,13 +669,13 @@ window.openReviewModal = function(bookingCode, pitchName) {
       if (window.SanBongApp?.ensureCsrfToken) {
         await window.SanBongApp.ensureCsrfToken();
       }
-      const headers = window.SanBongApp?.getAuthFetchHeaders
+      const postHeaders = window.SanBongApp?.getAuthFetchHeaders
         ? window.SanBongApp.getAuthFetchHeaders()
         : { 'Content-Type': 'application/json' };
 
       const res = await fetch(getRel('api/reviews.php'), {
         method: 'POST',
-        headers,
+        headers: postHeaders,
         credentials: 'same-origin',
         body: JSON.stringify({
           action: 'submit_review',
@@ -649,6 +684,16 @@ window.openReviewModal = function(bookingCode, pitchName) {
           comment: comment
         })
       });
+      if (res.status === 401) {
+        closeFn();
+        if (window.SanBongApp?.handleUnauthorizedSession) {
+          window.SanBongApp.handleUnauthorizedSession('history');
+        } else {
+          try { sessionStorage.removeItem('sb_current_user'); sessionStorage.removeItem('sb_csrf_token'); localStorage.removeItem('sb_current_user'); } catch (e) {}
+          window.location.replace(getRel('login?redirect=history&expired=1'));
+        }
+        return;
+      }
       const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
       if (tokenHeader && window.SanBongApp?.setCsrfToken) {
         window.SanBongApp.setCsrfToken(tokenHeader);
@@ -850,3 +895,125 @@ async function handleSaveProfile(e) {
 window.openEditProfileModal = openEditProfileModal;
 window.closeEditProfileModal = closeEditProfileModal;
 window.handleSaveProfile = handleSaveProfile;
+
+function openChangePasswordModal() {
+  const modal = document.getElementById('modal-change-password');
+  ['change-pwd-old', 'change-pwd-new', 'change-pwd-confirm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['change-pwd-old-err', 'change-pwd-new-err', 'change-pwd-confirm-err', 'change-pwd-general-msg'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+  });
+  modal?.classList.remove('hidden');
+  setTimeout(() => document.getElementById('change-pwd-old')?.focus(), 50);
+}
+
+function closeChangePasswordModal() {
+  document.getElementById('modal-change-password')?.classList.add('hidden');
+}
+
+async function handleChangePassword(e) {
+  e.preventDefault();
+  const oldInput = document.getElementById('change-pwd-old');
+  const newInput = document.getElementById('change-pwd-new');
+  const confirmInput = document.getElementById('change-pwd-confirm');
+  const submitBtn = document.getElementById('btn-submit-change-pwd');
+  const oldErr = document.getElementById('change-pwd-old-err');
+  const newErr = document.getElementById('change-pwd-new-err');
+  const confirmErr = document.getElementById('change-pwd-confirm-err');
+  const generalMsg = document.getElementById('change-pwd-general-msg');
+
+  [oldErr, newErr, confirmErr, generalMsg].forEach(el => {
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+  });
+
+  const oldPassword = oldInput?.value || '';
+  const newPassword = newInput?.value || '';
+  const confirmPassword = confirmInput?.value || '';
+
+  if (!oldPassword) {
+    if (oldErr) { oldErr.textContent = 'Vui lòng nhập mật khẩu hiện tại.'; oldErr.classList.remove('hidden'); }
+    oldInput?.focus();
+    return;
+  }
+  if (newPassword.length < 8) {
+    if (newErr) { newErr.textContent = 'Mật khẩu mới phải có tối thiểu 8 ký tự.'; newErr.classList.remove('hidden'); }
+    newInput?.focus();
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    if (confirmErr) { confirmErr.textContent = 'Mật khẩu nhập lại không khớp.'; confirmErr.classList.remove('hidden'); }
+    confirmInput?.focus();
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Đang cập nhật...';
+  }
+  try {
+    if (window.SanBongApp?.ensureCsrfToken) {
+      await window.SanBongApp.ensureCsrfToken();
+    }
+    const headers = window.SanBongApp?.getAuthFetchHeaders
+      ? window.SanBongApp.getAuthFetchHeaders()
+      : { 'Content-Type': 'application/json' };
+    const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+    const res = await fetch(getRel('api/auth.php?action=change_password'), {
+      method: 'POST',
+      headers,
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        old_password: oldPassword,
+        new_password: newPassword
+      })
+    });
+    const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+    if (tokenHeader && window.SanBongApp?.setCsrfToken) window.SanBongApp.setCsrfToken(tokenHeader);
+    if (res.status === 401) {
+      closeChangePasswordModal();
+      if (window.SanBongApp?.handleUnauthorizedSession) {
+        window.SanBongApp.handleUnauthorizedSession('history');
+      } else {
+        window.location.replace(getRel('login?redirect=history&expired=1'));
+      }
+      return;
+    }
+    const json = await res.json().catch(() => null);
+    if (json?.csrf_token && window.SanBongApp?.setCsrfToken) window.SanBongApp.setCsrfToken(json.csrf_token);
+    if (res.ok && json?.success) {
+      closeChangePasswordModal();
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(json.message || 'Đổi mật khẩu thành công!', 'success');
+      }
+    } else if (generalMsg) {
+      generalMsg.textContent = json?.message || 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại.';
+      generalMsg.className = 'text-xs font-semibold text-rose-600 block';
+    }
+  } catch (err) {
+    if (generalMsg) {
+      generalMsg.textContent = 'Lỗi kết nối tới máy chủ. Vui lòng thử lại sau.';
+      generalMsg.className = 'text-xs font-semibold text-rose-600 block';
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Cập nhật mật khẩu';
+    }
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeTicketModal();
+    closeEditProfileModal();
+    closeChangePasswordModal();
+    document.getElementById('customer-review-modal')?.remove();
+  }
+});
+
+window.openChangePasswordModal = openChangePasswordModal;
+window.closeChangePasswordModal = closeChangePasswordModal;
+window.handleChangePassword = handleChangePassword;
