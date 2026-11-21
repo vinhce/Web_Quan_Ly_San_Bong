@@ -287,8 +287,8 @@
         console.warn('qrcode generator error:', e);
       }
     }
-    const enc = encodeURIComponent(content);
-    return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}" alt="QR ${enc}" class="w-full h-full object-contain rounded-lg">`;
+    const safeCode = escapeHTML(content);
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="QR ${safeCode}" class="w-full h-full rounded-lg border border-slate-200 bg-white"><rect width="100%" height="100%" fill="#FFFFFF"/><text x="50%" y="46%" dominant-baseline="middle" text-anchor="middle" fill="#0F172A" font-family="monospace" font-size="13" font-weight="700">${safeCode}</text><text x="50%" y="62%" dominant-baseline="middle" text-anchor="middle" fill="#64748B" font-family="sans-serif" font-size="10">Mã vé điện tử</text></svg>`;
   }
 
   function playScanBeep(success = true) {
