@@ -24,9 +24,9 @@ function evaluate_cancellation_policy(array $bookingRow, array $settings = []): 
     $totalPrice    = max(0, (int)($bookingRow['total_price'] ?? 0));
     $depositAmt    = max(0, (int)($bookingRow['deposit_amount'] ?? 0));
     $inferredPaid  = 0;
-    if (in_array($payStatusCur, ['Đã thanh toán đủ', 'Đã thanh toán 100%'], true)) {
+    if (in_array($payStatusCur, ['Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid'], true)) {
         $inferredPaid = $totalPrice;
-    } elseif ($payStatusCur === 'Đã cọc 30%') {
+    } elseif ($payStatusCur === 'Đã cọc 30%' || $payStatusCur === 'Đã cọc 60%' || mb_stripos($payStatusCur, 'Đã cọc') !== false) {
         $inferredPaid = $depositAmt;
     }
     $paidBase = max($paidAmountCol, $inferredPaid);
