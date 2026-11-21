@@ -599,7 +599,7 @@ const DEFAULT_BANK_INFO = {
 const DEFAULT_SYSTEM_CONFIG = {
   depositRate: 30,
   hotline: '0352 313 548',
-  openHours: '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+  openHours: '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
   holdMinutes: 15,
   waitlistHoldMinutes: 15,
   refundFullHours: 24,

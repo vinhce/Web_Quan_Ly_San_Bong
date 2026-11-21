@@ -4,7 +4,7 @@
   const DEFAULT_SYSTEM_CONFIG = window.DEFAULT_SYSTEM_CONFIG || window.SanBongData?.DEFAULT_SYSTEM_CONFIG || {
     depositRate: 30,
     hotline: '0352 313 548',
-    openHours: '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)',
+    openHours: '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
     holdMinutes: 15,
     waitlistHoldMinutes: 15,
     refundFullHours: 24,
@@ -12,6 +12,7 @@
     autoCancelEnabled: true,
     matchmakingEnabled: true,
     matchmakingRequireApproval: false,
+    loyaltyBottleCostPoints: 100,
     pricingTable: null
   };
   window.DEFAULT_SYSTEM_CONFIG = DEFAULT_SYSTEM_CONFIG;
@@ -324,6 +325,25 @@
         }
       } catch (e) {}
 
+      try {
+        const rawSysCfg = localStorage.getItem('sb_system_config');
+        if (rawSysCfg) {
+          const parsedSysCfg = JSON.parse(rawSysCfg);
+          if (parsedSysCfg && typeof parsedSysCfg === 'object' && !Array.isArray(parsedSysCfg)) {
+            let cfgChanged = false;
+            ['openHours', 'open_hours'].forEach(key => {
+              if (typeof parsedSysCfg[key] === 'string' && parsedSysCfg[key].includes('05:30 - 23:00')) {
+                parsedSysCfg[key] = parsedSysCfg[key].replace(/05:30 - 23:00/g, '05:30 - 22:30');
+                cfgChanged = true;
+              }
+            });
+            if (cfgChanged) {
+              localStorage.setItem('sb_system_config', JSON.stringify(parsedSysCfg));
+            }
+          }
+        }
+      } catch (e) {}
+
       this.syncFromServer();
     },
 
@@ -381,6 +401,7 @@
               autoCancelEnabled: autoRaw === undefined ? (prevCfg.autoCancelEnabled ?? DEFAULT_SYSTEM_CONFIG.autoCancelEnabled) : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true'),
               matchmakingEnabled: mmEnabledRaw === undefined ? (prevCfg.matchmakingEnabled ?? true) : (mmEnabledRaw === true || mmEnabledRaw === 1 || mmEnabledRaw === '1' || mmEnabledRaw === 'true'),
               matchmakingRequireApproval: mmApprovalRaw === undefined ? (prevCfg.matchmakingRequireApproval ?? false) : (mmApprovalRaw === true || mmApprovalRaw === 1 || mmApprovalRaw === '1' || mmApprovalRaw === 'true'),
+              loyaltyBottleCostPoints: Math.max(1, Number(d.settings.loyaltyBottleCostPoints ?? d.settings.loyalty_bottle_cost_points ?? prevCfg.loyaltyBottleCostPoints ?? 100) || 100),
               pricingTable: d.settings.pricingTable || prevCfg.pricingTable || null
             };
             localStorage.setItem('sb_system_config', JSON.stringify(cfg));
@@ -407,6 +428,7 @@
           autoCancelEnabled: autoRaw === undefined ? DEFAULT_SYSTEM_CONFIG.autoCancelEnabled : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true'),
           matchmakingEnabled: mmEnabledRaw === undefined ? true : (mmEnabledRaw === true || mmEnabledRaw === 1 || mmEnabledRaw === '1' || mmEnabledRaw === 'true'),
           matchmakingRequireApproval: mmApprovalRaw === undefined ? false : (mmApprovalRaw === true || mmApprovalRaw === 1 || mmApprovalRaw === '1' || mmApprovalRaw === 'true'),
+          loyaltyBottleCostPoints: Math.max(1, Number(cfg.loyaltyBottleCostPoints ?? cfg.loyalty_bottle_cost_points ?? DEFAULT_SYSTEM_CONFIG.loyaltyBottleCostPoints) || 100),
           pricingTable: cfg.pricingTable || null
         };
       } catch (e) {
