@@ -1,6 +1,30 @@
 
 let currentPitches = [];
 let selectedFilterDate = '';
+let selectedFilterTimeBand = 'all';
+
+async function refreshFieldsAvailability() {
+  const app = window.SanBongApp;
+  const getRel = app?.getRelativePath ? app.getRelativePath : (p => '/' + String(p || '').replace(/^\/+/, ''));
+  try {
+    const qs = new URLSearchParams();
+    if (selectedFilterDate) {
+      qs.set('available_on', selectedFilterDate);
+      qs.set('time_band', selectedFilterTimeBand || 'all');
+    }
+    const url = getRel('api/pitches.php' + (qs.toString() ? `?${qs.toString()}` : ''));
+    const res = await fetch(url, { cache: 'no-store' });
+    const json = await res.json().catch(() => null);
+    if (res.ok && json?.success && Array.isArray(json.data?.pitches)) {
+      currentPitches = json.data.pitches;
+      renderPitches();
+      return true;
+    }
+  } catch (err) {
+    console.warn('Revalidate availability fields lỗi:', err.message);
+  }
+  return false;
+}
 
 function initFieldsPage() {
   const app = window.SanBongApp;
@@ -12,7 +36,21 @@ function initFieldsPage() {
 
   const urlParams = new URLSearchParams(window.location.search);
   const typeParam = urlParams.get('type');
-  selectedFilterDate = urlParams.get('date') || '';
+  selectedFilterDate = (urlParams.get('date') || '').trim();
+  const timeParam = (urlParams.get('time') || urlParams.get('time_band') || 'all').trim();
+  selectedFilterTimeBand = ['all', 'morning', 'afternoon', 'peak', 'evening'].includes(timeParam) ? timeParam : 'all';
+
+  const dateFilterEl = document.getElementById('fields-filter-date');
+  const timeFilterEl = document.getElementById('fields-filter-time');
+  const today = app?.getLocalTodayISO ? app.getLocalTodayISO() : new Date().toISOString().split('T')[0];
+  if (dateFilterEl) {
+    dateFilterEl.min = today;
+    if (selectedFilterDate) dateFilterEl.value = selectedFilterDate;
+  }
+  if (timeFilterEl) {
+    timeFilterEl.value = selectedFilterTimeBand;
+  }
+
   if (typeParam && ['5', '7', '11'].includes(String(typeParam))) {
     const radio = document.querySelector('input[name="filter-type"][value="' + typeParam + '"]');
     if (radio) radio.checked = true;
@@ -24,17 +62,21 @@ function initFieldsPage() {
   if (!window._fieldsDataSyncedBound) {
     window._fieldsDataSyncedBound = true;
     window.addEventListener('sb-data-synced', () => {
-      if (db?.getPitches) {
+      if (selectedFilterDate) {
+        refreshFieldsAvailability();
+      } else if (db?.getPitches) {
         currentPitches = db.getPitches();
         renderPitches();
       }
     });
   }
 
-  if (app?.SanBongAPI?.getPitches) {
+  if (selectedFilterDate) {
+    refreshFieldsAvailability();
+  } else if (app?.SanBongAPI?.getPitches) {
     app.SanBongAPI.getPitches()
       .then(pitches => {
-        if (Array.isArray(pitches) && pitches.length > 0) {
+        if (Array.isArray(pitches) && pitches.length > 0 && !selectedFilterDate) {
           currentPitches = pitches;
           renderPitches();
         }
@@ -61,6 +103,7 @@ function renderPitches() {
     if (typeVal !== 'all' && String(p.type) !== String(typeVal)) return false;
     if (activeOnly && p.status !== 'Hoạt động') return false;
     if (p.basePrice > maxPrice) return false;
+    if (selectedFilterDate && p.availableSlotCount !== undefined && Number(p.availableSlotCount) <= 0) return false;
     return true;
   });
 
@@ -90,8 +133,13 @@ function renderPitches() {
     const safeId = esc(p.id);
     const isMaint = p.status === 'Bảo trì' || Boolean(p.inMaintenance);
     const ratingText = Number(p.reviewCount || 0) > 0
-      ? `${Number(p.rating || 5).toFixed(1)} (${Number(p.reviewCount)})`
-      : '5.0 (Mới)';
+      ? `<span class="text-[#F59E0B]">★</span> ${Number(p.rating || 0).toFixed(1)} (${Number(p.reviewCount)})`
+      : 'Chưa có đánh giá';
+    const availBadgeText = isMaint
+      ? 'Đang bảo dưỡng mặt cỏ'
+      : (selectedFilterDate && p.availableSlotCount !== undefined
+        ? `Còn ${Number(p.availableSlotCount)} ca trống (${window.SanBongApp?.formatDateVN ? window.SanBongApp.formatDateVN(selectedFilterDate) : selectedFilterDate})`
+        : 'Sẵn sàng nhận lịch hôm nay');
     return `
       <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
         <div class="relative cursor-pointer overflow-hidden" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">
@@ -105,7 +153,7 @@ function renderPitches() {
           </div>
           <div class="absolute bottom-3 left-3">
             <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isMaint ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#DCFCE7] text-[#16A34A]'} shadow-sm">
-              ${isMaint ? 'Đang bảo dưỡng mặt cỏ' : 'Sẵn sàng nhận lịch hôm nay'}
+              ${esc(availBadgeText)}
             </span>
           </div>
         </div>
@@ -114,14 +162,14 @@ function renderPitches() {
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <h3 class="font-heading font-bold text-lg text-[#0F172A] cursor-pointer hover:text-[#16A34A]" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">${esc(p.name)}</h3>
-              <div class="flex items-center gap-1 text-xs font-bold text-[#0F172A]">
-                <span class="text-[#F59E0B]">★</span> ${esc(ratingText)}
+              <div class="flex items-center gap-1 text-xs font-bold ${Number(p.reviewCount || 0) > 0 ? 'text-[#0F172A]' : 'text-[#64748B] font-medium'}">
+                ${ratingText}
               </div>
             </div>
             <div class="text-xs text-[#64748B] mb-2">${esc(p.size)} · ${esc(p.grass)}</div>
-            <div class="flex items-baseline gap-2">
-              <span class="text-base font-extrabold text-[#16A34A]">${app?.formatVND ? app.formatVND(p.basePrice) : esc(p.basePrice) + 'đ'}/h</span>
-              <span class="text-xs text-[#94A3B8]">Giờ cao điểm: ${app?.formatVND ? app.formatVND(p.peakPrice) : esc(p.peakPrice) + 'đ'}/h</span>
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span class="text-base font-extrabold text-[#16A34A]">${app?.formatVND ? app.formatVND(p.basePrice) : esc(p.basePrice) + 'đ'}/ca 2h</span>
+              <span class="text-xs text-[#94A3B8]">Cao điểm: ${app?.formatVND ? app.formatVND(p.peakPrice) : esc(p.peakPrice) + 'đ'}/ca 2h</span>
             </div>
           </div>
 
@@ -163,12 +211,44 @@ function setupEventListeners() {
     sortSel.addEventListener('change', renderPitches);
   }
 
+  const dateFilterEl = document.getElementById('fields-filter-date');
+  if (dateFilterEl && !dateFilterEl._bound) {
+    dateFilterEl._bound = true;
+    dateFilterEl.addEventListener('change', (e) => {
+      selectedFilterDate = (e.target.value || '').trim();
+      if (selectedFilterDate) {
+        refreshFieldsAvailability();
+      } else {
+        const db = window.SanBongDB || window.SanBongApp?.SanBongDB;
+        if (db?.getPitches) currentPitches = db.getPitches();
+        renderPitches();
+      }
+    });
+  }
+  const timeFilterEl = document.getElementById('fields-filter-time');
+  if (timeFilterEl && !timeFilterEl._bound) {
+    timeFilterEl._bound = true;
+    timeFilterEl.addEventListener('change', (e) => {
+      selectedFilterTimeBand = e.target.value || 'all';
+      if (!selectedFilterDate && dateFilterEl) {
+        const todayISO = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
+        selectedFilterDate = todayISO;
+        dateFilterEl.value = todayISO;
+      }
+      if (selectedFilterDate) {
+        refreshFieldsAvailability();
+      } else {
+        renderPitches();
+      }
+    });
+  }
+
   const priceRange = document.getElementById('price-range');
   const priceLabel = document.getElementById('price-val-label');
   if (priceRange && priceLabel && !priceRange._bound) {
     priceRange._bound = true;
     priceRange.addEventListener('input', (e) => {
-      priceLabel.textContent = (window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(e.target.value) : e.target.value) + '/h';
+      priceLabel.textContent = (window.SanBongApp?.formatVND ? window.SanBongApp.formatVND(e.target.value) : e.target.value) + '/ca 2h';
       renderPitches();
     });
   }
@@ -181,8 +261,14 @@ function setupEventListeners() {
       if (defaultRadio) defaultRadio.checked = true;
       if (activeCheck) activeCheck.checked = true;
       if (priceRange) priceRange.value = 1500000;
-      if (priceLabel) priceLabel.textContent = '1.500.000đ/h';
+      if (priceLabel) priceLabel.textContent = '1.500.000đ/ca 2h';
       if (sortSel) sortSel.value = 'default';
+      selectedFilterDate = '';
+      selectedFilterTimeBand = 'all';
+      if (dateFilterEl) dateFilterEl.value = '';
+      if (timeFilterEl) timeFilterEl.value = 'all';
+      const db = window.SanBongDB || window.SanBongApp?.SanBongDB;
+      if (db?.getPitches) currentPitches = db.getPitches();
       renderPitches();
     });
   }
@@ -225,10 +311,10 @@ function openPitchDetail(pitchId) {
         <div class="text-xs font-bold text-[#0F172A] mt-1">${esc(pitch.grass)}</div>
       </div>
       <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
-        <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
+        <div class="text-xs text-[#64748B]">Bảng giá theo ca (2 tiếng)</div>
         <div class="text-xs font-bold text-[#16A34A] mt-1">
-          Thường (05:30-16:30): ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/h<br>
-          Giờ cao điểm (16:30-20:30): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : esc(pitch.peakPrice)}/h
+          Thường (05:30-16:30): ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/ca 2h<br>
+          Giờ cao điểm (16:30-20:30): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : esc(pitch.peakPrice)}/ca 2h
         </div>
       </div>
     </div>
