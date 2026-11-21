@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/security_helper.php';
+require_once __DIR__ . '/services/finance_metrics_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
@@ -49,64 +50,11 @@ $totalPitches  = (int)($pitchAgg['total_pitches'] ?? 0);
 $activePitches = (int)($pitchAgg['active_pitches'] ?? 0);
 $maintPitches  = (int)($pitchAgg['maint_pitches'] ?? 0);
 
-// 2. Today KPI SQL aggregate (doanh thu ghi nhận / đã thu / cọc / còn lại / chưa thu / đếm trạng thái)
-$todayAggStmt = $pdo->prepare("
-    SELECT
-        COUNT(*) AS total_count,
-        SUM(CASE WHEN status = 'Đang đá' THEN 1 ELSE 0 END) AS playing_count,
-        SUM(CASE WHEN status IN ('Đã xác nhận', 'Chờ duyệt cọc') THEN 1 ELSE 0 END) AS waiting_checkin_count,
-        SUM(CASE WHEN status IN ('Hoàn thành', 'completed') THEN 1 ELSE 0 END) AS completed_count,
-        SUM(CASE WHEN status IN ('Khách chưa đến', 'Đã hủy') THEN 1 ELSE 0 END) AS noshow_cancel_count,
-        SUM(CASE WHEN status NOT IN ('Đã hủy', 'Khách chưa đến') AND payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%') THEN 1 ELSE 0 END) AS pending_vietqr_today,
-        SUM(CASE
-            WHEN status = 'Đã hủy' AND payment_status NOT IN ('Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%') THEN 0
-            WHEN payment_status IN ('Đã hủy', 'Đã hoàn cọc 100%') THEN 0
-            WHEN payment_status IN ('Tịch thu cọc 30%', 'Bảo lưu cọc 30%') OR status = 'Khách chưa đến' THEN deposit_amount
-            WHEN payment_status = 'Phạt 50% cọc' THEN ROUND(deposit_amount * 0.5)
-            ELSE total_price
-        END) AS recognized_revenue,
-        SUM(CASE
-            WHEN status = 'Đã hủy' AND payment_status NOT IN ('Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%') THEN 0
-            WHEN payment_status IN ('Đã hủy', 'Đã hoàn cọc 100%') THEN 0
-            WHEN payment_status IN ('Tịch thu cọc 30%', 'Bảo lưu cọc 30%') OR status = 'Khách chưa đến' THEN deposit_amount
-            WHEN payment_status = 'Phạt 50% cọc' THEN ROUND(deposit_amount * 0.5)
-            WHEN status IN ('Hoàn thành', 'completed') OR payment_status IN ('Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid') THEN total_price
-            WHEN paid_amount > 0 THEN LEAST(total_price, paid_amount)
-            WHEN payment_status LIKE 'Đã cọc%' OR payment_status = 'deposited' THEN LEAST(total_price, deposit_amount)
-            ELSE 0
-        END) AS collected_revenue,
-        SUM(CASE
-            WHEN status = 'Đã hủy' AND payment_status NOT IN ('Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%') THEN 0
-            WHEN payment_status IN ('Đã hủy', 'Đã hoàn cọc 100%') THEN 0
-            WHEN payment_status IN ('Tịch thu cọc 30%', 'Bảo lưu cọc 30%') OR status = 'Khách chưa đến' THEN deposit_amount
-            WHEN payment_status = 'Phạt 50% cọc' THEN ROUND(deposit_amount * 0.5)
-            WHEN status IN ('Hoàn thành', 'completed') OR payment_status IN ('Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid', 'deposited') OR payment_status LIKE 'Đã cọc%' THEN LEAST(total_price, deposit_amount)
-            ELSE 0
-        END) AS deposit_collected
-    FROM bookings
-    WHERE booking_date = ?
-");
-$todayAggStmt->execute([$today]);
-$todayAgg = $todayAggStmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-$recognizedRev    = (int)($todayAgg['recognized_revenue'] ?? 0);
-$collectedRev     = (int)($todayAgg['collected_revenue'] ?? 0);
-$depositCollected = min($collectedRev, (int)($todayAgg['deposit_collected'] ?? 0));
-$remainingCol     = max(0, $collectedRev - $depositCollected);
-$uncollectedRev   = max(0, $recognizedRev - $collectedRev);
-
-// Pending VietQR toàn hệ thống
-$pendingVietqrCount = (int)$pdo->query("
-    SELECT COUNT(*) FROM bookings
-    WHERE status NOT IN ('Đã hủy', 'Khách chưa đến')
-      AND payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%')
-")->fetchColumn();
-
-// 3. Today bookings + Peak occupancy (17:30 - 21:00)
+// 2. Today bookings + KPI (dùng chung finance_metrics_helper với Tab 9 Báo cáo)
 $todayListStmt = $pdo->prepare("
     SELECT b.id, b.code, b.pitch_id, COALESCE(p.name, b.pitch_id) AS pitch_name, p.type AS pitch_type,
            b.booking_date, b.slot_id, b.slot_time, b.customer_name, b.phone,
-           b.total_price, b.deposit_amount, b.paid_amount, b.remaining_amount,
+           b.services_json, b.weeks_count, b.total_price, b.deposit_amount, b.paid_amount, b.remaining_amount,
            b.status, b.payment_status, b.payment_method, b.note
     FROM bookings b
     LEFT JOIN pitches p ON p.id = b.pitch_id
@@ -116,12 +64,52 @@ $todayListStmt = $pdo->prepare("
 $todayListStmt->execute([$today]);
 $todayRows = $todayListStmt->fetchAll(PDO::FETCH_ASSOC);
 
+$todayCount = count($todayRows);
+$playingCount = 0;
+$waitingCheckinCount = 0;
+$completedCount = 0;
+$noshowCancelCount = 0;
+$recognizedRev = 0;
+$collectedRev = 0;
+$depositCollected = 0;
+$remPitchCollected = 0;
+$servicesCollected = 0;
+$byPitchTodayStats = [];
+
 $peakBookedCount = 0;
 $todayBookings = [];
 $miniTimelineMap = [];
 
 foreach ($todayRows as $r) {
     $st = (string)($r['status'] ?? 'Đã xác nhận');
+    $paySt = (string)($r['payment_status'] ?? '');
+    $eval = finance_evaluate_booking_row($r);
+
+    if ($st === 'Đang đá') {
+        $playingCount++;
+    } elseif (in_array($st, ['Giữ chỗ', 'Đã xác nhận', 'Chờ duyệt cọc'], true)) {
+        $waitingCheckinCount++;
+    } elseif ($eval['isCompleted']) {
+        $completedCount++;
+    } elseif (in_array($st, ['Khách chưa đến', 'Đã hủy'], true)) {
+        $noshowCancelCount++;
+    }
+
+    $recognizedRev     += $eval['orderRevenue'];
+    $collectedRev      += $eval['orderPaid'];
+    $depositCollected  += $eval['orderDepositCollected'];
+    $remPitchCollected += $eval['orderRemCollected'];
+    $servicesCollected += $eval['orderSrvCollected'];
+
+    $pid = (string)$r['pitch_id'];
+    if (!isset($byPitchTodayStats[$pid])) {
+        $byPitchTodayStats[$pid] = ['matches' => 0, 'revenue' => 0];
+    }
+    if ($eval['isMatchCounted']) {
+        $byPitchTodayStats[$pid]['matches']++;
+    }
+    $byPitchTodayStats[$pid]['revenue'] += $eval['orderRevenue'];
+
     $slotTime = (string)($r['slot_time'] ?? '');
     $mins = dash_parse_slot_minutes($slotTime);
     $isValid = ($st !== 'Đã hủy' && $st !== 'Khách chưa đến');
@@ -130,7 +118,7 @@ foreach ($todayRows as $r) {
     }
     $item = [
         'code'            => (string)$r['code'],
-        'pitchId'         => (string)$r['pitch_id'],
+        'pitchId'         => $pid,
         'pitchName'       => (string)$r['pitch_name'],
         'pitchType'       => (int)($r['pitch_type'] ?? 7),
         'date'            => (string)$r['booking_date'],
@@ -145,14 +133,13 @@ foreach ($todayRows as $r) {
         'paidAmount'      => (int)$r['paid_amount'],
         'remainingAmount' => (int)$r['remaining_amount'],
         'status'          => $st,
-        'paymentStatus'   => (string)($r['payment_status'] ?? ''),
+        'paymentStatus'   => $paySt,
         'paymentMethod'   => (string)($r['payment_method'] ?? ''),
         'note'            => (string)($r['note'] ?? '')
     ];
     $todayBookings[] = $item;
 
     if ($isValid) {
-        $pid = $item['pitchId'];
         if (!isset($miniTimelineMap[$pid])) {
             $miniTimelineMap[$pid] = [
                 'pitchId'   => $pid,
@@ -170,6 +157,22 @@ foreach ($todayRows as $r) {
         ];
     }
 }
+
+$todayCounterSales = finance_query_counter_sales($pdo, $today, $today);
+$counterSalesTodayAmt = (int)$todayCounterSales['totalAmount'];
+$recognizedRev     += $counterSalesTodayAmt;
+$collectedRev      += $counterSalesTodayAmt;
+$servicesCollected += $counterSalesTodayAmt;
+$depositCollected   = min($collectedRev, $depositCollected);
+$remainingCol       = max(0, $collectedRev - $depositCollected);
+$uncollectedRev     = max(0, $recognizedRev - $collectedRev);
+
+// Pending VietQR toàn hệ thống
+$pendingVietqrCount = (int)$pdo->query("
+    SELECT COUNT(*) FROM bookings
+    WHERE status NOT IN ('Đã hủy', 'Khách chưa đến')
+      AND payment_status IN ('Chờ duyệt cọc', 'Chờ cọc 30%')
+")->fetchColumn();
 
 // Đếm số khung giờ giao với giờ cao điểm 17:30-21:00 trong time_slots (mặc định 2 ca: 16:30-18:30 & 18:30-20:30 hoặc 20:30-22:30)
 $peakSlotsPerPitch = 2;
@@ -237,27 +240,34 @@ $byPitchToday = [];
 
 if ($isManager) {
     $agg14Stmt = $pdo->prepare("
-        SELECT
-            booking_date,
-            COUNT(CASE WHEN status NOT IN ('Đã hủy', 'Khách chưa đến') THEN 1 END) AS matches,
-            SUM(CASE
-                WHEN status = 'Đã hủy' AND payment_status NOT IN ('Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%') THEN 0
-                WHEN payment_status IN ('Đã hủy', 'Đã hoàn cọc 100%') THEN 0
-                WHEN payment_status IN ('Tịch thu cọc 30%', 'Bảo lưu cọc 30%') OR status = 'Khách chưa đến' THEN deposit_amount
-                WHEN payment_status = 'Phạt 50% cọc' THEN ROUND(deposit_amount * 0.5)
-                ELSE total_price
-            END) AS revenue
+        SELECT booking_date, status, payment_status, payment_method, services_json,
+               total_price, deposit_amount, paid_amount, remaining_amount
         FROM bookings
         WHERE booking_date BETWEEN ? AND ?
-        GROUP BY booking_date
     ");
     $agg14Stmt->execute([$prevWeekStart, $today]);
     $revByDate = [];
     foreach ($agg14Stmt->fetchAll(PDO::FETCH_ASSOC) as $dr) {
-        $revByDate[$dr['booking_date']] = [
-            'revenue' => (int)$dr['revenue'],
-            'matches' => (int)$dr['matches']
-        ];
+        $dKey = (string)$dr['booking_date'];
+        if (!isset($revByDate[$dKey])) {
+            $revByDate[$dKey] = ['revenue' => 0, 'matches' => 0];
+        }
+        $eval14 = finance_evaluate_booking_row($dr);
+        $revByDate[$dKey]['revenue'] += $eval14['orderRevenue'];
+        if ($eval14['isMatchCounted']) {
+            $revByDate[$dKey]['matches']++;
+        }
+    }
+
+    $counter14 = finance_query_counter_sales($pdo, $prevWeekStart, $today);
+    foreach ($counter14['rows'] as $csRow) {
+        $dKey = substr((string)($csRow['created_at'] ?? ''), 0, 10);
+        if ($dKey !== '') {
+            if (!isset($revByDate[$dKey])) {
+                $revByDate[$dKey] = ['revenue' => 0, 'matches' => 0];
+            }
+            $revByDate[$dKey]['revenue'] += max(0, (int)($csRow['total_amount'] ?? 0));
+        }
     }
 
     for ($i = 6; $i >= 0; $i--) {
@@ -277,49 +287,46 @@ if ($isManager) {
         ];
     }
 
-    // By pitch today (SQL aggregate)
-    $pitchRevStmt = $pdo->prepare("
-        SELECT p.id, p.name, p.status,
-               COUNT(CASE WHEN b.id IS NOT NULL AND b.status NOT IN ('Đã hủy', 'Khách chưa đến') THEN 1 END) AS matches,
-               COALESCE(SUM(CASE
-                   WHEN b.id IS NULL THEN 0
-                   WHEN b.status = 'Đã hủy' AND b.payment_status NOT IN ('Tịch thu cọc 30%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%') THEN 0
-                   WHEN b.payment_status IN ('Đã hủy', 'Đã hoàn cọc 100%') THEN 0
-                   WHEN b.payment_status IN ('Tịch thu cọc 30%', 'Bảo lưu cọc 30%') OR b.status = 'Khách chưa đến' THEN b.deposit_amount
-                   WHEN b.payment_status = 'Phạt 50% cọc' THEN ROUND(b.deposit_amount * 0.5)
-                   ELSE b.total_price
-               END), 0) AS revenue
-        FROM pitches p
-        LEFT JOIN bookings b ON b.pitch_id = p.id AND b.booking_date = ?
-        GROUP BY p.id, p.name, p.status
-        ORDER BY revenue DESC, matches DESC, p.id ASC
-    ");
-    $pitchRevStmt->execute([$today]);
-    foreach ($pitchRevStmt->fetchAll(PDO::FETCH_ASSOC) as $pr) {
+    // By pitch today (dùng chung finance_metrics_helper)
+    $pitchRows = $pdo->query("SELECT id, name, status FROM pitches ORDER BY type ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($pitchRows as $pr) {
+        $pid = (string)$pr['id'];
         $byPitchToday[] = [
-            'id'      => (string)$pr['id'],
+            'id'      => $pid,
             'name'    => (string)$pr['name'],
             'status'  => (string)$pr['status'],
-            'matches' => (int)$pr['matches'],
-            'revenue' => (int)$pr['revenue']
+            'matches' => (int)($byPitchTodayStats[$pid]['matches'] ?? 0),
+            'revenue' => (int)($byPitchTodayStats[$pid]['revenue'] ?? 0)
         ];
     }
+    usort($byPitchToday, static function ($a, $b) {
+        if ($b['revenue'] !== $a['revenue']) {
+            return $b['revenue'] <=> $a['revenue'];
+        }
+        if ($b['matches'] !== $a['matches']) {
+            return $b['matches'] <=> $a['matches'];
+        }
+        return strcmp($a['id'], $b['id']);
+    });
 }
 
 $payload = [
     'today'            => $today,
     'serverTime'       => date('H:i'),
     'kpi'              => [
-        'recognizedRevenue'  => $isManager ? $recognizedRev : null,
-        'collectedRevenue'   => $isManager ? $collectedRev : null,
-        'depositCollected'   => $isManager ? $depositCollected : null,
-        'remainingCollected' => $isManager ? $remainingCol : null,
-        'uncollectedRevenue' => $isManager ? $uncollectedRev : null,
-        'todayCount'         => (int)($todayAgg['total_count'] ?? 0),
-        'playingCount'       => (int)($todayAgg['playing_count'] ?? 0),
-        'waitingCheckinCount'=> (int)($todayAgg['waiting_checkin_count'] ?? 0),
-        'completedCount'     => (int)($todayAgg['completed_count'] ?? 0),
-        'noshowCancelCount'  => (int)($todayAgg['noshow_cancel_count'] ?? 0),
+        'recognizedRevenue'       => $isManager ? $recognizedRev : null,
+        'collectedRevenue'        => $isManager ? $collectedRev : null,
+        'depositCollected'        => $isManager ? $depositCollected : null,
+        'remainingCollected'      => $isManager ? $remainingCol : null,
+        'remainingPitchCollected' => $isManager ? $remPitchCollected : null,
+        'servicesCollected'       => $isManager ? $servicesCollected : null,
+        'counterSalesRevenue'     => $isManager ? $counterSalesTodayAmt : null,
+        'uncollectedRevenue'      => $isManager ? $uncollectedRev : null,
+        'todayCount'              => $todayCount,
+        'playingCount'            => $playingCount,
+        'waitingCheckinCount'     => $waitingCheckinCount,
+        'completedCount'          => $completedCount,
+        'noshowCancelCount'       => $noshowCancelCount,
         'pendingVietqrCount' => $pendingVietqrCount,
         'peakOccupancyPct'   => $peakOccupancyPct,
         'peakBooked'         => $peakBookedCount,
