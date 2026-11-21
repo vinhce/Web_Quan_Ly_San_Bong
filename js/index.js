@@ -78,7 +78,7 @@
         const minMonthlyHint = monthlyVoucher && Number(monthlyVoucher.minOrder) > 0
           ? `Đơn từ ${app.formatVND(monthlyVoucher.minOrder)} · ` : 'Lịch 12 tuần · ';
         const monthlyCopyBtn = monthlyVoucher
-          ? `<button type="button" data-voucher-code="${escapeHTML(monthlyVoucher.code)}" onclick="copyVoucher(this.getAttribute('data-voucher-code'))" class="btn-sm btn-secondary !h-7 !px-2.5 text-[11px] font-bold hover:border-[#16A34A] hover:text-[#16A34A]">Sao chép ${escapeHTML(monthlyVoucher.code)}</button>`
+          ? `<button type="button" data-voucher-code="${escapeHTML(monthlyVoucher.code)}" onclick="useVoucher(this.getAttribute('data-voucher-code'), true)" class="btn-sm btn-secondary !h-7 !px-2.5 text-[11px] font-bold hover:border-[#16A34A] hover:text-[#16A34A]">Dùng ngay</button>`
           : '';
         const packagePromoBanner = `
           <div class="col-span-full ui-card px-4 py-2.5 border-l-4 border-l-[#16A34A] bg-gradient-to-r from-emerald-50/90 via-white to-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -129,7 +129,7 @@
             <div class="ui-card p-3.5 border-l-4 ${borderClass} flex flex-col justify-between gap-2 ${spanAt(idx)}">
               <div class="flex items-center justify-between gap-2">
                 <span class="inline-block font-mono font-extrabold text-[11px] px-2 py-0.5 rounded truncate ${badgeClass}">${safeCode}</span>
-                <button type="button" data-voucher-code="${safeCode}" onclick="copyVoucher(this.getAttribute('data-voucher-code'))" class="btn-sm btn-secondary !h-7 !px-2.5 text-[11px] shrink-0 font-bold ${btnHoverClass}">Sao chép</button>
+                <button type="button" data-voucher-code="${safeCode}" onclick="useVoucher(this.getAttribute('data-voucher-code'))" class="btn-sm btn-secondary !h-7 !px-2.5 text-[11px] shrink-0 font-bold ${btnHoverClass}">Dùng ngay</button>
               </div>
               <p class="text-xs font-semibold text-[#0F172A] leading-snug line-clamp-2">${escapeHTML(v.description)}</p>
               <div class="text-[11px] text-[#64748B]">${minLabel}</div>
@@ -370,8 +370,8 @@
           <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
             <div class="text-xs text-[#64748B]">Bảng giá theo giờ</div>
             <div class="text-xs font-bold text-[#16A34A] mt-1">
-              Thường (05:30-17:30): ${app.formatVND(pitch.basePrice)}/h<br>
-              Giờ cao điểm (17:30-21:00): ${app.formatVND(pitch.peakPrice)}/h
+              Thường (05:30-16:30): ${app.formatVND(pitch.basePrice)}/h<br>
+              Giờ cao điểm (16:30-20:30): ${app.formatVND(pitch.peakPrice)}/h
             </div>
           </div>
         </div>
@@ -485,14 +485,27 @@
   }
 })();
 
-function copyVoucher(code) {
+function useVoucher(code, isMonthly = false) {
+  if (!code) return;
+  try {
+    const rawDraft = sessionStorage.getItem('sb_booking_draft');
+    const draft = rawDraft ? JSON.parse(rawDraft) : {};
+    draft.voucherCode = code;
+    if (isMonthly || String(code).toUpperCase() === 'DATTHANG15') {
+      draft.bookingMode = 'monthly';
+    }
+    sessionStorage.setItem('sb_booking_draft', JSON.stringify(draft));
+  } catch (e) {}
+
   if (navigator?.clipboard?.writeText) {
-    navigator.clipboard.writeText(code).then(() => {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ Đã sao chép mã ưu đãi ' + code + ' vào bộ nhớ tạm!', 'success', 2500);
-    }).catch(() => {
-      if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mã ưu đãi của bạn: ' + code, 'info', 2500);
-    });
-  } else {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mã ưu đãi của bạn: ' + code, 'info', 2500);
+    navigator.clipboard.writeText(code).catch(() => {});
   }
+
+  const modeQuery = (isMonthly || String(code).toUpperCase() === 'DATTHANG15') ? '&mode=monthly' : '';
+  const url = window.SanBongApp?.getRelativePath
+    ? window.SanBongApp.getRelativePath(`booking?voucher=${encodeURIComponent(code)}${modeQuery}`)
+    : `/booking?voucher=${encodeURIComponent(code)}${modeQuery}`;
+  window.location.href = url;
 }
+window.useVoucher = useVoucher;
+window.copyVoucher = useVoucher;
