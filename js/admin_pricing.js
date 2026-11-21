@@ -17,9 +17,7 @@ let packageRefPrices = { p5: 250000, p7: 450000, p11: 900000 };
 let packageModalInputsBound = false;
 
 function canManagePricing() {
-  if (typeof isManagerOrAdmin === 'function') return isManagerOrAdmin();
-  if (typeof isOwnerAdmin === 'function') return isOwnerAdmin();
-  return false;
+  return (typeof isOwnerAdmin === 'function') ? isOwnerAdmin() : false;
 }
 
 function formatPriceInputVND(num) {

@@ -10,9 +10,7 @@ window.vouchersAdminCache = vouchersAdminCache;
 window.goldenHourRulesCache = goldenHourRulesCache;
 
 function canManageVouchers() {
-  if (typeof isManagerOrAdmin === 'function') return isManagerOrAdmin();
-  if (typeof isOwnerAdmin === 'function') return isOwnerAdmin();
-  return false;
+  return (typeof isOwnerAdmin === 'function') ? isOwnerAdmin() : false;
 }
 
 function normalizeVoucherText(str) {
