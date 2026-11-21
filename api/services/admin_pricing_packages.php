@@ -143,7 +143,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
     if ($action === 'get_pricing') {
         $snapshot = pricing_fetch_current_snapshot($pdo);
         $role = strtolower((string)($actor['role'] ?? ''));
-        $snapshot['can_edit'] = in_array($role, ['admin', 'manager'], true);
+        $snapshot['can_edit'] = ($role === 'admin');
         json_response([
             'success' => true,
             'data'    => $snapshot,
@@ -156,7 +156,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
         if ($upperMethod !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $mgr = require_manager_or_admin($pdo);
+        $mgr = require_admin($pdo);
 
         $pricingSrc = isset($data['pricing']) && is_array($data['pricing']) ? $data['pricing'] : $data;
         $p5Arr  = is_array($pricingSrc['p5'] ?? null) ? $pricingSrc['p5'] : [];
@@ -201,6 +201,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
                 'success'     => true,
                 'has_changed' => false,
                 'message'     => 'Không có thay đổi để lưu (bảng giá giữ nguyên).',
+                'warning'     => 'Các đơn đã đặt trước ngày hiệu lực giữ nguyên mức giá tại thời điểm đặt.',
                 'data'        => [
                     'p5'                     => ['base' => $p5Base, 'peak' => $p5Base, 'weekend' => $p5Base, 'pitch_count' => $oldSnap['p5']['pitch_count']],
                     'p7'                     => ['base' => $p7Base, 'peak' => $p7Base, 'weekend' => $p7Base, 'pitch_count' => $oldSnap['p7']['pitch_count']],
@@ -255,6 +256,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
             'success'     => true,
             'has_changed' => true,
             'message'     => "Đã lưu bảng giá cố định 2 giờ/ca thành công (áp dụng từ {$effectiveFrom}). Các đơn đã đặt trước đó không bị ảnh hưởng.",
+            'warning'     => 'Các đơn đã đặt trước ngày hiệu lực giữ nguyên mức giá tại thời điểm đặt.',
             'data'        => $freshSnap,
         ]);
         return true;
@@ -279,7 +281,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
                 'p7'  => $snap['p7']['base'],
                 'p11' => $snap['p11']['base'],
             ],
-            'can_edit'         => in_array($role, ['admin', 'manager'], true),
+            'can_edit'         => ($role === 'admin'),
         ]);
         return true;
     }
@@ -289,7 +291,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
         if ($upperMethod !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $mgr = require_manager_or_admin($pdo);
+        $mgr = require_admin($pdo);
 
         $id = (int)($data['id'] ?? 0);
         $name = trim(sanitize_string((string)($data['name'] ?? ''), 120));
@@ -455,7 +457,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
         if ($upperMethod !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $mgr = require_manager_or_admin($pdo);
+        $mgr = require_admin($pdo);
 
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) {
@@ -494,7 +496,7 @@ function handle_admin_pricing_packages(string $action, string $method, PDO $pdo,
         if ($upperMethod !== 'POST') {
             json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
         }
-        $mgr = require_manager_or_admin($pdo);
+        $mgr = require_admin($pdo);
 
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) {
