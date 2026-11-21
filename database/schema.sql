@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS `vouchers` (
 CREATE TABLE IF NOT EXISTS `bookings` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `code` VARCHAR(40) NOT NULL UNIQUE,
+    `idempotency_key` VARCHAR(64) NULL DEFAULT NULL,
     `user_id` INT NULL DEFAULT NULL,
     `staff_id` INT NULL DEFAULT NULL,
     `customer_name` VARCHAR(100) NOT NULL,
@@ -156,7 +157,10 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     INDEX `idx_bookings_phone` (`phone`),
     INDEX `idx_bookings_expires` (`expires_at`),
     INDEX `idx_bookings_recurring` (`recurring_schedule_id`),
-    INDEX `idx_bookings_user_points` (`user_id`, `points_awarded`)
+    INDEX `idx_bookings_user_points` (`user_id`, `points_awarded`),
+    INDEX `idx_bookings_date_status` (`booking_date`, `status`),
+    INDEX `idx_bookings_pitch_date` (`pitch_id`, `booking_date`),
+    UNIQUE INDEX `uniq_booking_idempotency` (`idempotency_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- So thu noi bo cua doi, tach biet voi thanh toan cho san.
@@ -376,7 +380,7 @@ INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
 ('bank_account', '0352313548'),
 ('bank_holder', 'NGUYEN QUANG VINH'),
 ('hotline', '0352 313 548'),
-('open_hours', '05:30 - 23:00 hàng ngày (kể cả Lễ, Tết)'),
+('open_hours', '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)'),
 ('price_p5_base', '250000'),
 ('price_p5_peak', '350000'),
 ('price_p5_weekend', '380000'),
@@ -620,7 +624,7 @@ INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
 ('tg_event_matchmaking', '1'),
 ('tg_event_review', '1'),
 ('loyalty_points_per_10k', '1'),
-('loyalty_bottle_cost_points', '50'),
+('loyalty_bottle_cost_points', '100'),
 ('privacy_policy_version', '1.0');
 
 -- ===============================================================
