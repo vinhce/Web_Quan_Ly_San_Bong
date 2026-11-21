@@ -50,12 +50,7 @@ function syncStoredUser(user) {
   try {
     const raw = JSON.stringify(user);
     sessionStorage.setItem('sb_current_user', raw);
-    // Chỉ lưu localStorage cho khách hàng thường (user), không lưu cho admin/staff tránh autofill trang khách
-    if (user.role === 'user') {
-      localStorage.setItem('sb_current_user', raw);
-    } else {
-      localStorage.removeItem('sb_current_user');
-    }
+    localStorage.removeItem('sb_current_user');
     window.sb_current_user = user;
   } catch (e) {
     console.warn('Storage sync error:', e);
@@ -181,6 +176,9 @@ function markFieldError(inputId) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('expired') === '1') {
+    setAuthMessage('Phiên đăng nhập của bạn đã hết hạn hoặc bị thay đổi. Vui lòng đăng nhập lại để tiếp tục.', 'info');
+  }
   if (urlParams.get('tab') === 'register') {
     switchAuthTab('register');
   }
