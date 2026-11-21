@@ -43,12 +43,7 @@
     },
 
     getCustomer() {
-      const u = this.getUser();
-      if (!u) return null;
-      if (['admin', 'manager', 'staff'].includes(String(u.role).toLowerCase())) {
-        return null;
-      }
-      return u;
+      return this.getUser();
     },
 
     getCurrentUser() {
@@ -181,11 +176,11 @@
       const pitchPriceBeforeRule = Math.round(rawPitchTotal * (1 - monthlyDiscountRate));
       const monthlyDiscountAmount = Math.max(0, rawPitchTotal - pitchPriceBeforeRule);
 
-      // Quy tắc giá giờ vàng / thấp điểm (giống resolve_golden_hour_adjustment ở server)
+      // Tính năng quy tắc giá giờ vàng / thấp điểm đã được gỡ bỏ
       let netPitchPrice = pitchPriceBeforeRule;
       let goldenHourRule = null;
       let goldenHourDelta = 0;
-      const ghRules = this.getGoldenHourRules ? this.getGoldenHourRules() : [];
+      const ghRules = [];
       if (Array.isArray(ghRules) && ghRules.length > 0 && pitchPriceBeforeRule > 0) {
         const pitchType = Number(pitch.type || 7);
         const sId = slot ? slot.id : String(slotIdOrTime || '');
@@ -282,8 +277,10 @@
 
       const totalDiscount = monthlyDiscountAmount + discountAmount + Math.max(0, -goldenHourDelta);
       const totalPrice = Math.max(0, subtotal - discountAmount);
+      const isMonthly = Number(weeks) > 1;
       const sysCfg = this.getSystemConfig ? this.getSystemConfig() : { depositRate: 30 };
-      const depositRate = Math.max(10, Math.min(100, Number(sysCfg.depositRate) || 30)) / 100;
+      const defaultDepositRate = isMonthly ? 60 : (Number(sysCfg.depositRate) || 30);
+      const depositRate = Math.max(10, Math.min(100, defaultDepositRate)) / 100;
       const depositAmount = Math.round(totalPrice * depositRate);
       const remainingAmount = totalPrice - depositAmount;
 
@@ -302,6 +299,8 @@
         netSubtotal: subtotal,
         weeksCount: weeks,
         packagePromotion,
+        isMonthly,
+        depositRatePct: isMonthly ? 60 : Math.round(depositRate * 100),
         monthlyDiscountRate,
         monthlyDiscountAmount,
         voucherCode: appliedVoucher ? appliedVoucher.code : '',

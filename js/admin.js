@@ -170,6 +170,16 @@ async function adminFetchJson(url, options = {}) {
     }
 
     if (!res.ok) {
+      if (res.status === 401 && !window._adminRedirecting401) {
+        window._adminRedirecting401 = true;
+        try {
+          sessionStorage.removeItem('sb_current_user');
+          sessionStorage.removeItem('sb_csrf_token');
+          localStorage.removeItem('sb_current_user');
+        } catch (e) {}
+        const loginUrl = (window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin';
+        window.location.replace(loginUrl);
+      }
       return {
         ok: false,
         status: res.status,
@@ -497,7 +507,7 @@ function switchAdminTab(moduleKey) {
   if (moduleKey === 'pricing' && isOwnerAdmin()) {
     renderAdminVouchers();
     loadPricingTable();
-    if (typeof loadGoldenHourRules === 'function') loadGoldenHourRules();
+    // Quy tắc giá giờ vàng đã gỡ bỏ
   }
   if (moduleKey === 'customers') {
     renderAdminCustomers();
@@ -595,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
           [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadGoldenHourRules, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
+          [renderAdminVouchers, loadPricingTable, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         return;
       }
@@ -608,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
           [renderAdminPayments, loadBankTransactions, loadMatchmakingAdmin, renderAdminReports].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         if (isOwnerAdmin()) {
-          [renderAdminVouchers, loadPricingTable, loadGoldenHourRules, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
+          [renderAdminVouchers, loadPricingTable, loadAdminSettings, loadStaffUsers, loadAdminLogs, loadNotificationLogs, loadBackupsList].forEach(fn => { if (typeof fn === 'function') fn(); });
         }
         return;
       }

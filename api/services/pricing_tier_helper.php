@@ -58,6 +58,17 @@ function is_tier_allowed_for_voucher(string $userTier, string $requiredTier): bo
 }
 
 function resolve_golden_hour_adjustment(?PDO $pdo, int $pitchType, int $dayOfWeekIso, string $slotId, int $currentPitchPrice): array {
+    // Tính năng Quy tắc giá giờ vàng / thấp điểm đã được gỡ bỏ theo yêu cầu quản trị
+    return [
+        'originalPitchPrice' => $currentPitchPrice,
+        'adjustedPitchPrice' => $currentPitchPrice,
+        'delta'              => 0,
+        'discountAmount'     => 0,
+        'rule'               => null
+    ];
+}
+
+function resolve_golden_hour_adjustment_legacy_unused(?PDO $pdo, int $pitchType, int $dayOfWeekIso, string $slotId, int $currentPitchPrice): array {
     $result = [
         'originalPitchPrice' => $currentPitchPrice,
         'adjustedPitchPrice' => $currentPitchPrice,

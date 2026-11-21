@@ -8,7 +8,7 @@
               <thead>
                 <tr class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
                   <th class="py-3 px-4">Loại sân</th>
-                  <th class="py-3 px-4">Giờ thường (05:30 - 17:30)</th>
+                  <th class="py-3 px-4">Giờ thường (05:30 - 16:30)</th>
                   <th class="py-3 px-4">Giờ cao điểm (17:30 - 21:00)</th>
                   <th class="py-3 px-4">Cuối tuần (T7, CN)</th>
                 </tr>
@@ -57,7 +57,7 @@
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Gói 3 Tháng VIP -->
-            <div class="p-4 rounded-xl bg-emerald-50/70 border-2 border-emerald-500 space-y-3 relative shadow-xs">
+            <div class="p-4 rounded-xl bg-emerald-50/70 border-2 border-emerald-500 space-y-3 relative shadow-xs transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:border-cyan-400 hover:bg-gradient-to-br hover:from-cyan-50 hover:via-sky-50 hover:to-indigo-50 hover:shadow-[0_14px_30px_-6px_rgba(14,165,233,0.38)] hover:ring-2 hover:ring-cyan-300/70">
               <div class="flex items-center justify-between">
                 <span class="px-2.5 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-extrabold uppercase">HOT NHẤT · SIÊU VIP</span>
                 <span class="font-heading font-extrabold text-sm text-[#15803D]">Giảm 15%</span>
@@ -84,7 +84,7 @@
             </div>
 
             <!-- Gói 2 Tháng -->
-            <div class="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3">
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:border-emerald-500 hover:bg-emerald-50/80 hover:shadow-[0_12px_26px_-6px_rgba(22,163,74,0.3)] hover:ring-2 hover:ring-emerald-300/60">
               <div class="flex items-center justify-between">
                 <span class="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-extrabold uppercase">TIẾT KIỆM 10%</span>
                 <span class="font-heading font-extrabold text-sm text-sky-700">Giảm 10%</span>
@@ -228,97 +228,6 @@
           </div>
         </div>
 
-        <!-- 5.4 Bảng Quy Tắc Giá Giờ Vàng / Thấp Điểm -->
-        <div id="golden-hour-card" class="ui-card p-6 space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3">
-            <div>
-              <h3 class="font-heading font-bold text-lg text-[#0F172A]">5.4 Bảng Quy Tắc Giá Giờ Vàng / Thấp Điểm</h3>
-              <p class="text-xs text-[#64748B]">Tự động áp dụng giảm giá giờ thấp điểm hoặc phụ thu giờ cao điểm theo loại sân, thứ và khung giờ</p>
-            </div>
-            <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">Giá động thông minh</span>
-          </div>
-
-          <form id="admin-golden-hour-form" onsubmit="saveGoldenHourRule(event)" class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3 text-xs">
-            <input type="hidden" id="gh-rule-id">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div>
-                <label for="gh-rule-name" class="block text-[11px] font-bold text-[#475569] mb-1">Tên quy tắc *</label>
-                <input type="text" id="gh-rule-name" required placeholder="VD: Giảm trưa nắng, Giờ vàng T6..." class="input-field h-9 text-xs font-semibold bg-white">
-              </div>
-              <div>
-                <label for="gh-pitch-type" class="block text-[11px] font-bold text-[#475569] mb-1">Loại sân áp dụng</label>
-                <select id="gh-pitch-type" class="input-field h-9 text-xs font-semibold bg-white">
-                  <option value="">Tất cả loại sân</option>
-                  <option value="5">Sân 5 người</option>
-                  <option value="7">Sân 7 người</option>
-                  <option value="11">Sân 11 người</option>
-                </select>
-              </div>
-              <div>
-                <label for="gh-day-of-week" class="block text-[11px] font-bold text-[#475569] mb-1">Thứ trong tuần</label>
-                <select id="gh-day-of-week" class="input-field h-9 text-xs font-semibold bg-white">
-                  <option value="">Tất cả các ngày</option>
-                  <option value="1">Thứ 2</option>
-                  <option value="2">Thứ 3</option>
-                  <option value="3">Thứ 4</option>
-                  <option value="4">Thứ 5</option>
-                  <option value="5">Thứ 6</option>
-                  <option value="6">Thứ 7</option>
-                  <option value="7">Chủ Nhật</option>
-                </select>
-              </div>
-              <div>
-                <label for="gh-slot-id" class="block text-[11px] font-bold text-[#475569] mb-1">Khung giờ áp dụng</label>
-                <select id="gh-slot-id" class="input-field h-9 text-xs font-semibold bg-white">
-                  <option value="">Tất cả khung giờ</option>
-                </select>
-              </div>
-              <div>
-                <label for="gh-adj-type" class="block text-[11px] font-bold text-[#475569] mb-1">Kiểu điều chỉnh giá *</label>
-                <select id="gh-adj-type" required class="input-field h-9 text-xs font-bold bg-white">
-                  <option value="fixed">Đặt giá cố định (VNĐ)</option>
-                  <option value="percent_discount">Giảm giá theo %</option>
-                  <option value="percent_surcharge">Phụ thu theo %</option>
-                </select>
-              </div>
-              <div>
-                <label for="gh-adj-value" class="block text-[11px] font-bold text-[#475569] mb-1">Giá trị điều chỉnh *</label>
-                <input type="number" id="gh-adj-value" required min="0" placeholder="VD: 15 (15%) hoặc 220000" class="input-field h-9 text-xs font-bold text-[#16A34A] bg-white">
-              </div>
-              <div class="sm:col-span-2">
-                <label for="gh-description" class="block text-[11px] font-bold text-[#475569] mb-1">Mô tả quy tắc</label>
-                <input type="text" id="gh-description" placeholder="VD: Khuyến khích đặt sân khung giờ 14:00 - 17:00 ngày thường" class="input-field h-9 text-xs bg-white">
-              </div>
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <label class="flex items-center gap-2 text-xs font-semibold text-[#0F172A] cursor-pointer select-none">
-                <input type="checkbox" id="gh-is-active" checked class="w-4 h-4 rounded text-[#16A34A]">
-                <span>Kích hoạt quy tắc này</span>
-              </label>
-              <div class="flex items-center gap-2">
-                <button type="button" id="gh-cancel-btn" onclick="cancelEditGoldenHour()" class="hidden btn-sm btn-secondary font-bold cursor-pointer">Hủy sửa</button>
-                <button type="submit" id="gh-submit-btn" class="btn-sm btn-primary font-bold cursor-pointer">+ Thêm quy tắc giờ vàng</button>
-              </div>
-            </div>
-          </form>
-
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse min-w-[720px]">
-              <thead>
-                <tr class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
-                  <th class="py-3 px-4">Tên quy tắc</th>
-                  <th class="py-3 px-4">Điều kiện áp dụng</th>
-                  <th class="py-3 px-4">Điều chỉnh giá</th>
-                  <th class="py-3 px-4">Trạng thái</th>
-                  <th class="py-3 px-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody id="admin-golden-hours-tbody" class="divide-y divide-[#E2E8F0] font-medium">
-                <tr><td colspan="5" class="py-5 text-center text-[#94A3B8]">Đang tải quy tắc giá giờ vàng...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
       <!-- END PRICING & VOUCHER -->
 

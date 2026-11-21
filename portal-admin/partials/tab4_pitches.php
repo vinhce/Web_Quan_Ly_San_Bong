@@ -65,66 +65,6 @@
           </div>
         </div>
 
-        <!-- 7.1 Thống Kê & Quản Lý Đánh Giá Sau Trận -->
-        <div id="admin-reviews-card" class="ui-card p-5 space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-3">
-            <div>
-              <h3 class="font-heading font-bold text-base text-[#0F172A]">7.1 Thống Kê &amp; Quản Lý Đánh Giá Sau Trận</h3>
-              <p class="text-xs text-[#64748B]">Theo dõi điểm hài lòng theo sân, theo khung giờ, phản hồi khách hàng và kiểm duyệt hiển thị</p>
-            </div>
-            <button type="button" onclick="loadAdminReviews()" class="btn-sm btn-secondary font-bold cursor-pointer">Làm mới</button>
-          </div>
-
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200">
-              <div class="text-[11px] font-semibold text-[#64748B]">Điểm đánh giá TB</div>
-              <div id="rev-stat-avg" class="font-heading font-extrabold text-xl text-amber-600 mt-1">0.0 / 5.0</div>
-            </div>
-            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div class="text-[11px] font-semibold text-[#64748B]">Tổng lượt đánh giá</div>
-              <div id="rev-stat-total" class="font-heading font-extrabold text-xl text-[#0F172A] mt-1">0</div>
-            </div>
-            <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
-              <div class="text-[11px] font-semibold text-[#64748B]">Đang hiển thị</div>
-              <div id="rev-stat-published" class="font-heading font-extrabold text-xl text-[#16A34A] mt-1">0</div>
-            </div>
-            <div class="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200">
-              <div class="text-[11px] font-semibold text-[#64748B]">Đang ẩn</div>
-              <div id="rev-stat-hidden" class="font-heading font-extrabold text-xl text-[#DC2626] mt-1">0</div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
-              <div class="text-xs font-bold text-[#0F172A]">Điểm TB theo từng sân</div>
-              <div id="rev-by-pitch-list" class="space-y-1.5 text-xs text-[#475569]"></div>
-            </div>
-            <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
-              <div class="text-xs font-bold text-[#0F172A]">Điểm TB theo khung giờ</div>
-              <div id="rev-by-slot-list" class="space-y-1.5 text-xs text-[#475569]"></div>
-            </div>
-          </div>
-
-          <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
-            <table class="w-full text-left text-xs min-w-[860px]">
-              <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
-                <tr>
-                  <th class="py-3 px-4">Thời gian &amp; Mã đơn</th>
-                  <th class="py-3 px-4">Sân &amp; Giờ đá</th>
-                  <th class="py-3 px-4">Khách hàng</th>
-                  <th class="py-3 px-4">Đánh giá &amp; Góp ý</th>
-                  <th class="py-3 px-4">Phản hồi của sân</th>
-                  <th class="py-3 px-4">Trạng thái</th>
-                  <th class="py-3 px-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody id="admin-reviews-tbody" class="divide-y divide-[#E2E8F0]">
-                <tr><td colspan="7" class="py-6 text-center text-[#94A3B8]">Đang tải danh sách đánh giá...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         <!-- Modal Tạo / Sửa Lịch Bảo Trì -->
         <div id="maintenance-modal" role="dialog" aria-modal="true" aria-labelledby="maintenance-modal-title" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4 overflow-y-auto" onclick="if(event.target===this) closeMaintenanceModal()">
           <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden my-auto">
@@ -174,7 +114,7 @@
                 </div>
                 <div>
                   <label for="maint-form-end-time" class="block font-bold text-[#475569] mb-1">Đến giờ *</label>
-                  <input type="time" id="maint-form-end-time" value="23:00" required class="input-field h-9 text-xs font-bold">
+                  <input type="time" id="maint-form-end-time" value="22:30" required class="input-field h-9 text-xs font-bold">
                 </div>
               </div>
               <div>
@@ -277,7 +217,7 @@
 
               <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2.5">
                 <div class="font-bold text-[#0F172A] text-xs flex items-center justify-between">
-                  <span>Thiết lập đơn giá riêng cho sân này (VNĐ / ca 90 phút)</span>
+                  <span>Thiết lập đơn giá riêng cho sân này (VNĐ / ca 2 tiếng)</span>
                   <span class="text-[11px] font-normal text-[#64748B]">Ưu tiên áp dụng khi tính tiền</span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
