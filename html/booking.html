@@ -20,21 +20,8 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <script>(function(){const w=console.warn;console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('cdn.tailwindcss.com'))return;w.apply(console,a);};})();</script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            heading: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
-          }
-        }
-      }
-    };
-  </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261120_v105">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261122_v128">
+  <link rel="stylesheet" href="../css/style.css?v=20261122_v128">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -189,7 +176,7 @@
               3. Dịch vụ trận đấu đi kèm
             </h3>
             <span class="px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#B45309] text-[11px] font-bold">
-              🎁 Đổi nước bằng điểm ở bước sau
+              🎁 100 điểm = 1 chai nước
             </span>
           </div>
 
@@ -216,12 +203,34 @@
           </div>
 
           <div id="extra-services-wrapper">
-            <div class="p-3 rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] text-xs text-[#15803D] flex items-center justify-between mb-3.5">
-              <div class="flex items-center gap-2">
-                <span class="text-base">💧</span>
-                <span><strong>Mẹo Hội viên:</strong> Bạn có thể dùng <strong>100 điểm tích lũy = 1 chai nước suối</strong> khi chuyển khoản cọc.</span>
+            <div id="booking-redeem-water-box" class="mb-4 p-3.5 rounded-xl bg-gradient-to-br from-[#F8FAFC] to-[#F0FDF4] border border-[#DCFCE7] space-y-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 text-xs text-[#15803D]">
+                  <span class="text-base">💧</span>
+                  <div>
+                    <span class="font-bold text-[#0F172A]">Đổi điểm lấy Nước Suối miễn phí:</span>
+                    <span class="text-[#16A34A] font-semibold"> 100 điểm = 1 chai Aquafina 500ml</span>
+                  </div>
+                </div>
+                <div class="text-xs font-semibold text-[#475569]">
+                  Điểm hiện có: <strong id="booking-user-points" class="font-mono text-[#16A34A]">0 điểm</strong>
+                </div>
               </div>
-              <span class="text-[11px] text-[#64748B] hidden sm:inline">(Điểm thưởng trận này dùng ở trận sau)</span>
+              <div id="booking-redeem-controls" class="flex flex-wrap items-center justify-between gap-3 p-2.5 rounded-lg bg-white border border-[#E2E8F0]">
+                <div class="text-xs text-[#64748B]">
+                  Có thể đổi tối đa: <strong id="booking-max-bottles" class="text-[#16A34A]">0 chai</strong>
+                  <span id="booking-redeem-summary" class="hidden ml-2 text-[#059669] font-semibold">(-<span id="booking-points-to-deduct">0</span> điểm → +<span id="booking-bottles-received">0</span> chai)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button type="button" id="booking-btn-sub-water" class="w-8 h-8 rounded-lg bg-[#F1F5F9] hover:bg-[#E2E8F0] font-bold text-base text-[#0F172A] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">−</button>
+                  <span id="booking-redeemed-bottles-count" class="w-8 text-center font-bold font-mono text-sm text-[#0F172A]">0</span>
+                  <button type="button" id="booking-btn-add-water" class="w-8 h-8 rounded-lg bg-[#DCFCE7] hover:bg-[#BBF7D0] font-bold text-base text-[#16A34A] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">+</button>
+                  <span class="text-xs text-[#64748B]">chai</span>
+                </div>
+              </div>
+              <div id="booking-redeem-guest-note" class="hidden text-[11px] text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                Đăng nhập tài khoản hội viên để dùng điểm thưởng đổi nước suối kèm đơn đặt sân.
+              </div>
             </div>
 
             <div id="services-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -436,18 +445,18 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="../js/data.js?v=20261120_v106"></script>
-  <script src="../js/helpers.js?v=20261120_v106"></script>
-  <script src="../js/db_core.js?v=20261120_v106"></script>
-  <script src="../js/db_pricing.js?v=20261120_v108"></script>
-  <script src="../js/db_bookings.js?v=20261120_v108"></script>
-  <script src="../js/db_operations.js?v=20261120_v108"></script>
-  <script src="../js/db.js?v=20261120_v108"></script>
-  <script src="../js/ui.js?v=20261121_v115"></script>
-  <script src="../js/vn_datepicker.js?v=20261121_v113"></script>
-  <script src="../js/app.js?v=20261120_v108"></script>
-  <script src="../js/api.js?v=20261120_v108"></script>
-  <script src="../js/booking_ui.js?v=20261121_v110"></script>
-  <script src="../js/booking.js?v=20261121_v110"></script>
+  <script src="../js/data.js?v=20261122_v128"></script>
+  <script src="../js/helpers.js?v=20261122_v128"></script>
+  <script src="../js/db_core.js?v=20261122_v128"></script>
+  <script src="../js/db_pricing.js?v=20261122_v128"></script>
+  <script src="../js/db_bookings.js?v=20261122_v128"></script>
+  <script src="../js/db_operations.js?v=20261122_v128"></script>
+  <script src="../js/db.js?v=20261122_v128"></script>
+  <script src="../js/ui.js?v=20261122_v128"></script>
+  <script src="../js/vn_datepicker.js?v=20261122_v128"></script>
+  <script src="../js/app.js?v=20261122_v128"></script>
+  <script src="../js/api.js?v=20261122_v128"></script>
+  <script src="../js/booking_ui.js?v=20261122_v128"></script>
+  <script src="../js/booking.js?v=20261122_v128"></script>
 </body>
 </html>

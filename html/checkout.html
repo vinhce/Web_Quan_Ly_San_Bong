@@ -20,21 +20,8 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <script>(function(){const w=console.warn;console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('cdn.tailwindcss.com'))return;w.apply(console,a);};})();</script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            heading: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
-          }
-        }
-      }
-    };
-  </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v78">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261122_v128">
+  <link rel="stylesheet" href="../css/style.css?v=20261122_v128">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -68,7 +55,7 @@
           <div class="flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span>Thời gian giữ chỗ còn lại:</span>
-            <span id="countdown-timer" class="text-base font-extrabold font-mono text-[#B45309]">10:00</span>
+            <span id="countdown-timer" class="text-base font-extrabold font-mono text-[#B45309]">15:00</span>
           </div>
           <span class="text-xs hidden sm:inline font-normal">Hết giờ mã đặt sân tự động nhả (<span id="hold-minutes-label">15 phút</span>)</span>
         </div>
@@ -194,15 +181,13 @@
               <div class="flex items-center gap-3">
                 <span class="text-2xl">💧</span>
                 <div>
-                  <div class="text-xs font-bold text-[#0F172A]">Nước suối Aquafina 500ml (Ướp lạnh)</div>
-                  <div class="text-[11px] text-[#64748B]">Có thể đổi tối đa: <span id="max-redeemable-bottles" class="font-bold text-[#16A34A]">0 chai</span></div>
+                  <div class="text-xs font-bold text-[#0F172A]">Nước suối Aquafina 500ml (Đổi tại bước Đặt sân)</div>
+                  <div class="text-[11px] text-[#64748B]">Tối đa theo điểm khả dụng: <span id="max-redeemable-bottles" class="font-bold text-[#16A34A]">0 chai</span></div>
                 </div>
               </div>
               <div class="flex items-center gap-2 self-end sm:self-auto">
-                <button type="button" id="btn-sub-water" class="w-8 h-8 rounded-lg bg-[#F1F5F9] hover:bg-[#E2E8F0] active:scale-95 font-bold text-base text-[#0F172A] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed">−</button>
-                <span id="redeemed-bottles-count" class="w-8 text-center font-bold font-mono text-base text-[#0F172A]">0</span>
-                <button type="button" id="btn-add-water" class="w-8 h-8 rounded-lg bg-[#DCFCE7] hover:bg-[#BBF7D0] active:scale-95 font-bold text-base text-[#16A34A] flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed">+</button>
-                <span class="text-xs text-[#64748B] pl-1">chai</span>
+                <span id="redeemed-bottles-count" class="px-2.5 py-1 rounded-lg bg-[#DCFCE7] text-[#15803D] font-bold font-mono text-sm">0</span>
+                <span class="text-xs font-semibold text-[#475569]">chai đã chọn</span>
               </div>
             </div>
 
@@ -229,7 +214,7 @@
               <span>🔐</span>
               <span>Đăng nhập để quét mã QR &amp; Thanh toán</span>
             </a>
-            <a href="/booking" class="btn-base btn-secondary w-full sm:w-auto text-xs text-[#64748B]">
+            <a href="/booking" id="checkout-back-to-booking-btn" class="btn-base btn-secondary w-full sm:w-auto text-xs text-[#64748B]">
               ← Quay lại chỉnh sửa
             </a>
           </div>
@@ -304,17 +289,17 @@
   </main>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-  <script src="../js/data.js?v=20261120_v108"></script>
-  <script src="../js/helpers.js?v=20261120_v108"></script>
-  <script src="../js/db_core.js?v=20261120_v108"></script>
-  <script src="../js/db_pricing.js?v=20261120_v108"></script>
-  <script src="../js/db_bookings.js?v=20261120_v108"></script>
-  <script src="../js/db_operations.js?v=20261120_v108"></script>
-  <script src="../js/db.js?v=20261120_v108"></script>
-  <script src="../js/ui.js?v=20261121_v115"></script>
-  <script src="../js/app.js?v=20261120_v108"></script>
-  <script src="../js/api.js?v=20261120_v108"></script>
-  <script src="../js/checkout.js?v=20261121_v110"></script>
+  <script src="../js/data.js?v=20261122_v128"></script>
+  <script src="../js/helpers.js?v=20261122_v128"></script>
+  <script src="../js/db_core.js?v=20261122_v128"></script>
+  <script src="../js/db_pricing.js?v=20261122_v128"></script>
+  <script src="../js/db_bookings.js?v=20261122_v128"></script>
+  <script src="../js/db_operations.js?v=20261122_v128"></script>
+  <script src="../js/db.js?v=20261122_v128"></script>
+  <script src="../js/ui.js?v=20261122_v128"></script>
+  <script src="../js/app.js?v=20261122_v128"></script>
+  <script src="../js/api.js?v=20261122_v128"></script>
+  <script src="../js/checkout.js?v=20261122_v128"></script>
 </body>
 </html>
 

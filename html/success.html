@@ -20,21 +20,8 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <script>(function(){const w=console.warn;console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('cdn.tailwindcss.com'))return;w.apply(console,a);};})();</script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            heading: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
-          }
-        }
-      }
-    };
-  </script>
-  <link rel="stylesheet" href="../css/style.css?v=20261115_v78">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261122_v128">
+  <link rel="stylesheet" href="../css/style.css?v=20261122_v128">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -50,7 +37,7 @@
         Đặt sân bóng thành công!
       </h1>
       <p id="success-page-subtitle" class="text-sm text-[#475569] max-w-md mx-auto">
-        Hệ thống đã tự động ghi nhận tiền cọc 30%. Vui lòng đưa mã vé dưới đây cho nhân viên khi đến sân.
+        Hệ thống đã tự động ghi nhận tiền cọc giữ sân. Vui lòng đưa mã vé dưới đây cho nhân viên khi đến sân.
       </p>
     </div>
 
@@ -74,7 +61,7 @@
           <div class="flex items-center justify-center sm:justify-between flex-wrap gap-2">
             <span id="ticket-booking-code" class="font-mono font-extrabold text-lg text-[#0F172A]">ASFS260042</span>
             <span id="ticket-status-badge" class="px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">
-              ✓ Đã xác nhận & Cọc 30%
+              ✓ Đã xác nhận cọc
             </span>
           </div>
 
@@ -102,7 +89,7 @@
         </div>
 
         <div class="p-3.5 rounded-xl bg-[#DCFCE7] border border-[#BBF7D0]">
-          <div class="text-[#15803D] font-bold">Đã đặt cọc VietQR (30%):</div>
+          <div id="ticket-deposit-label" class="text-[#15803D] font-bold">Đã đặt cọc VietQR:</div>
           <div id="ticket-deposit-amt" class="text-base font-extrabold text-[#16A34A] mt-1">306.000đ</div>
           <div class="text-[11px] text-[#15803D] mt-0.5">Giao dịch đã xác thực</div>
         </div>
@@ -145,7 +132,7 @@
           </div>
           <p class="text-[11px] leading-relaxed text-[#78350F]">
             • Quý khách vui lòng có mặt trước giờ đá 10 - 15 phút và xuất trình mã QR check-in tại quầy lễ tân.<br>
-            • Hệ thống giữ sân tối đa <b>15 phút</b> kể từ giờ bắt đầu ca đá. Quá 15 phút không đến và không thông báo trước, hệ thống sẽ tự động hủy đơn do khách chưa đến, tịch thu cọc 30% bồi thường giữ sân và nhả sân trống đón khách khác.
+            • Hệ thống giữ sân tối đa <b>15 phút</b> kể từ giờ bắt đầu ca đá. Quá 15 phút không đến và không thông báo trước, hệ thống sẽ tự động hủy đơn do khách chưa đến, tịch thu tiền cọc bồi thường giữ sân và nhả sân trống đón khách khác.
           </p>
         </div>
 
@@ -171,17 +158,17 @@
   </main>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-  <script src="../js/data.js?v=20261115_v78"></script>
-  <script src="../js/helpers.js?v=20261115_v78"></script>
-  <script src="../js/db_core.js?v=20261115_v78"></script>
-  <script src="../js/db_pricing.js?v=20261115_v78"></script>
-  <script src="../js/db_bookings.js?v=20261115_v78"></script>
-  <script src="../js/db_operations.js?v=20261115_v78"></script>
-  <script src="../js/db.js?v=20261115_v78"></script>
-  <script src="../js/ui.js?v=20261121_v118"></script>
-  <script src="../js/app.js?v=20261115_v78"></script>
-  <script src="../js/api.js?v=20261115_v78"></script>
-  <script src="../js/success.js?v=20261121_v120"></script>
+  <script src="../js/data.js?v=20261122_v128"></script>
+  <script src="../js/helpers.js?v=20261122_v128"></script>
+  <script src="../js/db_core.js?v=20261122_v128"></script>
+  <script src="../js/db_pricing.js?v=20261122_v128"></script>
+  <script src="../js/db_bookings.js?v=20261122_v128"></script>
+  <script src="../js/db_operations.js?v=20261122_v128"></script>
+  <script src="../js/db.js?v=20261122_v128"></script>
+  <script src="../js/ui.js?v=20261122_v128"></script>
+  <script src="../js/app.js?v=20261122_v128"></script>
+  <script src="../js/api.js?v=20261122_v128"></script>
+  <script src="../js/success.js?v=20261122_v128"></script>
 </body>
 </html>
 
