@@ -1,6 +1,33 @@
 <?php
 declare(strict_types=1);
 
+function _sync_payment_state_after_charge(array $booking, int $newTotal, int $paidAmt): array {
+    $newRemaining = max(0, $newTotal - $paidAmt);
+    $curPaySt     = (string)($booking['payment_status'] ?? 'Chờ duyệt cọc');
+    $curStatus    = (string)($booking['status'] ?? 'Đã xác nhận');
+    $wasFullPaid  = in_array($curPaySt, ['Đã thanh toán đủ', 'Đã thanh toán 100%', 'completed', 'paid'], true);
+
+    $newPaySt  = $curPaySt;
+    $newStatus = $curStatus;
+    if ($newRemaining > 0) {
+        if ($wasFullPaid) {
+            $newPaySt = 'Còn thiếu phần phát sinh';
+        }
+        if (in_array($curStatus, ['completed', 'Hoàn thành'], true)) {
+            $bDate = (string)($booking['booking_date'] ?? date('Y-m-d'));
+            $newStatus = ($bDate < date('Y-m-d')) ? 'Đã đá - chưa tất toán' : 'Đang đá';
+        }
+    } elseif ($curPaySt === 'Còn thiếu phần phát sinh' && $paidAmt >= $newTotal && $newTotal > 0) {
+        $newPaySt = 'Đã thanh toán 100%';
+    }
+
+    return [
+        'status'           => $newStatus,
+        'payment_status'   => $newPaySt,
+        'remaining_amount' => $newRemaining
+    ];
+}
+
 function handle_admin_update_payment(PDO $pdo, array $data, string $method, array $actor): void {
     $mgr = require_manager_or_admin($pdo);
     if ($method !== 'POST') {
@@ -42,7 +69,7 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
 
         $isTerminalStatus = in_array((string)($oldRow['status'] ?? ''), ['Đã hủy', 'Khách chưa đến'], true);
 
-        if ($status === 'Đã cọc 30%') {
+        if ($status === 'Đã cọc 30%' || $status === 'Đã cọc 60%' || $status === 'Đã cọc') {
             if ($isTerminalStatus) {
                 $pdo->rollBack();
                 json_error('Không thể duyệt cọc cho đơn đã hủy hoặc khách chưa đến.', 400, 'ERR_INVALID_BOOKING_STATUS');
@@ -80,9 +107,16 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
                 $noteAdd = " [Duyệt thủ công: " . trim("{$refStr} {$clientNote}") . "]";
             }
 
-            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã cọc 30%', status = 'Đã xác nhận', paid_amount = GREATEST(paid_amount, deposit_amount), remaining_amount = GREATEST(0, total_price - GREATEST(paid_amount, deposit_amount)), note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-            $stmt->execute([$noteAdd, $code]);
+            $weeksCount = max(1, (int)($oldRow['weeks_count'] ?? 1));
+            $approvedPayLabel = ($status === 'Đã cọc') ? ($weeksCount > 1 ? 'Đã cọc 60%' : 'Đã cọc 30%') : $status;
+            $nextBookingStatus = in_array((string)($oldRow['status'] ?? ''), ['Đang đá', 'completed', 'Hoàn thành'], true)
+                ? (string)$oldRow['status']
+                : 'Đã xác nhận';
+
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = ?, paid_amount = GREATEST(paid_amount, deposit_amount), remaining_amount = GREATEST(0, total_price - GREATEST(paid_amount, deposit_amount)), note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+            $stmt->execute([$approvedPayLabel, $nextBookingStatus, $noteAdd, $code]);
             award_booking_loyalty_points($pdo, $oldRow);
+            $status = $approvedPayLabel;
         } elseif ($status === 'Đã hoàn cọc 100%') {
             $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = 'Đã hủy', remaining_amount = 0, cancel_policy_applied = 'refund_100', refund_amount = GREATEST(paid_amount, deposit_amount) WHERE code = ?");
             $stmt->execute([$status, $code]);
@@ -183,25 +217,35 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
                 $pdo->rollBack();
                 json_error('Không tìm thấy đơn đặt sân cần gia hạn.', 404, 'ERR_BOOKING_NOT_FOUND');
             }
-            if (in_array((string)($lockedBooking['status'] ?? ''), ['Đã hủy', 'Khách chưa đến', 'completed', 'Hoàn thành'], true)) {
+            if (in_array((string)($lockedBooking['status'] ?? ''), ['Đã hủy', 'Khách chưa đến'], true)) {
                 $pdo->rollBack();
-                json_error('Không thể đá thêm giờ cho đơn đã hủy, khách chưa đến hoặc đã hoàn tất.', 400, 'ERR_INVALID_BOOKING_STATUS');
+                json_error('Không thể đá thêm giờ cho đơn đã hủy hoặc khách chưa đến.', 400, 'ERR_INVALID_BOOKING_STATUS');
+            }
+            if (in_array((string)($lockedBooking['status'] ?? ''), ['completed', 'Hoàn thành'], true) && (string)($lockedBooking['booking_date'] ?? '') < date('Y-m-d')) {
+                $pdo->rollBack();
+                json_error('Không thể đá thêm giờ cho đơn đã hoàn tất của ngày trước.', 400, 'ERR_INVALID_BOOKING_STATUS');
             }
 
-            $noteAdd = " [Đá thêm {$minutes}p: +" . number_format($fee, 0, ',', '.') . "đ]";
-            $stmt = $pdo->prepare("UPDATE bookings SET total_price = total_price + ?, remaining_amount = remaining_amount + ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-            $stmt->execute([$fee, $fee, $noteAdd, $code]);
+            $oldTotal = max(0, (int)($lockedBooking['total_price'] ?? 0));
+            $paidAmt  = max(0, (int)($lockedBooking['paid_amount'] ?? 0));
+            $newTotal = $oldTotal + $fee;
+            $syncedState = _sync_payment_state_after_charge($lockedBooking, $newTotal, $paidAmt);
 
-            $oldTotal = (int)($lockedBooking['total_price'] ?? 0);
-            write_audit_log($pdo, 'ADD_OVERTIME', $code, (string)$oldTotal, ($oldTotal + $fee) . " (+{$minutes}p)", $actor);
+            $noteAdd = " [Đá thêm {$minutes}p: +" . number_format($fee, 0, ',', '.') . "đ]";
+            $stmt = $pdo->prepare("UPDATE bookings SET total_price = ?, remaining_amount = ?, status = ?, payment_status = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+            $stmt->execute([$newTotal, $syncedState['remaining_amount'], $syncedState['status'], $syncedState['payment_status'], $noteAdd, $code]);
+
+            write_audit_log($pdo, 'ADD_OVERTIME', $code, (string)$oldTotal, "{$newTotal} (+{$minutes}p)", $actor);
             $pdo->commit();
 
             json_response([
                 'success' => true,
                 'message' => "Đã cộng thêm {$minutes} phút đá thêm giờ.",
                 'data'    => [
-                    'totalPrice'      => $oldTotal + $fee,
-                    'remainingAmount' => max(0, (int)($lockedBooking['remaining_amount'] ?? 0) + $fee),
+                    'totalPrice'      => $newTotal,
+                    'remainingAmount' => $syncedState['remaining_amount'],
+                    'status'          => $syncedState['status'],
+                    'paymentStatus'   => $syncedState['payment_status'],
                     'minutes'         => $minutes,
                     'fee'             => $fee
                 ]
@@ -304,18 +348,20 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             $newTotal = max(0, $oldTotal + $diffPrice);
             $newOriginal = max(0, $oldOriginal + $diffPrice);
             $paidBase = max(0, (int)($oldBooking['paid_amount'] ?? 0));
-            if ($paidBase === 0 && ($oldBooking['payment_status'] ?? '') === 'Đã cọc 30%') {
+            $payCur   = (string)($oldBooking['payment_status'] ?? '');
+            if ($paidBase === 0 && (in_array($payCur, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc'], true) || mb_stripos($payCur, 'Đã cọc') !== false)) {
                 $paidBase = max(0, (int)($oldBooking['deposit_amount'] ?? 0));
-            } elseif ($paidBase === 0 && in_array($oldBooking['payment_status'] ?? '', ['Đã thanh toán đủ', 'Đã thanh toán 100%'], true)) {
+            } elseif ($paidBase === 0 && in_array($payCur, ['Đã thanh toán đủ', 'Đã thanh toán 100%'], true)) {
                 $paidBase = $oldTotal;
             }
-            $newRemaining = max(0, $newTotal - $paidBase);
+            $syncedState = _sync_payment_state_after_charge($oldBooking, $newTotal, $paidBase);
+            $newRemaining = $syncedState['remaining_amount'];
 
             $diffLabel = ($adjustPrice && $diffPrice !== 0) ? (' ' . ($diffPrice > 0 ? '+' : '') . number_format($diffPrice, 0, ',', '.') . 'đ') : ($adjustPrice ? '' : ' Giữ nguyên giá');
             $noteAdd = " [Đổi sang sân {$targetPitch['name']} ({$newPitchId}){$diffLabel}" . ($reason ? ": {$reason}" : "") . "]";
 
-            $stmt = $pdo->prepare("UPDATE bookings SET pitch_id = ?, original_price = ?, total_price = ?, remaining_amount = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-            $stmt->execute([$newPitchId, $newOriginal, $newTotal, $newRemaining, $noteAdd, $code]);
+            $stmt = $pdo->prepare("UPDATE bookings SET pitch_id = ?, original_price = ?, total_price = ?, remaining_amount = ?, status = ?, payment_status = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+            $stmt->execute([$newPitchId, $newOriginal, $newTotal, $newRemaining, $syncedState['status'], $syncedState['payment_status'], $noteAdd, $code]);
             $pdo->commit();
         } catch (Throwable $trEx) {
             if ($pdo->inTransaction()) {
@@ -366,7 +412,7 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
 
         try {
             $pdo->beginTransaction();
-            $lockStmt = $pdo->prepare("SELECT id, code, status, services_json, total_price, remaining_amount FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
+            $lockStmt = $pdo->prepare("SELECT id, code, booking_date, status, payment_status, services_json, total_price, paid_amount, remaining_amount FROM bookings WHERE code = ? LIMIT 1 FOR UPDATE");
             $lockStmt->execute([$code]);
             $lockedBooking = $lockStmt->fetch();
             if (!$lockedBooking) {
@@ -431,9 +477,12 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             }
 
             $servicesJson = json_encode($existingServices, JSON_UNESCAPED_UNICODE);
+            $newTotal     = max(0, (int)$lockedBooking['total_price']) + $addedCost;
+            $paidAmtCur   = max(0, (int)($lockedBooking['paid_amount'] ?? 0));
+            $syncedState  = _sync_payment_state_after_charge($lockedBooking, $newTotal, $paidAmtCur);
             $noteAdd = " [Gọi thêm: {$srvRow['name']} x{$qty} (+" . number_format($addedCost, 0, ',', '.') . "đ)]";
-            $updStmt = $pdo->prepare("UPDATE bookings SET services_json = ?, total_price = total_price + ?, remaining_amount = remaining_amount + ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-            $updStmt->execute([$servicesJson, $addedCost, $addedCost, $noteAdd, $code]);
+            $updStmt = $pdo->prepare("UPDATE bookings SET services_json = ?, total_price = ?, remaining_amount = ?, status = ?, payment_status = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+            $updStmt->execute([$servicesJson, $newTotal, $syncedState['remaining_amount'], $syncedState['status'], $syncedState['payment_status'], $noteAdd, $code]);
 
             deduct_service_inventory($pdo, $srvRow['id'], $qty, $code, $unitPrice, 'Gọi thêm vào đơn sân', "Gọi thêm cho đơn #{$code}", $actor['id'] ?? null);
             $pdo->commit();
@@ -453,8 +502,10 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             'data'    => [
                 'services'        => $existingServices,
                 'addedCost'       => $addedCost,
-                'totalPrice'      => (int)$lockedBooking['total_price'] + $addedCost,
-                'remainingAmount' => (int)$lockedBooking['remaining_amount'] + $addedCost
+                'totalPrice'      => $newTotal,
+                'remainingAmount' => $syncedState['remaining_amount'],
+                'status'          => $syncedState['status'],
+                'paymentStatus'   => $syncedState['payment_status']
             ]
         ]);
     }
@@ -481,10 +532,9 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             }
 
             $isPaidOrDeposited = (
-                (int)($lockedBooking['deposit_amount'] ?? 0) > 0 ||
                 (int)($lockedBooking['paid_amount'] ?? 0) > 0 ||
-                in_array($lockedBooking['payment_status'] ?? '', ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%'], true) ||
-                (stripos((string)($lockedBooking['payment_status'] ?? ''), 'Đã cọc') !== false)
+                in_array($lockedBooking['payment_status'] ?? '', ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán đủ', 'Đã thanh toán 100%', 'Còn thiếu phần phát sinh', 'deposited', 'completed', 'paid'], true) ||
+                (mb_stripos((string)($lockedBooking['payment_status'] ?? ''), 'Đã cọc') !== false)
             );
             if ($isPaidOrDeposited && $rawReason === '') {
                 $pdo->rollBack();
@@ -531,8 +581,10 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
                 $refundAmount  = $eval['refund_amount'];
             }
 
-            if ($paidBase <= 0 && $requestedPolicy !== 'noshow_forfeit') {
-                $appliedPolicy = 'unpaid_free_cancel';
+            if ($paidBase <= 0) {
+                // T5-01: Đơn chưa thanh toán/chưa cọc bất kể chọn hủy hay no-show đều chuyển thành Đã hủy (doanh thu = 0đ)
+                $targetStatus  = 'Đã hủy';
+                $appliedPolicy = ($requestedPolicy === 'noshow_forfeit') ? 'unpaid_noshow_cancel' : 'unpaid_free_cancel';
                 $payStatus     = 'Đã hủy';
                 $refundAmount  = 0;
             }
@@ -544,7 +596,7 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             $stmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, remaining_amount = 0, cancel_policy_applied = ?, refund_amount = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
             $stmt->execute([$targetStatus, $payStatus, $appliedPolicy, $refundAmount, $noteAdd, $code]);
 
-            restore_booking_resources_on_cancel($pdo, $lockedBooking, true);
+            restore_booking_resources_on_cancel($pdo, $lockedBooking, ($paidBase > 0));
             write_audit_log($pdo, 'CANCEL_BOOKING', $code, $oldStateStr, "{$targetStatus} ({$payStatus}) | Chính sách: {$appliedPolicy} (Đề xuất: {$policyRecommended}, còn {$hoursBeforeMatch}h) | Hoàn: " . number_format($refundAmount) . "đ | Lý do: {$reason}", $actor);
             $pdo->commit();
         } catch (Throwable $cancelEx) {
