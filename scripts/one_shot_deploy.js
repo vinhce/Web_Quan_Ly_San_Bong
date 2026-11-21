@@ -129,7 +129,7 @@ async function callMCP(toolName, args) {
 
 // Allowlist cac dinh dang file hop le va an toan cho web application
 const ALLOWED_EXTENSIONS = new Set([
-  '.html', '.css', '.js', '.php', '.sql', '.htaccess', '.json', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.txt'
+  '.html', '.css', '.js', '.php', '.sql', '.htaccess', '.json', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.txt', '.woff2', '.woff', '.ttf'
 ]);
 
 const FORBIDDEN_FILENAMES = new Set([
@@ -204,6 +204,7 @@ async function main() {
     ...collectFiles('js'),
     ...collectFiles('css'),
     ...collectFiles('html'),
+    ...collectFiles('assets'),
     ...collectFiles('cron'),
     ...collectFiles('data'),
     ...collectFiles('database/migrations')
@@ -211,6 +212,10 @@ async function main() {
 
   const uniqueFiles = Array.from(new Set(candidateFiles))
     .filter(f => fs.existsSync(f) && isSafeFile(f));
+
+  const BINARY_EXTENSIONS = new Set([
+    '.woff2', '.woff', '.ttf', '.png', '.jpg', '.jpeg', '.ico'
+  ]);
 
   console.log('Bat dau deploy ' + uniqueFiles.length + ' files an toan len hosting qua MCP...');
 
@@ -220,6 +225,11 @@ async function main() {
   for (let i = 0; i < uniqueFiles.length; i++) {
     const file = uniqueFiles[i];
     const norm = file.replace(/\\/g, '/').replace(/^\.\//, '');
+    const ext = path.extname(norm).toLowerCase();
+    if (BINARY_EXTENSIONS.has(ext)) {
+      console.log(`[${i + 1}/${uniqueFiles.length}] Bo qua file nhi phan ${norm}: can deploy qua batch binary/base64, khong doc bang utf8.`);
+      continue;
+    }
     const remotePath = 'public_html/' + norm;
     const content = fs.readFileSync(file, 'utf8');
 
