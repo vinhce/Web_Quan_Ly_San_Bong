@@ -41,7 +41,11 @@ const orchestrator = `(function () {
     handleLogout: ui.handleLogout || (() => {}),
     showToast: ui.showToast || ((m) => console.log(m)),
     showModal: ui.showModal || ((cfg) => { if (confirm(cfg.message || cfg.title)) cfg.onConfirm && cfg.onConfirm(); }),
-    syncAuthMe: ui.syncAuthMe || (typeof syncAuthMe !== 'undefined' ? syncAuthMe : (() => Promise.resolve(null)))
+    syncAuthMe: ui.syncAuthMe || (typeof syncAuthMe !== 'undefined' ? syncAuthMe : (() => Promise.resolve(null))),
+    handleUnauthorizedSession: ui.handleUnauthorizedSession || (typeof handleUnauthorizedSession !== 'undefined' ? handleUnauthorizedSession : ((route) => {
+      try { sessionStorage.removeItem('sb_current_user'); sessionStorage.removeItem('sb_csrf_token'); localStorage.removeItem('sb_current_user'); } catch (e) {}
+      window.location.replace(\`login?redirect=\${encodeURIComponent(route || 'history')}&expired=1\`);
+    }))
   });
 
   function renderShellNavbar() {
@@ -86,22 +90,28 @@ const orchestrator = `(function () {
     }
   }
 
+  function renderShellFooter() {
+    const currentUI = window.SanBongUI || ui;
+    const footerPlaceholder = document.getElementById('app-footer');
+    if (footerPlaceholder && currentUI.renderFooter) {
+      footerPlaceholder.innerHTML = currentUI.renderFooter();
+    }
+  }
+
   function initAppShell() {
     if (window.SanBongDB && typeof window.SanBongDB.init === 'function') {
       window.SanBongDB.init();
     }
 
     renderShellNavbar();
-
-    const currentUI = window.SanBongUI || ui;
-    const footerPlaceholder = document.getElementById('app-footer');
-    if (footerPlaceholder && currentUI.renderFooter) {
-      footerPlaceholder.innerHTML = currentUI.renderFooter();
-    }
+    renderShellFooter();
 
     if (!window._sbNavSyncBound && typeof window.addEventListener === 'function') {
       window._sbNavSyncBound = true;
-      window.addEventListener('sb-data-synced', renderShellNavbar);
+      window.addEventListener('sb-data-synced', function () {
+        renderShellNavbar();
+        renderShellFooter();
+      });
     }
   }
 
