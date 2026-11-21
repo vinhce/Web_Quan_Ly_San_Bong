@@ -34,6 +34,9 @@ window.SanBongApp.SanBongAPI = {
               if (jsonRes.data.settings) {
                 localStorage.setItem('sb_system_config', JSON.stringify(jsonRes.data.settings));
               }
+              if (jsonRes.data.publicStats) {
+                localStorage.setItem('sb_public_stats_v1', JSON.stringify(jsonRes.data.publicStats));
+              }
             } catch (e) {}
           }
           return {
@@ -44,7 +47,8 @@ window.SanBongApp.SanBongAPI = {
             goldenHourRules: jsonRes.data.goldenHourRules || window.SanBongApp.SanBongDB?.getGoldenHourRules?.() || [],
             maintenanceSchedules: jsonRes.data.maintenanceSchedules || window.SanBongApp.SanBongDB?.getMaintenanceSchedules?.() || [],
             bankInfo: jsonRes.data.bankInfo || window.SanBongApp.SanBongDB?.getBankInfo() || {},
-            settings: jsonRes.data.settings || window.SanBongApp.SanBongDB?.getSystemConfig?.() || {}
+            settings: jsonRes.data.settings || window.SanBongApp.SanBongDB?.getSystemConfig?.() || {},
+            publicStats: jsonRes.data.publicStats || null
           };
         }
       }
