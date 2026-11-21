@@ -289,7 +289,8 @@ try {
 
         $isExpiredHold = !empty($booking['expires_at'])
             && strtotime((string)$booking['expires_at']) <= time()
-            && ($pStatus === 'Chờ duyệt cọc' || $bStatus === 'Chờ duyệt cọc')
+            && in_array($pStatus, ['Chờ duyệt cọc', 'Chờ cọc 30%'], true)
+            && in_array($bStatus, ['Chờ duyệt cọc', 'Giữ chỗ', 'Đã xác nhận'], true)
             && $alreadyPaid <= 0;
 
         if ($isCancelledOrClosed || $isExpiredHold) {
@@ -321,7 +322,7 @@ try {
                 $isMonthlyBooking = (!empty($booking['weeks_count']) && (int)$booking['weeks_count'] > 1) || (!empty($booking['booking_mode']) && $booking['booking_mode'] === 'monthly');
                 $depLabel     = $isMonthlyBooking ? 'Đã cọc 60%' : 'Đã cọc 30%';
                 $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : $depLabel;
-                $newStatus    = ($bStatus === 'Chờ duyệt cọc') ? 'Đã xác nhận' : $bStatus;
+                $newStatus    = in_array($bStatus, ['Chờ duyệt cọc', 'Giữ chỗ'], true) ? 'Đã xác nhận' : $bStatus;
                 $updB = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
                 $updB->execute([$newStatus, $newPayStatus, $newTotalPaid, $newTotalPaid, (int)$booking['id']]);
 
@@ -358,7 +359,7 @@ try {
             $expectedAmount = $expectedRem;
 
             if ($expectedRem > 0 && $transferAmount === $expectedRem) {
-                $updB = $pdo->prepare("UPDATE bookings SET status = IF(status='Chờ duyệt cọc', 'Đã xác nhận', status), payment_status = 'Đã thanh toán 100%', payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = 0 WHERE id = ?");
+                $updB = $pdo->prepare("UPDATE bookings SET status = IF(status IN ('Chờ duyệt cọc', 'Giữ chỗ'), 'Đã xác nhận', status), payment_status = 'Đã thanh toán 100%', payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = 0 WHERE id = ?");
                 $updB->execute([$newTotalPaid, (int)$booking['id']]);
 
                 $matchStatus    = 'matched';
