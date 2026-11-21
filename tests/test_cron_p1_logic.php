@@ -91,7 +91,7 @@ try {
     $insInPlay->execute([$codeOverduePast, $pitchId, $yesterday, 'S01', '05:30 - 06:30', 350000, 'Đã thanh toán đủ']);
     // 2: hôm nay, đã thanh toán đủ, ca đá đã kết thúc 30 phút trước (quá 15 phút) -> quá hạn
     $insInPlay->execute([$codeOverdueToday, $pitchId, $today, 'STEST_P', "{$timePastStart} - {$timePastEnd}", 350000, 'Đã thanh toán đủ']);
-    // 3: ngày hôm qua, quá hạn nhưng chưa thanh toán đủ (paid_amount < total_price) -> giữ nguyên 'Đang đá'
+    // 3: ngày hôm qua, quá hạn nhưng chưa thanh toán đủ (paid_amount < total_price) -> chuyển 'Đã đá - chưa tất toán'
     $insInPlay->execute([$codeOverdueUnpaid, $pitchId, $yesterday, 'S01', '05:30 - 06:30', 100000, 'Đã cọc 30%']);
     // 4: hôm nay, ca đá tương lai -> không được hoàn thành
     $insInPlay->execute([$codeActiveFuture, $pitchId, $today, 'STEST_F', "{$timeFutStart} - {$timeFutEnd}", 100000, 'Đã cọc 30%']);
@@ -102,6 +102,7 @@ try {
     test_assert(in_array($codeOverduePast, $run1['codes'], true), "Đơn hôm qua phải được hoàn thành");
     test_assert(in_array($codeOverdueToday, $run1['codes'], true), "Đơn ca đã qua hôm nay phải được hoàn thành");
     test_assert(!in_array($codeOverdueUnpaid, $run1['codes'], true), "Đơn quá hạn chưa thanh toán đủ KHÔNG được hoàn thành");
+    test_assert(in_array($codeOverdueUnpaid, $run1['unpaid_codes'] ?? [], true), "Đơn quá hạn chưa thanh toán đủ được chuyển vào unpaid_codes");
     test_assert(!in_array($codeActiveFuture, $run1['codes'], true), "Đơn ca tương lai KHÔNG được hoàn thành");
 
     // Kiểm tra DB status
@@ -115,7 +116,7 @@ try {
 
     $chkUnpaid = $pdo->prepare("SELECT status FROM bookings WHERE code = ?");
     $chkUnpaid->execute([$codeOverdueUnpaid]);
-    test_assert($chkUnpaid->fetchColumn() === 'Đang đá', "Trạng thái đơn quá hạn chưa thanh toán đủ vẫn phải là 'Đang đá'");
+    test_assert($chkUnpaid->fetchColumn() === 'Đã đá - chưa tất toán', "Trạng thái đơn quá hạn chưa thanh toán đủ phải là 'Đã đá - chưa tất toán'");
 
     $chk2 = $pdo->prepare("SELECT status FROM bookings WHERE code = ?");
     $chk2->execute([$codeActiveFuture]);
@@ -147,7 +148,7 @@ try {
 }
 
 // 4. Kiểm tra flock chống chạy trùng trên cron_in_play.lock
-$lockFile = dirname(__DIR__) . '/logs/cron_in_play.lock';
+$lockFile = dirname(__DIR__) . '/logs/.cron_in_play.lock';
 $fpTest = fopen($lockFile, 'c+');
 test_assert($fpTest !== false, "Mở được file lock cron_in_play.lock");
 $locked = flock($fpTest, LOCK_EX | LOCK_NB);

@@ -73,9 +73,20 @@ $pitchStmt = $pdo->query("SELECT id FROM pitches WHERE status != 'Bảo trì' LI
 $pitchId = $pitchStmt->fetchColumn() ?: 'P7-A';
 $testDate = date('Y-m-d', strtotime('+4 days'));
 
-// Dọn dẹp đơn cũ của ngày test trên sân test
+// Dọn dẹp đơn cũ của ngày test trên sân test + nạp tạm các khung giờ chồng lấn S09..S13 để test
 $pdo->prepare("DELETE FROM bookings WHERE pitch_id = ? AND booking_date = ?")->execute([$pitchId, $testDate]);
 $pdo->prepare("DELETE FROM rate_limits WHERE action LIKE 'create_booking%'")->execute();
+$tmpSlots = [
+    ['S09', '17:00 - 18:00', '17:00:00', '18:00:00', 0, 1.0],
+    ['S10', '17:30 - 19:00', '17:30:00', '19:00:00', 1, 1.5],
+    ['S11', '18:00 - 19:00', '18:00:00', '19:00:00', 1, 1.0],
+    ['S12', '19:00 - 20:00', '19:00:00', '20:00:00', 1, 1.0],
+    ['S13', '19:00 - 20:30', '19:00:00', '20:30:00', 1, 1.5],
+];
+$insSlotStmt = $pdo->prepare("REPLACE INTO time_slots (id, slot_time, start_time, end_time, is_peak, duration) VALUES (?, ?, ?, ?, ?, ?)");
+foreach ($tmpSlots as $tsRow) {
+    $insSlotStmt->execute($tsRow);
+}
 
 // -------------------------------------------------------------
 // TEST 1: Khách chưa đăng nhập bấm nút: không có toast, chuyển sang login, quay lại đúng lựa chọn
@@ -84,7 +95,7 @@ $jsBooking = file_get_contents(__DIR__ . '/../js/booking.js');
 $jsLogin = file_get_contents(__DIR__ . '/../js/login.js');
 $htmlBooking = file_get_contents(__DIR__ . '/../html/booking.html');
 
-$noToastOnUnauth = (strpos($jsBooking, '!isCustomer') !== false && 
+$noToastOnUnauth = ((strpos($jsBooking, '!isLoggedIn') !== false || strpos($jsBooking, '!isCustomer') !== false) && 
                     strpos($jsBooking, 'saveCurrentBookingDraft()') !== false && 
                     strpos($jsBooking, 'sb_login_notice') !== false &&
                     strpos($jsBooking, 'window.location.href = loginUrl') !== false);
@@ -224,6 +235,7 @@ assertTest($oldTestPass, "7.1 Test suite hồi quy test_v9_booking_streamline.ph
 // Dọn dẹp dữ liệu test
 $pdo->prepare("DELETE FROM bookings WHERE pitch_id = ? AND booking_date IN (?, ?, ?)")->execute([$pitchId, $testDate, $testDate5, $testDate6]);
 $pdo->prepare("DELETE FROM points_log WHERE user_id = ?")->execute([$userAId]);
+$pdo->prepare("DELETE FROM time_slots WHERE id IN ('S09', 'S10', 'S11', 'S12', 'S13')")->execute();
 
 echo "\n=== KẾT QUẢ KIỂM THỬ: {$passCount} ĐẠT / " . ($passCount + $failCount) . " TEST ===\n";
 if ($failCount === 0) {
