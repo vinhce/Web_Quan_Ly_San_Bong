@@ -1,13 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../api/security_helper.php';
+require_once __DIR__ . '/../api/services/cron_ops_service.php';
 
 /**
- * Quét các đơn trạng thái 'Đang đá' quá giờ thi đấu (+15 phút) và chuyển sang 'Hoàn thành'.
+ * Quét các đơn trạng thái 'Đang đá' quá giờ thi đấu (+15 phút):
+ * - Nếu đã thu đủ tiền (paid_amount >= total_price và remaining_amount = 0): chuyển sang 'completed'.
+ * - Nếu còn thiếu tiền (paid_amount < total_price hoặc remaining_amount > 0): chuyển sang 'Đã đá - chưa tất toán' + cảnh báo admin (T5-03).
  * Bọc transaction, idempotent 100%, ghi audit log và file log.
- *
- * @param PDO|null $pdo
- * @return array
  */
 function run_complete_overdue_in_play(?PDO $pdo = null): array {
     if ($pdo === null) {
@@ -17,7 +17,9 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
         return [
             'success'         => false,
             'completed_count' => 0,
+            'unpaid_count'    => 0,
             'codes'           => [],
+            'unpaid_codes'    => [],
             'error'           => 'no_db'
         ];
     }
@@ -29,6 +31,8 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
 
     $completedCodes = [];
     $completedCount = 0;
+    $unpaidCodes = [];
+    $unpaidCount = 0;
 
     $inTransactionBefore = $pdo->inTransaction();
     if (!$inTransactionBefore) {
@@ -38,11 +42,11 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
     try {
         $sql = "
             SELECT b.id, b.code, b.booking_date, b.slot_id, b.slot_time, b.status,
+                   b.total_price, b.paid_amount, b.remaining_amount,
                    COALESCE(ts.end_time, TRIM(SUBSTRING_INDEX(b.slot_time, '-', -1))) AS slot_end_time
             FROM bookings b
             LEFT JOIN time_slots ts ON b.slot_id = ts.id
             WHERE b.status = 'Đang đá'
-              AND COALESCE(b.paid_amount, 0) >= COALESCE(b.total_price, 0)
               AND (
                   b.booking_date < CURDATE()
                   OR (
@@ -58,7 +62,8 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
         $overdueBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($overdueBookings)) {
-            $updStmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = GREATEST(0, total_price - paid_amount) WHERE id = ? AND status = 'Đang đá' AND COALESCE(paid_amount, 0) >= COALESCE(total_price, 0)");
+            $updPaidStmt = $pdo->prepare("UPDATE bookings SET status = 'completed', remaining_amount = 0 WHERE id = ? AND status = 'Đang đá'");
+            $updUnpaidStmt = $pdo->prepare("UPDATE bookings SET status = 'Đã đá - chưa tất toán', remaining_amount = GREATEST(0, total_price - paid_amount), note = CONCAT(COALESCE(note, ''), ' | [CẢNH BÁO: Quá giờ đá nhưng chưa tất toán đủ]') WHERE id = ? AND status = 'Đang đá'");
             $actor = [
                 'id'        => null,
                 'username'  => 'cron_in_play',
@@ -67,18 +72,44 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
             ];
 
             foreach ($overdueBookings as $bk) {
-                $updStmt->execute([(int)$bk['id']]);
-                if ($updStmt->rowCount() > 0) {
-                    $completedCodes[] = $bk['code'];
-                    $completedCount++;
-                    write_audit_log(
-                        $pdo,
-                        'cron_complete_overdue_in_play',
-                        $bk['code'],
-                        'Đang đá',
-                        'completed',
-                        $actor
-                    );
+                $totAmt  = max(0, (int)($bk['total_price'] ?? 0));
+                $paidAmt = max(0, (int)($bk['paid_amount'] ?? 0));
+                $remCol  = max(0, (int)($bk['remaining_amount'] ?? 0));
+
+                if ($paidAmt >= $totAmt && $remCol <= 0) {
+                    $updPaidStmt->execute([(int)$bk['id']]);
+                    if ($updPaidStmt->rowCount() > 0) {
+                        $completedCodes[] = $bk['code'];
+                        $completedCount++;
+                        write_audit_log(
+                            $pdo,
+                            'cron_complete_overdue_in_play',
+                            $bk['code'],
+                            'Đang đá',
+                            'completed',
+                            $actor
+                        );
+                    }
+                } else {
+                    $updUnpaidStmt->execute([(int)$bk['id']]);
+                    if ($updUnpaidStmt->rowCount() > 0) {
+                        $unpaidCodes[] = $bk['code'];
+                        $unpaidCount++;
+                        write_audit_log(
+                            $pdo,
+                            'CRON_IN_PLAY_UNPAID',
+                            $bk['code'],
+                            'Đang đá',
+                            'Đã đá - chưa tất toán',
+                            $actor
+                        );
+                        $shortfall = max($remCol, max(0, $totAmt - $paidAmt));
+                        send_telegram_notification(
+                            "⚠️ <b>ĐÃ HẾT GIỜ ĐÁ NHƯNG CHƯA TẤT TOÁN</b>\n• Mã đơn: <code>" . tg_escape($bk['code']) . "</code>\n• Còn thiếu: <b>" . number_format($shortfall) . " đ</b>",
+                            'new_booking',
+                            $pdo
+                        );
+                    }
                 }
             }
         }
@@ -88,17 +119,21 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
         }
 
         $logMsg = sprintf(
-            "[%s] IN_PLAY_CRON: processed %d overdue booking(s). Codes: %s\n",
+            "[%s] IN_PLAY_CRON: completed=%d (%s), unpaid_flagged=%d (%s)\n",
             date('Y-m-d H:i:s'),
             $completedCount,
-            !empty($completedCodes) ? implode(', ', $completedCodes) : 'none'
+            !empty($completedCodes) ? implode(', ', $completedCodes) : 'none',
+            $unpaidCount,
+            !empty($unpaidCodes) ? implode(', ', $unpaidCodes) : 'none'
         );
         @file_put_contents($logDir . '/cron_in_play.log', $logMsg, FILE_APPEND);
 
         return [
             'success'         => true,
             'completed_count' => $completedCount,
+            'unpaid_count'    => $unpaidCount,
             'codes'           => $completedCodes,
+            'unpaid_codes'    => $unpaidCodes,
             'timestamp'       => date('c')
         ];
     } catch (Throwable $e) {
@@ -115,7 +150,9 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
         return [
             'success'         => false,
             'completed_count' => 0,
+            'unpaid_count'    => 0,
             'codes'           => [],
+            'unpaid_codes'    => [],
             'error'           => 'cron_in_play_failed',
             'timestamp'       => date('c')
         ];
@@ -124,39 +161,10 @@ function run_complete_overdue_in_play(?PDO $pdo = null): array {
 
 // Entrypoint khi chạy độc lập
 if (realpath(__FILE__) === realpath($_SERVER['SCRIPT_FILENAME'] ?? '')) {
-    $isCli = (php_sapi_name() === 'cli' || PHP_SAPI === 'cli');
+    cron_authorize_request();
 
-    if (!$isCli) {
-        loadEnv();
-        $cronSecret = trim($_ENV['CRON_SECRET'] ?? getenv('CRON_SECRET') ?: '');
-        $provided   = trim((string)($_SERVER['HTTP_X_CRON_SECRET'] ?? ''));
-
-        $authorized = ($cronSecret !== '' && $provided !== '' && hash_equals($cronSecret, $provided));
-
-        if (!$authorized) {
-            http_response_code(403);
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode([
-                'success'  => false,
-                'message'  => 'Forbidden: Cron in-play endpoint only allows CLI or valid X-Cron-Secret header.',
-                'ref_code' => 'ERR_FORBIDDEN'
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        header('Content-Type: application/json; charset=utf-8');
-    }
-
-    $logDir = dirname(__DIR__) . '/logs';
-    if (!is_dir($logDir)) {
-        @mkdir($logDir, 0755, true);
-    }
-
-    $lockPath = $logDir . '/cron_in_play.lock';
-    $lockFp = @fopen($lockPath, 'c+');
-    if (!$lockFp || !@flock($lockFp, LOCK_EX | LOCK_NB)) {
-        if ($lockFp) {
-            @fclose($lockFp);
-        }
+    $lockFp = cron_acquire_lock('cron_in_play');
+    if (!$lockFp) {
         echo json_encode([
             'success'   => true,
             'skipped'   => 'locked',
@@ -170,9 +178,6 @@ if (realpath(__FILE__) === realpath($_SERVER['SCRIPT_FILENAME'] ?? '')) {
         $result = run_complete_overdue_in_play();
         echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
     } finally {
-        if ($lockFp) {
-            @flock($lockFp, LOCK_UN);
-            @fclose($lockFp);
-        }
+        cron_release_lock($lockFp);
     }
 }
