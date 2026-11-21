@@ -96,8 +96,70 @@ RUNNER;
     return $decoded;
 }
 
+function snapshotV7Settings(PDO $pdo, array $keys): array {
+    if ($keys === []) {
+        return [];
+    }
+    $placeholders = implode(', ', array_fill(0, count($keys), '?'));
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ({$placeholders})");
+    $stmt->execute(array_values($keys));
+    $existing = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    $snapshot = [];
+    foreach ($keys as $key) {
+        if (array_key_exists($key, $existing)) {
+            $snapshot[$key] = ['exists' => true, 'value' => (string)$existing[$key]];
+        } else {
+            $snapshot[$key] = ['exists' => false, 'value' => null];
+        }
+    }
+    return $snapshot;
+}
+
+function teardownV7ReviewTests(PDO $pdo, ?array $settingsSnapshot): void {
+    try {
+        if (is_array($settingsSnapshot)) {
+            $restoreStmt = $pdo->prepare(
+                "INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+            );
+            $deleteStmt = $pdo->prepare("DELETE FROM settings WHERE setting_key = ?");
+            foreach ($settingsSnapshot as $key => $meta) {
+                if (!empty($meta['exists'])) {
+                    $restoreStmt->execute([$key, (string)$meta['value']]);
+                } else {
+                    $deleteStmt->execute([$key]);
+                }
+            }
+        }
+        $pdo->exec("DELETE FROM audit_logs WHERE new_value LIKE '%[TEST] Bảo dưỡng đèn trụ B%'");
+    } catch (\Throwable $cleanupEx) {
+        echo "TEARDOWN WARN: " . $cleanupEx->getMessage() . "\n";
+    }
+}
+
+$trackedSettingKeys = [
+    'bank_name',
+    'bank_code',
+    'bank_account',
+    'bank_holder',
+    'deposit_rate',
+    'hotline',
+    'open_hours',
+];
+$settingsSnapshot = null;
+$teardownDone = false;
+$runTeardown = static function () use ($pdo, &$settingsSnapshot, &$teardownDone): void {
+    if ($teardownDone) {
+        return;
+    }
+    $teardownDone = true;
+    teardownV7ReviewTests($pdo, $settingsSnapshot);
+};
+register_shutdown_function($runTeardown);
+
+$mgrId = (int)($pdo->query("SELECT id FROM users WHERE role = 'manager' AND COALESCE(status, 'active') = 'active' ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 5);
 $adminSession   = ['user_id' => 1, 'username' => 'admin', 'role' => 'admin'];
-$managerSession = ['user_id' => 8, 'username' => 'quanly', 'role' => 'manager'];
+$managerSession = ['user_id' => $mgrId, 'username' => 'quanly', 'role' => 'manager'];
 $staffSession   = ['user_id' => 4, 'username' => 'nhanvien', 'role' => 'staff'];
 
 // 1. Test toggle_pitch with maintenance reason by staff
@@ -124,6 +186,7 @@ try {
     );
 } catch (\Throwable $e) {
     echo "ERROR AT TEST 2: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n";
+    $runTeardown();
     exit(1);
 }
 
@@ -222,6 +285,9 @@ recordResult(
     $res9['message'] ?? 'Message: ' . json_encode($res9)
 );
 
+// Snapshot 7 keys in settings before test #11
+$settingsSnapshot = snapshotV7Settings($pdo, $trackedSettingKeys);
+
 // 11. Admin POST settings succeeds
 $res10 = callAdminApi($adminSession, 'settings', 'POST', [
     'bankName'   => 'Vietcombank',
@@ -230,7 +296,7 @@ $res10 = callAdminApi($adminSession, 'settings', 'POST', [
     'accountName'=> 'CONG TY CP SAN BONG PRO',
     'depositRate'=> 30,
     'hotline'    => '0352 313 548',
-    'openHours'  => '05:30 - 23:00'
+    'openHours'  => '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)'
 ]);
 recordResult(
     '11. Admin can modify settings (POST 200)',
@@ -269,8 +335,10 @@ foreach ($results as $r) {
 echo "\nSummary: {$passCount}/" . count($results) . " tests passed.\n";
 if ($allPass) {
     echo "V7 REVIEW TESTS ALL PASSED!\n";
+    $runTeardown();
     exit(0);
 } else {
     echo "SOME TESTS FAILED!\n";
+    $runTeardown();
     exit(1);
 }

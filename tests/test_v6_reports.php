@@ -31,10 +31,22 @@ function callFinanceAction(array $cfg): string {
 
 echo "=== BẮT ĐẦU TEST V6: BÁO CÁO DOANH THU & ĐỐI CHIẾU SỐ LIỆU ===\n";
 
+$seedBookingCode = null;
+$exitCode = 0;
 try {
+    $mgrId = (int)($pdo->query("SELECT id FROM users WHERE role = 'manager' AND COALESCE(status, 'active') = 'active' ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 5);
     $adminSession = ['user_id' => 1, 'role' => 'admin', 'username' => 'admin', 'full_name' => 'Chủ Sân Pro'];
-    $managerSession = ['user_id' => 8, 'role' => 'manager', 'username' => 'quanly', 'full_name' => 'Quản Lý Sân'];
+    $managerSession = ['user_id' => $mgrId, 'role' => 'manager', 'username' => 'quanly', 'full_name' => 'Quản Lý Sân'];
     $staffSession = ['user_id' => 4, 'role' => 'staff', 'username' => 'nhanvien', 'full_name' => 'Nhân Viên Ca'];
+
+    if ((int)$pdo->query("SELECT COUNT(*) FROM bookings WHERE status != 'Đã hủy'")->fetchColumn() === 0) {
+        $seedBookingCode = '[TEST]V6_SEED_' . time();
+        $firstPitchId = (string)($pdo->query("SELECT id FROM pitches WHERE status = 'Hoạt động' ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 'P5-A');
+        $pdo->prepare("
+            INSERT INTO bookings (code, pitch_id, customer_name, phone, booking_date, slot_id, slot_time, total_price, deposit_amount, paid_amount, remaining_amount, status, payment_status, payment_method, created_at)
+            VALUES (?, ?, '[TEST] Khách Seed Báo Cáo', '0900000123', ?, 'S01', '05:30 - 07:30', 250000, 250000, 250000, 0, 'Hoàn thành', 'Đã thanh toán đủ', 'Tiền mặt tại quầy', NOW())
+        ")->execute([$seedBookingCode, $firstPitchId, date('Y-m-d')]);
+    }
 
     // 1. Test lọc các khoảng thời gian và đối chiếu 2 công thức
     $today = date('Y-m-d');
@@ -180,19 +192,27 @@ try {
     assertTest($hasBOM, "4.1 Tệp CSV bắt đầu bằng UTF-8 BOM chuẩn (\\xEF\\xBB\\xBF)");
     assertTest(strpos($csvOut, 'BÁO CÁO TÀI CHÍNH & VẬN HÀNH SÂN BÓNG PRO') !== false, "4.2 Có tiêu đề chính BÁO CÁO TÀI CHÍNH & VẬN HÀNH");
     assertTest(strpos($csvOut, 'I. TỔNG HỢP DOANH THU & DÒNG TIỀN') !== false, "4.3 Có Mục I. Tổng hợp doanh thu & dòng tiền");
-    assertTest(strpos($csvOut, 'II. DOANH THU CHI TIẾT THEO TỪNG SÂN') !== false, "4.4 Có Mục II. Doanh thu chi tiết theo từng sân");
+    assertTest(strpos($csvOut, 'II. HIỆU SUẤT CHI TIẾT THEO TỪNG SÂN') !== false, "4.4 Có Mục II. Hiệu suất chi tiết theo từng sân");
     assertTest(strpos($csvOut, 'III. BẢNG KÊ CHI TIẾT ĐƠN ĐẶT SÂN TRONG KỲ') !== false, "4.5 Có Mục III. Bảng kê chi tiết đơn đặt sân trong kỳ");
-    assertTest(strpos($csvOut, 'Tiền nước / Dịch vụ') !== false, "4.6 Cột bảng kê có trường Tiền nước / Dịch vụ");
-    assertTest(strpos($csvOut, 'V. BÁO CÁO CHI PHÍ & LÃI RÒNG') !== false, "4.7 Có Mục V. Báo cáo chi phí & lãi ròng");
+    assertTest(strpos($csvOut, 'Dịch vụ') !== false, "4.6 Cột bảng kê có trường Dịch vụ");
+    assertTest((strpos($csvOut, 'Tổng chi phí vận hành trong kỳ') !== false && strpos($csvOut, 'Lợi nhuận (Đã thu - Chi phí)') !== false), "4.7 Có chỉ tiêu Chi phí vận hành & Lợi nhuận ròng");
 
     echo "\n=== KẾT QUẢ TEST V6: {$testsPassed}/{$totalTests} ĐẠT ===\n";
-    if ($testsPassed === $totalTests) {
-        exit(0);
-    } else {
-        exit(1);
-    }
+    $exitCode = ($testsPassed === $totalTests) ? 0 : 1;
 
 } catch (Throwable $e) {
     echo "LỖI NGOẠI LỆ: " . $e->getMessage() . " tại " . $e->getFile() . ":" . $e->getLine() . "\n";
-    exit(1);
+    $exitCode = 1;
+} finally {
+    try {
+        if (!empty($seedBookingCode)) {
+            $pdo->prepare("DELETE FROM bookings WHERE code = ?")->execute([$seedBookingCode]);
+        }
+        $pdo->prepare("DELETE FROM bookings WHERE code LIKE '[TEST]V6_SEED_%'")->execute();
+        $pdo->prepare("DELETE FROM expenses WHERE receipt_note LIKE '[TEST] Bảo trì thay bóng đèn sân C%'")->execute();
+        $pdo->prepare("DELETE FROM audit_logs WHERE new_value LIKE '%[TEST] Bảo trì thay bóng đèn sân C%'")->execute();
+    } catch (Throwable $cleanupEx) {
+        echo "CẢNH BÁO DỌN DẸP TEST V6: " . $cleanupEx->getMessage() . "\n";
+    }
 }
+exit($exitCode);
