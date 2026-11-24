@@ -2,6 +2,7 @@
 @header_remove('X-Powered-By');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 require_once __DIR__ . '/../api/security_helper.php';
+$hadSessionCookie = !empty($_COOKIE[session_name() ?: 'PHPSESSID']) || !empty($_COOKIE['PHPSESSID']);
 secure_session_start();
 
 // Tự động xác định base path tương thích cả subfolder lẫn root domain
@@ -11,8 +12,49 @@ $basePath = ($portalAdminPos !== false) ? substr($scriptName, 0, $portalAdminPos
 $loginUrl = ($basePath !== '' ? $basePath : '') . '/login?redirect=portal-admin';
 
 $refreshedUser = refresh_session_user();
-if (!empty($refreshedUser['_locked']) || empty($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
-    header('Location: ' . $loginUrl, true, 302);
+if (!empty($refreshedUser['_locked'])) {
+    header('Location: ' . $loginUrl . '&locked=1', true, 302);
+    exit;
+}
+if (empty($_SESSION['user'])) {
+    if ($hadSessionCookie) {
+        header('Location: ' . $loginUrl . '&expired=1', true, 302);
+    } else {
+        header('Location: ' . $loginUrl, true, 302);
+    }
+    exit;
+}
+if (!in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], true)) {
+    error_log("[SECURITY ALERT] Phát hiện nỗ lực truy cập cổng vận hành sân từ user ID: " . ($_SESSION['user']['id'] ?? '0') . " | IP: " . get_client_ip());
+    http_response_code(403);
+    $homeHref = ($basePath !== '' ? $basePath . '/' : '/');
+    $historyHref = ($basePath !== '' ? $basePath : '') . '/history';
+    $cssHref = ($basePath !== '' ? $basePath : '') . '/css/tailwind.generated.css?v=20261124_v135';
+    ?>
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="robots" content="noindex, nofollow, noarchive">
+      <title>403 Không đủ quyền truy cập – Sân Bóng Pro</title>
+      <link rel="stylesheet" href="<?php echo htmlspecialchars($cssHref, ENT_QUOTES, 'UTF-8'); ?>">
+    </head>
+    <body class="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 antialiased">
+      <div class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8 text-center space-y-4">
+        <div class="w-12 h-12 mx-auto rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center font-extrabold text-lg">403</div>
+        <h1 class="font-bold text-lg sm:text-xl text-[#0F172A]">Không đủ quyền truy cập</h1>
+        <p class="text-xs sm:text-sm text-[#475569] leading-relaxed">
+          Tài khoản khách hàng không có quyền truy cập Cổng Quản Trị Sân Bóng. Phiên đăng nhập hiện tại của bạn vẫn được giữ nguyên.
+        </p>
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+          <a href="<?php echo htmlspecialchars($homeHref, ENT_QUOTES, 'UTF-8'); ?>" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-bold transition-colors">Về Trang chủ</a>
+          <a href="<?php echo htmlspecialchars($historyHref, ENT_QUOTES, 'UTF-8'); ?>" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F172A] text-xs font-bold transition-colors">Lịch sử đặt sân</a>
+        </div>
+      </div>
+    </body>
+    </html>
+    <?php
     exit;
 }
 if (!empty($_SESSION['user']['must_change_password'])) {
@@ -69,8 +111,8 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       }
     })();
   </script>
-  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261122_v128">
-  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/style.css?v=20261122_v128">
+  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261124_v135">
+  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/style.css?v=20261124_v135">
 <style>
     @keyframes qrLaserAnim {
       0% { top: 12%; opacity: 0.7; }
@@ -513,42 +555,42 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   </div>
 
   <!-- SCRIPTS -->
-  <script src="<?php echo $basePath; ?>/js/data.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/helpers.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/db_core.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/db_pricing.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/db.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/vn_datepicker.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/app.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/api.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261122_v128"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261122_v128"></script>
+  <script src="<?php echo $basePath; ?>/js/data.js?v=20261124_v135"></script>
+  <script src="<?php echo $basePath; ?>/js/helpers.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/db_core.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/db_pricing.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261124_v135"></script>
+  <script src="<?php echo $basePath; ?>/js/db.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261124_v135"></script>
+  <script src="<?php echo $basePath; ?>/js/vn_datepicker.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/app.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/api.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261122_v132"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261122_v132"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261124_v135"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261124_v135"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261122_v131"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261122_v130"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261122_v131"></script>
 </body>
 </html>
 

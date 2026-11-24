@@ -3,6 +3,7 @@ let currentOverviewPage = 1;
 const OVERVIEW_PAGE_SIZE = 8;
 let overviewSummaryCache = null;
 let overviewLastHash = '';
+let overviewFetchInFlight = false;
 let overviewSelectedCodes = new Set();
 let overviewOverdueOpen = false;
 let overviewRefreshTimer = null;
@@ -574,30 +575,36 @@ function applyOverviewSummary(data) {
 }
 
 async function renderOverviewKPIs(force) {
-  const res = await adminFetchJson('../api/dashboard_summary.php');
-  if (!res.ok || !res.data) return;
+  if (overviewFetchInFlight && !force) return;
+  overviewFetchInFlight = true;
+  try {
+    const res = await adminFetchJson('../api/dashboard_summary.php');
+    if (!res.ok || !res.data) return;
 
-  // Chỉ cập nhật DOM khi dữ liệu thực sự thay đổi (hoặc khi force)
-  const newHash = String(res.data.hash || '');
-  if (!force && newHash && newHash === overviewLastHash) {
-    return;
+    // Chỉ cập nhật DOM khi dữ liệu thực sự thay đổi (hoặc khi force)
+    const newHash = String(res.data.hash || '');
+    if (!force && newHash && newHash === overviewLastHash) {
+      return;
+    }
+    overviewLastHash = newHash;
+
+    // Đồng bộ nhanh về SanBongDB cache cho các modal (In-Play, QR)
+    const db = window.SanBongApp?.SanBongDB;
+    if (db) {
+      try {
+        const todayISO = res.data.today || getLocalTodayISO();
+        const existing = db.getAllBookings();
+        const mapByCode = new Map();
+        existing.forEach(b => mapByCode.set(b.code, b));
+        [...(res.data.todayBookings || []), ...(res.data.overdueBookings || [])].forEach(b => mapByCode.set(b.code, b));
+        localStorage.setItem('sb_bookings_v1', JSON.stringify(Array.from(mapByCode.values())));
+      } catch (e) {}
+    }
+
+    applyOverviewSummary(res.data);
+  } finally {
+    overviewFetchInFlight = false;
   }
-  overviewLastHash = newHash;
-
-  // Đồng bộ nhanh về SanBongDB cache cho các modal (In-Play, QR)
-  const db = window.SanBongApp?.SanBongDB;
-  if (db) {
-    try {
-      const todayISO = res.data.today || getLocalTodayISO();
-      const existing = db.getAllBookings();
-      const mapByCode = new Map();
-      existing.forEach(b => mapByCode.set(b.code, b));
-      [...(res.data.todayBookings || []), ...(res.data.overdueBookings || [])].forEach(b => mapByCode.set(b.code, b));
-      localStorage.setItem('sb_bookings_v1', JSON.stringify(Array.from(mapByCode.values())));
-    } catch (e) {}
-  }
-
-  applyOverviewSummary(res.data);
 }
 window.renderOverviewKPIs = renderOverviewKPIs;
 window.renderOverviewTodayBookings = renderOverviewLists;
@@ -615,19 +622,28 @@ function startOverviewAutoRefresh() {
 startOverviewAutoRefresh();
 
 function refreshAllAdminViews(codeOpt) {
+  const isTabVisible = (id) => {
+    const el = document.getElementById(`tab-content-${id}`);
+    return Boolean(el && !el.classList.contains('hidden'));
+  };
+
   overviewLastHash = '';
-  renderOverviewKPIs(true);
-  if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
-  if (typeof renderAdminPitches === 'function') renderAdminPitches();
-  if (typeof renderAdminCustomers === 'function') renderAdminCustomers();
-  if (typeof renderAdminInventory === 'function') renderAdminInventory();
-  if (typeof loadShiftHandovers === 'function') loadShiftHandovers();
-  if (isManagerOrAdmin()) {
-    if (typeof renderAdminPayments === 'function') renderAdminPayments();
-    if (typeof loadBankTransactions === 'function') loadBankTransactions();
-    if (typeof renderAdminReports === 'function') renderAdminReports();
+  if (isTabVisible('overview')) {
+    renderOverviewKPIs(true);
   }
-  if (typeof populateInPlayWorkspace === 'function') populateInPlayWorkspace(codeOpt || window.activeInPlayCode);
+  if (isTabVisible('timeline') && typeof renderTimelineGantt === 'function') renderTimelineGantt();
+  if (isTabVisible('pitches') && typeof renderAdminPitches === 'function') renderAdminPitches();
+  if (isTabVisible('customers') && typeof renderAdminCustomers === 'function') renderAdminCustomers();
+  if (isTabVisible('quick-booking') && typeof renderAdminInventory === 'function') renderAdminInventory();
+  if (isTabVisible('shifts') && typeof loadShiftHandovers === 'function') loadShiftHandovers();
+  if (isManagerOrAdmin()) {
+    if (isTabVisible('payments') && typeof renderAdminPayments === 'function') renderAdminPayments();
+    if (isTabVisible('payments') && typeof loadBankTransactions === 'function') loadBankTransactions();
+    if (isTabVisible('reports') && typeof renderAdminReports === 'function') renderAdminReports();
+  }
+  if ((isTabVisible('overview') || Boolean(codeOpt || window.activeInPlayCode)) && typeof populateInPlayWorkspace === 'function') {
+    populateInPlayWorkspace(codeOpt || window.activeInPlayCode);
+  }
 }
 window.refreshAllAdminViews = refreshAllAdminViews;
 

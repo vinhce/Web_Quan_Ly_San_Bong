@@ -250,10 +250,14 @@ async function handleAdminLogout() {
   } catch (e) {}
 
   try {
-    sessionStorage.removeItem('sb_current_user');
-    sessionStorage.removeItem('sb_csrf_token');
-    localStorage.removeItem('sb_current_user');
+    sessionStorage.clear();
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('sb_') || k.startsWith('sanbong_')) {
+        localStorage.removeItem(k);
+      }
+    });
   } catch (e) {}
+  if (window.SanBongHelpers?.clearCsrfToken) window.SanBongHelpers.clearCsrfToken();
   window.location.replace(window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login');
 }
 window.handleAdminLogout = handleAdminLogout;
@@ -374,19 +378,22 @@ function applyRolePermissions() {
   const addPitchBtn = document.getElementById('btn-add-pitch');
   if (addPitchBtn) {
     addPitchBtn.classList.toggle('hidden', !isMgrOrAdmin);
+    addPitchBtn.style.display = isMgrOrAdmin ? '' : 'none';
   }
   const openServiceBtn = document.getElementById('btn-open-service-modal');
   if (openServiceBtn) {
     openServiceBtn.classList.toggle('hidden', !isMgrOrAdmin);
+    openServiceBtn.style.display = isMgrOrAdmin ? '' : 'none';
   }
 
   if (!isAdmin) {
     const allowed = PORTAL_ALLOWED_TABS[currentPortalRole] || PORTAL_ALLOWED_TABS.staff;
     if (!allowed.includes(activeModule)) {
       const wasLogs = (activeModule === 'logs');
+      const denyMsg = wasLogs ? 'Bạn không có quyền xem nhật ký' : 'Bạn không có quyền truy cập mục này';
       switchAdminTab('overview');
-      if (wasLogs && window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
-        window.SanBongApp.showToast('Bạn không có quyền xem nhật ký', 'error');
+      if (window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
+        window.SanBongApp.showToast(denyMsg, 'error');
       }
     }
   }
@@ -414,13 +421,12 @@ function switchAdminTab(moduleKey) {
   const allowed = PORTAL_ALLOWED_TABS[currentPortalRole] || PORTAL_ALLOWED_TABS.staff;
   if (!allowed.includes(moduleKey)) {
     const isLogAttempt = (moduleKey === 'logs' || rawRequested === 'logs' || rawRequested === '11' || rawRequested === 'admin-logs');
+    const denyMsg = isLogAttempt ? 'Bạn không có quyền xem nhật ký' : 'Bạn không có quyền truy cập mục này';
     moduleKey = 'overview';
-    if (isLogAttempt) {
-      if (window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
-        window.SanBongApp.showToast('Bạn không có quyền xem nhật ký', 'error');
-      } else {
-        alert('Bạn không có quyền xem nhật ký');
-      }
+    if (window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
+      window.SanBongApp.showToast(denyMsg, 'error');
+    } else {
+      alert(denyMsg);
     }
   }
 
@@ -481,10 +487,12 @@ function switchAdminTab(moduleKey) {
     subtitleEl.textContent = subtitleMap[moduleKey];
   }
 
-  if (moduleKey === 'overview' && typeof renderOverviewKPIs === 'function') {
-    renderOverviewKPIs();
+  if (moduleKey === 'overview') {
+    if (typeof renderOverviewKPIs === 'function') renderOverviewKPIs();
+    if (typeof populateInPlayWorkspace === 'function') populateInPlayWorkspace();
   }
   if (moduleKey === 'timeline') {
+    if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
     if (typeof initRecurringScheduleForm === 'function') initRecurringScheduleForm();
     if (typeof loadRecurringSchedules === 'function') loadRecurringSchedules();
     if (typeof loadWaitlistAdmin === 'function') loadWaitlistAdmin();
@@ -574,8 +582,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const rawHash = window.location.hash.replace(/^#/, '');
   const hashTab = rawHash.split('/')[0];
   const initialUrlTab = new URLSearchParams(window.location.search).get('tab') || hashTab;
-  if (initialUrlTab) {
-    switchAdminTab(initialUrlTab);
+  const initialTab = initialUrlTab || 'overview';
+  const initialRole = currentPortalRole;
+  let initialTabBooted = false;
+  if (isAllowedAdmin) {
+    switchAdminTab(initialTab);
+    initialTabBooted = true;
   }
 
   fetch(normalizeAdminApiUrl('api/auth.php?action=me'), { cache: 'no-store' })
@@ -594,20 +606,20 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAdminProfile(data.user);
         applyRolePermissions();
         document.documentElement.style.display = '';
-        const targetTab = activeModule || 'overview';
-        switchAdminTab(targetTab);
-        if (targetTab === 'overview' && typeof renderOverviewTodayBookings === 'function') {
-          renderOverviewTodayBookings();
+        const targetTab = activeModule || initialTab || 'overview';
+        if (!initialTabBooted || currentPortalRole !== initialRole) {
+          switchAdminTab(targetTab);
+          initialTabBooted = true;
         }
         return;
       }
 
       if (isAllowedAdmin) {
         console.warn('Phiên nền tảng đang đồng bộ');
-        const targetTab = activeModule || 'overview';
-        switchAdminTab(targetTab);
-        if (targetTab === 'overview' && typeof renderOverviewTodayBookings === 'function') {
-          renderOverviewTodayBookings();
+        const targetTab = activeModule || initialTab || 'overview';
+        if (!initialTabBooted || currentPortalRole !== initialRole) {
+          switchAdminTab(targetTab);
+          initialTabBooted = true;
         }
         return;
       }
@@ -635,12 +647,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
-
-  if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
-  if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
-  if (typeof populateInPlayWorkspace === 'function') populateInPlayWorkspace();
-  if (typeof initQuickBookingForm === 'function') initQuickBookingForm();
-  if (typeof renderAdminPitches === 'function') renderAdminPitches();
 
   const expDateEl = document.getElementById('exp-date');
   if (expDateEl && !expDateEl.value) {
