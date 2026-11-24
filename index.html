@@ -8,8 +8,8 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="favicon.svg">
-  <link rel="stylesheet" href="css/tailwind.generated.css?v=20261122_v128">
-  <link rel="stylesheet" href="css/style.css?v=20261122_v128">
+  <link rel="stylesheet" href="css/tailwind.generated.css?v=20261124_v135">
+  <link rel="stylesheet" href="css/style.css?v=20261124_v135">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -60,7 +60,6 @@
                 <option value="7">Sân 7 người</option>
                 <option value="11">Sân 11 người</option>
               </select>
-              <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </div>
           <div>
@@ -73,7 +72,6 @@
                 <option value="peak">Giờ cao điểm (16:30 - 20:30)</option>
                 <option value="evening">Tối muộn (20:30 - 22:30)</option>
               </select>
-              <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </div>
           <div class="pb-2 sm:pb-0">
@@ -144,49 +142,49 @@
 
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       
-      <div class="lg:col-span-8 ui-card p-6">
-        <div class="flex items-center justify-between mb-4">
+      <div class="lg:col-span-8 ui-card p-4 sm:p-6">
+        <div class="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-2 mb-4">
           <div>
-            <h3 class="font-heading font-bold text-xl text-[#0F172A]">Bảng giá niêm yết công khai</h3>
+            <h3 class="font-heading font-bold text-lg sm:text-xl text-[#0F172A]">Bảng giá niêm yết công khai</h3>
             <p class="text-xs text-[#64748B] mt-0.5">Giá cố định theo ca 2 tiếng (120 phút) – Đã bao gồm đèn chiếu sáng cao cấp</p>
           </div>
-          <span class="px-3 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-xs font-bold">Chuẩn niêm yết</span>
+          <span class="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[11px] sm:text-xs font-bold shrink-0 whitespace-nowrap">Chuẩn niêm yết</span>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm border-collapse">
             <thead>
               <tr class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-xs font-bold text-[#475569]">
-                <th class="py-3 px-3.5">Loại sân</th>
-                <th class="py-3 px-3.5">Kích thước</th>
-                <th class="py-3 px-3.5">Giờ thường (05:30 - 16:30)</th>
-                <th class="py-3 px-3.5 text-[#16A34A]">Giờ cao điểm (16:30 - 20:30)</th>
+                <th class="py-2.5 px-2 sm:py-3 sm:px-3.5">Loại sân</th>
+                <th class="hidden sm:table-cell py-3 px-3.5">Kích thước</th>
+                <th class="py-2.5 px-2 sm:py-3 sm:px-3.5">Khung giờ hoạt động</th>
+                <th class="py-2.5 px-2 sm:py-3 sm:px-3.5 text-right sm:text-left text-[#16A34A] whitespace-nowrap">Đơn giá (Ca 2h)</th>
               </tr>
             </thead>
             <tbody id="home-pricing-tbody" class="divide-y divide-[#E2E8F0] font-medium text-xs sm:text-sm">
               <tr>
-                <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">Sân 5 người</td>
-                <td class="py-3.5 px-3.5 text-[#64748B]">20m × 40m</td>
-                <td class="py-3.5 px-3.5">250.000đ/ca 2h</td>
-                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">350.000đ/ca 2h</td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 font-bold text-[#0F172A]">Sân 5 người<div class="sm:hidden text-[11px] font-normal text-[#64748B] mt-0.5">20m × 40m</div></td>
+                <td class="hidden sm:table-cell py-3.5 px-3.5 text-[#64748B] whitespace-nowrap">20m × 40m</td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-[#475569]"><span class="hidden sm:inline">05:30 - 11:30 &amp; 14:30 - 22:30</span><span class="sm:hidden block leading-snug">05:30 - 11:30<br>14:30 - 22:30</span></td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-right sm:text-left font-bold text-[#16A34A] whitespace-nowrap">250.000đ/ca 2h</td>
               </tr>
               <tr>
-                <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">Sân 7 người</td>
-                <td class="py-3.5 px-3.5 text-[#64748B]">30m × 50m</td>
-                <td class="py-3.5 px-3.5">450.000đ/ca 2h</td>
-                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">650.000đ/ca 2h</td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 font-bold text-[#0F172A]">Sân 7 người<div class="sm:hidden text-[11px] font-normal text-[#64748B] mt-0.5">30m × 50m</div></td>
+                <td class="hidden sm:table-cell py-3.5 px-3.5 text-[#64748B] whitespace-nowrap">30m × 50m</td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-[#475569]"><span class="hidden sm:inline">05:30 - 11:30 &amp; 14:30 - 22:30</span><span class="sm:hidden block leading-snug">05:30 - 11:30<br>14:30 - 22:30</span></td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-right sm:text-left font-bold text-[#16A34A] whitespace-nowrap">450.000đ/ca 2h</td>
               </tr>
               <tr>
-                <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">Sân 11 người (Ghép)</td>
-                <td class="py-3.5 px-3.5 text-[#64748B]">60m × 100m</td>
-                <td class="py-3.5 px-3.5">900.000đ/ca 2h</td>
-                <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">1.200.000đ/ca 2h</td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 font-bold text-[#0F172A]">Sân 11 người (Ghép)<div class="sm:hidden text-[11px] font-normal text-[#64748B] mt-0.5">60m × 100m</div></td>
+                <td class="hidden sm:table-cell py-3.5 px-3.5 text-[#64748B] whitespace-nowrap">60m × 100m</td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-[#475569]"><span class="hidden sm:inline">05:30 - 11:30 &amp; 14:30 - 22:30</span><span class="sm:hidden block leading-snug">05:30 - 11:30<br>14:30 - 22:30</span></td>
+                <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-right sm:text-left font-bold text-[#16A34A] whitespace-nowrap">900.000đ/ca 2h</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div class="mt-4 pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-[#64748B]">
-          <span>* Cuối tuần (T7, CN) áp dụng biểu giá cuối tuần niêm yết (Sân 5: 380k · Sân 7: 700k · Sân 11: 1.400k/ca)</span>
+        <div class="mt-4 pt-3 border-t border-[#E2E8F0] flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748B]">
+          <span>* Đồng giá mọi khung giờ trong ngày &amp; cuối tuần (T7, CN) · Đã bao gồm đèn LED tiêu chuẩn</span>
           <a href="booking" class="text-[#16A34A] font-bold hover:underline">Chọn khung giờ cụ thể →</a>
         </div>
       </div>
@@ -211,7 +209,7 @@
           <div class="flex items-start gap-3.5">
             <div class="w-8 h-8 rounded-full bg-[#DCFCE7] text-[#16A34A] font-heading font-bold text-sm flex items-center justify-center shrink-0">3</div>
             <div>
-              <div class="text-sm font-bold text-[#0F172A]">Quét VietQR cọc 30% – 60%</div>
+              <div class="text-sm font-bold text-[#0F172A]">Quét VietQR cọc 30% (gói tháng 60%)</div>
               <p class="text-xs text-[#64748B] mt-0.5">Mã QR động chuẩn ngân hàng, giữ chỗ trong 15 phút.</p>
             </div>
           </div>
@@ -280,7 +278,7 @@
             <span class="text-[#16A34A] font-extrabold">Q:</span> Chính sách hoàn cọc khi hủy sân như thế nào?
           </div>
           <p class="text-[#475569] leading-relaxed">
-            Hủy trước 24 giờ: Hệ thống hoàn lại 100% tiền cọc về tài khoản của bạn. Hủy trước 12 giờ: Hoàn 50% tiền cọc. Hủy dưới 12 giờ hoặc vắng mặt: Không hoàn cọc theo quy định giữ sân.
+            Hủy trước 24 giờ: Hệ thống hoàn lại 100% tiền cọc về tài khoản của bạn. Hủy từ 4 giờ đến dưới 24 giờ: Hoàn 50% tiền cọc. Hủy dưới 4 giờ hoặc vắng mặt: Không hoàn cọc theo quy định giữ sân.
           </p>
         </div>
 
@@ -317,18 +315,18 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="js/data.js?v=20261122_v128"></script>
-  <script src="js/helpers.js?v=20261122_v128"></script>
-  <script src="js/db_core.js?v=20261122_v128"></script>
-  <script src="js/db_pricing.js?v=20261122_v128"></script>
-  <script src="js/db_bookings.js?v=20261122_v128"></script>
-  <script src="js/db_operations.js?v=20261122_v128"></script>
-  <script src="js/db.js?v=20261122_v128"></script>
-  <script src="js/ui.js?v=20261122_v128"></script>
-  <script src="js/vn_datepicker.js?v=20261122_v128"></script>
-  <script src="js/app.js?v=20261122_v128"></script>
-  <script src="js/api.js?v=20261122_v128"></script>
-  <script src="js/index.js?v=20261122_v128"></script>
+  <script src="js/data.js?v=20261124_v134"></script>
+  <script src="js/helpers.js?v=20261122_v130"></script>
+  <script src="js/db_core.js?v=20261122_v130"></script>
+  <script src="js/db_pricing.js?v=20261122_v130"></script>
+  <script src="js/db_bookings.js?v=20261122_v130"></script>
+  <script src="js/db_operations.js?v=20261124_v134"></script>
+  <script src="js/db.js?v=20261122_v130"></script>
+  <script src="js/ui.js?v=20261124_v134"></script>
+  <script src="js/vn_datepicker.js?v=20261122_v130"></script>
+  <script src="js/app.js?v=20261122_v130"></script>
+  <script src="js/api.js?v=20261122_v130"></script>
+  <script src="js/index.js?v=20261124_v135"></script>
 
 </body>
 </html>

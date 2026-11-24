@@ -245,14 +245,13 @@
       const matched = pitches.filter(p => Number(p.type) === t.key && p.status !== 'Ngưng hoạt động');
       if (matched.length === 0) return '';
       const minBase = Math.min(...matched.map(p => Number(p.basePrice || 0)).filter(n => n > 0));
-      const minPeak = Math.min(...matched.map(p => Number(p.peakPrice || 0)).filter(n => n > 0));
       const sizeText = matched[0].size || t.size;
       return `
         <tr>
-          <td class="py-3.5 px-3.5 font-bold text-[#0F172A]">${esc(t.label)}</td>
-          <td class="py-3.5 px-3.5 text-[#64748B]">${esc(sizeText)}</td>
-          <td class="py-3.5 px-3.5">${minBase ? esc(app.formatVND(minBase)) + '/ca 2h' : 'Liên hệ'}</td>
-          <td class="py-3.5 px-3.5 font-bold text-[#16A34A]">${minPeak ? esc(app.formatVND(minPeak)) + '/ca 2h' : 'Liên hệ'}</td>
+          <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 font-bold text-[#0F172A]">${esc(t.label)}<div class="sm:hidden text-[11px] font-normal text-[#64748B] mt-0.5">${esc(sizeText)}</div></td>
+          <td class="hidden sm:table-cell py-3.5 px-3.5 text-[#64748B] whitespace-nowrap">${esc(sizeText)}</td>
+          <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-[#475569]"><span class="hidden sm:inline">05:30 - 11:30 &amp; 14:30 - 22:30</span><span class="sm:hidden block leading-snug">05:30 - 11:30<br>14:30 - 22:30</span></td>
+          <td class="py-2.5 px-2 sm:py-3.5 sm:px-3.5 text-right sm:text-left font-bold text-[#16A34A] whitespace-nowrap">${minBase ? esc(app.formatVND(minBase)) + '/ca 2h' : 'Liên hệ'}</td>
         </tr>
       `;
     }).filter(Boolean).join('');
@@ -355,19 +354,19 @@
               ${(p.amenities || []).slice(0, 3).map(a => `<span class="px-2 py-0.5 rounded bg-[#F1F5F9] text-[11px] text-[#475569] font-medium">${esc(a)}</span>`).join('')}
             </div>
           </div>
-          <div class="pt-3 border-t border-[#F1F5F9] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div>
-              <div class="text-[11px] text-[#64748B]">Giá từ</div>
-              <div class="font-heading font-extrabold text-[#16A34A] text-base sm:text-lg">${app.formatVND(p.basePrice)}<span class="text-xs font-normal text-[#64748B]">/trận</span></div>
+          <div class="pt-3 border-t border-[#F1F5F9] flex flex-col gap-2.5">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-[11px] text-[#64748B]">Giá từ</span>
+              <div class="font-heading font-extrabold text-[#16A34A] text-base sm:text-lg whitespace-nowrap">${app.formatVND(p.basePrice)}<span class="text-xs font-normal text-[#64748B]">/trận</span></div>
             </div>
-            <div class="flex items-center gap-1.5">
-              <button type="button" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" class="btn-sm btn-secondary text-xs font-bold px-3 hover:border-[#16A34A] hover:text-[#16A34A] transition-colors">
+            <div class="flex items-center gap-2">
+              <button type="button" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" class="btn-sm btn-secondary flex-1 whitespace-nowrap justify-center text-xs font-bold px-3 hover:border-[#16A34A] hover:text-[#16A34A] transition-colors">
                 Chi tiết sân
               </button>
               ${isMaint ? `
-                <span class="btn-sm btn-disabled text-xs font-bold px-3 opacity-60 cursor-not-allowed">Bảo trì</span>
+                <span class="btn-sm btn-disabled flex-1 whitespace-nowrap justify-center text-xs font-bold px-3 opacity-60 cursor-not-allowed">Bảo trì</span>
               ` : `
-                <a href="/booking?pitchId=${encodeURIComponent(p.id)}" class="btn-sm btn-primary text-xs font-bold px-3 shadow-sm hover:bg-[#15803D] transition-colors">
+                <a href="/booking?pitchId=${encodeURIComponent(p.id)}" class="btn-sm btn-primary flex-1 whitespace-nowrap justify-center text-xs font-bold px-3 shadow-sm hover:bg-[#15803D] transition-colors">
                   Đặt sân ngay
                 </a>
               `}
@@ -414,8 +413,9 @@
           <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
             <div class="text-xs text-[#64748B]">Bảng giá theo ca (2 tiếng)</div>
             <div class="text-xs font-bold text-[#16A34A] mt-1">
-              Thường (05:30-16:30): ${app.formatVND(pitch.basePrice)}/ca 2h<br>
-              Giờ cao điểm (16:30-20:30): ${app.formatVND(pitch.peakPrice)}/ca 2h
+              ${!pitch.peakPrice || Number(pitch.peakPrice) === Number(pitch.basePrice)
+                ? `Đồng giá mọi khung giờ (05:30-22:30): ${app.formatVND(pitch.basePrice)}/ca 2h<br><span class="text-[#64748B] font-medium">Không phụ thu giờ cao điểm &amp; cuối tuần</span>`
+                : `Thường (05:30-16:30): ${app.formatVND(pitch.basePrice)}/ca 2h<br>Giờ cao điểm (16:30-20:30): ${app.formatVND(pitch.peakPrice)}/ca 2h`}
             </div>
           </div>
         </div>
