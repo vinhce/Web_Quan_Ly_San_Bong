@@ -102,7 +102,7 @@ function handle_admin_recurring_waitlist(string $action, string $method, PDO $pd
         } else {
             $baseP = $slot['is_peak'] ? (int)$pitch['peak_price'] : (int)$pitch['base_price'];
         }
-        $computedBase = (int)round($baseP * ((float)($slot['duration'] ?: 1.0)));
+        $computedBase = (int)round($baseP);
         $goldRes = resolve_golden_hour_adjustment($pdo, (int)($pitch['type'] ?? 5), $dayOfWeek, (string)$slot['id'], $computedBase);
         $serverPrice = (int)($goldRes['adjustedPitchPrice'] ?? $computedBase);
         $pricePerMatch = (($actor['role'] ?? '') === 'admin' && $pricePerMatch >= 50000) ? $pricePerMatch : $serverPrice;
@@ -325,7 +325,7 @@ function handle_admin_recurring_waitlist(string $action, string $method, PDO $pd
                 $isWeekend = ($wDay === 0 || $wDay === 6);
                 $weekendPrice = (int)($pitch['weekend_price'] ?? 0);
                 $baseP = ($isWeekend && $weekendPrice > 0) ? ($slot['is_peak'] ? max((int)$pitch['peak_price'], $weekendPrice) : $weekendPrice) : ($slot['is_peak'] ? (int)$pitch['peak_price'] : (int)$pitch['base_price']);
-                $origPitchPrice = (int)round($baseP * ((float)($slot['duration'] ?: 1.0)));
+                $origPitchPrice = (int)round($baseP);
                 $ghEval = resolve_golden_hour_adjustment($pdo, (int)$pitch['type'], (int)date('N', $ts), (string)$slot['id'], $origPitchPrice);
                 $totalPrice = (int)$ghEval['adjustedPitchPrice'];
                 $origPrice = max($origPitchPrice, $totalPrice);

@@ -334,7 +334,7 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
                         } else {
                             $unitBase = $isPeak ? (int)$pRow['peak_price'] : (int)$pRow['base_price'];
                         }
-                        $raw = (int)round($unitBase * $duration * $weeksCount * (1 - $pkgRate));
+                        $raw = (int)round($unitBase * $weeksCount * (1 - $pkgRate));
                         $gh = resolve_golden_hour_adjustment($pdo, (int)$pRow['type'], $ghDay, (string)$slotRow['id'], $raw);
                         return (int)$gh['adjustedPitchPrice'];
                     };

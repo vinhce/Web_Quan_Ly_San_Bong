@@ -148,6 +148,9 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
         }
 
         $currentUser = get_authenticated_user($pdo);
+        if ($currentUser && is_portal_operator($currentUser)) {
+            json_error('Tài khoản vận hành không đăng ký danh sách chờ của khách hàng.', 403, 'ERR_FORBIDDEN');
+        }
         $userId = $currentUser ? (int)$currentUser['id'] : null;
 
         $dupStmt = $pdo->prepare("SELECT id FROM waitlist WHERE pitch_id = ? AND booking_date = ? AND slot_id = ? AND phone = ? AND status = 'waiting' LIMIT 1");
