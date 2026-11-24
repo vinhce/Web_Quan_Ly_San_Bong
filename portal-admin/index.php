@@ -111,7 +111,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       }
     })();
   </script>
-  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261124_v136">
+  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261124_v137">
   <link rel="stylesheet" href="<?php echo $basePath; ?>/css/style.css?v=20261124_v135">
 <style>
     @keyframes qrLaserAnim {
@@ -590,7 +590,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261122_v130"></script>
   <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261122_v130"></script>
   <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261124_v136"></script>
+  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261124_v137"></script>
 </body>
 </html>
 

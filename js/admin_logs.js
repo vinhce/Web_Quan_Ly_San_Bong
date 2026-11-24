@@ -22,7 +22,6 @@ const ADMIN_LOG_CATALOG = {
     groups: Object.values(ADMIN_LOG_CATEGORIES),
     dataGroups: ADMIN_LOG_DATA_GROUPS,
     actions: {
-        // Ca trực
         SHIFT_OPEN: _aMeta('Mở ca trực', 'TD', 'Ca trực'),
         OPEN_SHIFT: _aMeta('Mở ca trực', 'TD', 'Ca trực'),
         SHIFT_CLOSE: _aMeta('Đóng ca trực', 'CB', 'Ca trực'),
@@ -30,7 +29,6 @@ const ADMIN_LOG_CATALOG = {
         SHIFT_HANDOVER: _aMeta('Giao ca trực', 'CB', 'Ca trực'),
         SHIFT_CONFIRM: _aMeta('Xác nhận chốt ca', 'TD', 'Ca trực'),
         SHIFT_EDIT_COUNT: _aMeta('Sửa số liệu kiểm đếm ca', 'CB', 'Ca trực'),
-        // Tiền & đặt cọc
         COLLECT_PAYMENT: _aMeta('Thu tiền tại quầy', 'TQ', 'Tiền & đặt cọc'),
         COUNTER_SALE: _aMeta('Bán hàng tại quầy', 'TQ', 'Tiền & đặt cọc'),
         ADJUST_DISCOUNT: _aMeta('Điều chỉnh giảm giá đơn', 'CB', 'Tiền & đặt cọc'),
@@ -49,14 +47,12 @@ const ADMIN_LOG_CATALOG = {
         EXPENSE_UPDATE: _aMeta('Cập nhật khoản chi', 'CN', 'Tiền & đặt cọc'),
         EXPENSE_DELETE: _aMeta('Xóa khoản chi', 'XH', 'Tiền & đặt cọc'),
         EXPORT_REPORTS: _aMeta('Xuất báo cáo doanh thu', 'TD', 'Tiền & đặt cọc'),
-        // Hội viên & điểm
         ADJUST_POINTS: _aMeta('Điều chỉnh điểm', 'CN', 'Hội viên & điểm'),
         CRM_CUSTOMER_UPDATE: _aMeta('Cập nhật hồ sơ khách hàng', 'CN', 'Hội viên & điểm'),
         CRM_UPDATE: _aMeta('Cập nhật hồ sơ khách', 'CN', 'Hội viên & điểm'),
         UPDATE_MEMBER: _aMeta('Cập nhật hội viên', 'CN', 'Hội viên & điểm'),
         UPDATE_PROFILE: _aMeta('Cập nhật hồ sơ cá nhân', 'CN', 'Hội viên & điểm'),
         USER_EDIT: _aMeta('Sửa thông tin hội viên', 'CN', 'Hội viên & điểm'),
-        // Giá & voucher
         UPDATE_PRICING: _aMeta('Cập nhật giá sân', 'CN', 'Giá & voucher'),
         UPDATE_PRICE: _aMeta('Cập nhật giá sân', 'CN', 'Giá & voucher'),
         PRICE_UPDATE: _aMeta('Cập nhật giá sân', 'CN', 'Giá & voucher'),
@@ -71,7 +67,6 @@ const ADMIN_LOG_CATALOG = {
         PACKAGE_SAVE: _aMeta('Lưu gói cố định theo tháng', 'TD', 'Giá & voucher'),
         PACKAGE_DELETE: _aMeta('Xóa gói cố định theo tháng', 'XH', 'Giá & voucher'),
         PACKAGE_TOGGLE: _aMeta('Bật/tắt gói cố định theo tháng', 'CN', 'Giá & voucher'),
-        // Sân & Lịch đặt
         WALKIN_BOOKING: _aMeta('Tạo đơn tại quầy', 'TD', 'Sân & Lịch đặt'),
         WALKIN_PAST_SLOT: _aMeta('Duyệt đặt sân quá khứ', 'CB', 'Sân & Lịch đặt'),
         CHECKIN: _aMeta('Check-in nhận sân', 'CN', 'Sân & Lịch đặt'),
@@ -116,7 +111,6 @@ const ADMIN_LOG_CATALOG = {
         CRON_COMPLETE_OVERDUE_IN_PLAY: _aMeta('Tự động hoàn tất ca quá giờ', 'TT', 'Sân & Lịch đặt'),
         ADMIN_RUN_AUTO_RELEASE: _aMeta('Chạy nhả đơn quá hạn thủ công', 'TT', 'Sân & Lịch đặt'),
         RUN_REMINDERS: _aMeta('Chạy nhắc lịch', 'TT', 'Sân & Lịch đặt'),
-        // Cài đặt
         UPDATE_SETTINGS: _aMeta('Cập nhật cài đặt hệ thống', 'CN', 'Cài đặt'),
         SYSTEM_SETTINGS: _aMeta('Cập nhật cài đặt hệ thống', 'CN', 'Cài đặt'),
         UPDATE_INFO: _aMeta('Sửa thông tin hệ thống', 'CN', 'Cài đặt'),
@@ -125,7 +119,6 @@ const ADMIN_LOG_CATALOG = {
         TELEGRAM_TEST: _aMeta('Kiểm tra kết nối Telegram', 'TT', 'Cài đặt'),
         SAMPLE_DATA_CLEAN: _aMeta('Dọn dữ liệu mẫu', 'XH', 'Cài đặt'),
         SAMPLE_DATA_SEED: _aMeta('Tạo dữ liệu mẫu', 'TT', 'Cài đặt'),
-        // Nhân sự & Bảo mật
         STAFF_CREATE: _aMeta('Tạo tài khoản nhân sự', 'TD', 'Nhân sự & Bảo mật'),
         STAFF_ROLE_CHANGE: _aMeta('Đổi vai trò nhân sự', 'CB', 'Nhân sự & Bảo mật'),
         STAFF_STATUS_CHANGE: _aMeta('Đổi trạng thái nhân sự', 'CN', 'Nhân sự & Bảo mật'),
@@ -164,13 +157,14 @@ const adminLogState = {
 };
 
 const AUDIT_INPUT_BINDINGS = [
-    ['admin-log-filter-staff', 'staffId'],
-    ['admin-log-filter-action', 'actionType'],
-    ['admin-log-filter-datagroup', 'dataGroup'],
-    ['admin-log-filter-from', 'fromDate'],
-    ['admin-log-filter-to', 'toDate'],
-    ['admin-log-search', 'search']
+    ['admin-log-filter-staff', 'staffId'], ['admin-log-filter-action', 'actionType'],
+    ['admin-log-filter-datagroup', 'dataGroup'], ['admin-log-filter-from', 'fromDate'],
+    ['admin-log-filter-to', 'toDate'], ['admin-log-search', 'search']
 ];
+
+const auditById = (id) => (typeof document !== 'undefined' ? document.getElementById(id) : null);
+const toggleAuditClass = (el, cls, add) => el?.classList && el.classList[add ? 'add' : 'remove'](cls);
+const showAuditToast = (msg, type = 'info') => window?.SanBongApp?.showToast?.(msg, type);
 
 function auditEsc(str) {
     if (typeof window !== 'undefined' && typeof window.escapeHTML === 'function') return window.escapeHTML(str);
@@ -178,8 +172,7 @@ function auditEsc(str) {
 }
 
 function maskAuditPhone(text) {
-    if (text === null || text === undefined) return '';
-    return String(text).replace(/(?<!\d)(0\d{2})\d{4,6}(\d{3})(?!\d)/g, '$1***$2');
+    return text == null ? '' : String(text).replace(/(?<!\d)(0\d{2})\d{4,6}(\d{3})(?!\d)/g, '$1***$2');
 }
 
 function getVnDateParts(dateObj) {
@@ -207,12 +200,39 @@ function getAuditDateKey(raw) {
 
 function formatAuditDayDivider(dateKey) {
     if (!dateKey) return 'Khác';
-    const fmtKey = (ms) => { const p = getVnDateParts(new Date(ms)); return `${p.year}-${p.month}-${p.day}`; };
+    const fmt = (ms) => { const p = getVnDateParts(new Date(ms)); return `${p.year}-${p.month}-${p.day}`; };
     const [y, m, d] = dateKey.split('-');
-    const vnDate = `${d}/${m}/${y}`;
-    if (dateKey === fmtKey(Date.now())) return `Hôm nay, ${vnDate}`;
-    if (dateKey === fmtKey(Date.now() - 86400000)) return `Hôm qua, ${vnDate}`;
-    return vnDate;
+    const vn = `${d}/${m}/${y}`;
+    if (dateKey === fmt(Date.now())) return `Hôm nay, ${vn}`;
+    if (dateKey === fmt(Date.now() - 86400000)) return `Hôm qua, ${vn}`;
+    return vn;
+}
+
+function parseAuditDateMs(raw) {
+    if (!raw) return NaN;
+    const s = String(raw).trim();
+    const dm = s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if (dm) return Date.parse(`${dm[3]}-${dm[2]}-${dm[1]}T${dm[4] || '00'}:${dm[5] || '00'}:00+07:00`);
+    return Date.parse(s.includes(' ') && !s.includes('T') ? s.replace(' ', 'T') + '+07:00' : s);
+}
+
+function formatAuditClockTime(raw) {
+    const m = formatAuditDateTime(raw).match(/\s(\d{2}:\d{2})$/);
+    return m ? m[1] : formatAuditDateTime(raw);
+}
+
+function formatAuditRelativeTime(raw) {
+    const ms = parseAuditDateMs(raw);
+    if (Number.isNaN(ms)) return '—';
+    const diffMin = Math.max(0, Math.floor((Date.now() - ms) / 60000));
+    if (diffMin < 1) return 'Vừa xong';
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const key = getAuditDateKey(raw);
+    const fmt = (t) => { const p = getVnDateParts(new Date(t)); return `${p.year}-${p.month}-${p.day}`; };
+    if (key === fmt(Date.now()) && diffMin < 1440) return `${Math.floor(diffMin / 60)} giờ trước`;
+    if (key === fmt(Date.now() - 86400000)) return 'Hôm qua';
+    const dt = formatAuditDateTime(raw);
+    return dt.length >= 5 ? dt.slice(0, 5) : dt;
 }
 
 function validateAuditReasonClient(reason, minLen = 10) {
@@ -244,14 +264,32 @@ function resolveActionMeta(actionCode, row = {}) {
     };
 }
 
+function resolveActorRoleInfo(row) {
+    const raw = String(row.actor_role || '').trim().toLowerCase();
+    if (Number(row.user_id || 0) === 0 || raw === '' || raw === 'system') {
+        return { cls: 'role-system', label: row.actor_role_label || 'Hệ thống' };
+    }
+    const map = { admin: ['role-admin', 'Chủ sân'], manager: ['role-manager', 'Quản lý'], staff: ['role-staff', 'Nhân viên'] };
+    const [cls, defLbl] = map[raw] || ['role-staff', raw];
+    return { cls, label: row.actor_role_label || defLbl };
+}
+
+function resolveObjectTypeLabel(row, meta) {
+    if (row.object_type_label) return row.object_type_label;
+    const map = {
+        shift: 'Ca trực', shifts: 'Ca trực', booking: 'Mã ca', bookings: 'Mã ca',
+        user: 'Hội viên', customer: 'Hội viên', member: 'Hội viên', pitch: 'Sân bóng',
+        service: 'Dịch vụ', inventory: 'Dịch vụ', voucher: 'Voucher', expense: 'Khoản chi',
+        pricing: 'Bảng giá', setting: 'Cài đặt', settings: 'Cài đặt', staff: 'Nhân sự',
+        security: 'Bảo mật', bank_transaction: 'Giao dịch', system: 'Hệ thống'
+    };
+    return map[String(row.target_type || '').toLowerCase()] || (meta?.dataGroup === 'Ca trực' ? 'Ca trực' : 'Hệ thống');
+}
+
 function normalizeLogApiUrl(path) {
     if (typeof window !== 'undefined' && typeof window.normalizeAdminApiUrl === 'function') return window.normalizeAdminApiUrl(path);
     if (typeof window !== 'undefined' && typeof window.getRelativePath === 'function') return window.getRelativePath(path);
     return path.startsWith('/') ? path : `../${path}`;
-}
-
-function showAuditToast(msg, type = 'info') {
-    if (typeof window !== 'undefined' && window.SanBongApp?.showToast) window.SanBongApp.showToast(msg, type);
 }
 
 async function auditApiRequest(path, options = {}) {
@@ -279,374 +317,435 @@ async function auditApiRequest(path, options = {}) {
     return json;
 }
 
-function buildAuditFilterParams(includePagination = true) {
-    const p = new URLSearchParams();
-    if (includePagination) { p.set('page', String(adminLogState.page)); p.set('limit', String(adminLogState.limit)); }
-    if (adminLogState.staffId) p.set('admin_id', adminLogState.staffId);
-    if (adminLogState.actionType) p.set('action_type', adminLogState.actionType);
-    if (adminLogState.dataGroup) p.set('data_group', adminLogState.dataGroup);
-    if (adminLogState.fromDate) p.set('from_date', adminLogState.fromDate);
-    if (adminLogState.toDate) p.set('to_date', adminLogState.toDate);
-    if (adminLogState.search) p.set('search', adminLogState.search);
-    if (adminLogState.categories.length) p.set('categories', adminLogState.categories.join(','));
-    if (adminLogState.quickFilter) p.set('quick_filter', adminLogState.quickFilter);
-    return p;
+function buildAuditFilterParams(page = adminLogState.page, extra = {}) {
+    const p = new URLSearchParams({ page: String(page || 1), limit: String(adminLogState.limit || 25) });
+    const fields = [
+        ['staff_id', adminLogState.staffId], ['action_type', adminLogState.actionType],
+        ['data_group', adminLogState.dataGroup], ['from_date', adminLogState.fromDate],
+        ['to_date', adminLogState.toDate], ['search', adminLogState.search],
+        ['quick_filter', adminLogState.quickFilter], ['categories', adminLogState.categories.join(',')]
+    ];
+    fields.forEach(([k, v]) => { if (v) p.set(k, v); });
+    Object.entries(extra).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') p.set(k, String(v)); });
+    return p.toString();
+}
+
+function syncAuditChipsUi() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('#admin-log-category-chips .audit-chip').forEach((btn) => {
+        btn.setAttribute('aria-pressed', adminLogState.categories.includes(btn.getAttribute('data-cat')) ? 'true' : 'false');
+    });
+}
+
+function syncAuditKpiPressedUi() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('#admin-log-kpi-grid .audit-kpi-card').forEach((btn) => {
+        btn.setAttribute('aria-pressed', adminLogState.quickFilter === (btn.getAttribute('data-quick') || '') ? 'true' : 'false');
+    });
+}
+
+function syncAuditInputsToDom() {
+    AUDIT_INPUT_BINDINGS.forEach(([elId, key]) => {
+        const el = auditById(elId);
+        if (el && el.value !== adminLogState[key]) el.value = adminLogState[key] || '';
+    });
+    const limitEl = auditById('admin-log-limit-select');
+    if (limitEl) limitEl.value = String(adminLogState.limit || 25);
+    toggleAuditClass(auditById('admin-log-search-clear'), 'hidden', !adminLogState.search);
+    syncAuditChipsUi();
+    syncAuditKpiPressedUi();
 }
 
 function hydrateAdminLogFiltersFromUrl() {
-    if (adminLogState.urlHydrated || typeof window === 'undefined' || !window.location?.search) return;
+    if (adminLogState.urlHydrated) return;
     adminLogState.urlHydrated = true;
-    const sp = new URLSearchParams(window.location.search);
-    [['admin_id', 'staffId'], ['action_type', 'actionType'], ['data_group', 'dataGroup'], ['from_date', 'fromDate'],
-     ['to_date', 'toDate'], ['search', 'search'], ['quick_filter', 'quickFilter']].forEach(([q, k]) => {
-        if (sp.get(q)) adminLogState[k] = sp.get(q);
+    const qs = new URLSearchParams(typeof window !== 'undefined' ? (window.location?.search || '') : '');
+    if (!['logs', '11', 'admin-logs'].includes((qs.get('tab') || '').toLowerCase())) return;
+    if (qs.get('log_page')) adminLogState.page = Math.max(1, Number(qs.get('log_page')) || 1);
+    const lim = Number(qs.get('log_limit'));
+    if ([10, 25, 50, 100].includes(lim)) adminLogState.limit = lim;
+    [['log_staff', 'staffId'], ['log_action', 'actionType'], ['log_group', 'dataGroup'], ['log_from', 'fromDate'],
+        ['log_to', 'toDate'], ['log_q', 'search'], ['log_quick', 'quickFilter']].forEach(([q, k]) => {
+        if (qs.get(q)) adminLogState[k] = qs.get(q);
     });
-    if (sp.get('categories')) {
-        adminLogState.categories = sp.get('categories').split(',').map((c) => c.trim().toUpperCase()).filter((c) => Boolean(ADMIN_LOG_CATEGORIES[c]));
+    if (qs.get('log_cats')) {
+        adminLogState.categories = qs.get('log_cats').split(',').map((c) => c.trim().toUpperCase()).filter((c) => Boolean(ADMIN_LOG_CATEGORIES[c]));
     }
-    if (['10', '25', '50', '100'].includes(sp.get('limit'))) adminLogState.limit = Number(sp.get('limit'));
-    if (sp.get('page')) adminLogState.page = Math.max(1, Number(sp.get('page')) || 1);
-}
-
-function syncAdminLogInputsFromState() {
-    AUDIT_INPUT_BINDINGS.forEach(([id, key]) => {
-        const el = document.getElementById(id);
-        if (el && el.value !== adminLogState[key]) el.value = adminLogState[key];
-    });
-    const lim = document.getElementById('admin-log-limit-select');
-    if (lim) lim.value = String(adminLogState.limit);
-    const clr = document.getElementById('admin-log-search-clear');
-    if (clr) clr.classList.toggle('hidden', !adminLogState.search);
-    document.querySelectorAll('#admin-log-category-chips .audit-chip').forEach((btn) => {
-        const active = adminLogState.categories.includes(btn.getAttribute('data-cat'));
-        btn.classList.toggle('active', active);
-        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-    document.querySelectorAll('#admin-log-kpi-grid .audit-kpi-card').forEach((card) => {
-        const active = (card.getAttribute('data-quick') || '') === adminLogState.quickFilter;
-        card.classList.toggle('active', active);
-        card.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-}
-
-function readAdminLogInputsToState() {
-    AUDIT_INPUT_BINDINGS.forEach(([id, key]) => {
-        const el = document.getElementById(id);
-        if (el) adminLogState[key] = el.value.trim();
-    });
-    const clr = document.getElementById('admin-log-search-clear');
-    if (clr) clr.classList.toggle('hidden', !adminLogState.search);
+    syncAuditInputsToDom();
 }
 
 function syncAdminLogUrlParams() {
-    if (typeof window === 'undefined' || !window.history?.replaceState) return;
-    const cur = new URLSearchParams(window.location.search);
-    if (cur.get('tab') !== 'logs') return;
-    const next = new URLSearchParams();
-    next.set('tab', 'logs');
-    for (const [k, v] of buildAuditFilterParams(true).entries()) {
-        if ((k === 'page' && v === '1') || (k === 'limit' && v === '25')) continue;
-        next.set(k, v);
+    if (typeof window === 'undefined' || !window.location || !window.history?.replaceState) return;
+    const qs = new URLSearchParams(window.location.search || '');
+    if (!['logs', '11', 'admin-logs'].includes((qs.get('tab') || '').toLowerCase())) return;
+    [['log_page', adminLogState.page > 1 ? String(adminLogState.page) : ''],
+        ['log_limit', adminLogState.limit !== 25 ? String(adminLogState.limit) : ''],
+        ['log_staff', adminLogState.staffId], ['log_action', adminLogState.actionType],
+        ['log_group', adminLogState.dataGroup], ['log_from', adminLogState.fromDate],
+        ['log_to', adminLogState.toDate], ['log_q', adminLogState.search],
+        ['log_quick', adminLogState.quickFilter], ['log_cats', adminLogState.categories.join(',')]
+    ].forEach(([k, v]) => (v ? qs.set(k, v) : qs.delete(k)));
+    window.history.replaceState(null, '', `${window.location.pathname || ''}?${qs.toString()}`);
+}
+
+function populateAuditFilterOptions(staffList = [], actionTypes = []) {
+    const staffEl = auditById('admin-log-filter-staff');
+    if (staffEl) {
+        let html = '<option value="">Tất cả nhân sự</option>';
+        staffList.forEach((s) => {
+            const lbl = s.full_name ? `${s.full_name} (${s.username || s.id})` : (s.username || `ID #${s.id}`);
+            html += `<option value="${auditEsc(s.id)}">${auditEsc(lbl)}</option>`;
+        });
+        staffEl.innerHTML = html;
+        staffEl.value = adminLogState.staffId || '';
     }
-    window.history.replaceState(null, '', `${window.location.pathname}?${next.toString()}`);
+    const actionEl = auditById('admin-log-filter-action');
+    if (actionEl) {
+        const allCodes = Array.from(new Set([...(actionTypes || []), ...Object.keys(ADMIN_LOG_CATALOG.actions)])).filter(Boolean);
+        const byCat = { TD: [], XH: [], CN: [], CB: [], TQ: [], TT: [] };
+        allCodes.forEach((code) => {
+            const meta = resolveActionMeta(code);
+            (byCat[meta.category] || byCat.CN).push({ code, label: meta.label });
+        });
+        const catOrder = [['TD', 'Tạo / Duyệt'], ['XH', 'Xóa / Hủy / Chi tiền'], ['CN', 'Cập nhật'],
+            ['CB', 'Cảnh báo'], ['TQ', 'Tiền quầy'], ['TT', 'Tự động']];
+        let html = '<option value="">Tất cả loại hành động</option>';
+        catOrder.forEach(([code, title]) => {
+            const items = byCat[code] || [];
+            const counts = {};
+            items.forEach((it) => { counts[it.label] = (counts[it.label] || 0) + 1; });
+            html += `<optgroup label="${auditEsc(`${code} – ${title}`)}"><option value="__cat__:${auditEsc(code)}">${auditEsc(`Tất cả nhóm ${title}`)}</option>`;
+            items.forEach((it) => {
+                const txt = counts[it.label] > 1 ? `${it.label} (${it.code})` : it.label;
+                html += `<option value="${auditEsc(it.code)}">${auditEsc(txt)}</option>`;
+            });
+            html += '</optgroup>';
+        });
+        actionEl.innerHTML = html;
+        actionEl.value = adminLogState.actionType || '';
+    }
+    const dgEl = auditById('admin-log-filter-datagroup');
+    if (dgEl) dgEl.value = adminLogState.dataGroup || '';
 }
 
-function initAdminLogPlugins() {
-    if (adminLogState.pluginsReady) return;
-    adminLogState.pluginsReady = true;
-    const root = typeof document !== 'undefined' ? document.getElementById('tab-content-logs') : null;
-    if (root && typeof window !== 'undefined' && window.SanBongDatePicker?.init) window.SanBongDatePicker.init(root);
-    startAdminLogAutoCheck();
-}
-
-function updateAuditTimestamp() {
-    const el = document.getElementById('admin-log-updated-at');
-    if (!el) return;
-    const p = getVnDateParts(new Date());
-    el.textContent = `Cập nhật ${p.hour}:${p.minute}`;
+function renderAdminLogKpi(data = {}) {
+    const unrev = Number(data.unreviewed_anomalies || 0);
+    const totalEl = auditById('audit-kpi-total-val');
+    const totalSub = auditById('audit-kpi-total-sub');
+    const anomEl = auditById('audit-kpi-anomaly-val');
+    const finEl = auditById('audit-kpi-finance-val');
+    const shiftEl = auditById('audit-kpi-shifts-val');
+    const shiftSub = auditById('audit-kpi-shifts-sub');
+    if (totalEl) totalEl.textContent = String(data.total_actions ?? 0);
+    if (totalSub) totalSub.textContent = data.period?.is_today ? 'Hôm nay (theo giờ VN)' : 'Theo bộ lọc đang chọn';
+    if (anomEl) anomEl.textContent = String(unrev);
+    toggleAuditClass(auditById('audit-kpi-anomaly'), 'is-alert-red', unrev > 0);
+    if (finEl) finEl.textContent = String(data.finance_cash_count ?? 0);
+    if (shiftEl) shiftEl.textContent = String(data.shift_count ?? 0);
+    if (shiftSub) {
+        const st = data.latest_shift_status || {};
+        shiftSub.textContent = st.text || 'Chưa có ca trực trong kỳ';
+        toggleAuditClass(shiftSub, 'audit-kpi-sub-red', st.level === 'danger' || st.level === 'warning');
+    }
+    syncAuditKpiPressedUi();
 }
 
 async function loadAdminLogSummary() {
     if (adminLogState.summaryAbort) adminLogState.summaryAbort.abort();
-    adminLogState.summaryAbort = new AbortController();
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    adminLogState.summaryAbort = ctrl;
     try {
-        const qs = buildAuditFilterParams(false).toString();
-        const res = await auditApiRequest(`api/admin.php?action=audit_summary${qs ? '&' + qs : ''}`, { signal: adminLogState.summaryAbort.signal });
-        const d = res.data || {};
-        const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        setTxt('audit-kpi-total-val', Number(d.total_actions || 0).toLocaleString('vi-VN'));
-        setTxt('audit-kpi-total-sub', (d.period && d.period.is_today === false) ? 'Theo bộ lọc đang chọn' : 'Hôm nay (theo giờ VN)');
-        const unrev = Number(d.unreviewed_anomalies || 0);
-        setTxt('audit-kpi-anomaly-val', unrev.toLocaleString('vi-VN'));
-        const anoCard = document.getElementById('audit-kpi-anomaly');
-        if (anoCard) anoCard.classList.toggle('is-alert-red', unrev > 0);
-        setTxt('audit-kpi-finance-val', Number(d.finance_cash_count || 0).toLocaleString('vi-VN'));
-        setTxt('audit-kpi-shifts-val', Number(d.shift_count || 0).toLocaleString('vi-VN'));
-        const shiftSub = document.getElementById('audit-kpi-shifts-sub');
-        if (shiftSub) {
-            const st = d.latest_shift_status || {};
-            shiftSub.textContent = st.text || 'Chưa có ca trực trong kỳ';
-            shiftSub.style.color = st.level === 'danger' ? 'var(--r)' : (st.level === 'warning' ? 'var(--y)' : (st.level === 'ok' ? 'var(--g)' : 'var(--n)'));
-        }
-        if (d.latest_id && Number(d.latest_id) > adminLogState.latestId) adminLogState.latestId = Number(d.latest_id);
-        updateAuditTimestamp();
+        const qs = buildAuditFilterParams(1, { action: 'audit_summary' });
+        const json = await auditApiRequest(`api/admin.php?${qs}`, { signal: ctrl?.signal });
+        renderAdminLogKpi(json.data || {});
     } catch (err) {
-        if (err.name !== 'AbortError') { /* giữ nguyên KPI gần nhất */ }
+        if (err?.name !== 'AbortError') showAuditToast(err.message || 'Không tải được thống kê nhật ký.', 'error');
     }
 }
 
-function populateAuditFilterOptions(staffList = [], actionTypes = []) {
-    const staffSel = document.getElementById('admin-log-filter-staff');
-    if (staffSel && Array.isArray(staffList) && staffList.length) {
-        const cur = adminLogState.staffId || staffSel.value;
-        staffSel.innerHTML = '<option value="">Tất cả nhân sự</option>' + staffList.map((s) => {
-            const name = s.full_name || s.username || ('NV #' + s.id);
-            return `<option value="${auditEsc(s.id)}">${auditEsc(s.role ? `${name} (${s.role})` : name)}</option>`;
-        }).join('');
-        staffSel.value = cur;
-    }
-    const actSel = document.getElementById('admin-log-filter-action');
-    if (actSel) {
-        const curAct = adminLogState.actionType || actSel.value;
-        let html = '<option value="">Tất cả thao tác</option><optgroup label="Theo nhóm nghiệp vụ">';
-        ADMIN_LOG_DATA_GROUPS.filter((g) => g !== 'Khác').forEach((dg) => {
-            html += `<option value="__group__:${auditEsc(dg)}">Nhóm: ${auditEsc(dg)}</option>`;
-        });
-        html += '<option value="__group__:automation">Nhóm: Tự động hệ thống (TT)</option></optgroup><optgroup label="Chi tiết mã thao tác">';
-        const codes = new Set([...(Array.isArray(actionTypes) ? actionTypes : []), ...Object.keys(ADMIN_LOG_CATALOG.actions)]);
-        Array.from(codes).sort().forEach((code) => {
-            html += `<option value="${auditEsc(code)}">${auditEsc(resolveActionMeta(code).label)} [${auditEsc(code)}]</option>`;
-        });
-        html += '</optgroup>';
-        actSel.innerHTML = html;
-        actSel.value = curAct;
-    }
-}
-const populateAdminLogFilters = populateAuditFilterOptions;
-
-function setAdminLogViewState(mode, errorMsg = '') {
-    [['admin-log-loading', 'loading'], ['admin-log-error', 'error'], ['admin-log-empty', 'empty'],
-     ['admin-log-table-container', 'ready']].forEach(([id, target]) => {
-        const el = document.getElementById(id);
-        if (el) el.classList.toggle('hidden', mode !== target);
-    });
-    const pgEl = document.getElementById('admin-log-pagination');
-    if (pgEl) pgEl.classList.toggle('hidden', mode !== 'ready' && mode !== 'empty');
-    if (mode === 'error') {
-        const msgEl = document.getElementById('admin-log-error-msg');
-        if (msgEl) msgEl.textContent = errorMsg || 'Không thể tải dữ liệu nhật ký.';
-    }
-}
+const maybeUnmaskDisplay = (text, row) => (adminLogState.revealedMap[row.id] ? String(text ?? '') : maskAuditPhone(text ?? ''));
+const isBadDiffValue = (d) => (String(d.field || '').toLowerCase() === 'discrepancy_amount' && !/^0+(?:\.0+)?\s*đ?$/.test(String(d.new ?? '').trim())) || /tắt 2fa|khóa|blacklist|-\d/i.test(String(d.new ?? ''));
 
 function renderAuditDiffBlock(row) {
-    const meta = resolveActionMeta(row.action, row);
+    const id = Number(row.id);
     const diffs = Array.isArray(row.diffs) ? row.diffs : [];
-    const maxInline = 2;
-    let html = `<div class="audit-detail-summary">${auditEsc(maskAuditPhone(row.formatted_message || meta.label))}</div>`;
-    if (diffs.length) {
-        const isExp = Boolean(adminLogState.expandedDiffs[row.id]);
-        html += '<div class="audit-diff-list">' + (isExp ? diffs : diffs.slice(0, maxInline)).map((df) => {
-            const fLabel = df.label || ADMIN_LOG_CATALOG.fieldLabels[df.field] || df.field || 'Giá trị';
-            return `<div class="audit-diff-item"><span class="audit-diff-key">${auditEsc(fLabel)}:</span> <del class="audit-diff-old">${auditEsc(maskAuditPhone(df.old ?? '—'))}</del> <span aria-hidden="true">→</span> <ins class="audit-diff-new">${auditEsc(maskAuditPhone(df.new ?? '—'))}</ins></div>`;
-        }).join('') + '</div>';
-        if (diffs.length > maxInline) {
-            html += `<button type="button" class="audit-inline-link" onclick="toggleAuditDiffExpand(${Number(row.id)})">${isExp ? 'Thu gọn thay đổi' : `+${diffs.length - maxInline} thay đổi nữa`}</button>`;
-        }
-    } else if (meta.dataGroup === 'Khác' && (row.old_value || row.new_value)) {
-        const openJson = Boolean(adminLogState.expandedJson[row.id]);
-        html += `<button type="button" class="audit-inline-link" onclick="toggleAuditJsonExpand(${Number(row.id)})">${openJson ? 'Ẩn JSON chi tiết' : 'Xem JSON chi tiết'}</button>`;
-        if (openJson) html += `<pre class="audit-json-pre">${auditEsc(maskAuditPhone(JSON.stringify({ old: row.old_value, new: row.new_value }, null, 2)))}</pre>`;
+    const exp = Boolean(adminLogState.expandedDiffs[id]);
+    const vis = exp ? diffs : diffs.slice(0, 2);
+    let html = '';
+    if (vis.length > 0) {
+        vis.forEach((d) => {
+            const lbl = auditEsc(d.label || ADMIN_LOG_CATALOG.fieldLabels[d.field] || d.field || 'Thay đổi');
+            const oldVal = d.old !== null && d.old !== undefined && String(d.old) !== '' ? maybeUnmaskDisplay(d.old, row) : '';
+            const newVal = maybeUnmaskDisplay(d.new ?? '', row);
+            html += `<div><span class="audit-k">${lbl}:</span> ${oldVal ? `<s>${auditEsc(oldVal)}</s> → ` : ''}<b${isBadDiffValue(d) ? ' class="bad"' : ''}>${auditEsc(newVal)}</b></div>`;
+        });
+        if (diffs.length > 2) html += `<button type="button" class="audit-more" onclick="toggleAuditDiffExpand(${id})">${exp ? 'Thu gọn thay đổi' : `+${diffs.length - 2} thay đổi nữa`}</button>`;
+    } else {
+        html += `<div class="audit-k">${auditEsc(maybeUnmaskDisplay(row.formatted_message || 'Thao tác hệ thống', row))}</div>`;
+    }
+    if (row.is_anomaly && Array.isArray(row.anomaly_reasons) && row.anomaly_reasons.length > 0) {
+        html += `<div style="margin-top:4px;font-size:11.5px;color:var(--r)">⚠ ${auditEsc(row.anomaly_reasons.join(' · '))}</div>`;
     }
     return html;
 }
 
-function renderAuditReviewCell(row) {
-    const reasons = Array.isArray(row.anomaly_reasons) ? row.anomaly_reasons : [];
-    let html = Number(row.is_anomaly) === 1
-        ? `<div class="mb-1"><span class="audit-anomaly-badge" title="${auditEsc(reasons.join('; ') || 'Thao tác vượt ngưỡng kiểm soát')}">Bất thường</span><div class="audit-anomaly-reason">${auditEsc(reasons[0] || '')}</div></div>`
-        : '';
+function renderAuditReviewSection(row) {
+    const id = Number(row.id);
     if (row.review) {
-        const revTime = formatAuditDateTime(row.review.created_at_formatted || row.review.created_at);
-        return html + `<div class="audit-review-done"><span class="audit-reviewed-badge">Đã hậu kiểm</span><div class="audit-review-note">${auditEsc(row.review.note)}</div><div class="audit-review-meta">${auditEsc(row.review.reviewer_name || 'Admin')} · ${auditEsc(revTime)}</div></div>`;
+        const tm = row.review.created_at_formatted ? ` · ${auditEsc(row.review.created_at_formatted)}` : '';
+        return `<div class="audit-review-wrap"><span class="audit-reviewed-badge">✓ Đã hậu kiểm</span><span class="audit-review-note"><b>${auditEsc(row.review.reviewer_name || 'Chủ sân')}</b>${tm}: ${auditEsc(row.review.note || '')}</span></div>`;
     }
-    if (adminLogState.openReviewId === Number(row.id)) {
-        return html + `<div class="audit-review-editor"><textarea id="audit-review-input-${Number(row.id)}" class="audit-review-textarea" rows="2" placeholder="Nhập ghi chú hậu kiểm (>= 10 ký tự)..."></textarea><div class="audit-review-actions"><button type="button" id="audit-review-submit-${Number(row.id)}" class="audit-btn-save" onclick="submitAuditReview(${Number(row.id)})">Lưu hậu kiểm</button><button type="button" class="audit-btn-cancel" onclick="toggleAuditReviewEditor(${Number(row.id)}, false)">Hủy</button></div></div>`;
+    if (!row.is_anomaly && adminLogState.openReviewId !== id) return '';
+    const isOpen = adminLogState.openReviewId === id;
+    let html = `<div class="audit-review-wrap"><button type="button" class="audit-review-btn" onclick="toggleAuditReviewForm(${id})">${isOpen ? 'Đóng hậu kiểm' : 'Hậu kiểm ngay'}</button></div>`;
+    if (isOpen) {
+        html += `<div id="audit-review-form-${id}" class="audit-review-form"><input type="text" id="audit-review-input-${id}" class="audit-review-input" placeholder="Nhập lý do hậu kiểm (>= 10 ký tự)..." aria-label="Ghi chú hậu kiểm"><button type="button" id="audit-review-submit-${id}" class="audit-btn is-primary" onclick="submitAuditReview(${id})">Lưu hậu kiểm</button></div>`;
     }
-    return html + `<button type="button" class="audit-btn-mark" onclick="toggleAuditReviewEditor(${Number(row.id)}, true)">Hậu kiểm</button>`;
+    return html;
 }
 
-function renderAdminLogRows(logs = []) {
-    const tbody = document.getElementById('admin-log-tbody');
-    if (!tbody) return;
+function renderAuditDetailDrawer(row) {
+    const id = Number(row.id);
+    if (!adminLogState.expandedJson[id]) return '';
+    const rev = adminLogState.revealedMap[id] || row;
+    const fmtRaw = (v) => (v ? maybeUnmaskDisplay(typeof v === 'string' ? v : JSON.stringify(v, null, 2), row) : '—');
+    return `<div class="audit-detail-drawer"><div><b>IP:</b> ${auditEsc(row.ip || '—')} · <b>Thời gian VN:</b> ${auditEsc(formatAuditDateTime(row.created_at))}</div>` +
+        `<div style="margin-top:4px"><b>Dữ liệu trước:</b><pre class="audit-detail-pre">${auditEsc(fmtRaw(rev.old_value))}</pre></div>` +
+        `<div style="margin-top:4px"><b>Dữ liệu sau:</b><pre class="audit-detail-pre">${auditEsc(fmtRaw(rev.new_value))}</pre></div></div>`;
+}
+
+function renderAdminLogRows() {
+    const tbody = auditById('admin-log-tbody');
+    toggleAuditClass(auditById('admin-log-loading'), 'hidden', true);
+    toggleAuditClass(auditById('admin-log-error'), 'hidden', true);
+    const logs = Array.isArray(adminLogState.logs) ? adminLogState.logs : [];
+    if (logs.length === 0) {
+        if (tbody) tbody.innerHTML = '';
+        toggleAuditClass(auditById('admin-log-table-container'), 'hidden', true);
+        toggleAuditClass(auditById('admin-log-empty'), 'hidden', false);
+        renderAdminLogPagination();
+        return;
+    }
+    toggleAuditClass(auditById('admin-log-empty'), 'hidden', true);
+    toggleAuditClass(auditById('admin-log-table-container'), 'hidden', false);
+
     let html = '';
-    let prevDateKey = '';
-    logs.forEach((rawRow) => {
-        const revealed = adminLogState.revealedMap[rawRow.id];
-        const row = revealed ? Object.assign({}, rawRow, revealed) : rawRow;
+    let lastKey = '';
+    logs.forEach((row) => {
+        const id = Number(row.id);
         const meta = resolveActionMeta(row.action, row);
-        const dateKey = getAuditDateKey(row.created_at_formatted || row.created_at);
-        if (dateKey && dateKey !== prevDateKey) {
-            prevDateKey = dateKey;
-            html += `<tr class="audit-day-divider"><td colspan="5">${auditEsc(formatAuditDayDivider(dateKey))}</td></tr>`;
+        const role = resolveActorRoleInfo(row);
+        const key = getAuditDateKey(row.created_at);
+        if (key && key !== lastKey) {
+            html += `<div class="audit-day">${auditEsc(formatAuditDayDivider(key))}</div>`;
+            lastKey = key;
         }
-        const objStr = revealed ? (row.object_code || row.object_display || '') : (row.object_display || maskAuditPhone(row.object_code || ''));
-        const revealBtn = row.has_sensitive_phone && !revealed ? ` <button type="button" class="audit-inline-link" onclick="revealAuditSensitive(${Number(row.id)})">Xem chi tiết</button>` : '';
-        html += `<tr class="${Number(row.is_anomaly) === 1 && !row.review ? 'audit-row-anomaly' : ''}" data-log-id="${Number(row.id)}">
-            <td class="audit-td-time"><div class="audit-time-main">${auditEsc(formatAuditDateTime(row.created_at_formatted || row.created_at))}</div><div class="audit-ip">${auditEsc(row.ip || '—')}</div></td>
-            <td><div class="audit-actor-name">${auditEsc(row.actor_name || row.actor_username || 'Hệ thống')}</div><div class="audit-actor-role">${auditEsc(row.actor_role || 'system')}</div></td>
-            <td><span class="audit-cat-badge ${auditEsc(meta.categoryMeta.badgeClass)}">${auditEsc(meta.category)} · ${auditEsc(meta.categoryMeta.label)}</span><div class="audit-action-label">${auditEsc(meta.label)}</div><div class="audit-data-group">${auditEsc(meta.dataGroup)}</div></td>
-            <td>${objStr ? `<div class="audit-obj-row"><span class="audit-obj-code">${auditEsc(objStr)}</span>${revealBtn}</div>` : ''}${renderAuditDiffBlock(row)}</td>
-            <td>${renderAuditReviewCell(row)}</td></tr>`;
+        const rev = adminLogState.revealedMap[id];
+        const objRaw = rev?.object_display || rev?.object_code || (rev ? row.object_code : row.object_display) || row.object_code || '—';
+        const btn = (row.has_sensitive_phone && !rev)
+            ? `<button type="button" class="audit-more" onclick="revealAuditSensitive(${id})">Xem chi tiết</button>`
+            : `<button type="button" class="audit-more" onclick="toggleAuditJsonDetail(${id})">${adminLogState.expandedJson[id] ? 'Ẩn chi tiết' : 'Chi tiết'}</button>`;
+        const anomBadge = row.is_anomaly ? `<span class="audit-anomaly-pill" title="${auditEsc((row.anomaly_reasons || []).join('; '))}">⚠ Bất thường</span>` : '';
+        const catBadgeCls = `t-${meta.category}`;
+        html += `<div class="audit-row${row.is_anomaly ? ' is-anomaly-row' : ''}" data-log-id="${id}">` +
+            `<div><span class="audit-id">#${id}</span><b class="audit-actor-name">${auditEsc(row.actor_name || 'Hệ thống')}</b><span class="audit-s"><span class="audit-role ${role.cls}">${auditEsc(role.label)}</span></span></div>` +
+            `<div><span class="audit-badge ${auditEsc(catBadgeCls)}">${auditEsc(meta.label)}</span>${anomBadge}<span class="audit-s">${auditEsc(meta.dataGroup)}</span></div>` +
+            `<div><span class="audit-code">${auditEsc(objRaw)}</span><span class="audit-s">${auditEsc(resolveObjectTypeLabel(row, meta))}</span>${btn}</div>` +
+            `<div class="audit-chg">${renderAuditDiffBlock(row)}${renderAuditReviewSection(row)}${renderAuditDetailDrawer(row)}</div>` +
+            `<div class="audit-tm" title="${auditEsc(formatAuditDateTime(row.created_at))}"><b>${auditEsc(formatAuditClockTime(row.created_at))}</b><span class="audit-s">${auditEsc(formatAuditRelativeTime(row.created_at))}</span></div></div>`;
     });
-    tbody.innerHTML = html;
+    if (tbody) tbody.innerHTML = html;
+    renderAdminLogPagination();
 }
 
 function renderAdminLogPagination() {
-    const p = adminLogState.page, tp = Math.max(1, adminLogState.totalPages || 1), tot = Number(adminLogState.total || 0);
-    const start = tot === 0 ? 0 : (p - 1) * adminLogState.limit + 1, end = tot === 0 ? 0 : Math.min(tot, p * adminLogState.limit);
-    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setTxt('admin-log-range-summary', `Hiển thị ${start}–${end} / ${tot} bản ghi`);
-    setTxt('admin-log-page-current', String(p));
-    setTxt('admin-log-page-total', String(tp));
-    setTxt('admin-log-total-count', String(tot));
-    const prev = document.getElementById('admin-log-prev-btn'), next = document.getElementById('admin-log-next-btn');
-    if (prev) prev.disabled = p <= 1;
-    if (next) next.disabled = p >= tp;
-    const nums = document.getElementById('admin-log-page-numbers');
-    if (nums) {
-        const from = Math.max(1, p - 2), to = Math.min(tp, from + 4);
-        nums.innerHTML = Array.from({ length: to - from + 1 }, (_, i) => from + i).map((i) =>
-            `<button type="button" class="audit-page-btn${i === p ? ' active' : ''}" onclick="loadAdminLogs(${i})" aria-current="${i === p ? 'page' : 'false'}">${i}</button>`
-        ).join('');
+    const total = Number(adminLogState.total || 0);
+    const page = Number(adminLogState.page || 1);
+    const limit = Number(adminLogState.limit || 25);
+    const totalPages = Math.max(1, Number(adminLogState.totalPages || 1));
+    const start = total === 0 ? 0 : (page - 1) * limit + 1;
+    const end = total === 0 ? 0 : Math.min(total, page * limit);
+    if (auditById('admin-log-range-summary')) auditById('admin-log-range-summary').textContent = `Hiển thị ${start}–${end} / ${total} bản ghi`;
+    if (auditById('admin-log-page-current')) auditById('admin-log-page-current').textContent = String(page);
+    if (auditById('admin-log-page-total')) auditById('admin-log-page-total').textContent = String(totalPages);
+    if (auditById('admin-log-total-count')) auditById('admin-log-total-count').textContent = String(total);
+    if (auditById('admin-log-prev-btn')) auditById('admin-log-prev-btn').disabled = page <= 1;
+    if (auditById('admin-log-next-btn')) auditById('admin-log-next-btn').disabled = page >= totalPages;
+    const numsEl = auditById('admin-log-page-numbers');
+    if (numsEl) {
+        let pHtml = '';
+        for (let p = Math.max(1, page - 2); p <= Math.min(totalPages, page + 2); p++) {
+            pHtml += `<button type="button" class="audit-page-num${p === page ? ' is-active' : ''}" onclick="goToAdminLogPage(${p})">${p}</button>`;
+        }
+        numsEl.innerHTML = pHtml;
     }
+}
+
+function bindAuditFilterInputs() {
+    if (typeof document === 'undefined') return;
+    AUDIT_INPUT_BINDINGS.forEach(([elId, key]) => {
+        const el = auditById(elId);
+        if (!el || el.dataset?.auditBound === '1' || typeof el.addEventListener !== 'function') return;
+        if (el.dataset) el.dataset.auditBound = '1';
+        el.addEventListener(elId === 'admin-log-search' ? 'input' : 'change', () => {
+            adminLogState[key] = el.value || '';
+            if (elId === 'admin-log-search') {
+                toggleAuditClass(auditById('admin-log-search-clear'), 'hidden', !adminLogState.search);
+                clearTimeout(adminLogState.searchTimer);
+                adminLogState.searchTimer = setTimeout(() => loadAdminLogs(1), 280);
+            } else loadAdminLogs(1);
+        });
+    });
+    const clrBtn = auditById('admin-log-search-clear');
+    if (clrBtn && clrBtn.dataset?.auditBound !== '1' && typeof clrBtn.addEventListener === 'function') {
+        if (clrBtn.dataset) clrBtn.dataset.auditBound = '1';
+        clrBtn.addEventListener('click', () => {
+            adminLogState.search = '';
+            if (auditById('admin-log-search')) auditById('admin-log-search').value = '';
+            toggleAuditClass(clrBtn, 'hidden', true);
+            loadAdminLogs(1);
+        });
+    }
+}
+
+function startAdminLogPolling() {
+    if (adminLogState.pollTimer) return;
+    adminLogState.pollTimer = setInterval(async () => {
+        if ((typeof document !== 'undefined' && document.hidden) || auditById('tab-content-logs')?.classList?.contains('hidden') || Number(adminLogState.latestId || 0) <= 0) return;
+        try {
+            const json = await auditApiRequest(`api/admin.php?action=audit_check_new&since_id=${adminLogState.latestId}`);
+            const cnt = Number(json.data?.new_count || 0);
+            if (cnt > 0) {
+                if (auditById('admin-log-new-banner-text')) auditById('admin-log-new-banner-text').textContent = `Có ${cnt} bản ghi nhật ký mới phát sinh.`;
+                toggleAuditClass(auditById('admin-log-new-banner'), 'hidden', false);
+            }
+        } catch (_err) { /* silent background poll */ }
+    }, 60000);
 }
 
 async function loadAdminLogs(page = 1) {
-    if (!adminLogState.urlHydrated) hydrateAdminLogFiltersFromUrl();
-    else readAdminLogInputsToState();
-    initAdminLogPlugins();
-    adminLogState.page = Math.max(1, Number(page) || 1);
-    syncAdminLogInputsFromState();
-    syncAdminLogUrlParams();
-    hideAuditNewBanner();
-    setAdminLogViewState('loading');
-    if (adminLogState.listAbort) adminLogState.listAbort.abort();
-    adminLogState.listAbort = new AbortController();
-    loadAdminLogSummary();
-    try {
-        const res = await auditApiRequest(`api/admin.php?action=audit_logs&${buildAuditFilterParams(true).toString()}`, { signal: adminLogState.listAbort.signal });
-        const d = res.data || {}, pg = d.pagination || {};
-        adminLogState.logs = Array.isArray(d.logs) ? d.logs : [];
-        adminLogState.page = Number(pg.page || adminLogState.page);
-        adminLogState.total = Number(pg.total ?? adminLogState.logs.length);
-        adminLogState.totalPages = Number(pg.totalPages || Math.max(1, Math.ceil(adminLogState.total / adminLogState.limit)));
-        if (d.latest_id && Number(d.latest_id) > adminLogState.latestId) adminLogState.latestId = Number(d.latest_id);
-        populateAuditFilterOptions(d.staffList || [], d.actionTypes || []);
-        if (!adminLogState.logs.length) { setAdminLogViewState('empty'); renderAdminLogPagination(); return; }
-        renderAdminLogRows(adminLogState.logs);
-        renderAdminLogPagination();
-        setAdminLogViewState('ready');
-        updateAuditTimestamp();
-    } catch (err) {
-        if (err.name !== 'AbortError') setAdminLogViewState('error', err.message || 'Lỗi tải nhật ký quản trị.');
+    hydrateAdminLogFiltersFromUrl();
+    bindAuditFilterInputs();
+    if (!adminLogState.pluginsReady && typeof window !== 'undefined' && typeof window.SanBongDatePicker?.init === 'function') {
+        adminLogState.pluginsReady = true;
+        window.SanBongDatePicker.init();
     }
+    startAdminLogPolling();
+    adminLogState.page = Math.max(1, Number(page) || 1);
+    syncAuditInputsToDom();
+    syncAdminLogUrlParams();
+    toggleAuditClass(auditById('admin-log-new-banner'), 'hidden', true);
+    if (adminLogState.listAbort) adminLogState.listAbort.abort();
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    adminLogState.listAbort = ctrl;
+    toggleAuditClass(auditById('admin-log-error'), 'hidden', true);
+    toggleAuditClass(auditById('admin-log-empty'), 'hidden', true);
+    if (adminLogState.logs.length === 0) toggleAuditClass(auditById('admin-log-loading'), 'hidden', false);
+
+    const summaryPromise = loadAdminLogSummary();
+    try {
+        const qs = buildAuditFilterParams(adminLogState.page, { action: 'audit_logs' });
+        const json = await auditApiRequest(`api/admin.php?${qs}`, { signal: ctrl?.signal });
+        const data = json.data || {};
+        adminLogState.logs = Array.isArray(data.logs) ? data.logs : [];
+        adminLogState.total = Number(data.pagination?.total ?? adminLogState.logs.length);
+        adminLogState.totalPages = Math.max(1, Number(data.pagination?.totalPages ?? 1));
+        if (!adminLogState.limit && data.pagination?.limit) adminLogState.limit = Number(data.pagination.limit);
+        if (data.latest_id) adminLogState.latestId = Math.max(adminLogState.latestId || 0, Number(data.latest_id));
+        populateAuditFilterOptions(data.staffList || [], data.actionTypes || []);
+        const updEl = auditById('admin-log-updated-at');
+        if (updEl) { const p = getVnDateParts(new Date()); updEl.textContent = `Cập nhật ${p.hour}:${p.minute}`; }
+        renderAdminLogRows();
+    } catch (err) {
+        if (err?.name !== 'AbortError') {
+            toggleAuditClass(auditById('admin-log-loading'), 'hidden', true);
+            toggleAuditClass(auditById('admin-log-table-container'), 'hidden', true);
+            if (auditById('admin-log-error-msg')) auditById('admin-log-error-msg').textContent = err.message || 'Không tải được dữ liệu nhật ký.';
+            toggleAuditClass(auditById('admin-log-error'), 'hidden', false);
+        }
+    }
+    await summaryPromise;
 }
 
-function refreshAdminLogsAll() { loadAdminLogs(1); }
-function handleAdminLogFilterChange() { readAdminLogInputsToState(); loadAdminLogs(1); }
-function handleAdminLogSearchDebounced() {
-    readAdminLogInputsToState();
-    if (adminLogState.searchTimer) clearTimeout(adminLogState.searchTimer);
-    adminLogState.searchTimer = setTimeout(() => loadAdminLogs(1), 300);
+function toggleAuditCategoryChip(cat) {
+    if (!ADMIN_LOG_CATEGORIES[cat]) return;
+    const i = adminLogState.categories.indexOf(cat);
+    if (i >= 0) adminLogState.categories.splice(i, 1); else adminLogState.categories.push(cat);
+    syncAuditChipsUi();
+    return loadAdminLogs(1);
 }
-function clearAdminLogSearch() {
-    const el = document.getElementById('admin-log-search');
-    if (el) el.value = '';
-    adminLogState.search = '';
-    loadAdminLogs(1);
+
+function handleAuditKpiClick(quickKey) {
+    adminLogState.quickFilter = adminLogState.quickFilter === quickKey ? '' : (quickKey || '');
+    syncAuditKpiPressedUi();
+    return loadAdminLogs(1);
 }
-function toggleAuditCategoryChip(catCode) {
-    if (!ADMIN_LOG_CATEGORIES[catCode]) return;
-    const idx = adminLogState.categories.indexOf(catCode);
-    if (idx >= 0) adminLogState.categories.splice(idx, 1); else adminLogState.categories.push(catCode);
-    loadAdminLogs(1);
-}
-function toggleAuditQuickFilter(quickKey) { adminLogState.quickFilter = adminLogState.quickFilter === quickKey ? '' : quickKey; loadAdminLogs(1); }
+
 function resetAdminLogFilters() {
     Object.assign(adminLogState, { staffId: '', actionType: '', dataGroup: '', fromDate: '', toDate: '', search: '', quickFilter: '', categories: [] });
-    syncAdminLogInputsFromState();
-    loadAdminLogs(1);
-}
-function handleAdminLogLimitChange(val) { adminLogState.limit = [10, 25, 50, 100].includes(Number(val)) ? Number(val) : 25; loadAdminLogs(1); }
-function prevAdminLogPage() { if (adminLogState.page > 1) loadAdminLogs(adminLogState.page - 1); }
-function nextAdminLogPage() { if (adminLogState.page < adminLogState.totalPages) loadAdminLogs(adminLogState.page + 1); }
-function toggleAuditDiffExpand(logId) { adminLogState.expandedDiffs[logId] = !adminLogState.expandedDiffs[logId]; renderAdminLogRows(adminLogState.logs); }
-function toggleAuditJsonExpand(logId) { adminLogState.expandedJson[logId] = !adminLogState.expandedJson[logId]; renderAdminLogRows(adminLogState.logs); }
-function toggleAuditReviewEditor(logId, open) {
-    adminLogState.openReviewId = open ? Number(logId) : null;
-    renderAdminLogRows(adminLogState.logs);
-    if (open) { const inp = document.getElementById(`audit-review-input-${Number(logId)}`); if (inp) inp.focus(); }
+    syncAuditInputsToDom();
+    return loadAdminLogs(1);
 }
 
-async function submitAuditReview(logId) {
-    const inp = document.getElementById(`audit-review-input-${Number(logId)}`);
-    const btn = document.getElementById(`audit-review-submit-${Number(logId)}`);
-    const check = validateAuditReasonClient(inp?.value || '', 10);
-    if (!check.valid) { showAuditToast(check.error, 'error'); if (inp) inp.focus(); return; }
-    if (btn) btn.disabled = true;
-    try {
-        const res = await auditApiRequest('api/admin.php?action=audit_review', { method: 'POST', body: { log_id: Number(logId), note: check.clean } });
-        const row = adminLogState.logs.find((r) => Number(r.id) === Number(logId));
-        if (row) row.review = res.data || { note: check.clean, reviewer_name: 'Admin', created_at_formatted: formatAuditDateTime(new Date().toISOString()) };
-        adminLogState.openReviewId = null;
-        renderAdminLogRows(adminLogState.logs);
-        loadAdminLogSummary();
-        showAuditToast('Đã lưu ghi chú hậu kiểm.', 'success');
-    } catch (err) {
-        showAuditToast(err.message || 'Không thể lưu hậu kiểm.', 'error');
-        if (btn) btn.disabled = false;
-    }
+function handleAdminLogLimitChange(val) {
+    const num = Number(val);
+    adminLogState.limit = [10, 25, 50, 100].includes(num) ? num : 25;
+    return loadAdminLogs(1);
+}
+
+const prevAdminLogPage = () => (adminLogState.page > 1 ? loadAdminLogs(adminLogState.page - 1) : undefined);
+const nextAdminLogPage = () => (adminLogState.page < adminLogState.totalPages ? loadAdminLogs(adminLogState.page + 1) : undefined);
+const goToAdminLogPage = (p) => loadAdminLogs(Math.max(1, Math.min(adminLogState.totalPages || 1, Number(p) || 1)));
+const toggleAuditDiffExpand = (logId) => { adminLogState.expandedDiffs[Number(logId)] = !adminLogState.expandedDiffs[Number(logId)]; renderAdminLogRows(); };
+const toggleAuditJsonDetail = (logId) => { adminLogState.expandedJson[Number(logId)] = !adminLogState.expandedJson[Number(logId)]; renderAdminLogRows(); };
+const toggleAuditReviewForm = (logId) => { const id = Number(logId); adminLogState.openReviewId = adminLogState.openReviewId === id ? null : id; renderAdminLogRows(); };
+
+function exportAdminLogsCsv() {
+    const qs = buildAuditFilterParams(1, { action: 'audit_export_csv' });
+    if (typeof window !== 'undefined' && typeof window.open === 'function') window.open(normalizeLogApiUrl(`api/admin.php?${qs}`), '_blank', 'noopener');
 }
 
 async function revealAuditSensitive(logId) {
+    const id = Number(logId);
     try {
-        const res = await auditApiRequest(`api/admin.php?action=audit_log_detail&id=${Number(logId)}&reveal=1`);
-        if (res.data) { adminLogState.revealedMap[logId] = res.data; renderAdminLogRows(adminLogState.logs); showAuditToast('Đã ghi nhận lượt xem dữ liệu nhạy cảm.', 'info'); }
-    } catch (err) { showAuditToast(err.message || 'Không thể mở chi tiết bản ghi.', 'error'); }
+        const json = await auditApiRequest(`api/admin.php?action=audit_log_detail&id=${id}&reveal=1`);
+        if (json.data) adminLogState.revealedMap[id] = json.data;
+        adminLogState.expandedJson[id] = true;
+        renderAdminLogRows();
+    } catch (err) {
+        showAuditToast(err.message || 'Không thể mở chi tiết dữ liệu nhạy cảm.', 'error');
+    }
 }
 
-function exportAdminLogsCsv() {
-    readAdminLogInputsToState();
-    const qs = buildAuditFilterParams(false).toString();
-    const url = normalizeLogApiUrl(`api/admin.php?action=audit_export_csv${qs ? '&' + qs : ''}`);
-    if (typeof window !== 'undefined' && window.open) window.open(url, '_blank', 'noopener,noreferrer');
-}
-
-function hideAuditNewBanner() { const b = document.getElementById('admin-log-new-banner'); if (b) b.classList.add('hidden'); }
-
-function startAdminLogAutoCheck() {
-    if (adminLogState.pollTimer) clearInterval(adminLogState.pollTimer);
-    adminLogState.pollTimer = setInterval(async () => {
-        if (typeof document === 'undefined' || document.hidden || !adminLogState.latestId) return;
-        const pane = document.getElementById('tab-content-logs');
-        if (!pane || pane.classList.contains('hidden')) return;
-        try {
-            const res = await auditApiRequest(`api/admin.php?action=audit_check_new&since_id=${adminLogState.latestId}`);
-            const cnt = Number(res.data?.new_count || 0), banner = document.getElementById('admin-log-new-banner'), txt = document.getElementById('admin-log-new-banner-text');
-            if (cnt > 0 && banner && txt) { txt.textContent = `Có ${cnt} bản ghi mới — Bấm để tải`; banner.classList.remove('hidden'); }
-        } catch (e) { /* bỏ qua lỗi poll tạm thời */ }
-    }, 60000);
+async function submitAuditReview(logId) {
+    const id = Number(logId);
+    const input = auditById(`audit-review-input-${id}`);
+    const submitBtn = auditById(`audit-review-submit-${id}`);
+    const check = validateAuditReasonClient(input?.value || '');
+    if (!check.valid) return showAuditToast(check.error, 'error');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+        const json = await auditApiRequest('api/admin.php?action=audit_review', { method: 'POST', body: { log_id: id, note: check.clean } });
+        const target = adminLogState.logs.find((r) => Number(r.id) === id);
+        if (target) target.review = json.data || { reviewer_name: 'Chủ sân', note: check.clean };
+        adminLogState.openReviewId = null;
+        renderAdminLogRows();
+        showAuditToast('Đã lưu ghi chú hậu kiểm.', 'success');
+        await loadAdminLogSummary();
+    } catch (err) {
+        showAuditToast(err.message || 'Lưu hậu kiểm thất bại.', 'error');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
 }
 
 if (typeof window !== 'undefined') {
     Object.assign(window, {
-        ADMIN_LOG_CATALOG, ADMIN_LOG_CATEGORIES, ADMIN_LOG_DATA_GROUPS, adminLogState,
-        loadAdminLogs, refreshAdminLogsAll, loadAdminLogSummary, handleAdminLogFilterChange,
-        handleAdminLogSearchDebounced, clearAdminLogSearch, toggleAuditCategoryChip,
-        toggleAuditQuickFilter, resetAdminLogFilters, handleAdminLogLimitChange,
-        prevAdminLogPage, nextAdminLogPage, toggleAuditDiffExpand, toggleAuditJsonExpand,
-        toggleAuditReviewEditor, submitAuditReview, revealAuditSensitive, exportAdminLogsCsv,
-        populateAuditFilterOptions, populateAdminLogFilters, formatAuditDateTime,
-        maskAuditPhone, resolveActionMeta, validateAuditReasonClient
+        ADMIN_LOG_CATEGORIES, ADMIN_LOG_DATA_GROUPS, ADMIN_LOG_CATALOG, adminLogState,
+        validateAuditReasonClient, resolveActionMeta, loadAdminLogs, toggleAuditCategoryChip,
+        handleAuditKpiClick, resetAdminLogFilters, handleAdminLogLimitChange,
+        prevAdminLogPage, nextAdminLogPage, goToAdminLogPage, exportAdminLogsCsv,
+        toggleAuditDiffExpand, toggleAuditJsonDetail, revealAuditSensitive,
+        toggleAuditReviewForm, submitAuditReview, auditApiRequest
     });
 }
