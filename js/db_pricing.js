@@ -212,12 +212,38 @@
 
       let discountAmount = 0;
       let appliedVoucher = null;
+      let rejectedVoucherCode = '';
       let voucherError = '';
       if (voucherCode) {
         const todayLocal = window.SanBongHelpers?.getLocalTodayISO
           ? window.SanBongHelpers.getLocalTodayISO()
           : new Date().toISOString().split('T')[0];
-        const v = this.getVouchers().find(vc => vc.code.toUpperCase() === voucherCode.trim().toUpperCase() && vc.isActive !== false);
+        const targetCode = voucherCode.trim().toUpperCase();
+        const rawList = typeof this.getVouchers === 'function' ? this.getVouchers() : [];
+        const normFn = typeof this.normalizeVoucher === 'function'
+          ? (vc => this.normalizeVoucher(vc))
+          : (vc => {
+              if (!vc || !vc.code) return null;
+              const code = String(vc.code).trim().toUpperCase();
+              const rawType = String(vc.type ?? vc.discount_type ?? 'percent').trim().toLowerCase();
+              const type = rawType === 'fixed' ? 'fixed' : 'percent';
+              const value = Math.max(0, Number(vc.value ?? vc.discount_value ?? 0) || 0);
+              const minOrder = Math.max(0, Number(vc.minOrder ?? vc.min_order ?? 0) || 0);
+              const maxDiscountAmount = Math.max(0, Number(vc.maxDiscountAmount ?? vc.max_discount_amount ?? 0) || 0);
+              const maxUsage = Math.max(0, Number(vc.maxUsage ?? vc.max_usage ?? 0) || 0);
+              const usedCount = Math.max(0, Number(vc.usedCount ?? vc.used_count ?? 0) || 0);
+              const rawFrom = vc.validFrom ?? vc.valid_from ?? null;
+              const validFrom = rawFrom ? String(rawFrom).trim().slice(0, 10) : null;
+              const rawTo = vc.validTo ?? vc.valid_to ?? null;
+              const validTo = rawTo ? String(rawTo).trim().slice(0, 10) : null;
+              const rawPitchLimit = vc.pitchTypeLimit ?? vc.pitch_type_limit ?? null;
+              const pitchTypeLimit = (rawPitchLimit !== null && rawPitchLimit !== '' && Number(rawPitchLimit) > 0) ? Number(rawPitchLimit) : null;
+              const requiredTier = String(vc.requiredTier ?? vc.required_tier ?? (code === 'VIPGOLD' ? 'vip,regular' : '')).trim();
+              const rawActive = vc.isActive ?? vc.is_active;
+              const isActive = rawActive === undefined ? true : !(rawActive === false || rawActive === 0 || rawActive === '0' || String(rawActive).toLowerCase() === 'false');
+              return { code, description: vc.description || '', type, value, minOrder, maxDiscountAmount, maxUsage, usedCount, validFrom, validTo, pitchTypeLimit, requiredTier, isActive };
+            });
+        const v = rawList.map(normFn).find(vc => vc && vc.code === targetCode && vc.isActive !== false);
         if (!v) {
           voucherError = 'Mã giảm giá không tồn tại hoặc đã ngừng áp dụng.';
         } else if ((v.validFrom && todayLocal < v.validFrom) || (v.validTo && todayLocal > v.validTo)) {
@@ -226,44 +252,47 @@
           voucherError = `Mã giảm giá này chỉ áp dụng riêng cho Sân ${v.pitchTypeLimit} người.`;
         } else if (Number(v.maxUsage || 0) > 0 && Number(v.usedCount || 0) >= Number(v.maxUsage)) {
           voucherError = 'Mã giảm giá đã hết lượt sử dụng.';
-        } else if (v.code.toUpperCase() === 'VIPGOLD' || (v.requiredTier || v.required_tier)) {
-          const curUser = this.getUser ? this.getUser() : null;
-          const requiredTier = String(v.requiredTier || v.required_tier || 'vip,regular').trim().toLowerCase();
-          const unrestricted = requiredTier === 'standard' || requiredTier === 'all';
-          if ((!curUser || !curUser.name) && !unrestricted) {
-            voucherError = 'Bạn chưa đủ điều kiện. Vui lòng đăng nhập tài khoản thành viên Vàng / Kim Cương để dùng mã này.';
-          } else {
-            const rawTier = String(curUser?.customer_tier || curUser?.tier || 'standard').trim().toLowerCase();
-            const legacyTiers = { 'hội viên vàng': 'gold', 'hội viên kim cương': 'diamond', 'khách vip': 'vip', 'khách thân thiết': 'regular' };
-            const canonicalTier = legacyTiers[rawTier] || rawTier;
-            const tierRank = { standard: 1, bronze: 2, silver: 3, regular: 4, gold: 4, vip: 5, diamond: 5 };
-            const requiredTiers = requiredTier.split(',').map(t => t.trim()).filter(Boolean);
-            const isQualified = unrestricted || requiredTiers.some(t => (tierRank[canonicalTier] || 1) >= (tierRank[t] || 99));
-            if (!isQualified) {
-              voucherError = 'Bạn chưa đủ điều kiện. Mã này chỉ dành riêng cho hội viên hạng Vàng và Kim Cương.';
-            } else if (rawSubtotal < (v.minOrder || 0)) {
-              voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
+        } else if (rawSubtotal < (v.minOrder || 0)) {
+          voucherError = `Đơn hàng chưa đạt giá trị tối thiểu (${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ) để dùng mã này.`;
+        } else {
+          const requiredTier = String(v.requiredTier || (v.code === 'VIPGOLD' ? 'vip,regular' : '')).trim().toLowerCase();
+          const unrestricted = !requiredTier || requiredTier === 'standard' || requiredTier === 'all';
+          let tierValid = true;
+          if (!unrestricted) {
+            const curUser = this.getUser ? this.getUser() : null;
+            if (!curUser || !curUser.name) {
+              tierValid = false;
+              voucherError = 'Mã giảm giá này chỉ áp dụng cho thành viên hạng ưu đãi đã đăng nhập tài khoản.';
             } else {
-              appliedVoucher = v;
-              if (v.type === 'percent') {
-                discountAmount = Math.round((rawSubtotal * v.value) / 100);
-                const maxDisc = Number(v.maxDiscountAmount ?? v.max_discount_amount ?? 0);
-                if (maxDisc > 0 && discountAmount > maxDisc) discountAmount = maxDisc;
-              } else {
-                discountAmount = Math.min(v.value, rawSubtotal);
+              const rawTier = String(curUser.customer_tier || curUser.tier || 'standard').trim().toLowerCase();
+              const legacyTiers = {
+                'hội viên': 'standard',
+                'hội viên đồng': 'bronze',
+                'hội viên bạc': 'silver',
+                'hội viên vàng': 'gold',
+                'hội viên kim cương': 'diamond',
+                'khách vip': 'vip',
+                'khách thân thiết': 'regular'
+              };
+              const canonicalTier = legacyTiers[rawTier] || rawTier;
+              const tierRank = { standard: 1, bronze: 2, silver: 3, regular: 4, gold: 4, vip: 5, diamond: 5 };
+              const requiredTiers = requiredTier.split(',').map(t => t.trim()).filter(Boolean);
+              const isQualified = requiredTiers.some(t => (tierRank[canonicalTier] || 1) >= (tierRank[t] || 99));
+              if (!isQualified) {
+                tierValid = false;
+                voucherError = 'Hạng thành viên hiện tại chưa đủ điều kiện áp dụng mã ưu đãi này.';
               }
             }
           }
-        } else if (rawSubtotal < (v.minOrder || 0)) {
-          voucherError = `Đơn hàng chưa đạt tối thiểu ${Number(v.minOrder || 0).toLocaleString('vi-VN')}đ.`;
-        } else {
-          appliedVoucher = v;
-          if (v.type === 'percent') {
-            discountAmount = Math.round((rawSubtotal * v.value) / 100);
-            const maxDisc = Number(v.maxDiscountAmount ?? v.max_discount_amount ?? 0);
-            if (maxDisc > 0 && discountAmount > maxDisc) discountAmount = maxDisc;
-          } else {
-            discountAmount = Math.min(v.value, rawSubtotal);
+          if (tierValid) {
+            appliedVoucher = v;
+            if (v.type === 'percent') {
+              discountAmount = Math.round((rawSubtotal * v.value) / 100);
+              const maxDisc = Number(v.maxDiscountAmount || 0);
+              if (maxDisc > 0 && discountAmount > maxDisc) discountAmount = maxDisc;
+            } else {
+              discountAmount = Math.min(v.value, rawSubtotal);
+            }
           }
         }
       }
@@ -276,6 +305,7 @@
           appliedDiscountSource = 'voucher';
         } else {
           discountAmount = 0;
+          rejectedVoucherCode = appliedVoucher ? appliedVoucher.code : '';
           appliedVoucher = null;
           appliedDiscountSource = 'monthly_package';
         }
@@ -316,6 +346,8 @@
         monthlyDiscountAmount,
         appliedDiscountSource,
         voucherCode: appliedVoucher ? appliedVoucher.code : '',
+        rejectedVoucherCode,
+        voucherDiscountAmount: discountAmount,
         voucherError,
         discountAmount,
         totalDiscount,

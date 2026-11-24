@@ -192,7 +192,37 @@ window.SanBongApp.SanBongAPI = {
     return this.requestJSON('api/bookings.php?action=update_redemption', { code, redeemedBottles });
   },
 
+  redirectToLogin(route, options = {}) {
+    const expired = Boolean(options && options.expired);
+    const notice = String(options && options.notice ? options.notice : '').trim();
+    const useReplace = options && options.replace !== undefined ? Boolean(options.replace) : expired;
+    try {
+      sessionStorage.removeItem('sb_current_user');
+      sessionStorage.removeItem('sb_csrf_token');
+      localStorage.removeItem('sb_current_user');
+      if (notice && !expired) {
+        sessionStorage.setItem('sb_login_notice', notice);
+      }
+    } catch (e) {}
+    if (typeof window !== 'undefined') {
+      window.sb_current_user = null;
+      if (expired && window._sbRedirecting401) return;
+      if (expired) window._sbRedirecting401 = true;
+      const cleanRoute = String(route || '').trim().replace(/^\/+/, '').replace(/\.html(?=$|[?#])/, '') || 'history';
+      const query = `login?redirect=${encodeURIComponent(cleanRoute)}${expired ? '&expired=1' : ''}`;
+      const targetUrl = window.SanBongApp?.getRelativePath
+        ? window.SanBongApp.getRelativePath(query)
+        : (window.SanBongHelpers?.getRelativePath ? window.SanBongHelpers.getRelativePath(query) : '/' + query);
+      if (useReplace) {
+        window.location.replace(targetUrl);
+      } else {
+        window.location.href = targetUrl;
+      }
+    }
+  },
+
   checkPayment(code) {
     return this.requestJSON('api/check_payment.php?code=' + encodeURIComponent(code) + '&_t=' + Date.now());
   }
 };
+window.SanBongApp.redirectToLogin = window.SanBongApp.SanBongAPI.redirectToLogin.bind(window.SanBongApp.SanBongAPI);

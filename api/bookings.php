@@ -382,6 +382,111 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
+    if ($action === 'eligible_vouchers') {
+        require_once __DIR__ . '/services/pricing_tier_helper.php';
+        if ($pdo === null) {
+            json_response(['success' => true, 'data' => []]);
+            exit;
+        }
+        $currentCustomer = currentCustomer($pdo);
+        $userId = $currentCustomer ? (int)$currentCustomer['id'] : null;
+        $userTier = $currentCustomer ? get_authenticated_user_tier($pdo, $userId) : null;
+        $userPhone = $currentCustomer ? normalize_phone($currentCustomer['phone'] ?? '') : '';
+
+        $hasMaxDiscCol = db_table_has_column($pdo, 'vouchers', 'max_discount_amount');
+        $hasReqTierCol = db_table_has_column($pdo, 'vouchers', 'required_tier');
+        $hasMaxPerUserCol = db_table_has_column($pdo, 'vouchers', 'max_per_user');
+        $selectCols = "code, description, discount_type, discount_value, min_order, max_usage, used_count, valid_from, valid_to, pitch_type_limit, is_active";
+        if ($hasMaxDiscCol) $selectCols .= ", max_discount_amount";
+        if ($hasReqTierCol) $selectCols .= ", required_tier";
+        if ($hasMaxPerUserCol) $selectCols .= ", max_per_user";
+
+        $nowDate = (new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('Y-m-d');
+        $stmt = $pdo->prepare("
+            SELECT {$selectCols}
+            FROM vouchers
+            WHERE is_active = 1
+              AND (valid_from IS NULL OR valid_from <= ?)
+              AND (valid_to IS NULL OR valid_to >= ?)
+              AND (max_usage <= 0 OR used_count < max_usage)
+            ORDER BY min_order ASC, code ASC
+        ");
+        $stmt->execute([$nowDate, $nowDate]);
+        $allVouchers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $eligible = [];
+        foreach ($allVouchers as $v) {
+            $vCode = strtoupper(trim((string)($v['code'] ?? '')));
+            if ($vCode === '') continue;
+            $reqTier = trim((string)($v['required_tier'] ?? ''));
+            if ($reqTier === '' && $vCode === 'VIPGOLD') {
+                $reqTier = 'vip,regular';
+            }
+            $reqTierLower = strtolower($reqTier);
+            if ($reqTierLower !== '' && $reqTierLower !== 'standard' && $reqTierLower !== 'all') {
+                if (!$currentCustomer || !is_tier_allowed_for_voucher((string)$userTier, $reqTier)) {
+                    continue;
+                }
+            }
+            if ($currentCustomer) {
+                $maxPerUser = (int)($v['max_per_user'] ?? 0);
+                if ($maxPerUser > 0) {
+                    $uCheck = $pdo->prepare("
+                        SELECT COUNT(*) FROM bookings
+                        WHERE voucher_code = ?
+                          AND (user_id = ? OR (? != '' AND REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ?))
+                          AND status NOT IN ('Đã hủy', 'Khách chưa đến')
+                    ");
+                    $uCheck->execute([$vCode, $userId, $userPhone, $userPhone]);
+                    if ((int)$uCheck->fetchColumn() >= $maxPerUser) {
+                        continue;
+                    }
+                }
+            }
+            $vType = strtolower(trim((string)($v['discount_type'] ?? 'percent'))) === 'fixed' ? 'fixed' : 'percent';
+            $vVal = (int)($v['discount_value'] ?? 0);
+            $maxDisc = (int)($v['max_discount_amount'] ?? 0);
+            $minOrd = (int)($v['min_order'] ?? 0);
+            $maxUse = (int)($v['max_usage'] ?? 0);
+            $usedCnt = (int)($v['used_count'] ?? 0);
+            $maxPerUsr = (int)($v['max_per_user'] ?? 0);
+            $vFrom = !empty($v['valid_from']) ? substr((string)$v['valid_from'], 0, 10) : null;
+            $vTo = !empty($v['valid_to']) ? substr((string)$v['valid_to'], 0, 10) : null;
+            $pitchLim = ($v['pitch_type_limit'] !== null && $v['pitch_type_limit'] !== '') ? (int)$v['pitch_type_limit'] : null;
+
+            $eligible[] = [
+                'code'                => $vCode,
+                'description'         => (string)($v['description'] ?? ''),
+                'type'                => $vType,
+                'discount_type'       => $vType,
+                'value'               => $vVal,
+                'discount_value'      => $vVal,
+                'maxDiscountAmount'   => $maxDisc,
+                'max_discount_amount' => $maxDisc,
+                'minOrder'            => $minOrd,
+                'min_order'           => $minOrd,
+                'validFrom'           => $vFrom,
+                'valid_from'          => $vFrom,
+                'validTo'             => $vTo,
+                'valid_to'            => $vTo,
+                'pitchTypeLimit'      => $pitchLim,
+                'pitch_type_limit'    => $pitchLim,
+                'requiredTier'        => $reqTier,
+                'required_tier'       => $reqTier,
+                'maxUsage'            => $maxUse,
+                'max_usage'           => $maxUse,
+                'usedCount'           => $usedCnt,
+                'used_count'          => $usedCnt,
+                'maxPerUser'          => $maxPerUsr,
+                'max_per_user'        => $maxPerUsr,
+                'isActive'            => true,
+                'is_active'           => 1,
+            ];
+        }
+        json_response(['success' => true, 'data' => $eligible]);
+        exit;
+    }
+
     if (handle_booking_query($action, $pdo)) {
         exit;
     }

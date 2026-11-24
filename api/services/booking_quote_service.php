@@ -182,9 +182,11 @@ function compute_server_booking_quote(PDO $pdo, array $input, bool $forUpdate = 
                 return $err;
             }
         } else {
-            $nowDate = date('Y-m-d');
+            $nowDate = (new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('Y-m-d');
+            $vValidFrom = !empty($vData['valid_from']) ? substr((string)$vData['valid_from'], 0, 10) : '';
+            $vValidTo = !empty($vData['valid_to']) ? substr((string)$vData['valid_to'], 0, 10) : '';
             $vValid = true;
-            if ((!empty($vData['valid_from']) && $nowDate < $vData['valid_from']) || (!empty($vData['valid_to']) && $nowDate > $vData['valid_to'])) {
+            if (($vValidFrom !== '' && $nowDate < $vValidFrom) || ($vValidTo !== '' && $nowDate > $vValidTo)) {
                 $vValid = false;
                 if ($err = $failVoucher('Mã giảm giá chưa đến ngày áp dụng hoặc đã hết hạn.')) {
                     return $err;
@@ -204,7 +206,7 @@ function compute_server_booking_quote(PDO $pdo, array $input, bool $forUpdate = 
             }
             if ($vValid && $subtotal < (int)($vData['min_order'] ?? 0)) {
                 $vValid = false;
-                if ($err = $failVoucher('Đơn hàng chưa đạt giá trị tối thiểu (' . number_format((int)$vData['min_order']) . 'đ) để dùng mã này.')) {
+                if ($err = $failVoucher('Đơn hàng chưa đạt giá trị tối thiểu (' . number_format((int)$vData['min_order'], 0, ',', '.') . 'đ) để dùng mã này.')) {
                     return $err;
                 }
             }
@@ -254,7 +256,8 @@ function compute_server_booking_quote(PDO $pdo, array $input, bool $forUpdate = 
             }
 
             if ($vValid) {
-                if ($vData['discount_type'] === 'percent') {
+                $vType = strtolower(trim((string)($vData['discount_type'] ?? 'percent')));
+                if ($vType === 'percent') {
                     $voucherDiscountAmount = (int)round($subtotal * ((int)$vData['discount_value'] / 100));
                     $maxDiscAmt = (int)($vData['max_discount_amount'] ?? 0);
                     if ($maxDiscAmt > 0 && $voucherDiscountAmount > $maxDiscAmt) {

@@ -303,6 +303,102 @@
       return tx;
     },
 
+    normalizeVoucher(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      const code = String(raw.code || '').trim().toUpperCase();
+      if (!code) return null;
+
+      const rawType = String(raw.type ?? raw.discount_type ?? 'percent').trim().toLowerCase();
+      const type = rawType === 'fixed' ? 'fixed' : 'percent';
+      const value = Math.max(0, Number(raw.value ?? raw.discount_value ?? 0) || 0);
+      const minOrder = Math.max(0, Number(raw.minOrder ?? raw.min_order ?? 0) || 0);
+      const maxDiscountAmount = Math.max(0, Number(raw.maxDiscountAmount ?? raw.max_discount_amount ?? 0) || 0);
+      const maxUsage = Math.max(0, Number(raw.maxUsage ?? raw.max_usage ?? 0) || 0);
+      const usedCount = Math.max(0, Number(raw.usedCount ?? raw.used_count ?? 0) || 0);
+      const maxPerUser = Math.max(0, Number(raw.maxPerUser ?? raw.max_per_user ?? 0) || 0);
+
+      const rawFrom = raw.validFrom ?? raw.valid_from ?? null;
+      const validFrom = rawFrom ? String(rawFrom).trim().slice(0, 10) : null;
+      const rawTo = raw.validTo ?? raw.valid_to ?? null;
+      const validTo = rawTo ? String(rawTo).trim().slice(0, 10) : null;
+
+      const rawPitchLimit = raw.pitchTypeLimit ?? raw.pitch_type_limit ?? null;
+      const pitchTypeLimit = (rawPitchLimit !== null && rawPitchLimit !== '' && Number(rawPitchLimit) > 0)
+        ? Number(rawPitchLimit)
+        : null;
+
+      let requiredTier = String(raw.requiredTier ?? raw.required_tier ?? '').trim();
+      if (!requiredTier && code === 'VIPGOLD') {
+        requiredTier = 'vip,regular';
+      }
+
+      const rawActive = raw.isActive ?? raw.is_active;
+      const isActive = rawActive === undefined
+        ? true
+        : !(rawActive === false || rawActive === 0 || rawActive === '0' || String(rawActive).toLowerCase() === 'false');
+
+      return {
+        code,
+        description: String(raw.description ?? '').trim(),
+        type,
+        discount_type: type,
+        value,
+        discount_value: value,
+        minOrder,
+        min_order: minOrder,
+        maxDiscountAmount,
+        max_discount_amount: maxDiscountAmount,
+        maxUsage,
+        max_usage: maxUsage,
+        usedCount,
+        used_count: usedCount,
+        maxPerUser,
+        max_per_user: maxPerUser,
+        validFrom,
+        valid_from: validFrom,
+        validTo,
+        valid_to: validTo,
+        pitchTypeLimit,
+        pitch_type_limit: pitchTypeLimit,
+        requiredTier,
+        required_tier: requiredTier,
+        isActive,
+        is_active: isActive ? 1 : 0
+      };
+    },
+
+    getVouchers() {
+      const primaryKey = window.STORAGE_KEYS?.VOUCHERS || window.SanBongDB?.STORAGE_KEYS?.VOUCHERS || 'sb_vouchers_v1';
+      const secondaryKey = 'sanbong_vouchers';
+      const readList = (key) => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || 'null');
+          return Array.isArray(parsed) ? parsed.map(v => this.normalizeVoucher(v)).filter(Boolean) : [];
+        } catch (e) {
+          return [];
+        }
+      };
+      const primaryList = readList(primaryKey);
+      const secondaryList = readList(secondaryKey);
+      if (primaryList.length === 0 && secondaryList.length === 0) {
+        return (window.SanBongData?.DEFAULT_VOUCHERS || []).map(v => this.normalizeVoucher(v)).filter(Boolean);
+      }
+      const mergedMap = new Map();
+      primaryList.forEach(v => mergedMap.set(v.code, v));
+      secondaryList.forEach(v => mergedMap.set(v.code, v));
+      return Array.from(mergedMap.values());
+    },
+
+    setVouchers(list) {
+      const primaryKey = window.STORAGE_KEYS?.VOUCHERS || window.SanBongDB?.STORAGE_KEYS?.VOUCHERS || 'sb_vouchers_v1';
+      const normalized = Array.isArray(list) ? list.map(v => this.normalizeVoucher(v)).filter(Boolean) : [];
+      try {
+        localStorage.setItem(primaryKey, JSON.stringify(normalized));
+        localStorage.setItem('sanbong_vouchers', JSON.stringify(normalized));
+      } catch (e) {}
+      return normalized;
+    },
+
     getSlotsWithStatus(pitchId, dateStr) {
       return this.getSlots(pitchId, dateStr);
     }

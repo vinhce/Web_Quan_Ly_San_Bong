@@ -546,42 +546,90 @@ const DEFAULT_VOUCHERS = [
     description: 'Giảm 10% tổng đơn cho khách hàng mới',
     type: 'percent',
     value: 10,
-    minOrder: 0
+    minOrder: 0,
+    maxUsage: 100,
+    usedCount: 0,
+    maxDiscountAmount: 0,
+    validFrom: null,
+    validTo: null,
+    pitchTypeLimit: null,
+    requiredTier: '',
+    isActive: true
   },
   {
     code: 'GIAM50K',
     description: 'Giảm ngay 50.000đ cho đơn đặt sân từ 500.000đ',
     type: 'fixed',
     value: 50000,
-    minOrder: 500000
+    minOrder: 500000,
+    maxUsage: 100,
+    usedCount: 0,
+    maxDiscountAmount: 0,
+    validFrom: null,
+    validTo: null,
+    pitchTypeLimit: null,
+    requiredTier: '',
+    isActive: true
   },
   {
     code: 'VIPGOLD',
     description: 'Giảm 15% cho thành viên Vàng & Kim Cương',
     type: 'percent',
     value: 15,
-    minOrder: 300000
+    minOrder: 300000,
+    maxUsage: 100,
+    usedCount: 0,
+    maxDiscountAmount: 0,
+    validFrom: null,
+    validTo: null,
+    pitchTypeLimit: null,
+    requiredTier: 'vip,regular',
+    isActive: true
   },
   {
     code: 'DATTHANG15',
-    description: 'Giảm 15% hợp đồng 3 tháng (Tặng 2 thùng nước + 1 trọng tài mỗi trận)',
+    description: 'Giảm 15% ưu đãi hợp đồng đặt sân theo tháng',
     type: 'percent',
     value: 15,
-    minOrder: 800000
+    minOrder: 800000,
+    maxUsage: 100,
+    usedCount: 0,
+    maxDiscountAmount: 0,
+    validFrom: null,
+    validTo: null,
+    pitchTypeLimit: null,
+    requiredTier: '',
+    isActive: true
   },
   {
     code: 'SINHVIEN30K',
     description: 'Giảm 30.000đ trợ giá học sinh - sinh viên',
     type: 'fixed',
     value: 30000,
-    minOrder: 200000
+    minOrder: 200000,
+    maxUsage: 100,
+    usedCount: 0,
+    maxDiscountAmount: 0,
+    validFrom: null,
+    validTo: null,
+    pitchTypeLimit: null,
+    requiredTier: '',
+    isActive: true
   },
   {
     code: 'CUOITUAN100K',
     description: 'Giảm 100.000đ cho đơn đặt sân 11 người / Giải đấu',
     type: 'fixed',
     value: 100000,
-    minOrder: 900000
+    minOrder: 900000,
+    maxUsage: 100,
+    usedCount: 0,
+    maxDiscountAmount: 0,
+    validFrom: null,
+    validTo: null,
+    pitchTypeLimit: null,
+    requiredTier: '',
+    isActive: true
   }
 ];
 
