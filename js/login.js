@@ -63,10 +63,14 @@ function handleLoginRedirect(user) {
   const urlParams = new URLSearchParams(window.location.search);
   const redirectParam = urlParams.get('redirect');
 
-  // Ưu tiên chuyển hướng tới trang đích nếu có tham số redirect (kể cả admin đang đặt sân test ?redirect=checkout)
   if (redirectParam) {
     const cleanParam = String(redirectParam).trim().replace(/^\/+/, '').replace(/^html\//, '');
     const baseRoute = cleanParam.split(/[?#]/)[0].replace(/\.html$/, '').replace(/\/+$/, '');
+    const CUSTOMER_ONLY_ROUTES = new Set(['booking', 'checkout', 'success', 'history']);
+    if (isPortalRole && CUSTOMER_ONLY_ROUTES.has(baseRoute)) {
+      window.location.href = resolveAppUrl('portal-admin/');
+      return;
+    }
     const ALLOWED = new Set(['fields', 'booking', 'checkout', 'success', 'history', 'field-detail', 'matchmaking', 'portal-admin']);
     if (ALLOWED.has(baseRoute)) {
       window.location.href = resolveAppUrl(cleanParam);
@@ -176,8 +180,15 @@ function markFieldError(inputId) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('expired') === '1') {
+  const isExpired = urlParams.get('expired') === '1';
+  const isLocked = urlParams.get('locked') === '1';
+  const isRegistered = urlParams.get('registered') === '1';
+  if (isExpired) {
     setAuthMessage('Phiên đăng nhập của bạn đã hết hạn hoặc bị thay đổi. Vui lòng đăng nhập lại để tiếp tục.', 'info');
+  } else if (isLocked) {
+    setAuthMessage('Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ Quản trị viên.', 'error');
+  } else if (isRegistered) {
+    setAuthMessage('Đăng ký tài khoản thành công! Vui lòng đăng nhập để tiếp tục.', 'success');
   }
   if (urlParams.get('tab') === 'register') {
     switchAuthTab('register');
@@ -218,10 +229,16 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(() => {});
   }
 
-  // Hiển thị thông báo 1 dòng khi được chuyển hướng từ đặt sân
+  // Hiển thị thông báo khi được chuyển hướng từ trang cần xác thực (nếu chưa có thông báo hết phiên/đăng ký)
   const redirectParam = urlParams.get('redirect') || '';
-  if (redirectParam === 'booking' || sessionStorage.getItem('sb_login_notice')) {
-    setAuthMessage('Đăng nhập để tiếp tục đặt sân', 'info');
+  if (!isExpired && !isLocked && !isRegistered) {
+    if (redirectParam === 'portal-admin') {
+      setAuthMessage('Vui lòng đăng nhập bằng tài khoản Quản trị hoặc Nhân sự để tiếp tục.', 'info');
+    } else if (redirectParam === 'booking' || redirectParam === 'checkout' || sessionStorage.getItem('sb_login_notice')) {
+      setAuthMessage('Đăng nhập để tiếp tục đặt sân', 'info');
+      sessionStorage.removeItem('sb_login_notice');
+    }
+  } else {
     sessionStorage.removeItem('sb_login_notice');
   }
 
@@ -313,10 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (response.ok && res.success) {
-        setAuthMessage('✓ Đăng nhập thành công! Đang chuyển hướng...', 'success');
-        if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
-        }
+        setAuthMessage('Đăng nhập thành công! Đang chuyển hướng...', 'success');
         syncStoredUser(res.user);
 
         setTimeout(() => {
@@ -326,9 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         const errMsg = res?.message || 'Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại.';
         setAuthMessage(errMsg, 'error');
-        if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast(errMsg, 'error');
-        }
         markFieldError('login-password');
         loginTurnstileToken = '';
         if (window.turnstile && typeof window.turnstile.reset === 'function') {
@@ -339,9 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Login error:', err);
       const errMsg = 'Không thể kết nối máy chủ xác thực. Vui lòng kiểm tra kết nối mạng và thử lại.';
       setAuthMessage(errMsg, 'error');
-      if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(errMsg, 'error');
-      }
       loginTurnstileToken = '';
       if (window.turnstile && typeof window.turnstile.reset === 'function') {
         try { window.turnstile.reset(); } catch (e) {}
@@ -380,9 +388,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const nameRegex = /^[\p{L}\s]+$/u;
+    const nameRegex = /^[\p{L}\p{N}\s._-]+$/u;
     if (!nameRegex.test(fullName)) {
-      setAuthMessage('Họ và tên chỉ được chứa chữ cái và khoảng trắng, không bao gồm số hoặc ký tự đặc biệt.', 'error');
+      setAuthMessage('Họ và tên chỉ được chứa chữ cái, chữ số, khoảng trắng và dấu gạch ngang/dưới.', 'error');
       markFieldError('reg-name');
       return;
     }
@@ -509,31 +517,36 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (response.ok && res.success) {
-        setAuthMessage('✓ Tạo tài khoản hội viên thành công! Đang chuyển hướng...', 'success');
-        if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast('Tạo tài khoản hội viên thành công!', 'success');
+        try {
+          sessionStorage.removeItem('sb_current_user');
+          localStorage.removeItem('sb_current_user');
+        } catch (e) {}
+        e.target.reset();
+        switchAuthTab('login');
+        try {
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('tab');
+          cleanUrl.searchParams.delete('expired');
+          history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ''));
+        } catch (uErr) {}
+        const loginUserInp = document.getElementById('login-username');
+        const loginPassInp = document.getElementById('login-password');
+        if (loginUserInp) loginUserInp.value = cleanPhone;
+        if (loginPassInp) {
+          loginPassInp.value = '';
+          loginPassInp.focus();
         }
-        syncStoredUser(res.user);
-
-        setTimeout(() => {
-          handleLoginRedirect(res.user);
-        }, 350);
+        setAuthMessage('Đăng ký tài khoản thành công! Vui lòng nhập mật khẩu để đăng nhập.', 'success');
         return;
       } else {
         const errMsg = res?.message || 'Không thể đăng ký tài khoản. Số điện thoại có thể đã tồn tại.';
         setAuthMessage(errMsg, 'error');
-        if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast(errMsg, 'error');
-        }
         markFieldError('reg-phone');
       }
     } catch (err) {
       console.error('Registration error:', err);
       const errMsg = 'Không thể kết nối máy chủ để đăng ký. Vui lòng thử lại sau.';
       setAuthMessage(errMsg, 'error');
-      if (window.SanBongApp?.showToast) {
-        window.SanBongApp.showToast(errMsg, 'error');
-      }
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
