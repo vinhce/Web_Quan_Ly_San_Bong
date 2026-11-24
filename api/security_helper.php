@@ -27,7 +27,7 @@ function secure_session_start() {
 
     if (!headers_sent()) {
         session_set_cookie_params([
-            'lifetime' => 7200, 
+            'lifetime' => 86400, 
             'path'     => '/',
             'domain'   => '',
             'secure'   => $isHttps,
@@ -37,7 +37,7 @@ function secure_session_start() {
 
         ini_set('session.use_only_cookies', '1');
         ini_set('session.use_strict_mode', '1');
-        ini_set('session.gc_maxlifetime', '7200');
+        ini_set('session.gc_maxlifetime', '86400');
     }
 
     if (session_status() === PHP_SESSION_NONE) {
@@ -45,7 +45,7 @@ function secure_session_start() {
     }
 
     $now = time();
-    $maxLifetime = 7200;
+    $maxLifetime = 86400;
 
     if (isset($_SESSION['last_activity']) && ($now - $_SESSION['last_activity'] > $maxLifetime)) {
         session_unset();
@@ -279,14 +279,21 @@ function currentCustomer(?PDO $pdo = null): ?array {
     if ($pdo === null) $pdo = getDBConnection(false);
     if ($pdo) {
         try {
-            $stmt = $pdo->prepare("SELECT loyalty_points, tier, customer_tier FROM users WHERE id = ? LIMIT 1");
+            $stmt = $pdo->prepare("SELECT points FROM users WHERE id = ? LIMIT 1");
             $stmt->execute([(int)$user['id']]);
-            $extra = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($extra) {
-                $user['loyalty_points'] = (int)($extra['loyalty_points'] ?? 0);
-                $user['points'] = $user['loyalty_points'];
-                $user['customer_tier'] = $extra['customer_tier'] ?? 'standard';
-                $user['tier'] = $extra['tier'] ?? 'Hội viên';
+            $ptsVal = $stmt->fetchColumn();
+            $pts = ($ptsVal !== false && $ptsVal !== null) ? (int)$ptsVal : 0;
+            $user['points'] = $pts;
+            $user['loyalty_points'] = $pts;
+            $user['customer_tier'] = 'standard';
+            $uPhone = normalize_phone($user['phone'] ?? '');
+            if ($uPhone !== '') {
+                $crmStmt = $pdo->prepare("SELECT customer_tier FROM customer_crm WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? LIMIT 1");
+                $crmStmt->execute([$uPhone]);
+                $tCol = $crmStmt->fetchColumn();
+                if ($tCol) {
+                    $user['customer_tier'] = (string)$tCol;
+                }
             }
         } catch (Throwable $e) {}
     }

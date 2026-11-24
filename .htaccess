@@ -22,16 +22,8 @@ ErrorDocument 500 /html/500.html
     # Cho phép truyền Authorization Header vào PHP (cần cho Webhook & API)
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # 3.0a. Chuyển hướng 301 từ www sang non-www HTTPS (1 bước, tránh vòng lặp)
-    RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
-    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
-    RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
-
-    # 3.0. Bắt buộc HTTPS 301 trên môi trường Production (Mục 5.1)
-    RewriteCond %{HTTPS} off
-    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
-    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
-    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    # Lưu ý: Không dùng RewriteRule ^ https://... trong .htaccess vì LiteSpeed Web Server
+    # trên hosting chặn 403 toàn site; OneShield edge đã tự redirect HTTP -> HTTPS (301) kèm HSTS.
 
     # Chặn mọi file và thư mục ẩn (.env*, .git/*, .agents/*) trừ .well-known cho SSL
     RewriteCond %{REQUEST_URI} !(^|/)\.well-known(/|$) [NC]
