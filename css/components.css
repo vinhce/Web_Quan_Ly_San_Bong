@@ -84,12 +84,81 @@
   outline: none;
   transition: border-color 0.15s ease;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .input-field:focus,
 .input-field:focus-within {
   border-color: #16A34A;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+select:not([multiple]):not([size]) {
+  display: block;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-color: #FFFFFF;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 16px 16px !important;
+  padding-right: 36px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: content-box;
+}
+select::-ms-expand,
+select::picker-icon {
+  display: none !important;
+}
+select.input-field {
+  display: block;
+  line-height: 42px;
+}
+select.h-11,
+select.input-field.h-11 {
+  height: 44px;
+  line-height: 42px;
+}
+select.h-10,
+select.input-field.h-10 {
+  height: 40px;
+  line-height: 38px;
+}
+select.h-9,
+select.input-field.h-9 {
+  height: 36px;
+  line-height: 34px;
+}
+select.h-8,
+select.input-field.h-8 {
+  height: 32px;
+  line-height: 30px;
+}
+select.h-7,
+select.input-field.h-7 {
+  height: 28px;
+  line-height: 26px;
+}
+select.text-xs,
+select.input-field.text-xs {
+  font-size: 12px;
+}
+@media (min-width: 640px) {
+  select.sm\:text-sm,
+  select.input-field.sm\:text-sm {
+    font-size: 14px;
+  }
 }
 
 .no-scrollbar::-webkit-scrollbar {
