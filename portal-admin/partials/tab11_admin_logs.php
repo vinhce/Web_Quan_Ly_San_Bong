@@ -1,9 +1,9 @@
 <?php
 /**
- * Tab 11: Nhật ký hệ thống & thao tác quản trị (Admin Only - Append Only)
- * Giao diện CSS Grid 5 cột, giữ thanh "Quy ước màu:" 6 mã nhóm duy nhất
- * (TD, XH, CN, CB, TQ, TT) cùng 4 thẻ KPI lọc nhanh, bộ lọc đa chiều,
- * phát hiện 9 luật bất thường và quy trình hậu kiểm trực tiếp.
+ * Tab 11: Nhật ký hệ thống & thao tác quản trị (Admin Only)
+ * Giao diện CSS Grid 5 cột, giữ thanh "Quy ước màu:" 6 mã nhóm hiển thị
+ * (TD, XHC, CN, CB, TQ, TĐ; mã DB TD/XH/CN/CB/TQ/TT) cùng 4 thẻ KPI lọc nhanh,
+ * bộ lọc đa chiều, phát hiện 9 luật bất thường và quy trình hậu kiểm trực tiếp.
  */
 ?>
 <style>
@@ -24,7 +24,6 @@
   #tab-content-logs .audit-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
   #tab-content-logs .audit-head h2 { font-size: 20px; line-height: 28px; font-weight: 700; color: var(--ink); margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   #tab-content-logs .audit-head p { margin: 2px 0 0; color: var(--mut); font-size: 13px; }
-  #tab-content-logs .audit-tag { display: inline-flex; align-items: center; background: var(--gs); color: var(--gd); border: 1px solid var(--gb); font-size: 12px; font-weight: 600; border-radius: 6px; padding: 0 8px; line-height: 22px; }
   #tab-content-logs .audit-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   #tab-content-logs .audit-cnt { color: var(--mut); font-size: 12px; font-variant-numeric: tabular-nums; margin-right: 4px; }
   #tab-content-logs .audit-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600; height: 34px; padding: 0 12px; border: 1px solid #cbd5e1; background: var(--card); color: var(--ink); border-radius: 8px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s; }
@@ -128,7 +127,6 @@
   #tab-content-logs .audit-page-btns { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
   #tab-content-logs .audit-page-num { min-width: 28px; height: 28px; padding: 0 6px; border-radius: 6px; border: 1px solid #cbd5e1; background: var(--card); color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; }
   #tab-content-logs .audit-page-num.is-active { background: var(--g); border-color: var(--g); color: #fff; }
-  #tab-content-logs .audit-note { font-size: 12px; color: var(--mut); margin: 12px 0 0; text-align: center; }
 
   @media (max-width: 1024px) { #tab-content-logs .audit-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 900px) {
@@ -152,10 +150,7 @@
   <div class="audit-wrap">
     <div class="audit-head">
       <div>
-        <h2>
-          Nhật ký hệ thống và thao tác quản trị
-          <span class="audit-tag">Chỉ ghi thêm</span>
-        </h2>
+        <h2>Nhật ký hệ thống và thao tác quản trị</h2>
         <p>Ghi lại mọi thay đổi nhạy cảm: giá, điểm hội viên, duyệt cọc, hủy và chốt ca, cài đặt.</p>
       </div>
       <div class="audit-acts">
@@ -211,7 +206,7 @@
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </span>
-          <input type="search" id="admin-log-search" class="audit-search-input" placeholder="Tìm SĐT, mã đơn, nội dung, hoặc mã nhóm (TD, CN, TD+CN)" aria-label="Tìm kiếm nhật ký">
+          <input type="search" id="admin-log-search" class="audit-search-input" placeholder="Tìm SĐT, mã đơn, nội dung, hoặc mã nhóm (TD, XHC, CN, CB, TQ, TĐ, td+cn)" aria-label="Tìm kiếm nhật ký">
           <button type="button" id="admin-log-search-clear" class="audit-search-clear hidden" aria-label="Xóa từ khóa tìm kiếm" title="Xóa từ khóa">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -256,8 +251,8 @@
         <button type="button" class="audit-chip t-TD" data-cat="TD" aria-pressed="false" onclick="toggleAuditCategoryChip('TD')" title="Lọc nhóm Tạo / Duyệt (TD)">
           <i class="audit-dot"></i>Tạo / Duyệt <span class="audit-chip-code">(TD)</span>
         </button>
-        <button type="button" class="audit-chip t-XH" data-cat="XH" aria-pressed="false" onclick="toggleAuditCategoryChip('XH')" title="Lọc nhóm Xóa / Hủy / Chi tiền (XH)">
-          <i class="audit-dot"></i>Xóa / Hủy / Chi tiền <span class="audit-chip-code">(XH)</span>
+        <button type="button" class="audit-chip t-XH" data-cat="XH" aria-pressed="false" onclick="toggleAuditCategoryChip('XH')" title="Lọc nhóm Xóa / Hủy / Chi tiền (XHC)">
+          <i class="audit-dot"></i>Xóa / Hủy / Chi tiền <span class="audit-chip-code">(XHC)</span>
         </button>
         <button type="button" class="audit-chip t-CN" data-cat="CN" aria-pressed="false" onclick="toggleAuditCategoryChip('CN')" title="Lọc nhóm Cập nhật (CN)">
           <i class="audit-dot"></i>Cập nhật <span class="audit-chip-code">(CN)</span>
@@ -268,8 +263,8 @@
         <button type="button" class="audit-chip t-TQ" data-cat="TQ" aria-pressed="false" onclick="toggleAuditCategoryChip('TQ')" title="Lọc nhóm Tiền quầy (TQ)">
           <i class="audit-dot"></i>Tiền quầy <span class="audit-chip-code">(TQ)</span>
         </button>
-        <button type="button" class="audit-chip t-TT" data-cat="TT" aria-pressed="false" onclick="toggleAuditCategoryChip('TT')" title="Lọc nhóm Tự động (TT)">
-          <i class="audit-dot"></i>Tự động <span class="audit-chip-code">(TT)</span>
+        <button type="button" class="audit-chip t-TT" data-cat="TT" aria-pressed="false" onclick="toggleAuditCategoryChip('TT')" title="Lọc nhóm Tự động (TĐ)">
+          <i class="audit-dot"></i>Tự động <span class="audit-chip-code">(TĐ)</span>
         </button>
       </div>
     </div>
@@ -329,7 +324,5 @@
         </div>
       </div>
     </div>
-
-    <p class="audit-note">Nhật ký bất biến (Chỉ ghi thêm – không cho phép chỉnh sửa hoặc xóa qua giao diện).</p>
   </div>
 </div>

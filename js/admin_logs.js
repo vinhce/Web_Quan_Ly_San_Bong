@@ -2,12 +2,12 @@
  * Tab 11: Nhật ký hệ thống & thao tác quản trị (Admin Logs UI + Action Catalog).
  */
 const ADMIN_LOG_CATEGORIES = {
-    TD: { code: 'TD', key: 'TD', label: 'Tạo/Duyệt', badgeClass: 'audit-cat-td' },
-    XH: { code: 'XH', key: 'XH', label: 'Xóa/Hủy/Chi tiền', badgeClass: 'audit-cat-xh' },
-    CN: { code: 'CN', key: 'CN', label: 'Cập nhật', badgeClass: 'audit-cat-cn' },
-    CB: { code: 'CB', key: 'CB', label: 'Cảnh báo', badgeClass: 'audit-cat-cb' },
-    TQ: { code: 'TQ', key: 'TQ', label: 'Tiền quầy', badgeClass: 'audit-cat-tq' },
-    TT: { code: 'TT', key: 'TT', label: 'Tự động', badgeClass: 'audit-cat-tt' }
+    TD: { code: 'TD', shortCode: 'TD', key: 'TD', label: 'Tạo/Duyệt', badgeClass: 'audit-cat-td' },
+    XH: { code: 'XH', shortCode: 'XHC', key: 'XH', label: 'Xóa/Hủy/Chi tiền', badgeClass: 'audit-cat-xh' },
+    CN: { code: 'CN', shortCode: 'CN', key: 'CN', label: 'Cập nhật', badgeClass: 'audit-cat-cn' },
+    CB: { code: 'CB', shortCode: 'CB', key: 'CB', label: 'Cảnh báo', badgeClass: 'audit-cat-cb' },
+    TQ: { code: 'TQ', shortCode: 'TQ', key: 'TQ', label: 'Tiền quầy', badgeClass: 'audit-cat-tq' },
+    TT: { code: 'TT', shortCode: 'TĐ', key: 'TT', label: 'Tự động', badgeClass: 'audit-cat-tt' }
 };
 
 const ADMIN_LOG_DATA_GROUPS = [
@@ -411,10 +411,11 @@ function populateAuditFilterOptions(staffList = [], actionTypes = []) {
             ['CB', 'Cảnh báo'], ['TQ', 'Tiền quầy'], ['TT', 'Tự động']];
         let html = '<option value="">Tất cả loại hành động</option>';
         catOrder.forEach(([code, title]) => {
+            const shortCode = ADMIN_LOG_CATEGORIES[code]?.shortCode || code;
             const items = byCat[code] || [];
             const counts = {};
             items.forEach((it) => { counts[it.label] = (counts[it.label] || 0) + 1; });
-            html += `<optgroup label="${auditEsc(`${code} – ${title}`)}"><option value="__cat__:${auditEsc(code)}">${auditEsc(`Tất cả nhóm ${title}`)}</option>`;
+            html += `<optgroup label="${auditEsc(`${shortCode} – ${title}`)}"><option value="__cat__:${auditEsc(code)}">${auditEsc(`Tất cả nhóm ${title}`)}</option>`;
             items.forEach((it) => {
                 const txt = counts[it.label] > 1 ? `${it.label} (${it.code})` : it.label;
                 html += `<option value="${auditEsc(it.code)}">${auditEsc(txt)}</option>`;
