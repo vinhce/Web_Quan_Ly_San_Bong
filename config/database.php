@@ -145,9 +145,68 @@ function ensureBookingIdempotencySchema(PDO $pdo): void {
     }
 }
 
+function ensureAuditReviewsAndShiftsUpgrade(PDO $pdo, bool $force = false): void {
+    $v22Marker = dirname(__DIR__) . '/logs/.schema_v22_audit_shifts_ready';
+    if (!$force && is_file($v22Marker)) {
+        return;
+    }
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `audit_reviews` (`id` INT AUTO_INCREMENT PRIMARY KEY, `log_id` INT NOT NULL, `reviewer_id` INT NOT NULL, `reviewer_name` VARCHAR(100) NULL DEFAULT NULL, `note` TEXT NOT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY `uniq_ar_log` (`log_id`), INDEX `idx_ar_reviewer` (`reviewer_id`), INDEX `idx_ar_created` (`created_at`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        ensureColumnExists($pdo, 'audit_logs', 'category', 'VARCHAR(10) NULL DEFAULT NULL AFTER `action`');
+        ensureColumnExists($pdo, 'audit_logs', 'data_group', 'VARCHAR(50) NULL DEFAULT NULL AFTER `category`');
+        ensureColumnExists($pdo, 'audit_logs', 'object_code', 'VARCHAR(60) NULL DEFAULT NULL AFTER `target_id`');
+        ensureColumnExists($pdo, 'audit_logs', 'is_anomaly', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER `new_value`');
+        ensureColumnExists($pdo, 'audit_logs', 'anomaly_reasons', 'TEXT NULL DEFAULT NULL AFTER `is_anomaly`');
+
+        ensureIndexExists($pdo, 'audit_logs', 'idx_audit_created', '`created_at`');
+        ensureIndexExists($pdo, 'audit_logs', 'idx_audit_user', '`user_id`');
+        ensureIndexExists($pdo, 'audit_logs', 'idx_audit_category', '`category`');
+        ensureIndexExists($pdo, 'audit_logs', 'idx_audit_object_code', '`object_code`');
+        ensureIndexExists($pdo, 'audit_logs', 'idx_audit_anomaly_created', '`is_anomaly`, `created_at`');
+
+        try {
+            $pdo->exec("CREATE OR REPLACE VIEW `admin_audit_logs` AS SELECT * FROM `audit_logs`");
+        } catch (PDOException $viewEx) {
+            error_log("[SCHEMA V22 VIEW WARN] " . $viewEx->getMessage());
+        }
+
+        $colStmt = $pdo->prepare("SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'shifts' AND COLUMN_NAME = 'status' LIMIT 1");
+        $colStmt->execute();
+        $colType = (string)($colStmt->fetchColumn() ?: '');
+        if ($colType !== '' && strpos($colType, 'pending_explanation') === false) {
+            $pdo->exec("ALTER TABLE `shifts` MODIFY COLUMN `status` ENUM('open', 'closed', 'pending_explanation', 'confirmed') NOT NULL DEFAULT 'open'");
+        }
+
+        ensureColumnExists($pdo, 'shifts', 'staff_counted_cash', 'DECIMAL(12,2) NULL DEFAULT NULL AFTER `actual_cash_received`');
+
+        $pdo->exec("UPDATE `shifts` SET `staff_counted_cash` = COALESCE(`actual_cash_received`, `actual_cash`) WHERE `staff_counted_cash` IS NULL AND (`actual_cash_received` IS NOT NULL OR `actual_cash` IS NOT NULL) AND `status` IN ('closed', 'pending_explanation', 'confirmed')");
+        $pdo->exec("UPDATE `shifts` SET `status` = 'pending_explanation' WHERE `status` = 'closed' AND COALESCE(`discrepancy_amount`, 0) <> 0 AND CHAR_LENGTH(TRIM(COALESCE(`admin_note`, ''))) < 10");
+
+        $pdo->exec("INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES ('audit_anomaly_shift_strong_vnd', '50000'), ('audit_anomaly_points_strong', '50'), ('audit_anomaly_discount_pct', '50'), ('audit_anomaly_night_start', '0'), ('audit_anomaly_night_end', '5'), ('audit_reason_min_len', '10')");
+
+        $registryFile = dirname(__DIR__) . '/api/services/AdminLogRegistry.php';
+        if (is_file($registryFile)) {
+            require_once $registryFile;
+            if (class_exists('AdminLogRegistry')) {
+                AdminLogRegistry::backfillMissingMetadata($pdo);
+            }
+        }
+
+        $logDir = dirname($v22Marker);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        @file_put_contents($v22Marker, date('c'));
+    } catch (PDOException $e) {
+        error_log("[SCHEMA V22 ERROR] " . $e->getMessage());
+    }
+}
+
 function ensureSchemaInitialized(PDO $pdo) {
     ensurePasswordResetsTable($pdo);
     ensureBookingIdempotencySchema($pdo);
+    ensureAuditReviewsAndShiftsUpgrade($pdo);
     $markerFile = dirname(__DIR__) . '/logs/.schema_v18_full_sync_ready';
     if (is_file($markerFile)) {
         return;

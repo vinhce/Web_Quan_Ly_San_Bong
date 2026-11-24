@@ -15,7 +15,20 @@ require_once __DIR__ . '/services/admin_inventory.php';
 
 $currentActor = $actor ?? (function_exists('require_staff_or_admin') ? require_staff_or_admin($pdo) : []);
 
-if ($action === 'settings' || $action === 'audit_logs') {
+$auditSettingsActions = [
+    'settings',
+    'audit_logs',
+    'audit_summary',
+    'audit_check_new',
+    'audit_log_detail',
+    'audit_review',
+    'audit_export_csv',
+    'audit_update',
+    'audit_delete',
+    'delete_audit_log',
+    'update_audit_log',
+];
+if (in_array($action, $auditSettingsActions, true)) {
     handle_admin_settings_or_audit($pdo, $action, $method, $data, $currentActor);
 }
 
