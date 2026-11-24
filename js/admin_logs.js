@@ -7,7 +7,7 @@ const ADMIN_LOG_CATEGORIES = {
     CN: { code: 'CN', shortCode: 'CN', key: 'CN', label: 'Cập nhật', badgeClass: 'audit-cat-cn' },
     CB: { code: 'CB', shortCode: 'CB', key: 'CB', label: 'Cảnh báo', badgeClass: 'audit-cat-cb' },
     TQ: { code: 'TQ', shortCode: 'TQ', key: 'TQ', label: 'Tiền quầy', badgeClass: 'audit-cat-tq' },
-    TT: { code: 'TT', shortCode: 'TĐ', key: 'TT', label: 'Tự động', badgeClass: 'audit-cat-tt' }
+    TT: { code: 'TT', shortCode: 'AUTO', key: 'TT', label: 'Tự động', badgeClass: 'audit-cat-tt' }
 };
 
 const ADMIN_LOG_DATA_GROUPS = [

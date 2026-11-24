@@ -75,7 +75,7 @@ assert.ok(partialHtml.includes('Nhật ký hệ thống và thao tác quản tr�
 assert.ok(!partialHtml.includes('Hiển thị 8 bản ghi gần nhất'), 'Không được còn chuỗi cũ "Hiển thị 8 bản ghi gần nhất"');
 assert.ok(!/bất biến|append[\s-]*only|chỉ ghi thêm/i.test(partialHtml), 'Tab 11 không được chứa chữ Bất biến, Append-only hoặc Chỉ ghi thêm');
 assert.ok(!partialHtml.includes('.audit-tag') && !partialHtml.includes('.audit-note'), 'Không được giữ CSS .audit-tag hoặc .audit-note không còn dùng');
-assert.ok(partialHtml.includes('placeholder="Tìm SĐT, mã đơn, nội dung, hoặc mã nhóm (TD, XHC, CN, CB, TQ, TĐ, td+cn)"'), 'Thiếu placeholder tìm kiếm mới có TD, XHC, CN, CB, TQ, TĐ, td+cn');
+assert.ok(partialHtml.includes('placeholder="Tìm SĐT, mã đơn, nội dung, hoặc mã nhóm (TD, XHC, CN, CB, TQ, AUTO, td+cn)"'), 'Thiếu placeholder tìm kiếm mới có TD, XHC, CN, CB, TQ, AUTO, td+cn');
 assert.ok(partialHtml.includes('id="admin-log-updated-at"'), 'Thiếu badge thời gian cập nhật');
 assert.ok(partialHtml.includes('id="admin-log-new-banner-slot"') && partialHtml.includes('id="admin-log-new-banner"'), 'Thiếu vùng giữ chỗ banner bản ghi mới');
 assert.ok(partialHtml.includes('id="admin-log-range-summary"'), 'Thiếu tóm tắt phạm vi chân bảng');
@@ -90,11 +90,11 @@ for (const cat of ['TD', 'XH', 'CN', 'CB', 'TQ', 'TT']) {
 }
 const chipsBlockMatch = partialHtml.match(/<div id="admin-log-category-chips"[\s\S]*?<\/div>/);
 assert.ok(chipsBlockMatch, 'Thiếu khối #admin-log-category-chips');
-for (const shortLbl of ['(TD)', '(XHC)', '(CN)', '(CB)', '(TQ)', '(TĐ)']) {
+for (const shortLbl of ['(TD)', '(XHC)', '(CN)', '(CB)', '(TQ)', '(AUTO)']) {
     assert.ok(chipsBlockMatch[0].includes(shortLbl), `Thanh Quy ước màu thiếu mã chip ${shortLbl}`);
 }
 assert.ok(chipsBlockMatch[0].includes('title="Lọc nhóm Xóa / Hủy / Chi tiền (XHC)"'), 'Thiếu title chuẩn cho chip XHC');
-assert.ok(chipsBlockMatch[0].includes('title="Lọc nhóm Tự động (TĐ)"'), 'Thiếu title chuẩn cho chip TĐ');
+assert.ok(chipsBlockMatch[0].includes('title="Lọc nhóm Tự động (AUTO)"'), 'Thiếu title chuẩn cho chip AUTO');
 
 // 3. Tạo DOM giả lập chạy thật js/admin_logs.js trong vm
 function makeEl(id, extra = {}) {
@@ -334,7 +334,7 @@ vm.runInNewContext(jsCode, sandbox);
         ['CN', 'CN – Cập nhật'],
         ['CB', 'CB – Cảnh báo'],
         ['TQ', 'TQ – Tiền quầy'],
-        ['TT', 'TĐ – Tự động']
+        ['TT', 'AUTO – Tự động']
     ]) {
         assert.ok(actionFilterHtml.includes(`<optgroup label="${optLabel}">`) && actionFilterHtml.includes(`value="__cat__:${canonCode}"`), `Dropdown hành động phải có <optgroup label="${optLabel}"> và option value="__cat__:${canonCode}"`);
     }

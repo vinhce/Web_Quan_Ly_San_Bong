@@ -2,7 +2,7 @@
 /**
  * Tab 11: Nhật ký hệ thống & thao tác quản trị (Admin Only)
  * Giao diện CSS Grid 5 cột, giữ thanh "Quy ước màu:" 6 mã nhóm hiển thị
- * (TD, XHC, CN, CB, TQ, TĐ; mã DB TD/XH/CN/CB/TQ/TT) cùng 4 thẻ KPI lọc nhanh,
+ * (TD, XHC, CN, CB, TQ, AUTO; mã DB TD/XH/CN/CB/TQ/TT) cùng 4 thẻ KPI lọc nhanh,
  * bộ lọc đa chiều, phát hiện 9 luật bất thường và quy trình hậu kiểm trực tiếp.
  */
 ?>
@@ -206,7 +206,7 @@
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </span>
-          <input type="search" id="admin-log-search" class="audit-search-input" placeholder="Tìm SĐT, mã đơn, nội dung, hoặc mã nhóm (TD, XHC, CN, CB, TQ, TĐ, td+cn)" aria-label="Tìm kiếm nhật ký">
+          <input type="search" id="admin-log-search" class="audit-search-input" placeholder="Tìm SĐT, mã đơn, nội dung, hoặc mã nhóm (TD, XHC, CN, CB, TQ, AUTO, td+cn)" aria-label="Tìm kiếm nhật ký">
           <button type="button" id="admin-log-search-clear" class="audit-search-clear hidden" aria-label="Xóa từ khóa tìm kiếm" title="Xóa từ khóa">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -263,8 +263,8 @@
         <button type="button" class="audit-chip t-TQ" data-cat="TQ" aria-pressed="false" onclick="toggleAuditCategoryChip('TQ')" title="Lọc nhóm Tiền quầy (TQ)">
           <i class="audit-dot"></i>Tiền quầy <span class="audit-chip-code">(TQ)</span>
         </button>
-        <button type="button" class="audit-chip t-TT" data-cat="TT" aria-pressed="false" onclick="toggleAuditCategoryChip('TT')" title="Lọc nhóm Tự động (TĐ)">
-          <i class="audit-dot"></i>Tự động <span class="audit-chip-code">(TĐ)</span>
+        <button type="button" class="audit-chip t-TT" data-cat="TT" aria-pressed="false" onclick="toggleAuditCategoryChip('TT')" title="Lọc nhóm Tự động (AUTO)">
+          <i class="audit-dot"></i>Tự động <span class="audit-chip-code">(AUTO)</span>
         </button>
       </div>
     </div>

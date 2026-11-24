@@ -98,13 +98,13 @@ $createdLogIds = [];
 $createdShiftId = 0;
 
 try {
-    // 1. Registry & 6 unique codes (NO TĐ as DB key, short_code has XHC & TĐ)
+    // 1. Registry & 6 unique codes (NO TĐ as DB key, short_code has XHC & AUTO)
     echo "1. Kiểm tra AdminLogRegistry & 6 mã nhóm duy nhất:\n";
     $catKeys = array_keys(AdminLogRegistry::CATEGORIES);
     t11_assert($catKeys === ['TD', 'XH', 'CN', 'CB', 'TQ', 'TT'], 'Đủ đúng 6 mã nhóm duy nhất TD, XH, CN, CB, TQ, TT (không dùng TĐ)');
     t11_assert(!in_array('TĐ', $catKeys, true), 'Không tồn tại mã TĐ trong khóa DB');
     $shortCodes = array_column(AdminLogRegistry::CATEGORIES, 'short_code');
-    t11_assert($shortCodes === ['TD', 'XHC', 'CN', 'CB', 'TQ', 'TĐ'], 'Đủ đúng 6 short_code hiển thị TD, XHC, CN, CB, TQ, TĐ');
+    t11_assert($shortCodes === ['TD', 'XHC', 'CN', 'CB', 'TQ', 'AUTO'], 'Đủ đúng 6 short_code hiển thị TD, XHC, CN, CB, TQ, AUTO');
     t11_assert(
         AdminLogRepository::resolveCategoryToken('td') === 'TD'
         && AdminLogRepository::resolveCategoryToken('tđ') === 'TT'
@@ -184,7 +184,7 @@ try {
     $tdLowerLogs = $resTdLower['json']['data']['logs'] ?? [];
     t11_assert($hasLogId($tdLowerLogs, $tdId) && !$hasLogId($tdLowerLogs, $ttId), 'Tìm kiếm "td" khớp TD và KHÔNG khớp TT');
 
-    foreach (['tđ', 'TĐ', 'auto', 'tdg'] as $ttSearchKw) {
+    foreach (['AUTO', 'auto', 'tđ', 'TĐ', 'tdg'] as $ttSearchKw) {
         $resTtKw = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => $ttSearchKw]);
         $ttKwLogs = $resTtKw['json']['data']['logs'] ?? [];
         t11_assert($hasLogId($ttKwLogs, $ttId) && !$hasLogId($ttKwLogs, $tdId), "Tìm kiếm \"{$ttSearchKw}\" khớp TT và KHÔNG khớp TD");
@@ -227,6 +227,10 @@ try {
     $resCatXhc = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:XHC']);
     $catXhcLogs = $resCatXhc['json']['data']['logs'] ?? [];
     t11_assert($hasLogId($catXhcLogs, $xhId) && !$hasLogId($catXhcLogs, $tdId) && !$hasLogId($catXhcLogs, $ttId), 'Lọc dropdown action_type="__cat__:XHC" lọc đúng XH');
+
+    $resCatAuto = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:AUTO']);
+    $catAutoLogs = $resCatAuto['json']['data']['logs'] ?? [];
+    t11_assert($hasLogId($catAutoLogs, $ttId) && !$hasLogId($catAutoLogs, $tdId) && !$hasLogId($catAutoLogs, $xhId), 'Lọc dropdown action_type="__cat__:AUTO" lọc đúng TT');
 
     $resCatTdVn = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:TĐ']);
     $catTdVnLogs = $resCatTdVn['json']['data']['logs'] ?? [];
