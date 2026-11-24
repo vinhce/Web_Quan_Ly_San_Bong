@@ -109,7 +109,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const qrInfoLoggedIn = document.getElementById('qr-info-logged-in');
   const qrInfoGuest = document.getElementById('qr-info-guest');
   const confirmBtn = document.getElementById('confirm-payment-btn');
-  const guestLoginBtn = document.getElementById('guest-login-checkout-btn');
   const qrLoading = document.getElementById('sepay-qr-loading');
 
   if (isGuest) {
@@ -119,13 +118,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (qrInfoLoggedIn) qrInfoLoggedIn.classList.add('hidden');
     if (qrInfoGuest) qrInfoGuest.classList.remove('hidden');
     if (confirmBtn) confirmBtn.classList.add('hidden');
-    if (guestLoginBtn) guestLoginBtn.classList.remove('hidden');
 
     const setNoticeAndRedirect = () => {
       sessionStorage.setItem('sb_login_notice', 'Vui lòng đăng nhập tài khoản để hiển thị mã VietQR thanh toán cọc');
     };
     document.getElementById('btn-login-to-scan')?.addEventListener('click', setNoticeAndRedirect);
-    guestLoginBtn?.addEventListener('click', setNoticeAndRedirect);
 
     renderCheckoutDetails(false);
     setupLoyaltyWaterRedemption();
@@ -139,7 +136,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (qrInfoLoggedIn) qrInfoLoggedIn.classList.remove('hidden');
     if (qrInfoGuest) qrInfoGuest.classList.add('hidden');
     if (confirmBtn) confirmBtn.classList.remove('hidden');
-    if (guestLoginBtn) guestLoginBtn.classList.add('hidden');
   }
 
   renderCheckoutDetails(false);
@@ -355,7 +351,6 @@ async function createInitialBookingRecord() {
         voucherCode: currentDraft.voucherCode,
         note: currentDraft.note,
         redeemedBottles: Number(currentDraft.redeemedBottles ?? redeemedBottles ?? 0),
-        is_booking_for_friend: Boolean(currentDraft.is_booking_for_friend),
         privacy_consent: currentDraft.privacy_consent !== undefined ? currentDraft.privacy_consent : true,
         turnstile_token: currentDraft.turnstile_token || ''
       };
