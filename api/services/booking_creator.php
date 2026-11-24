@@ -169,10 +169,11 @@ function handle_create_booking(?PDO $pdo, array $data): void {
     }
 
     $rawNote = (string)($data['note'] ?? '');
-    if (mb_strlen($rawNote) > 300) {
+    $userOnlyNote = trim((string)preg_replace('/\s*\|?\s*\[(?:Gói cố định|Tài trợ mỗi trận|Gói \d+ tháng)[^\]]*\]/u', '', $rawNote));
+    if (mb_strlen($userOnlyNote) > 300) {
         json_error('Ghi chú cho ban quản lý tối đa 300 ký tự.', 400, 'ERR_NOTE_TOO_LONG');
     }
-    $note = sanitize_string($rawNote, 300);
+    $note = sanitize_string($rawNote, 1000);
 
     $email = filter_var($data['email'] ?? 'khachhang@sanbongpro.vn', FILTER_VALIDATE_EMAIL) ?: 'khachhang@sanbongpro.vn';
     $pitchId = sanitize_string($data['pitchId'] ?? $data['pitch_id'] ?? '', 20);
@@ -224,7 +225,7 @@ function handle_create_booking(?PDO $pdo, array $data): void {
     if ($weeksCount >= 12) {
         $packageDiscountRate = 0.15;
         $giftNote = '[Gói 3 tháng (12 tuần) - Tặng 2 thùng nước + 1 trọng tài/trận]';
-        if (mb_stripos($note, 'Gói 3 tháng') === false) {
+        if (mb_stripos($note, 'Gói 3 tháng') === false && mb_stripos($note, 'Tài trợ mỗi trận') === false) {
             $note = trim($note . ' ' . $giftNote);
         }
     } elseif ($weeksCount >= 8) {

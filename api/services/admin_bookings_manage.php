@@ -589,9 +589,18 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
                 $refundAmount  = 0;
             }
 
+            $policyNoteMap = [
+                'unpaid_free_cancel'   => 'Chưa thanh toán cọc',
+                'unpaid_noshow_cancel' => 'Quá giờ chưa cọc',
+                'refund_100'           => 'Hoàn cọc 100%',
+                'forfeit_50'           => 'Phạt 50% cọc',
+                'forfeit_100'          => 'Không hoàn cọc',
+                'reserve'              => 'Bảo lưu cọc',
+            ];
+            $policyNoteLabel = $policyNoteMap[$appliedPolicy] ?? $payStatus;
             $noteAdd = ($targetStatus === 'Khách chưa đến')
                 ? " [Quá 15p khách chưa đến - Đã nhả sân trống: {$reason}]"
-                : " [Hủy trước hạn ({$appliedPolicy}, hoàn " . number_format($refundAmount) . "đ) - {$payStatus}: {$reason}]";
+                : " [Hủy trước hạn ({$policyNoteLabel}, hoàn " . number_format($refundAmount) . "đ) - {$payStatus}: {$reason}]";
 
             $stmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, remaining_amount = 0, cancel_policy_applied = ?, refund_amount = ?, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
             $stmt->execute([$targetStatus, $payStatus, $appliedPolicy, $refundAmount, $noteAdd, $code]);
@@ -675,8 +684,10 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             }
 
             $noteAdd = " [Đã tất toán 100% qua {$payMethod}]";
+            $existingNote = (string)($lockedBooking['note'] ?? '');
+            $appendNote = ($existingNote !== '' && mb_stripos($existingNote, trim($noteAdd)) !== false) ? '' : $noteAdd;
             $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', payment_status = 'Đã thanh toán 100%', paid_amount = total_price, remaining_amount = 0, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-            $stmt->execute([$noteAdd, $code]);
+            $stmt->execute([$appendNote, $code]);
 
             award_booking_loyalty_points($pdo, $lockedBooking);
             write_audit_log($pdo, 'COLLECT_PAYMENT', $code, (string)$remAmount, "Đã thu đủ 100% qua {$payMethod} (Số tiền: {$remAmount}đ)", $actor);
