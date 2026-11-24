@@ -9,12 +9,12 @@ declare(strict_types=1);
 final class AdminLogRegistry
 {
     public const CATEGORIES = [
-        'TD' => ['code' => 'TD', 'label' => 'Tạo / Duyệt', 'color' => 'green', 'token' => '--g'],
-        'XH' => ['code' => 'XH', 'label' => 'Xóa / Hủy / Chi tiền', 'color' => 'red', 'token' => '--r'],
-        'CN' => ['code' => 'CN', 'label' => 'Cập nhật', 'color' => 'blue', 'token' => '--b'],
-        'CB' => ['code' => 'CB', 'label' => 'Cảnh báo', 'color' => 'yellow', 'token' => '--y'],
-        'TQ' => ['code' => 'TQ', 'label' => 'Tiền quầy', 'color' => 'purple', 'token' => '--p'],
-        'TT' => ['code' => 'TT', 'label' => 'Tự động', 'color' => 'neutral', 'token' => '--n'],
+        'TD' => ['code' => 'TD', 'short_code' => 'TD', 'label' => 'Tạo / Duyệt', 'color' => 'green', 'token' => '--g'],
+        'XH' => ['code' => 'XH', 'short_code' => 'XHC', 'label' => 'Xóa / Hủy / Chi tiền', 'color' => 'red', 'token' => '--r'],
+        'CN' => ['code' => 'CN', 'short_code' => 'CN', 'label' => 'Cập nhật', 'color' => 'blue', 'token' => '--b'],
+        'CB' => ['code' => 'CB', 'short_code' => 'CB', 'label' => 'Cảnh báo', 'color' => 'yellow', 'token' => '--y'],
+        'TQ' => ['code' => 'TQ', 'short_code' => 'TQ', 'label' => 'Tiền quầy', 'color' => 'purple', 'token' => '--p'],
+        'TT' => ['code' => 'TT', 'short_code' => 'TĐ', 'label' => 'Tự động', 'color' => 'neutral', 'token' => '--n'],
     ];
 
     public const DATA_GROUPS = [

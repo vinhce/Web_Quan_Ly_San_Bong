@@ -18,11 +18,16 @@ const catalog = sandbox.ADMIN_LOG_CATALOG;
 assert.ok(catalog && typeof catalog === 'object', 'ADMIN_LOG_CATALOG phải tồn tại');
 assert.ok(catalog.actions && typeof catalog.actions === 'object', 'ADMIN_LOG_CATALOG.actions phải tồn tại');
 
-// 1. Kiểm tra đúng 6 mã nhóm duy nhất và không dùng TĐ
+// 1. Kiểm tra đúng 6 mã nhóm chuẩn TD, XH, CN, CB, TQ, TT và shortCode hiển thị TD, XHC, CN, CB, TQ, TĐ
 const expectedCategories = ['TD', 'XH', 'CN', 'CB', 'TQ', 'TT'];
 const catKeys = Object.keys(catalog.categories || {});
 assert.deepStrictEqual(catKeys.sort(), expectedCategories.slice().sort(), 'Phải có đúng 6 mã nhóm TD, XH, CN, CB, TQ, TT');
-assert.ok(!jsCode.includes("'TĐ'") && !jsCode.includes('"TĐ"'), 'Tuyệt đối không dùng mã nhóm TĐ');
+const expectedShortCodes = { TD: 'TD', XH: 'XHC', CN: 'CN', CB: 'CB', TQ: 'TQ', TT: 'TĐ' };
+const actualShortCodes = expectedCategories.map((k) => catalog.categories[k]?.shortCode);
+assert.deepStrictEqual(actualShortCodes, ['TD', 'XHC', 'CN', 'CB', 'TQ', 'TĐ'], 'shortCode phải đủ TD, XHC, CN, CB, TQ, TĐ');
+for (const [key, sc] of Object.entries(expectedShortCodes)) {
+    assert.strictEqual(catalog.categories[key]?.shortCode, sc, `shortCode của ${key} phải là ${sc}`);
+}
 
 const allowedDataGroups = new Set([
     'Ca trực',

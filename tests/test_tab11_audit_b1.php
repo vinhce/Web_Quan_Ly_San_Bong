@@ -98,11 +98,24 @@ $createdLogIds = [];
 $createdShiftId = 0;
 
 try {
-    // 1. Registry & 6 unique codes (NO TĐ)
+    // 1. Registry & 6 unique codes (NO TĐ as DB key, short_code has XHC & TĐ)
     echo "1. Kiểm tra AdminLogRegistry & 6 mã nhóm duy nhất:\n";
     $catKeys = array_keys(AdminLogRegistry::CATEGORIES);
     t11_assert($catKeys === ['TD', 'XH', 'CN', 'CB', 'TQ', 'TT'], 'Đủ đúng 6 mã nhóm duy nhất TD, XH, CN, CB, TQ, TT (không dùng TĐ)');
-    t11_assert(!in_array('TĐ', $catKeys, true), 'Không tồn tại mã TĐ');
+    t11_assert(!in_array('TĐ', $catKeys, true), 'Không tồn tại mã TĐ trong khóa DB');
+    $shortCodes = array_column(AdminLogRegistry::CATEGORIES, 'short_code');
+    t11_assert($shortCodes === ['TD', 'XHC', 'CN', 'CB', 'TQ', 'TĐ'], 'Đủ đúng 6 short_code hiển thị TD, XHC, CN, CB, TQ, TĐ');
+    t11_assert(
+        AdminLogRepository::resolveCategoryToken('td') === 'TD'
+        && AdminLogRepository::resolveCategoryToken('tđ') === 'TT'
+        && AdminLogRepository::resolveCategoryToken('TĐ') === 'TT'
+        && AdminLogRepository::resolveCategoryToken('auto') === 'TT'
+        && AdminLogRepository::resolveCategoryToken('tdg') === 'TT'
+        && AdminLogRepository::resolveCategoryToken('xhc') === 'XH'
+        && AdminLogRepository::resolveCategoryToken('tạo') === null
+        && AdminLogRepository::resolveCategoryToken('') === null,
+        'resolveCategoryToken giữ chữ đ tách biệt với d và map đúng alias nhóm'
+    );
     t11_assert(count(AdminLogRegistry::DATA_GROUPS) === 8, 'Đủ 7 nhóm dữ liệu + Khác');
     $unknownMeta = AdminLogRegistry::resolveActionMeta('SOME_UNREGISTERED_ACTION', 'admin');
     t11_assert($unknownMeta['data_group'] === 'Khác' && $unknownMeta['registered'] === false, 'Mã chưa đăng ký rơi về nhóm dữ liệu Khác');
@@ -150,27 +163,58 @@ try {
     t11_assert($rH['is_anomaly'] && str_contains(implode(' ', $rH['reasons']), 'vô nghĩa'), 'Luật (h) lý do rác vô nghĩa');
     t11_assert($rI['is_anomaly'] && str_contains(implode(' ', $rI['reasons']), '00:00–05:00'), 'Luật (i) thao tác khung giờ 00:00–05:00');
 
-    // 5. Insert test records & verify search "TD" does NOT match "TT", phone masking 091***678, limit=25 default
-    echo "\n5. Kiểm tra lọc TD không dính TT, che SĐT 091***678, mặc định 25/trang:\n";
+    // 5. Insert test records & verify category token isolation (td vs tđ/TĐ/auto/tdg/xhc), phone masking, limit=25 default
+    echo "\n5. Kiểm tra lọc TD / TĐ / XHC / auto / tdg tách biệt, che SĐT 091***678, mặc định 25/trang:\n";
     $tdId = AdminLogService::record($pdo, (int)$adminRow['id'], 'WALKIN_BOOKING', 'booking', '[TEST]B1_TD_01', null, 'Đặt quầy [TEST]B1_TD_01 cho 0912345678');
     $ttId = AdminLogService::record($pdo, 0, 'AUTO_CANCEL_EXPIRED', 'booking', '[TEST]B1_TT_01', 'Giữ chỗ', 'Hủy tự động [TEST]B1_TT_01');
+    $xhId = AdminLogService::record($pdo, (int)$adminRow['id'], 'CANCEL_BOOKING', 'booking', '[TEST]B1_XH_01', 'Chưa cọc - Nhả sân', 'Hủy [TEST]B1_XH_01 doanh thu 0đ');
     $anomId = AdminLogService::record($pdo, (int)$adminRow['id'], 'ADJUST_POINTS', 'user', '0912345678', ['points' => 100], ['points' => 180, 'reason' => '[TEST] B1 tặng điểm giải đấu']);
-    array_push($createdLogIds, $tdId, $ttId, $anomId);
+    array_push($createdLogIds, $tdId, $ttId, $xhId, $anomId);
+
+    $hasLogId = static fn(array $logs, int $id): bool => count(array_filter($logs, static fn($l): bool => (int)($l['id'] ?? 0) === $id)) > 0;
 
     $resDefault = t11_call_api($adminSession, 'audit_logs', 'GET');
     t11_assert((int)($resDefault['json']['data']['pagination']['limit'] ?? 0) === 25, 'Mặc định 25 bản ghi/trang');
 
     $resTd = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => 'TD']);
     $tdLogs = $resTd['json']['data']['logs'] ?? [];
-    $hasTd = count(array_filter($tdLogs, static fn($l): bool => (int)$l['id'] === $tdId)) > 0;
-    $hasTt = count(array_filter($tdLogs, static fn($l): bool => (int)$l['id'] === $ttId)) > 0;
-    t11_assert($hasTd && !$hasTt, 'Tìm kiếm mã nhóm "TD" khớp TD và KHÔNG khớp TT');
+    t11_assert($hasLogId($tdLogs, $tdId) && !$hasLogId($tdLogs, $ttId), 'Tìm kiếm mã nhóm "TD" khớp TD và KHÔNG khớp TT');
+
+    $resTdLower = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => 'td']);
+    $tdLowerLogs = $resTdLower['json']['data']['logs'] ?? [];
+    t11_assert($hasLogId($tdLowerLogs, $tdId) && !$hasLogId($tdLowerLogs, $ttId), 'Tìm kiếm "td" khớp TD và KHÔNG khớp TT');
+
+    foreach (['tđ', 'TĐ', 'auto', 'tdg'] as $ttSearchKw) {
+        $resTtKw = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => $ttSearchKw]);
+        $ttKwLogs = $resTtKw['json']['data']['logs'] ?? [];
+        t11_assert($hasLogId($ttKwLogs, $ttId) && !$hasLogId($ttKwLogs, $tdId), "Tìm kiếm \"{$ttSearchKw}\" khớp TT và KHÔNG khớp TD");
+    }
+
+    $resXhc = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => 'xhc']);
+    $xhcLogs = $resXhc['json']['data']['logs'] ?? [];
+    t11_assert($hasLogId($xhcLogs, $xhId) && !$hasLogId($xhcLogs, $tdId) && !$hasLogId($xhcLogs, $ttId), 'Tìm kiếm "xhc" khớp XH');
 
     $resTdCn = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => 'TD+CN']);
     $tdCnLogs = $resTdCn['json']['data']['logs'] ?? [];
-    $hasAnomCn = count(array_filter($tdCnLogs, static fn($l): bool => (int)$l['id'] === $anomId)) > 0;
-    $hasTtInTdCn = count(array_filter($tdCnLogs, static fn($l): bool => (int)$l['id'] === $ttId)) > 0;
-    t11_assert($hasAnomCn && !$hasTtInTdCn, 'Tìm kiếm "TD+CN" khớp cả TD và CN, không dính TT');
+    t11_assert($hasLogId($tdCnLogs, $anomId) && !$hasLogId($tdCnLogs, $ttId), 'Tìm kiếm "TD+CN" khớp cả TD và CN, không dính TT');
+
+    $resTdCnLower = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => 'td+cn']);
+    $tdCnLowerLogs = $resTdCnLower['json']['data']['logs'] ?? [];
+    t11_assert(
+        $hasLogId($tdCnLowerLogs, $tdId) && $hasLogId($tdCnLowerLogs, $anomId) && !$hasLogId($tdCnLowerLogs, $ttId) && !$hasLogId($tdCnLowerLogs, $xhId),
+        'Tìm kiếm "td+cn" khớp đúng hợp TD và CN'
+    );
+
+    $resTtXhc = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => 'tđ+xhc']);
+    $ttXhcLogs = $resTtXhc['json']['data']['logs'] ?? [];
+    t11_assert(
+        $hasLogId($ttXhcLogs, $ttId) && $hasLogId($ttXhcLogs, $xhId) && !$hasLogId($ttXhcLogs, $tdId) && !$hasLogId($ttXhcLogs, $anomId),
+        'Tìm kiếm "tđ+xhc" khớp đúng hợp TT và XH'
+    );
+
+    $resDataGroupSearch = t11_call_api($adminSession, 'audit_logs', 'GET', ['search' => 'Hội viên & điểm']);
+    $dgLogs = $resDataGroupSearch['json']['data']['logs'] ?? [];
+    t11_assert($hasLogId($dgLogs, $anomId), 'Tìm kiếm nội dung khớp được a.data_group LIKE ?');
 
     $anomRow = array_values(array_filter($tdCnLogs, static fn($l): bool => (int)$l['id'] === $anomId))[0] ?? [];
     t11_assert(($anomRow['object_display'] ?? '') === '091***678', 'SĐT ngoài danh sách được che dạng 091***678');
@@ -178,9 +222,18 @@ try {
 
     $resCatTd = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:TD']);
     $catTdLogs = $resCatTd['json']['data']['logs'] ?? [];
-    $hasCatTd = count(array_filter($catTdLogs, static fn($l): bool => (int)$l['id'] === $tdId)) > 0;
-    $hasCatTt = count(array_filter($catTdLogs, static fn($l): bool => (int)$l['id'] === $ttId)) > 0;
-    t11_assert($hasCatTd && !$hasCatTt, 'Lọc dropdown action_type="__cat__:TD" khớp TD và KHÔNG khớp TT');
+    t11_assert($hasLogId($catTdLogs, $tdId) && !$hasLogId($catTdLogs, $ttId), 'Lọc dropdown action_type="__cat__:TD" khớp TD và KHÔNG khớp TT');
+
+    $resCatXhc = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:XHC']);
+    $catXhcLogs = $resCatXhc['json']['data']['logs'] ?? [];
+    t11_assert($hasLogId($catXhcLogs, $xhId) && !$hasLogId($catXhcLogs, $tdId) && !$hasLogId($catXhcLogs, $ttId), 'Lọc dropdown action_type="__cat__:XHC" lọc đúng XH');
+
+    $resCatTdVn = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:TĐ']);
+    $catTdVnLogs = $resCatTdVn['json']['data']['logs'] ?? [];
+    t11_assert($hasLogId($catTdVnLogs, $ttId) && !$hasLogId($catTdVnLogs, $tdId) && !$hasLogId($catTdVnLogs, $xhId), 'Lọc dropdown action_type="__cat__:TĐ" lọc đúng TT');
+
+    $resCatInvalid = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:INVALID']);
+    t11_assert((int)($resCatInvalid['json']['data']['pagination']['total'] ?? -1) === 0, 'Lọc dropdown action_type="__cat__:INVALID" trả về 0 bản ghi');
 
     $resDetailReveal = t11_call_api($adminSession, 'audit_log_detail', 'GET', ['id' => (string)$anomId, 'reveal' => '1']);
     t11_assert(($resDetailReveal['json']['data']['object_display'] ?? '') === '0912345678', 'Xem chi tiết reveal=1 trả SĐT đầy đủ và ghi SENSITIVE_DATA_ACCESS');

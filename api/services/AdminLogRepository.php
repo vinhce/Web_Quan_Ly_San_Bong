@@ -9,6 +9,47 @@ require_once __DIR__ . '/AdminLogRegistry.php';
  */
 final class AdminLogRepository
 {
+    private const VIETNAMESE_VOWEL_MAP = [
+        'à' => 'a', 'á' => 'a', 'ả' => 'a', 'ã' => 'a', 'ạ' => 'a',
+        'ă' => 'a', 'ằ' => 'a', 'ắ' => 'a', 'ẳ' => 'a', 'ẵ' => 'a', 'ặ' => 'a',
+        'â' => 'a', 'ầ' => 'a', 'ấ' => 'a', 'ẩ' => 'a', 'ẫ' => 'a', 'ậ' => 'a',
+        'è' => 'e', 'é' => 'e', 'ẻ' => 'e', 'ẽ' => 'e', 'ẹ' => 'e',
+        'ê' => 'e', 'ề' => 'e', 'ế' => 'e', 'ể' => 'e', 'ễ' => 'e', 'ệ' => 'e',
+        'ì' => 'i', 'í' => 'i', 'ỉ' => 'i', 'ĩ' => 'i', 'ị' => 'i',
+        'ò' => 'o', 'ó' => 'o', 'ỏ' => 'o', 'õ' => 'o', 'ọ' => 'o',
+        'ô' => 'o', 'ồ' => 'o', 'ố' => 'o', 'ổ' => 'o', 'ỗ' => 'o', 'ộ' => 'o',
+        'ơ' => 'o', 'ờ' => 'o', 'ớ' => 'o', 'ở' => 'o', 'ỡ' => 'o', 'ợ' => 'o',
+        'ù' => 'u', 'ú' => 'u', 'ủ' => 'u', 'ũ' => 'u', 'ụ' => 'u',
+        'ư' => 'u', 'ừ' => 'u', 'ứ' => 'u', 'ử' => 'u', 'ữ' => 'u', 'ự' => 'u',
+        'ỳ' => 'y', 'ý' => 'y', 'ỷ' => 'y', 'ỹ' => 'y', 'ỵ' => 'y',
+    ];
+
+    /**
+     * Resolve category display/alias tokens to canonical 2-char DB keys (TD/XH/CN/CB/TQ/TT).
+     * Keeps Vietnamese 'đ' (U+0111) strictly distinct from 'd' so 'td' != 'tđ'.
+     */
+    public static function resolveCategoryToken(string $rawToken): ?string
+    {
+        $token = mb_strtolower(trim($rawToken), 'UTF-8');
+        if ($token === '') {
+            return null;
+        }
+
+        // Strip decomposed Vietnamese vowel/tone marks if NFD, without touching 'đ' (U+0111)
+        $token = preg_replace('/[\x{0300}\x{0301}\x{0302}\x{0303}\x{0306}\x{0309}\x{031B}\x{0323}]+/u', '', $token) ?? $token;
+        $token = strtr($token, self::VIETNAMESE_VOWEL_MAP);
+
+        return match ($token) {
+            'td'                      => 'TD',
+            'xhc', 'xh'               => 'XH',
+            'cn'                      => 'CN',
+            'cb'                      => 'CB',
+            'tq'                      => 'TQ',
+            'tđ', 'tdg', 'auto', 'tt' => 'TT',
+            default                   => null,
+        };
+    }
+
     public static function parseDateParam(string $raw): string
     {
         $clean = trim($raw);
@@ -87,12 +128,9 @@ final class AdminLogRepository
                 array_push($params, ...array_map('strtoupper', $codes));
             }
         } elseif ($actionType !== '') {
-            if (preg_match('/^(?:__cat__|cat):([A-Z]{2,3})$/i', $actionType, $mCat) === 1) {
-                $catCode = strtoupper($mCat[1]);
-                if ($catCode === 'XHC') {
-                    $catCode = 'XH';
-                }
-                if (isset(AdminLogRegistry::CATEGORIES[$catCode])) {
+            if (preg_match('/^(?:__cat__|cat):(.+)$/iu', $actionType, $mCat) === 1) {
+                $catCode = self::resolveCategoryToken($mCat[1]);
+                if ($catCode !== null && isset(AdminLogRegistry::CATEGORIES[$catCode])) {
                     $where[] = 'a.category = ?';
                     $params[] = $catCode;
                 } else {
@@ -167,27 +205,50 @@ final class AdminLogRepository
             $where[] = "a.data_group = 'Ca trực'";
         }
 
-        // 8. Keyword search (including exact group code tokens like "TD", "CN", "TD+CN")
+        // 8. Keyword search (including group code tokens like "TD", "XHC", "TĐ", "auto", "td+cn")
         $search = trim((string)($filters['search'] ?? ''));
         if ($search !== '') {
-            if (preg_match('/^(TD|XHC?|CN|CB|TQ|TT)(?:[\s,+]+(TD|XHC?|CN|CB|TQ|TT))*$/i', $search) === 1) {
-                $catTokens = array_values(array_unique(array_map(
-                    static fn(string $t): string => $t === 'XHC' ? 'XH' : $t,
-                    preg_split('/[\s,+]+/', strtoupper($search), -1, PREG_SPLIT_NO_EMPTY) ?: []
-                )));
+            $tokens = preg_split('/[\s,+]+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $resolvedCats = [];
+            $allCategoryTokens = $tokens !== [];
+            foreach ($tokens as $tok) {
+                $mapped = self::resolveCategoryToken($tok);
+                if ($mapped === null) {
+                    $allCategoryTokens = false;
+                    break;
+                }
+                $resolvedCats[] = $mapped;
+            }
+
+            if ($allCategoryTokens) {
+                $catTokens = array_values(array_unique($resolvedCats));
                 $where[] = 'a.category IN (' . implode(', ', array_fill(0, count($catTokens), '?')) . ')';
                 array_push($params, ...$catTokens);
             } else {
                 $likeVal = '%' . $search . '%';
+                $likeCols = [
+                    'a.object_code',
+                    'a.target_id',
+                    'a.booking_id',
+                    'a.actor_name',
+                    'a.old_value',
+                    'a.new_value',
+                    'a.action',
+                    'a.data_group',
+                ];
+                $likeClauses = array_map(static fn(string $col): string => "{$col} LIKE ?", $likeCols);
+                $likeParams = array_fill(0, count($likeCols), $likeVal);
                 $digits = preg_replace('/[^0-9]/', '', $search) ?? '';
                 if (strlen($digits) >= 8) {
                     $altDigits = str_starts_with($digits, '84') ? ('0' . substr($digits, 2)) : $digits;
-                    $where[] = "(a.object_code LIKE ? OR a.target_id LIKE ? OR a.booking_id LIKE ? OR a.actor_name LIKE ? OR a.old_value LIKE ? OR a.new_value LIKE ? OR a.action LIKE ? OR a.object_code LIKE ? OR a.target_id LIKE ?)";
-                    array_push($params, $likeVal, $likeVal, $likeVal, $likeVal, $likeVal, $likeVal, $likeVal, '%' . $altDigits . '%', '%' . $altDigits . '%');
-                } else {
-                    $where[] = "(a.object_code LIKE ? OR a.target_id LIKE ? OR a.booking_id LIKE ? OR a.actor_name LIKE ? OR a.old_value LIKE ? OR a.new_value LIKE ? OR a.action LIKE ?)";
-                    array_push($params, $likeVal, $likeVal, $likeVal, $likeVal, $likeVal, $likeVal, $likeVal);
+                    $altLike = '%' . $altDigits . '%';
+                    $likeClauses[] = 'a.object_code LIKE ?';
+                    $likeClauses[] = 'a.target_id LIKE ?';
+                    $likeParams[] = $altLike;
+                    $likeParams[] = $altLike;
                 }
+                $where[] = '(' . implode(' OR ', $likeClauses) . ')';
+                array_push($params, ...$likeParams);
             }
         }
 
