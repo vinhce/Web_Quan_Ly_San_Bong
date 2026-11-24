@@ -907,6 +907,27 @@ function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $ne
                 $clientIp,
                 $nowVn,
             ]);
+            $insertedLogId = (int)$pdo->lastInsertId();
+            if ($insertedLogId > 0) {
+                require_once __DIR__ . '/services/AdminLogIndexer.php';
+                AdminLogIndexer::indexLog($pdo, $insertedLogId, [
+                    'id'              => $insertedLogId,
+                    'user_id'         => $userId,
+                    'actor_name'      => $actorName,
+                    'actor_role'      => $actorRole,
+                    'action'          => $cleanAction,
+                    'category'        => $metaData['category'],
+                    'data_group'      => $metaData['data_group'],
+                    'target_type'     => $targetType,
+                    'target_id'       => $targetId,
+                    'object_code'     => $metaData['object_code'],
+                    'booking_id'      => $cleanBookingId,
+                    'old_value'       => $oldValue,
+                    'new_value'       => $newValue,
+                    'anomaly_reasons' => $metaData['anomaly_reasons'],
+                    'ip'              => $clientIp,
+                ]);
+            }
             return true;
         }
 
@@ -923,6 +944,23 @@ function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $ne
             $newValue,
             $clientIp
         ]);
+        $insertedLogId = (int)$pdo->lastInsertId();
+        if ($insertedLogId > 0) {
+            require_once __DIR__ . '/services/AdminLogIndexer.php';
+            AdminLogIndexer::indexLog($pdo, $insertedLogId, [
+                'id'          => $insertedLogId,
+                'user_id'     => $userId,
+                'actor_name'  => $actorName,
+                'actor_role'  => $actorRole,
+                'action'      => $cleanAction,
+                'target_type' => $targetType,
+                'target_id'   => $targetId,
+                'booking_id'  => $cleanBookingId,
+                'old_value'   => $oldValue,
+                'new_value'   => $newValue,
+                'ip'          => $clientIp,
+            ]);
+        }
         return true;
     } catch (Exception $e) {
         error_log("[AUDIT LOG WARN] " . $e->getMessage());

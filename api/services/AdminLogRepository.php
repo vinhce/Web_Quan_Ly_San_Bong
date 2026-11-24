@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/AdminLogRegistry.php';
+require_once __DIR__ . '/AdminLogIndexer.php';
 
 /**
  * AdminLogRepository - Data access layer for audit_logs and audit_reviews.
@@ -76,7 +77,7 @@ final class AdminLogRepository
      *
      * @return array{0: string, 1: array}
      */
-    public static function buildWhereClause(array $filters): array
+    public static function buildWhereClause(array $filters, ?PDO $pdo = null): array
     {
         $where = [];
         $params = [];
@@ -224,6 +225,12 @@ final class AdminLogRepository
                 $catTokens = array_values(array_unique($resolvedCats));
                 $where[] = 'a.category IN (' . implode(', ', array_fill(0, count($catTokens), '?')) . ')';
                 array_push($params, ...$catTokens);
+            } elseif ($pdo !== null && AdminLogIndexer::isTableReady($pdo) && ($qTokens = AdminLogIndexer::tokenizeQuery($search)) !== []) {
+                foreach ($qTokens as $idx => $qt) {
+                    $alias = 'st' . (int)$idx;
+                    $where[] = "EXISTS (SELECT 1 FROM audit_search_tokens {$alias} WHERE {$alias}.log_id = a.id AND {$alias}.token LIKE ?)";
+                    $params[] = $qt . '%';
+                }
             } else {
                 $likeVal = '%' . $search . '%';
                 $likeCols = [
@@ -284,8 +291,9 @@ final class AdminLogRepository
     public static function fetchPaginated(PDO $pdo, array $filters, int $page, int $limit): array
     {
         AdminLogRegistry::backfillMissingMetadata($pdo);
+        AdminLogIndexer::backfillMissing($pdo, 500);
 
-        [$whereSql, $params] = self::buildWhereClause($filters);
+        [$whereSql, $params] = self::buildWhereClause($filters, $pdo);
         $offset = ($page - 1) * $limit;
 
         $countStmt = $pdo->prepare("
@@ -337,8 +345,9 @@ final class AdminLogRepository
     public static function fetchForExport(PDO $pdo, array $filters, int $maxRows = 5000): array
     {
         AdminLogRegistry::backfillMissingMetadata($pdo);
+        AdminLogIndexer::backfillMissing($pdo, 500);
 
-        [$whereSql, $params] = self::buildWhereClause($filters);
+        [$whereSql, $params] = self::buildWhereClause($filters, $pdo);
         $limit = max(1, min(10000, $maxRows));
         $stmt = $pdo->prepare("
             SELECT a.*,
@@ -362,6 +371,7 @@ final class AdminLogRepository
     public static function fetchSummaryKpi(PDO $pdo, array $filters): array
     {
         AdminLogRegistry::backfillMissingMetadata($pdo);
+        AdminLogIndexer::backfillMissing($pdo, 500);
 
         $tz = new DateTimeZone('Asia/Ho_Chi_Minh');
         $today = (new DateTime('now', $tz))->format('Y-m-d');
@@ -377,7 +387,7 @@ final class AdminLogRepository
         // Summary KPI ignores quick_filter so all 4 card counts remain meaningful in the period
         $baseFilters = $filters;
         unset($baseFilters['quick_filter']);
-        [$whereSql, $params] = self::buildWhereClause($baseFilters);
+        [$whereSql, $params] = self::buildWhereClause($baseFilters, $pdo);
 
         $kpiStmt = $pdo->prepare("
             SELECT

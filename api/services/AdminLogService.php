@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../security_helper.php';
 require_once __DIR__ . '/AdminLogRegistry.php';
 require_once __DIR__ . '/AdminLogRepository.php';
+require_once __DIR__ . '/AdminLogIndexer.php';
 
 /**
  * AdminLogService - Quản lý và định dạng nhật ký thao tác quản trị (Audit Logs)
@@ -164,7 +165,25 @@ class AdminLogService
                 ':ip'              => $resolvedIp,
                 ':created_at'      => $createdAt
             ]);
-            return (int)$pdo->lastInsertId();
+            $logId = (int)$pdo->lastInsertId();
+            AdminLogIndexer::indexLog($pdo, $logId, [
+                'id'              => $logId,
+                'user_id'         => $adminId > 0 ? $adminId : null,
+                'actor_name'      => $actorName,
+                'actor_role'      => $actorRole,
+                'action'          => $cleanAction,
+                'category'        => $metaData['category'],
+                'data_group'      => $metaData['data_group'],
+                'target_type'     => $resolvedTargetType,
+                'target_id'       => $resolvedTargetId,
+                'object_code'     => $metaData['object_code'],
+                'booking_id'      => $bookingId,
+                'old_value'       => $oldJson,
+                'new_value'       => $newJson,
+                'anomaly_reasons' => $metaData['anomaly_reasons'],
+                'ip'              => $resolvedIp,
+            ]);
+            return $logId;
         }
 
         // 6. Chèn vào DB trong CÙNG transaction với thao tác nghiệp vụ
@@ -190,7 +209,21 @@ class AdminLogService
             ':created_at'  => $createdAt
         ]);
 
-        return (int)$pdo->lastInsertId();
+        $logId = (int)$pdo->lastInsertId();
+        AdminLogIndexer::indexLog($pdo, $logId, [
+            'id'          => $logId,
+            'user_id'     => $adminId > 0 ? $adminId : null,
+            'actor_name'  => $actorName,
+            'actor_role'  => $actorRole,
+            'action'      => $cleanAction,
+            'target_type' => $resolvedTargetType,
+            'target_id'   => $resolvedTargetId,
+            'booking_id'  => $bookingId,
+            'old_value'   => $oldJson,
+            'new_value'   => $newJson,
+            'ip'          => $resolvedIp,
+        ]);
+        return $logId;
     }
 
     /**
