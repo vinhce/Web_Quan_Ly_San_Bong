@@ -258,23 +258,25 @@ async function loadBankTransactions(filter) {
 
   const tbody = document.getElementById('admin-bank-tx-tbody');
   if (tbody) {
-    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-[#64748B]">Đang tải dữ liệu giao dịch từ ngân hàng...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="py-6 px-4 text-center text-[#64748B]"><div class="w-full flex items-center justify-center text-center">Đang tải dữ liệu giao dịch từ ngân hàng...</div></td></tr>';
   }
 
   const r = await adminFetchJson(`../api/admin.php?action=bank_transactions&filter=${encodeURIComponent(activeFilter)}`);
   if (!r.ok || !r.data) {
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-red-500 font-semibold">${escapeSearchHTML(r.message || 'Không thể tải danh sách giao dịch ngân hàng.')}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="py-6 px-4 text-center text-red-500 font-semibold"><div class="w-full flex items-center justify-center text-center">${escapeSearchHTML(r.message || 'Không thể tải danh sách giao dịch ngân hàng.')}</div></td></tr>`;
     }
     return;
   }
 
   const list = Array.isArray(r.data.transactions) ? r.data.transactions : [];
   window.cachedBankTransactions = list;
-  window.cachedCandidateBookings = Array.isArray(r.data.candidate_bookings) ? r.data.candidate_bookings : [];
+  window.cachedCandidateBookings = Array.isArray(r.data.candidate_bookings)
+    ? r.data.candidate_bookings
+    : (Array.isArray(r.data.candidateBookings) ? r.data.candidateBookings : []);
   populateReconcileBookingDatalist(window.cachedCandidateBookings);
 
-  renderBankTransactions(list, Number(r.data.pending_count || 0));
+  renderBankTransactions(list, Number(r.data.pending_count ?? r.data.pendingCount ?? 0));
 }
 window.loadBankTransactions = loadBankTransactions;
 
@@ -294,11 +296,11 @@ function renderBankTransactions(list, pendingCount = 0) {
   if (!Array.isArray(list) || list.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="5" class="py-10 text-center text-[#64748B]">
-          <div class="flex flex-col items-center justify-center gap-2">
+        <td colspan="5" class="py-10 px-4 text-center text-[#64748B]">
+          <div class="w-full flex flex-col items-center justify-center text-center gap-2 mx-auto">
             <span class="text-2xl">✅</span>
-            <span class="font-bold text-[#0F172A] text-xs">Không có giao dịch ngân hàng nào cần xử lý ở bộ lọc này</span>
-            <span class="text-[11px] text-[#94A3B8]">Webhook SePay tự động ghi nhận và đối soát mọi chuyển khoản phát sinh.</span>
+            <span class="font-bold text-[#0F172A] text-xs text-center">Không có giao dịch ngân hàng nào cần xử lý ở bộ lọc này</span>
+            <span class="text-[11px] text-[#94A3B8] text-center">Webhook SePay tự động ghi nhận và đối soát mọi chuyển khoản phát sinh.</span>
           </div>
         </td>
       </tr>
@@ -309,7 +311,7 @@ function renderBankTransactions(list, pendingCount = 0) {
   tbody.innerHTML = list.map(tx => {
     const txId = escapeSearchHTML(String(tx.id || ''));
     const bankRef = escapeSearchHTML(tx.reference_code || tx.reference_number || tx.code || '---');
-    const timeStr = escapeSearchHTML(tx.transaction_time || tx.created_at || '---');
+    const timeStr = escapeSearchHTML(tx.transaction_time || tx.transaction_date || tx.created_at || '---');
     const bankName = escapeSearchHTML(tx.bank_name || tx.gateway || 'VietQR');
     const content = escapeSearchHTML(tx.content || tx.transaction_content || tx.description || '---');
     const rawMatchedCode = String(tx.matched_booking_code || tx.detected_booking_code || tx.booking_code || tx.detected_code || '').trim();
@@ -318,8 +320,9 @@ function renderBankTransactions(list, pendingCount = 0) {
 
     const amountIn = Number(tx.transfer_amount ?? tx.amount_in ?? tx.amountIn ?? tx.transferAmount ?? tx.amount ?? 0);
     const expectedAmt = Number(tx.expected_amount ?? tx.expectedAmount ?? 0);
-    const diffAmt = (tx.diff_amount !== undefined && tx.diff_amount !== null && tx.diff_amount !== '')
-      ? Number(tx.diff_amount)
+    const rawDiff = tx.diff_amount ?? tx.discrepancy_amount;
+    const diffAmt = (rawDiff !== undefined && rawDiff !== null && rawDiff !== '')
+      ? Number(rawDiff)
       : (expectedAmt > 0 ? (amountIn - expectedAmt) : 0);
 
     const rawStatus = String(tx.status || '').toLowerCase();
@@ -364,7 +367,7 @@ function renderBankTransactions(list, pendingCount = 0) {
     let actions = '';
     if (!isResolved) {
       actions = `
-        <div class="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+        <div class="inline-flex items-center justify-center text-center gap-1.5 whitespace-nowrap">
           <button type="button" onclick="openReconcileAssignModal('${txId}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#16A34A] hover:bg-[#15803D] text-white shadow-2xs cursor-pointer">Khớp đơn</button>
           <button type="button" onclick="resolveBankTransaction('${txId}', 'resolved')" class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-[#0F172A] border border-slate-300 cursor-pointer" title="Đánh dấu đã xử lý ngoại lệ ngoài hệ thống">Đã xử lý</button>
           <button type="button" onclick="resolveBankTransaction('${txId}', 'ignored')" class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-500 cursor-pointer" title="Giao dịch chuyển nhầm / không thuộc sân bóng">Bỏ qua</button>
@@ -372,7 +375,7 @@ function renderBankTransactions(list, pendingCount = 0) {
       `;
     } else {
       actions = `
-        <div class="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+        <div class="inline-flex items-center justify-center text-center gap-1.5 whitespace-nowrap">
           <span class="text-[11px] text-slate-400">Hoàn tất</span>
           <button type="button" onclick="openReconcileAssignModal('${txId}')" class="text-[11px] text-indigo-600 hover:underline cursor-pointer">Sửa gán</button>
         </div>
@@ -381,26 +384,36 @@ function renderBankTransactions(list, pendingCount = 0) {
 
     return `
       <tr class="hover:bg-slate-50 transition-colors">
-        <td class="py-3 px-4 whitespace-nowrap">
-          <div class="font-semibold text-[#0F172A]">${timeStr}</div>
-          <div class="text-[11px] text-slate-500 font-mono">Ref: ${bankRef}</div>
-          <div class="text-[10px] text-slate-400">${bankName}</div>
+        <td class="py-3 px-4 text-center whitespace-nowrap">
+          <div class="flex flex-col items-center justify-center text-center">
+            <div class="font-semibold text-[#0F172A]">${timeStr}</div>
+            <div class="text-[11px] text-slate-500 font-mono">Ref: ${bankRef}</div>
+            <div class="text-[10px] text-slate-400">${bankName}</div>
+          </div>
         </td>
-        <td class="py-3 px-4 max-w-xs">
-          <div class="font-mono text-xs text-[#0F172A] break-words">${content}</div>
-          ${detectedCode ? `<div class="mt-1"><span class="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-800 text-[10px] font-bold font-mono">Mã nhận diện: ${detectedCode}</span></div>` : ''}
-          ${reasonNote ? `<div class="mt-1 text-[11px] text-slate-500 italic">Ghi chú: ${escapeSearchHTML(reasonNote)}</div>` : ''}
-        </td>
-        <td class="py-3 px-4 text-right whitespace-nowrap">
-          <div class="font-extrabold text-[#16A34A] text-xs">+${window.SanBongApp.formatVND(amountIn)}</div>
-          ${expectedAmt > 0 ? `<div class="text-[11px] text-slate-500">Kỳ vọng: ${window.SanBongApp.formatVND(expectedAmt)}</div>` : ''}
-          ${diffText}
+        <td class="py-3 px-4 text-center">
+          <div class="max-w-xs mx-auto flex flex-col items-center justify-center text-center">
+            <div class="font-mono text-xs text-[#0F172A] break-words">${content}</div>
+            ${detectedCode ? `<div class="mt-1 flex justify-center"><span class="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-800 text-[10px] font-bold font-mono">Mã nhận diện: ${detectedCode}</span></div>` : ''}
+            ${reasonNote ? `<div class="mt-1 text-[11px] text-slate-500 italic">Ghi chú: ${escapeSearchHTML(reasonNote)}</div>` : ''}
+          </div>
         </td>
         <td class="py-3 px-4 text-center whitespace-nowrap">
-          ${statusBadge}
+          <div class="flex flex-col items-center justify-center text-center">
+            <div class="font-extrabold text-[#16A34A] text-xs">+${window.SanBongApp.formatVND(amountIn)}</div>
+            ${expectedAmt > 0 ? `<div class="text-[11px] text-slate-500">Cần thu: ${window.SanBongApp.formatVND(expectedAmt)}</div>` : ''}
+            ${diffText}
+          </div>
         </td>
-        <td class="py-3 px-4 text-right">
-          ${actions}
+        <td class="py-3 px-4 text-center whitespace-nowrap">
+          <div class="flex items-center justify-center text-center">
+            ${statusBadge}
+          </div>
+        </td>
+        <td class="py-3 px-4 text-center">
+          <div class="flex items-center justify-center text-center">
+            ${actions}
+          </div>
         </td>
       </tr>
     `;

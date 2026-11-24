@@ -55,19 +55,23 @@
           </div>
 
           <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
-            <table class="w-full text-left text-xs min-w-[780px]">
+            <table class="w-full text-center text-xs min-w-[780px]">
               <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
                 <tr>
-                  <th class="py-3 px-4">Thời gian / Mã GD</th>
-                  <th class="py-3 px-4">Nội dung chuyển khoản &amp; Mã nhận diện</th>
-                  <th class="py-3 px-4 text-right">Số tiền nhận vs Kỳ vọng</th>
+                  <th class="py-3 px-4 text-center">Thời gian / Mã GD</th>
+                  <th class="py-3 px-4 text-center">Nội dung chuyển khoản &amp; Mã nhận diện</th>
+                  <th class="py-3 px-4 text-center">Số tiền nhận / Cần thu</th>
                   <th class="py-3 px-4 text-center">Trạng thái đối soát</th>
-                  <th class="py-3 px-4 text-right">Thao tác</th>
+                  <th class="py-3 px-4 text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody id="admin-bank-tx-tbody" class="divide-y divide-[#E2E8F0]">
                 <tr>
-                  <td colspan="5" class="py-8 text-center text-[#64748B]">Đang tải danh sách giao dịch ngân hàng...</td>
+                  <td colspan="5" class="py-8 px-4 text-center text-[#64748B]">
+                    <div class="w-full flex flex-col items-center justify-center text-center">
+                      Đang tải danh sách giao dịch ngân hàng...
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
