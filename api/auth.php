@@ -77,6 +77,8 @@ if ($method === 'GET' && $action === 'me') {
                 }
             } catch (Throwable $e) {}
         }
+        $isOperator = is_portal_operator($_SESSION['user'] ?? null);
+        $customer = $isOperator ? null : currentCustomer($pdo);
         if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
             $_SESSION['user']['points'] = $points;
             $_SESSION['user']['customer_tier'] = $customerTier;
@@ -87,8 +89,11 @@ if ($method === 'GET' && $action === 'me') {
             $_SESSION['user']['name'] = $_SESSION['user']['full_name'] ?? $_SESSION['user']['username'] ?? 'Hội viên';
             unset($_SESSION['user']['totp_secret']);
         }
-        $isOperator = is_portal_operator($_SESSION['user'] ?? null);
-        $customer = $isOperator ? null : currentCustomer($pdo);
+        if (is_array($customer)) {
+            $customer['points'] = $points;
+            $customer['loyalty_points'] = $points;
+            $customer['customer_tier'] = $customerTier;
+        }
         json_response([
             'success'            => true,
             'authenticated'      => true,
@@ -172,6 +177,7 @@ if ($action === 'login') {
                 clear_rate_limit($pdo, 'login_acct', $acctRateKey);
             }
             session_regenerate_id(true);
+            unset($_SESSION['owned_booking_codes'], $_SESSION['user_name'], $_SESSION['user_phone'], $_SESSION['pending_2fa_user_id'], $_SESSION['pending_2fa_expires'], $_SESSION['temp_totp_secret']);
             $_SESSION['created_at'] = time();
             $_SESSION['last_activity'] = time();
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -255,12 +261,24 @@ if ($action === 'login') {
         $resetStmt->execute([$user['id']]);
 
         session_regenerate_id(true);
+        unset($_SESSION['owned_booking_codes'], $_SESSION['user_name'], $_SESSION['user_phone'], $_SESSION['pending_2fa_user_id'], $_SESSION['pending_2fa_expires'], $_SESSION['temp_totp_secret']);
         $_SESSION['created_at'] = time();
         $_SESSION['last_activity'] = time();
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
         $assignedRole = $user['role'] ?? 'user';
         $mustChange = !empty($user['must_change_password']);
+        $userPoints = (int)($user['points'] ?? 0);
+        $loginTier = 'standard';
+        $loginPhone = normalize_phone($user['phone'] ?? '');
+        if ($loginPhone !== '') {
+            try {
+                $tStmt = $pdo->prepare("SELECT customer_tier FROM customer_crm WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ? LIMIT 1");
+                $tStmt->execute([$loginPhone]);
+                $tCol = $tStmt->fetchColumn();
+                if ($tCol) $loginTier = (string)$tCol;
+            } catch (Throwable $e) {}
+        }
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user'] = [
             'id'        => $user['id'],
@@ -269,6 +287,8 @@ if ($action === 'login') {
             'phone'     => $user['phone'],
             'full_name' => $user['full_name'],
             'role'      => $assignedRole,
+            'points'    => $userPoints,
+            'customer_tier' => $loginTier,
             'must_change_password' => $mustChange,
             'totp_enabled' => false
         ];
@@ -359,6 +379,7 @@ if ($action === 'verify_2fa') {
     unset($_SESSION['pending_2fa_user_id'], $_SESSION['pending_2fa_expires']);
 
     session_regenerate_id(true);
+    unset($_SESSION['owned_booking_codes'], $_SESSION['user_name'], $_SESSION['user_phone'], $_SESSION['temp_totp_secret']);
     $_SESSION['created_at'] = time();
     $_SESSION['last_activity'] = time();
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -712,27 +733,16 @@ if ($action === 'register') {
     $newUserId = (int)$pdo->lastInsertId();
 
     session_regenerate_id(true);
-    $_SESSION['created_at'] = time();
-    $_SESSION['last_activity'] = time();
+    unset($_SESSION['user_id'], $_SESSION['user'], $_SESSION['owned_booking_codes'], $_SESSION['user_name'], $_SESSION['user_phone'], $_SESSION['pending_2fa_user_id'], $_SESSION['pending_2fa_expires'], $_SESSION['temp_totp_secret']);
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    $_SESSION['user_id'] = $newUserId;
-    $_SESSION['user'] = [
-        'id'            => $newUserId,
-        'username'      => $username,
-        'email'         => $email,
-        'phone'         => $phone,
-        'full_name'     => $fullName,
-        'role'          => 'user',
-        'points'        => 0,
-        'customer_tier' => 'standard',
-        'totp_enabled'  => false
-    ];
 
     json_response([
-        'success'  => true,
-        'message'  => 'Đăng ký tài khoản thành công!',
-        'user'     => $_SESSION['user'],
-        'redirect' => 'history'
+        'success'    => true,
+        'message'    => 'Đăng ký tài khoản thành công! Vui lòng đăng nhập để tiếp tục.',
+        'user_id'    => $newUserId,
+        'phone'      => $phone,
+        'redirect'   => 'login',
+        'csrf_token' => $_SESSION['csrf_token']
     ], 201);
 }
 
