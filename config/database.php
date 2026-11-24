@@ -203,10 +203,58 @@ function ensureAuditReviewsAndShiftsUpgrade(PDO $pdo, bool $force = false): void
     }
 }
 
+function ensureAuditInvertedIndexSchema(PDO $pdo, bool $force = false): void {
+    $v23Marker = dirname(__DIR__) . '/logs/.schema_v23_audit_inverted_index_ready';
+    if (!$force && is_file($v23Marker)) {
+        return;
+    }
+    if ($pdo->inTransaction()) {
+        return;
+    }
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `audit_search_tokens` (
+                `token` VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+                `log_id` INT NOT NULL,
+                PRIMARY KEY (`token`, `log_id`),
+                INDEX `idx_ast_log_id` (`log_id`),
+                CONSTRAINT `fk_ast_log` FOREIGN KEY (`log_id`) REFERENCES `audit_logs`(`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $indexerFile = dirname(__DIR__) . '/api/services/AdminLogIndexer.php';
+        if (is_file($indexerFile)) {
+            require_once $indexerFile;
+            if (class_exists('AdminLogIndexer')) {
+                $backfilled = AdminLogIndexer::backfillMissing($pdo, 2000);
+                if ($backfilled > 0) {
+                    try {
+                        $stmtAnalyze = $pdo->query('ANALYZE TABLE `audit_search_tokens`');
+                        if ($stmtAnalyze) {
+                            $stmtAnalyze->fetchAll();
+                        }
+                    } catch (Throwable $ignored) {
+                        // Non-fatal stats refresh
+                    }
+                }
+            }
+        }
+
+        $logDir = dirname($v23Marker);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        @file_put_contents($v23Marker, date('c'));
+    } catch (PDOException $e) {
+        error_log("[SCHEMA V23 INVERTED INDEX ERROR] " . $e->getMessage());
+    }
+}
+
 function ensureSchemaInitialized(PDO $pdo) {
     ensurePasswordResetsTable($pdo);
     ensureBookingIdempotencySchema($pdo);
     ensureAuditReviewsAndShiftsUpgrade($pdo);
+    ensureAuditInvertedIndexSchema($pdo);
     $markerFile = dirname(__DIR__) . '/logs/.schema_v18_full_sync_ready';
     if (is_file($markerFile)) {
         return;
