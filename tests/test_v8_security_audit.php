@@ -109,9 +109,28 @@ RUNNER;
     return $decoded;
 }
 
-$adminSession   = ['user_id' => 1, 'username' => 'admin', 'role' => 'admin'];
-$managerSession = ['user_id' => 8, 'username' => 'quanly', 'role' => 'manager'];
-$staffSession   = ['user_id' => 4, 'username' => 'nhanvien', 'role' => 'staff'];
+$adminRow = $pdo->query("SELECT id, username FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active' ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$staffRow = $pdo->query("SELECT id, username FROM users WHERE role = 'staff' AND COALESCE(status, 'active') = 'active' ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$managerRow = $pdo->query("SELECT id, username FROM users WHERE role = 'manager' AND COALESCE(status, 'active') = 'active' ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+
+$createdTempManagerId = 0;
+if (!$managerRow) {
+    $insMgr = $pdo->prepare("INSERT INTO users (username, email, phone, full_name, password_hash, role, status) VALUES (?, ?, ?, ?, ?, 'manager', 'active')");
+    $insMgr->execute(['test_v8_mgr_tmp', 'test_v8_mgr_tmp@sanbongpro.vn', '0399008801', 'TEST V8 Manager', password_hash('TestV8Pass!123', PASSWORD_DEFAULT)]);
+    $createdTempManagerId = (int)$pdo->lastInsertId();
+    $managerRow = ['id' => $createdTempManagerId, 'username' => 'test_v8_mgr_tmp'];
+}
+
+$settingsSnapshot = [];
+foreach ($pdo->query("SELECT setting_key, setting_value FROM settings")->fetchAll(PDO::FETCH_ASSOC) as $sRow) {
+    $settingsSnapshot[$sRow['setting_key']] = $sRow['setting_value'];
+}
+
+$adminSession   = ['user_id' => (int)($adminRow['id'] ?? 1), 'username' => (string)($adminRow['username'] ?? 'admin'), 'role' => 'admin'];
+$managerSession = ['user_id' => (int)$managerRow['id'], 'username' => (string)$managerRow['username'], 'role' => 'manager'];
+$staffSession   = ['user_id' => (int)($staffRow['id'] ?? 4), 'username' => (string)($staffRow['username'] ?? 'nhanvien'), 'role' => 'staff'];
+
+try {
 
 // --- 1. CSRF TESTS ---
 // 1.1 POST without CSRF token header
@@ -213,6 +232,15 @@ recordResult(
     !$hasScriptTag && strpos($escaped, '&lt;script&gt;') !== false,
     "Result: {$escaped}"
 );
+} finally {
+    if ($createdTempManagerId > 0) {
+        $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$createdTempManagerId]);
+    }
+    $restoreStmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = ?");
+    foreach ($settingsSnapshot as $k => $v) {
+        $restoreStmt->execute([$v, $k]);
+    }
+}
 
 // Summary
 $allPass = true;

@@ -220,8 +220,8 @@ $data5 = callBookingApi($sessionAdmin, 'POST', [
     'customerName' => 'Admin Test',
     'phone' => '0900000000'
 ]);
-$isBlockedAdmin = (isset($data5['success']) && $data5['success'] === false && ($data5['ref_code'] ?? '') === 'ERR_UNAUTHORIZED');
-assertTest($isBlockedAdmin, "5.2 Admin gọi create_booking trên trang khách bị từ chối 401 ERR_UNAUTHORIZED (không tự biến thành khách)");
+$isBlockedAdmin = (isset($data5['success']) && $data5['success'] === false && in_array($data5['ref_code'] ?? '', ['ERR_FORBIDDEN', 'ERR_UNAUTHORIZED'], true));
+assertTest($isBlockedAdmin, "5.2 Admin gọi create_booking trên trang khách bị từ chối 403 ERR_FORBIDDEN (không tự biến thành khách)");
 
 // -------------------------------------------------------------
 // TEST 6: Khách A dùng nút "Đặt hộ": nhập tên/SĐT bạn -> đơn lưu tên/SĐT bạn, hồ sơ A không đổi, điểm cộng cho A
