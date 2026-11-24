@@ -362,6 +362,14 @@ function renderVoucherQuickList() {
 }
 window.renderVoucherQuickList = renderVoucherQuickList;
 
+function stripBookingSystemNoteTags(str) {
+  return String(str || '')
+    .replace(/\s*\|?\s*\[(?:Gói cố định|Tài trợ mỗi trận|Gói \d+ tháng)[^\]]*\]/gi, '')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
+}
+window.stripBookingSystemNoteTags = stripBookingSystemNoteTags;
+
 function initBookingPage() {
   const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
   if (!db) return;
@@ -370,6 +378,7 @@ function initBookingPage() {
   const paramPitch = urlParams.get('pitchId') || urlParams.get('pitch');
   const paramType = urlParams.get('type');
   const paramMode = urlParams.get('mode');
+  const paramWeeks = parseInt(urlParams.get('weeks') || '', 10);
   const paramDate = urlParams.get('date');
   const paramSlotId = urlParams.get('slotId');
   const paramVoucher = urlParams.get('voucher');
@@ -399,24 +408,29 @@ function initBookingPage() {
           preselectedSlotId = draft.slotId;
           selectedSlotId = draft.slotId;
         }
-        if (draft.bookingMode) bookingMode = draft.bookingMode;
-        if (draft.weeksCount) monthlyWeeks = draft.weeksCount;
+        if (draft.bookingMode && !paramPitch && !paramType && paramMode !== 'single') {
+          bookingMode = draft.bookingMode;
+        }
+        if (draft.weeksCount && [4, 8, 12].includes(Number(draft.weeksCount))) {
+          monthlyWeeks = Number(draft.weeksCount);
+        }
         if (Array.isArray(draft.services)) appliedServices = draft.services;
-        if (draft.voucherCode) appliedVoucherCode = draft.voucherCode;
+        if (draft.voucherCode && !paramVoucher) appliedVoucherCode = draft.voucherCode;
 
         if (draft.policy_agree) {
           const agreeBox = document.getElementById('policy-agree');
           if (agreeBox) agreeBox.checked = true;
         }
 
-        if (draft.note) {
+        const restoredUserNote = stripBookingSystemNoteTags(draft.customerNote ?? draft.note ?? '');
+        if (restoredUserNote) {
           const noteInput = document.getElementById('cust-note');
           const noteWrapper = document.getElementById('cust-note-wrapper');
           const textToggleNote = document.getElementById('text-toggle-note');
           const noteCounter = document.getElementById('cust-note-counter');
           if (noteInput) {
-            noteInput.value = draft.note;
-            if (noteCounter) noteCounter.textContent = String(draft.note.length);
+            noteInput.value = restoredUserNote;
+            if (noteCounter) noteCounter.textContent = String(restoredUserNote.length);
             if (noteWrapper) noteWrapper.classList.remove('hidden');
             if (textToggleNote) textToggleNote.textContent = '- Thu gọn ghi chú';
           }
@@ -426,9 +440,12 @@ function initBookingPage() {
   }
 
   if (paramMode === 'monthly') {
-    setTimeout(() => {
-      setBookingMode('monthly');
-    }, 50);
+    bookingMode = 'monthly';
+  } else if (paramMode === 'single') {
+    bookingMode = 'single';
+  }
+  if ([4, 8, 12].includes(paramWeeks)) {
+    monthlyWeeks = paramWeeks;
   }
 
   if (paramPitch && db.getPitchById(paramPitch)) {
@@ -467,10 +484,11 @@ function initBookingPage() {
   initPitchSelect();
   initDateStrip();
   renderSlots();
-  renderServices();
-  renderVoucherQuickList();
-  updateMonthlyPackage();
-  updateBillSummary();
+  const weeksSel = document.getElementById('monthly-weeks-select');
+  if (weeksSel && [4, 8, 12].includes(Number(monthlyWeeks))) {
+    weeksSel.value = String(monthlyWeeks);
+  }
+  setBookingMode(bookingMode === 'monthly' ? 'monthly' : 'single');
 
   if (appliedVoucherCode) {
     const voucherInput = document.getElementById('voucher-input');

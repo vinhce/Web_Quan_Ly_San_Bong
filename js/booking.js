@@ -842,7 +842,15 @@ function saveCurrentBookingDraft() {
     name = user.full_name || user.name || '';
     phone = user.phone || document.getElementById('user-missing-phone')?.value.trim() || '';
   }
-  let note = document.getElementById('cust-note')?.value.trim() || '';
+  const cleanUserNote = (typeof window.stripBookingSystemNoteTags === 'function')
+    ? window.stripBookingSystemNoteTags(document.getElementById('cust-note')?.value || '')
+    : String(document.getElementById('cust-note')?.value || '').replace(/\s*\|?\s*\[(?:Gói cố định|Tài trợ mỗi trận|Gói \d+ tháng)[^\]]*\]/gi, '').replace(/^\s*\|\s*|\s*\|\s*$/g, '').trim();
+  let note = cleanUserNote;
+  if (weeks > 1 && Array.isArray(monthlyDates) && monthlyDates.length > 0) {
+    const dateLabels = monthlyDates.map(d => d.label).join(', ');
+    const giftNote = promo ? ` [Tài trợ mỗi trận: ${promo.giftSummary}]` : '';
+    note = (cleanUserNote ? cleanUserNote + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]${giftNote}`;
+  }
 
   const bookingDraft = {
     pitchId: selectedPitchId,
@@ -857,6 +865,7 @@ function saveCurrentBookingDraft() {
     redeemedBottles: Number(window.bookingRedeemedBottles || 0),
     customerName: name,
     phone: phone,
+    customerNote: cleanUserNote,
     note: note,
     policy_agree: Boolean(document.getElementById('policy-agree')?.checked)
   };
@@ -982,8 +991,11 @@ function proceedToCheckout() {
     }
   }
 
-  let note = document.getElementById('cust-note')?.value.trim() || '';
-  if (note.length > 300) {
+  const stripSysTags = typeof window.stripBookingSystemNoteTags === 'function'
+    ? window.stripBookingSystemNoteTags
+    : (s) => String(s || '').replace(/\s*\|?\s*\[(?:Gói cố định|Tài trợ mỗi trận|Gói \d+ tháng)[^\]]*\]/gi, '').replace(/^\s*\|\s*|\s*\|\s*$/g, '').trim();
+  const cleanUserNote = stripSysTags(document.getElementById('cust-note')?.value || '');
+  if (cleanUserNote.length > 300) {
     missingFields.push('Ghi chú (tối đa 300 ký tự)');
     const errEl = document.getElementById('cust-note-error');
     if (errEl) { errEl.textContent = 'Ghi chú tối đa 300 ký tự.'; errEl.classList.remove('hidden'); }
@@ -1006,10 +1018,11 @@ function proceedToCheckout() {
 
   const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
   const promo = db ? db.getPackagePromotion(weeks) : null;
+  let note = cleanUserNote;
   if (weeks > 1) {
     const dateLabels = monthlyDates.map(d => d.label).join(', ');
     const giftNote = promo ? ` [Tài trợ mỗi trận: ${promo.giftSummary}]` : '';
-    note = (note ? note + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]${giftNote}`;
+    note = (cleanUserNote ? cleanUserNote + ' | ' : '') + `[Gói cố định ${weeks} tuần: ${dateLabels}]${giftNote}`;
   }
 
   const newIdemKey = (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -1037,6 +1050,7 @@ function proceedToCheckout() {
     serverQuote: window._lastServerQuote || null,
     customerName: name,
     phone: phone,
+    customerNote: cleanUserNote,
     note: note,
     privacy_consent: true,
     turnstile_token: bookingTurnstileToken || ''
