@@ -42,6 +42,122 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
     }
 }
 
+if (!function_exists('crm_normalize_tier')) {
+    function crm_normalize_tier(string $tier): string {
+        $t = strtolower(trim($tier));
+        return $t === 'vip' ? 'vip' : 'standard';
+    }
+}
+
+if (!function_exists('crm_compute_auto_tier')) {
+    function crm_compute_auto_tier(PDO $pdo, string $cleanPhone): string {
+        if ($cleanPhone === '') {
+            return 'standard';
+        }
+        $cleanPhoneExpr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(phone), ' ', ''), '.', ''), '-', ''), '+', ''), '(', ''), ')', ''), CHAR(9), '')";
+        $normalizedPhoneExpr = "CASE
+            WHEN CHAR_LENGTH({$cleanPhoneExpr}) = 11 AND LEFT({$cleanPhoneExpr}, 2) = '84'
+            THEN CONCAT('0', SUBSTRING({$cleanPhoneExpr}, 3))
+            ELSE {$cleanPhoneExpr}
+        END";
+        $st = $pdo->prepare("
+            SELECT
+                COALESCE(SUM(CASE WHEN status = 'completed' OR status = 'Hoàn thành' THEN 1 ELSE 0 END), 0) AS completed_count,
+                COALESCE(SUM(CASE WHEN payment_status IN ('Đã cọc 30%', 'Đã thanh toán đủ', 'Đã thanh toán 100%') THEN paid_amount ELSE 0 END), 0) AS total_spent
+            FROM bookings
+            WHERE {$normalizedPhoneExpr} = ?
+              AND COALESCE(status, '') <> 'Đã hủy'
+        ");
+        $st->execute([$cleanPhone]);
+        $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        $spent = (int)($row['total_spent'] ?? 0);
+        $completed = (int)($row['completed_count'] ?? 0);
+        return ($spent >= 2000000 || $completed >= 5) ? 'vip' : 'standard';
+    }
+}
+
+if (!function_exists('crm_local_validate_audit_reason')) {
+    function crm_local_validate_audit_reason(string $reason, int $minLen = 10): array {
+        $normalized = trim((string)(preg_replace('/\s+/u', ' ', $reason) ?? $reason));
+        if ($normalized === '' || mb_strlen($normalized, 'UTF-8') < $minLen) {
+            return [
+                'valid'   => false,
+                'message' => "Lý do bắt buộc phải có ít nhất {$minLen} ký tự có ý nghĩa.",
+                'reason'  => $normalized
+            ];
+        }
+
+        $compact = (string)(preg_replace('/\s+/u', '', mb_strtolower($normalized, 'UTF-8')) ?? '');
+        $chars = preg_split('//u', $compact, -1, PREG_SPLIT_NO_EMPTY);
+        $len = is_array($chars) ? count($chars) : 0;
+        if ($len < 6) {
+            return [
+                'valid'   => false,
+                'message' => 'Lý do quá ngắn hoặc chứa nhiều khoảng trắng vô nghĩa.',
+                'reason'  => $normalized
+            ];
+        }
+
+        $freq = array_count_values($chars);
+        $distinct = count($freq);
+        if ($distinct < 4) {
+            return [
+                'valid'   => false,
+                'message' => 'Lý do quá đơn điệu hoặc lặp ký tự (cần ít nhất 4 ký tự phân biệt).',
+                'reason'  => $normalized
+            ];
+        }
+
+        if (preg_match('/^(.{1,5})\1{1,}$/u', $compact) || preg_match('/(.)\1{3,}/u', $compact)) {
+            return [
+                'valid'   => false,
+                'message' => 'Lý do không được là chuỗi lặp ký tự vô nghĩa.',
+                'reason'  => $normalized
+            ];
+        }
+
+        if (!preg_match('/\p{L}/u', $normalized)) {
+            return [
+                'valid'   => false,
+                'message' => 'Lý do phải chứa chữ mô tả rõ ràng.',
+                'reason'  => $normalized
+            ];
+        }
+
+        arsort($freq);
+        $counts = array_values($freq);
+        $top1 = (int)($counts[0] ?? 0);
+        $top2 = $top1 + (int)($counts[1] ?? 0);
+        if (($top1 / $len) > 0.40 || ($distinct / $len) < 0.35 || ($len >= 12 && ($top2 / $len) >= 0.60 && $distinct <= 5)) {
+            return [
+                'valid'   => false,
+                'message' => 'Lý do chưa rõ ràng hoặc có dấu hiệu ký tự rác lặp lại.',
+                'reason'  => $normalized
+            ];
+        }
+
+        return ['valid' => true, 'message' => '', 'reason' => $normalized];
+    }
+}
+
+if (!function_exists('crm_validate_mandatory_reason')) {
+    function crm_validate_mandatory_reason(string $reason, int $minLen = 10): array {
+        $normalized = trim((string)(preg_replace('/\s+/u', ' ', $reason) ?? $reason));
+        if (function_exists('validate_mandatory_audit_reason')) {
+            $res = validate_mandatory_audit_reason($normalized, $minLen);
+            if (is_array($res)) {
+                $ok = $res['valid'] ?? $res['ok'] ?? $res[0] ?? false;
+                $msg = (string)($res['message'] ?? $res['error'] ?? $res[1] ?? "Lý do bắt buộc phải từ {$minLen} ký tự có ý nghĩa trở lên.");
+                return ['valid' => (bool)$ok, 'message' => $msg, 'reason' => $normalized];
+            }
+            if (is_bool($res)) {
+                return ['valid' => $res, 'message' => $res ? '' : "Lý do bắt buộc phải từ {$minLen} ký tự có ý nghĩa trở lên.", 'reason' => $normalized];
+            }
+        }
+        return crm_local_validate_audit_reason($normalized, $minLen);
+    }
+}
+
 if (!function_exists('admin_map_booking')) {
     function admin_map_booking(array $b): array {
         $services = !empty($b['services_json']) ? json_decode($b['services_json'], true) : ($b['services'] ?? []);
@@ -149,15 +265,9 @@ if (!function_exists('admin_map_booking')) {
 
             $tier = $crm['customer_tier'] ?? ($user['customer_tier'] ?? '');
             if ($tier === '') {
-                if ($noShowCount >= 2) {
-                    $tier = 'warning_noshow';
-                } elseif ($totalSpent >= 2000000 || $completedCount >= 5) {
-                    $tier = 'vip';
-                } elseif ($completedCount >= 2) {
-                    $tier = 'regular';
-                } else {
-                    $tier = 'standard';
-                }
+                $tier = ($totalSpent >= 2000000 || $completedCount >= 5) ? 'vip' : 'standard';
+            } else {
+                $tier = crm_normalize_tier((string)$tier);
             }
 
             $lastBookingDate = trim((string)($row['last_booking_date'] ?? ''));
@@ -219,7 +329,7 @@ if (!function_exists('admin_map_booking')) {
                     'customerName'        => $cName,
                     'full_name'           => $cName,
                     'email'               => (string)($user['email'] ?? ''),
-                    'customerTier'        => (string)($crm['customer_tier'] ?? ($user['customer_tier'] ?? 'standard')),
+                    'customerTier'        => crm_normalize_tier((string)($crm['customer_tier'] ?? ($user['customer_tier'] ?? 'standard'))),
                     'adminNote'           => (string)($user['admin_note'] ?? ($crm['admin_note'] ?? '')),
                     'isBlacklisted'       => !empty($crm['is_blacklisted']) || (($user['status'] ?? '') === 'locked'),
                     'totalBookings'       => 0,
@@ -242,7 +352,7 @@ if (!function_exists('admin_map_booking')) {
                     'customerName'        => (string)$user['full_name'],
                     'full_name'           => (string)$user['full_name'],
                     'email'               => (string)$user['email'],
-                    'customerTier'        => (string)($user['customer_tier'] ?? 'standard'),
+                    'customerTier'        => crm_normalize_tier((string)($user['customer_tier'] ?? 'standard')),
                     'adminNote'           => (string)($user['admin_note'] ?? ''),
                     'isBlacklisted'       => (($user['status'] ?? '') === 'locked'),
                     'totalBookings'       => 0,
@@ -352,15 +462,11 @@ if (!function_exists('admin_map_booking')) {
         $uStmt->execute([$cleanPhone, $cleanPhone]);
         $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
 
-        $tier = $crm['customer_tier'] ?? ($uRow['customer_tier'] ?? 'standard');
-        if (!$crm && !$uRow) {
-            if ($noShowCount >= 2) {
-                $tier = 'warning_noshow';
-            } elseif ($totalSpent >= 2000000 || $completedCount >= 5) {
-                $tier = 'vip';
-            } elseif ($completedCount >= 2) {
-                $tier = 'regular';
-            }
+        $tier = $crm['customer_tier'] ?? ($uRow['customer_tier'] ?? '');
+        if ($tier === '' && !$crm && !$uRow) {
+            $tier = ($totalSpent >= 2000000 || $completedCount >= 5) ? 'vip' : 'standard';
+        } else {
+            $tier = crm_normalize_tier((string)($tier !== '' ? $tier : 'standard'));
         }
 
         $userPoints = (int)($uRow['points'] ?? 0);
@@ -540,6 +646,11 @@ if (!function_exists('admin_map_booking')) {
         if ($reason === '') {
             json_error('Bắt buộc nhập lý do điều chỉnh điểm tích lũy.', 400, 'ERR_MISSING_POINTS_REASON');
         }
+        $reasonCheck = crm_validate_mandatory_reason($reason, 10);
+        if (!$reasonCheck['valid']) {
+            json_error($reasonCheck['message'], 400, 'ERR_INVALID_POINTS_REASON');
+        }
+        $reason = $reasonCheck['reason'];
 
         $rawPoints = $data['points'] ?? $data['new_points'] ?? null;
         $rawDelta  = $data['delta'] ?? $data['points_delta'] ?? null;
@@ -705,14 +816,20 @@ if (!function_exists('admin_map_booking')) {
         }
 
         // 4. Validate phân hạng & lý do
-        $tier = sanitize_string($data['customer_tier'] ?? $data['customerTier'] ?? $data['tier'] ?? 'standard', 30);
-        if (!in_array($tier, ['standard', 'regular', 'vip', 'warning_noshow'], true)) {
-            json_error('Phân hạng khách hàng không hợp lệ.', 400, 'ERR_INVALID_TIER');
+        $hasTierInput = isset($data['customer_tier']) || isset($data['customerTier']) || isset($data['tier']);
+        $rawTierInput = $hasTierInput
+            ? sanitize_string($data['customer_tier'] ?? $data['customerTier'] ?? $data['tier'] ?? 'standard', 30)
+            : null;
+        if ($rawTierInput !== null && !in_array($rawTierInput, ['auto', 'standard', 'vip'], true)) {
+            json_error('Phân hạng khách hàng không hợp lệ (chỉ chấp nhận auto, standard, vip).', 400, 'ERR_INVALID_TIER');
         }
         $tierReason = trim(sanitize_string($data['tier_reason'] ?? $data['override_reason'] ?? '', 500));
 
-        // 5. Validate khóa / blacklist & bắt buộc lý do
-        $isBlacklisted = !empty($data['is_blacklisted']) || !empty($data['is_locked']) || (($data['status'] ?? '') === 'locked') ? 1 : 0;
+        // 5. Ghi nhận cờ blacklist nếu được truyền tường minh từ API (nếu không truyền thì bảo toàn giá trị DB hiện tại)
+        $hasBlacklistInput = array_key_exists('is_blacklisted', $data)
+            || array_key_exists('is_locked', $data)
+            || (($data['status'] ?? '') === 'locked');
+        $explicitBlacklisted = (!empty($data['is_blacklisted']) || !empty($data['is_locked']) || (($data['status'] ?? '') === 'locked')) ? 1 : 0;
         $lockReason = trim(sanitize_string($data['blacklist_reason'] ?? $data['lock_reason'] ?? '', 500));
 
         // 6. Ghi chú CRM
@@ -789,9 +906,10 @@ if (!function_exists('admin_map_booking')) {
                 }
             }
 
-            // 10. Bắt buộc lý do khi Khóa / Blacklist khách hàng
+            // 10. Bảo toàn hoặc kiểm tra khóa / Blacklist nếu được gửi tường minh từ API
             $prevBlacklisted = !empty($currentCrm['is_blacklisted']) || (($currentUser['status'] ?? '') === 'locked');
-            if ($isBlacklisted && !$prevBlacklisted) {
+            $isBlacklisted = $hasBlacklistInput ? $explicitBlacklisted : ($prevBlacklisted ? 1 : 0);
+            if ($hasBlacklistInput && $isBlacklisted && !$prevBlacklisted) {
                 if ($lockReason === '') {
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
@@ -800,12 +918,39 @@ if (!function_exists('admin_map_booking')) {
                 }
             }
 
-            // 11. Bắt buộc lý do khi can thiệp Phân hạng (Tier Override)
-            $prevTier = (string)($currentCrm['customer_tier'] ?? ($currentUser['customer_tier'] ?? 'standard'));
-            if ($tier !== $prevTier && $tierReason === '') {
-                $genReason = trim(sanitize_string($data['reason'] ?? '', 500));
-                if ($genReason !== '') {
-                    $tierReason = $genReason;
+            // 11. Xác định phân hạng & bắt buộc lý do hợp lệ khi đổi hạng thủ công
+            $prevRawTier = trim((string)($currentCrm['customer_tier'] ?? ($currentUser['customer_tier'] ?? '')));
+            $prevEffectiveTier = ($prevRawTier !== '')
+                ? crm_normalize_tier($prevRawTier)
+                : crm_compute_auto_tier($pdo, $cleanPhone);
+            $prevTier = ($prevRawTier !== '') ? $prevRawTier : $prevEffectiveTier;
+            $tierMode = 'manual';
+
+            if ($rawTierInput === null) {
+                $tier = $prevEffectiveTier;
+            } elseif ($rawTierInput === 'auto') {
+                $tierMode = 'auto';
+                $tier = crm_compute_auto_tier($pdo, $cleanPhone);
+            } else {
+                $tier = $rawTierInput;
+                if ($tier !== $prevEffectiveTier) {
+                    $effectiveTierReason = $tierReason !== ''
+                        ? $tierReason
+                        : trim(sanitize_string($data['reason'] ?? '', 500));
+                    if ($effectiveTierReason === '') {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        json_error('Bắt buộc nhập lý do đổi hạng hội viên thủ công (tối thiểu 10 ký tự).', 400, 'ERR_MISSING_TIER_REASON');
+                    }
+                    $tierCheck = crm_validate_mandatory_reason($effectiveTierReason, 10);
+                    if (!$tierCheck['valid']) {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        json_error($tierCheck['message'], 400, 'ERR_INVALID_TIER_REASON');
+                    }
+                    $tierReason = $tierCheck['reason'];
                 }
             }
 
@@ -841,16 +986,33 @@ if (!function_exists('admin_map_booking')) {
                     }
                     json_error('Vui lòng nhập lý do điều chỉnh điểm tích lũy của khách hàng.', 400, 'ERR_MISSING_POINTS_REASON');
                 }
+                $ptsCheck = crm_validate_mandatory_reason($pointsReason, 10);
+                if (!$ptsCheck['valid']) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    json_error($ptsCheck['message'], 400, 'ERR_INVALID_POINTS_REASON');
+                }
+                $pointsReason = $ptsCheck['reason'];
 
                 // Nếu khách chưa có tài khoản trong users, tự tạo để gắn điểm và foreign key
                 if (!$currentUser) {
                     $uname = 'kh_' . $cleanPhone;
                     $pwdHash = '$argon2id$v=19$m=65536,t=4,p=1$DISABLED_NON_LOGIN$disabled';
                     $uStatus = $isBlacklisted ? 'locked' : 'active';
+                    $insEmail = $finalEmail ?: ($cleanPhone . '@sanbongpro.local');
                     $insU = $pdo->prepare("INSERT INTO users (username, full_name, phone, email, password_hash, role, status, points, customer_tier, admin_note) VALUES (?, ?, ?, ?, ?, 'user', ?, ?, ?, ?)");
-                    $insU->execute([$uname, $fullName, $cleanPhone, $finalEmail ?: ($cleanPhone . '@sanbongpro.local'), $pwdHash, $uStatus, $newPoints, $tier, $adminNote]);
+                    $insU->execute([$uname, $fullName, $cleanPhone, $insEmail, $pwdHash, $uStatus, $newPoints, $tier, $adminNote]);
                     $userId = (int)$pdo->lastInsertId();
-                    $currentUser = ['id' => $userId, 'points' => 0];
+                    $currentUser = [
+                        'id'         => $userId,
+                        'full_name'  => $fullName,
+                        'phone'      => $cleanPhone,
+                        'email'      => $insEmail,
+                        'status'     => $uStatus,
+                        'admin_note' => $adminNote,
+                        'points'     => 0
+                    ];
                 }
 
                 // Ghi vào points_log trong cùng transaction
@@ -866,7 +1028,7 @@ if (!function_exists('admin_map_booking')) {
                 if ($finalEmail === null) {
                     $finalEmail = (string)($currentUser['email'] ?? ($cleanPhone . '@sanbongpro.local'));
                 }
-                $uStatus = $isBlacklisted ? 'locked' : ($currentUser['status'] === 'locked' && !$isBlacklisted ? 'active' : $currentUser['status']);
+                $uStatus = $isBlacklisted ? 'locked' : (($currentUser['status'] ?? 'active') === 'locked' && !$isBlacklisted ? 'active' : ($currentUser['status'] ?? 'active'));
                 $updUserStmt = $pdo->prepare("
                     UPDATE users
                     SET full_name = ?,
@@ -908,7 +1070,7 @@ if (!function_exists('admin_map_booking')) {
             // 15. Ghi Audit Log qua AdminLogService
             $oldValues = [
                 'full_name'      => $currentUser['full_name'] ?? ($currentCrm['full_name'] ?? ''),
-                'phone'          => $cleanPhone,
+                'phone'          => $currentUser['phone'] ?? ($currentCrm['phone'] ?? $cleanPhone),
                 'email'          => $currentUser['email'] ?? '',
                 'customer_tier'  => $prevTier,
                 'admin_note'     => $currentUser['admin_note'] ?? ($currentCrm['admin_note'] ?? ''),
@@ -928,11 +1090,13 @@ if (!function_exists('admin_map_booking')) {
                 $newValues['points_delta'] = $delta;
                 $newValues['points_reason'] = $pointsReason;
             }
-            if ($isBlacklisted && !$prevBlacklisted) {
+            if ($hasBlacklistInput && $isBlacklisted && !$prevBlacklisted) {
                 $newValues['blacklist_reason'] = $lockReason;
             }
-            if ($tier !== $prevTier && $tierReason !== '') {
+            if ($tier !== $prevEffectiveTier && $tierReason !== '') {
                 $newValues['tier_reason'] = $tierReason;
+            } elseif ($tierMode === 'auto' && $tier !== $prevEffectiveTier) {
+                $newValues['tier_mode'] = 'auto';
             }
 
             require_once __DIR__ . '/services/AdminLogService.php';
@@ -1122,7 +1286,7 @@ if (!function_exists('admin_map_booking')) {
                 'role'           => (string)($r['role'] ?? 'user'),
                 'status'         => (string)($r['status'] ?? 'active'),
                 'points'         => (int)($r['points'] ?? 0),
-                'customer_tier'  => (string)($r['customer_tier'] ?? 'standard'),
+                'customer_tier'  => crm_normalize_tier((string)($r['customer_tier'] ?? 'standard')),
                 'admin_note'     => (string)($r['admin_note'] ?? ''),
                 'is_blacklisted' => !empty($r['is_blacklisted']),
                 'is_member'      => !empty($r['is_member']),

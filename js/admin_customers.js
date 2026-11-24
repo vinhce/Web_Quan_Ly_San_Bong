@@ -25,12 +25,11 @@ window.currentCustomerFilter = currentCustomerFilter;
    ========================================================================== */
 
 function filterAdminCustomers(filterType) {
-  currentCustomerFilter = filterType || 'all';
+  currentCustomerFilter = filterType === 'vip' ? 'vip' : 'all';
   window.currentCustomerFilter = currentCustomerFilter;
   const mapBtn = {
     'all': 'cust-filter-all',
-    'vip': 'cust-filter-vip',
-    'regular': 'cust-filter-regular'
+    'vip': 'cust-filter-vip'
   };
   Object.keys(mapBtn).forEach(k => {
     const btn = document.getElementById(mapBtn[k]);
@@ -106,10 +105,15 @@ function formatCustomerLastBookingRelative(dateVal) {
    Tên hội viên | Số điện thoại | Hạng | Trận hoàn thành | Điểm tích lũy | Đặt gần nhất | Tổng chi tiêu | Thao tác
    ========================================================================== */
 
+function normalizeCustomerTier(rawTier) {
+  const t = String(rawTier || '').trim().toLowerCase();
+  if (t === 'vip') return 'vip';
+  if (t === 'auto') return 'auto';
+  return 'standard';
+}
+
 const crmBadgeMap = {
   vip: '<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">VIP</span>',
-  regular: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">Khách quen</span>',
-  warning_noshow: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-300">Cảnh báo bùng</span>',
   standard: '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">Tiêu chuẩn</span>'
 };
 
@@ -124,15 +128,12 @@ const CUSTOMER_TABLE_COLUMNS = [
       const noShowBadge = ns > 0
         ? `<span class="ml-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">${ns} lần bùng</span>`
         : '';
-      const blacklistBadge = c.isBlacklisted
-        ? '<span class="ml-1.5 px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-600 text-white">Blacklist</span>'
-        : '';
       const noteHtml = c.adminNote
         ? `<div class="text-[10px] text-[#64748B] truncate max-w-[200px]" title="${escapeSearchHTML(c.adminNote)}">Ghi chú: ${escapeSearchHTML(c.adminNote)}</div>`
         : '';
       return `
         <div class="font-bold text-[#0F172A] flex items-center flex-wrap">
-          <span>${escapeSearchHTML(c.name)}</span>${noShowBadge}${blacklistBadge}
+          <span>${escapeSearchHTML(c.name)}</span>${noShowBadge}
         </div>
         ${noteHtml}
       `;
@@ -150,7 +151,7 @@ const CUSTOMER_TABLE_COLUMNS = [
     label: 'Hạng',
     thClass: 'py-3 px-4 text-left font-bold',
     tdClass: 'py-3 px-4 whitespace-nowrap',
-    render: (c) => crmBadgeMap[c.customerTier] || crmBadgeMap.standard
+    render: (c) => crmBadgeMap[normalizeCustomerTier(c.customerTier)] || crmBadgeMap.standard
   },
   {
     key: 'completedCount',
@@ -232,9 +233,8 @@ async function renderAdminCustomers() {
       name: c.customerName || c.customer_name || c.full_name || c.name || 'Khách đặt sân',
       phone: c.phone || '',
       email: c.email || '',
-      customerTier: c.customerTier || c.customer_tier || 'standard',
+      customerTier: normalizeCustomerTier(c.customerTier || c.customer_tier || 'standard'),
       adminNote: c.adminNote || c.admin_note || '',
-      isBlacklisted: Boolean(c.isBlacklisted ?? c.is_blacklisted),
       bookingCount: Number(c.totalBookings ?? c.total_bookings ?? 0),
       matches: Number(c.completedCount ?? c.completed_count ?? 0),
       completedCount: Number(c.completedCount ?? c.completed_count ?? 0),
@@ -249,8 +249,6 @@ async function renderAdminCustomers() {
 
     if (currentCustomerFilter === 'vip') {
       customers = customers.filter(c => c.customerTier === 'vip');
-    } else if (currentCustomerFilter === 'regular') {
-      customers = customers.filter(c => c.customerTier === 'regular');
     }
   } else if (!r.ok && r.status === 0) {
     // Offline fallback an toàn từ SanBongDB
@@ -267,7 +265,6 @@ async function renderAdminCustomers() {
           phone,
           customerTier: 'standard',
           adminNote: '',
-          isBlacklisted: false,
           bookingCount: 0,
           matches: 0,
           completedCount: 0,
@@ -312,7 +309,6 @@ async function renderAdminCustomers() {
 
     customers = Object.values(customerMap);
     if (currentCustomerFilter === 'vip') customers = customers.filter(c => c.customerTier === 'vip');
-    else if (currentCustomerFilter === 'regular') customers = customers.filter(c => c.customerTier === 'regular');
     if (searchQ) {
       const qLow = searchQ.toLowerCase();
       customers = customers.filter(c => c.name.toLowerCase().includes(qLow) || c.phone.includes(searchQ));
@@ -323,7 +319,7 @@ async function renderAdminCustomers() {
   }
 
   adminCustomersCache = customers;
-  customers.sort((a, b) => (Number(b.isBlacklisted) - Number(a.isBlacklisted)) || (b.noShowCount - a.noShowCount) || (b.spend - a.spend));
+  customers.sort((a, b) => (b.noShowCount - a.noShowCount) || (b.spend - a.spend));
 
   if (customers.length === 0) {
     tbody.innerHTML = `
@@ -341,7 +337,7 @@ async function renderAdminCustomers() {
   }
 
   tbody.innerHTML = customers.map(c => `
-    <tr class="hover:bg-slate-50 transition-colors ${c.isBlacklisted ? 'bg-red-50/40' : ''}">
+    <tr class="hover:bg-slate-50 transition-colors">
       ${CUSTOMER_TABLE_COLUMNS.map(col => `<td class="${col.tdClass}">${col.render(c)}</td>`).join('')}
     </tr>
   `).join('');
@@ -358,7 +354,7 @@ function handleCrmTierChange() {
   const reasonWrap = document.getElementById('crm-form-tier-reason-wrap');
   const reasonInput = document.getElementById('crm-form-tier-reason');
 
-  if (currentVal && oldVal && currentVal !== oldVal) {
+  if (currentVal && oldVal && currentVal !== oldVal && currentVal !== 'auto') {
     if (reasonWrap) reasonWrap.classList.remove('hidden');
     if (reasonInput) reasonInput.required = true;
   } else {
@@ -371,23 +367,36 @@ function handleCrmTierChange() {
 }
 window.handleCrmTierChange = handleCrmTierChange;
 
-function handleCrmBlacklistChange() {
-  const isChecked = Boolean(document.getElementById('crm-form-blacklist')?.checked);
-  const reasonWrap = document.getElementById('crm-form-blacklist-reason-wrap');
-  const reasonInput = document.getElementById('crm-form-blacklist-reason');
-
-  if (isChecked) {
-    if (reasonWrap) reasonWrap.classList.remove('hidden');
-    if (reasonInput) reasonInput.required = true;
-  } else {
-    if (reasonWrap) reasonWrap.classList.add('hidden');
-    if (reasonInput) {
-      reasonInput.required = false;
-      reasonInput.value = '';
-    }
+function validateCrmReasonClient(rawReason, minLen = 10) {
+  const normalized = String(rawReason || '').replace(/\s+/g, ' ').trim();
+  if (normalized.length < minLen) {
+    return { valid: false, message: `Lý do bắt buộc phải từ ${minLen} ký tự trở lên.` };
   }
+  const compact = normalized.replace(/\s+/g, '').toLowerCase();
+  const chars = Array.from(compact);
+  if (chars.length < 6) {
+    return { valid: false, message: 'Lý do quá ngắn hoặc chứa nhiều khoảng trắng.' };
+  }
+  const freq = {};
+  chars.forEach(ch => { freq[ch] = (freq[ch] || 0) + 1; });
+  const counts = Object.values(freq).sort((a, b) => b - a);
+  const distinct = counts.length;
+  if (distinct < 4) {
+    return { valid: false, message: 'Lý do không hợp lệ (quá ít ký tự phân biệt hoặc lặp ký tự).' };
+  }
+  if (/^(.{1,5})\1+$/.test(compact) || /(.)\1{3,}/.test(compact)) {
+    return { valid: false, message: 'Lý do không được là chuỗi lặp ký tự vô nghĩa.' };
+  }
+  if (!/\p{L}/u.test(normalized)) {
+    return { valid: false, message: 'Lý do phải chứa nội dung chữ có ý nghĩa.' };
+  }
+  const top1 = counts[0] || 0;
+  const top2 = top1 + (counts[1] || 0);
+  if (top1 / chars.length > 0.4 || distinct / chars.length < 0.35 || (chars.length >= 12 && top2 / chars.length >= 0.6 && distinct <= 5)) {
+    return { valid: false, message: 'Lý do chưa rõ ràng hoặc có dấu hiệu ký tự rác.' };
+  }
+  return { valid: true, reason: normalized };
 }
-window.handleCrmBlacklistChange = handleCrmBlacklistChange;
 
 function handleCrmPointsChange(source) {
   const oldPoints = Number(document.getElementById('crm-form-old-points')?.value || 0);
@@ -677,9 +686,6 @@ async function openCustomerCrmModal(phone) {
   const oldTierEl = document.getElementById('crm-form-old-tier');
   const tierReasonWrap = document.getElementById('crm-form-tier-reason-wrap');
   const tierReasonEl = document.getElementById('crm-form-tier-reason');
-  const blackEl = document.getElementById('crm-form-blacklist');
-  const blackReasonWrap = document.getElementById('crm-form-blacklist-reason-wrap');
-  const blackReasonEl = document.getElementById('crm-form-blacklist-reason');
   const oldPointsEl = document.getElementById('crm-form-old-points');
   const pointsEl = document.getElementById('crm-form-points');
   const deltaEl = document.getElementById('crm-form-points-delta');
@@ -697,11 +703,11 @@ async function openCustomerCrmModal(phone) {
   // Điền dữ liệu từ cache tạm thời để giao diện phản hồi tức thì
   const cached = adminCustomersCache.find(c => c.phone === phone);
   if (cached) {
+    const cachedTier = normalizeCustomerTier(cached.customerTier || 'standard');
     if (nameEl) nameEl.value = cached.name || '';
     if (emailEl) emailEl.value = cached.email || '';
-    if (tierEl) tierEl.value = cached.customerTier || 'standard';
-    if (oldTierEl) oldTierEl.value = cached.customerTier || 'standard';
-    if (blackEl) blackEl.checked = Boolean(cached.isBlacklisted);
+    if (tierEl) tierEl.value = cachedTier;
+    if (oldTierEl) oldTierEl.value = cachedTier;
     if (noteEl) noteEl.value = cached.adminNote || '';
     if (userIdEl) userIdEl.value = cached.userId || cached.id || '';
     if (updatedAtEl) updatedAtEl.value = cached.updatedAt || '';
@@ -709,7 +715,7 @@ async function openCustomerCrmModal(phone) {
     if (oldPointsEl) oldPointsEl.value = pts;
     if (pointsEl) pointsEl.value = pts;
     if (curPointsBadge) curPointsBadge.textContent = `${pts.toLocaleString('vi-VN')} điểm`;
-    if (tierBadge) tierBadge.innerHTML = crmBadgeMap[cached.customerTier] || crmBadgeMap.standard;
+    if (tierBadge) tierBadge.innerHTML = crmBadgeMap[cachedTier] || crmBadgeMap.standard;
   }
 
   // Reset các ô bổ sung
@@ -724,11 +730,6 @@ async function openCustomerCrmModal(phone) {
   if (tierReasonEl) {
     tierReasonEl.value = '';
     tierReasonEl.required = false;
-  }
-  if (blackReasonWrap) blackReasonWrap.classList.add('hidden');
-  if (blackReasonEl) {
-    blackReasonEl.value = '';
-    blackReasonEl.required = false;
   }
 
   // 4 Thẻ chỉ số đỉnh: Trận hoàn thành | Vắng mặt / Hủy | Điểm tích lũy | Tổng chi tiêu
@@ -769,14 +770,10 @@ async function openCustomerCrmModal(phone) {
   }
   if (emailEl && d.email !== undefined) emailEl.value = d.email || '';
   if (tierEl) {
-    const assignedTier = d.customerTier || d.customer_tier || 'standard';
+    const assignedTier = normalizeCustomerTier(d.customerTier || d.customer_tier || 'standard');
     tierEl.value = assignedTier;
     if (oldTierEl) oldTierEl.value = assignedTier;
     if (tierBadge) tierBadge.innerHTML = crmBadgeMap[assignedTier] || crmBadgeMap.standard;
-  }
-  if (blackEl) {
-    blackEl.checked = Boolean(d.isBlacklisted ?? d.is_blacklisted);
-    handleCrmBlacklistChange();
   }
   if (noteEl) noteEl.value = d.adminNote || d.admin_note || '';
   if (userIdEl) userIdEl.value = d.userId || d.user_id || userIdEl.value || '';
@@ -879,8 +876,6 @@ async function saveCustomerCrm(e) {
   const tier = document.getElementById('crm-form-tier')?.value || 'standard';
   const oldTier = document.getElementById('crm-form-old-tier')?.value || 'standard';
   const tierReason = (document.getElementById('crm-form-tier-reason')?.value || '').trim();
-  const isBlacklisted = Boolean(document.getElementById('crm-form-blacklist')?.checked);
-  const blacklistReason = (document.getElementById('crm-form-blacklist-reason')?.value || '').trim();
   const adminNote = (document.getElementById('crm-form-note')?.value || '').trim();
 
   const oldPoints = Number(document.getElementById('crm-form-old-points')?.value || 0);
@@ -897,38 +892,34 @@ async function saveCustomerCrm(e) {
     return;
   }
 
-  // Validate lý do khóa Blacklist bắt buộc
-  if (isBlacklisted && !blacklistReason) {
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Vui lòng nhập lý do khóa đặt sân / đưa vào Danh sách đen!', 'warning');
+  // Validate lý do điều chỉnh phân hạng nếu có thay đổi thủ công
+  if (tier !== oldTier && tier !== 'auto') {
+    const tierCheck = validateCrmReasonClient(tierReason, 10);
+    if (!tierCheck.valid) {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(tierCheck.message || 'Vui lòng nhập lý do điều chỉnh phân hạng hội viên (≥ 10 ký tự)!', 'warning');
+      }
+      document.getElementById('crm-form-tier-reason')?.focus();
+      return;
     }
-    document.getElementById('crm-form-blacklist-reason')?.focus();
-    return;
-  }
-
-  // Validate lý do điều chỉnh phân hạng nếu có thay đổi
-  if (tier !== oldTier && tier !== 'auto' && !tierReason) {
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Vui lòng nhập lý do điều chỉnh phân hạng hội viên!', 'warning');
-    }
-    document.getElementById('crm-form-tier-reason')?.focus();
-    return;
   }
 
   // Validate lý do điều chỉnh điểm tích lũy
-  if (diffPoints !== 0 && !pointsReason) {
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast('Vui lòng nhập lý do điều chỉnh điểm tích lũy!', 'warning');
+  if (diffPoints !== 0) {
+    const ptsCheck = validateCrmReasonClient(pointsReason, 10);
+    if (!ptsCheck.valid) {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(ptsCheck.message || 'Vui lòng nhập lý do điều chỉnh điểm tích lũy (≥ 10 ký tự)!', 'warning');
+      }
+      document.getElementById('crm-form-points-reason')?.focus();
+      return;
     }
-    document.getElementById('crm-form-points-reason')?.focus();
-    return;
   }
 
   // Hộp thoại xác nhận thay đổi (Đặc biệt khi thay đổi điểm tích lũy)
   let confirmMessage = `Xác nhận lưu cập nhật hồ sơ hội viên ${customerName}?\n\n• SĐT: ${phone}`;
   if (email) confirmMessage += `\n• Email: ${email}`;
-  if (tier !== oldTier) confirmMessage += `\n• Hạng mới: [${tier}] (Lý do: ${tierReason || 'Mặc định'})`;
-  if (isBlacklisted) confirmMessage += `\n• Khóa Blacklist: BẬT (Lý do: ${blacklistReason})`;
+  if (tier !== oldTier) confirmMessage += `\n• Hạng mới: [${tier}] (Lý do: ${tierReason || 'Tự động'})`;
   if (diffPoints !== 0) {
     confirmMessage += `\n• Điểm tích lũy: [${oldPoints.toLocaleString('vi-VN')} điểm] → [${newPoints.toLocaleString('vi-VN')} điểm] (${diffPoints > 0 ? '+' : ''}${diffPoints.toLocaleString('vi-VN')} điểm)\n  Lý do: [${pointsReason}]`;
   }
@@ -940,7 +931,7 @@ async function saveCustomerCrm(e) {
       message: confirmMessage,
       confirmText: 'Xác nhận lưu',
       cancelText: 'Quay lại',
-      danger: isBlacklisted
+      danger: false
     });
   } else {
     isConfirmed = window.confirm(confirmMessage);
@@ -965,8 +956,6 @@ async function saveCustomerCrm(e) {
       email: email,
       customer_tier: tier,
       tier_reason: tierReason,
-      is_blacklisted: isBlacklisted ? 1 : 0,
-      blacklist_reason: blacklistReason,
       points: newPoints,
       points_delta: diffPoints,
       points_reason: pointsReason,

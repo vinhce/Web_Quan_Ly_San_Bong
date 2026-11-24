@@ -1,6 +1,16 @@
       <!-- TAB 6: KHÁCH HÀNG & HỘI VIÊN (Frame 16) -->
       <!-- ========================================== -->
       <div id="tab-content-customers" class="space-y-4 hidden">
+        <style>
+          #customer-crm-form #crm-form-note {
+            display: block;
+            height: 2.25rem;
+            min-height: 2.25rem;
+            padding: 0.4375rem 0.75rem;
+            line-height: 1.35;
+            resize: vertical;
+          }
+        </style>
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <h3 class="font-heading font-bold text-base text-[#0F172A]">Danh sách khách hàng &amp; Hội viên</h3>
@@ -10,7 +20,6 @@
             <div class="flex flex-wrap items-center gap-1.5 bg-white p-1 rounded-xl border border-[#E2E8F0]">
               <button type="button" id="cust-filter-all" onclick="filterAdminCustomers('all')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#16A34A] text-white cursor-pointer">Tất cả khách</button>
               <button type="button" id="cust-filter-vip" onclick="filterAdminCustomers('vip')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Hội viên VIP</button>
-              <button type="button" id="cust-filter-regular" onclick="filterAdminCustomers('regular')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Khách quen</button>
             </div>
             <div class="relative w-full sm:w-80">
               <input type="text" id="admin-cust-search" oninput="handleCustomerSearchDebounced()" placeholder="Tìm theo SĐT (+84, vài số cuối) hoặc họ tên..." class="w-full h-9 px-3 pl-8 rounded-lg border border-[#E2E8F0] bg-white text-xs text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#16A34A] focus:ring-1 focus:ring-[#16A34A] transition-all">
@@ -86,35 +95,24 @@
                   </div>
                 </div>
 
-                <!-- Phân hạng (Auto / Override with reason) & Khóa / Blacklist (with mandatory reason) -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-white border border-slate-200">
+                <!-- Phân hạng (Auto / Override with reason) & Ghi chú chăm sóc khách hàng cùng 1 hàng 2 cột -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start p-3 rounded-xl bg-white border border-slate-200">
                   <div class="space-y-1.5">
                     <label for="crm-form-tier" class="block text-[11px] font-bold text-[#475569]">Phân hạng hội viên <span class="text-rose-500">*</span></label>
                     <select id="crm-form-tier" onchange="handleCrmTierChange()" class="input-field h-9 text-xs font-bold bg-white w-full">
                       <option value="auto">Tự động (Theo chi tiêu &amp; số trận)</option>
                       <option value="standard">Khách tiêu chuẩn (standard)</option>
-                      <option value="regular">Khách quen (regular)</option>
                       <option value="vip">Hội viên VIP (vip)</option>
-                      <option value="warning_noshow">Cảnh báo No-Show (warning_noshow)</option>
                     </select>
                     <div id="crm-form-tier-reason-wrap" class="hidden pt-1">
                       <label for="crm-form-tier-reason" class="block text-[11px] font-bold text-amber-800 mb-1">Lý do điều chỉnh phân hạng <span class="text-rose-500">*</span></label>
-                      <input type="text" id="crm-form-tier-reason" placeholder="VD: Khách hàng thân thiết, đặc cách tài trợ..." class="input-field h-8 text-xs bg-amber-50/50 border-amber-300 w-full">
+                      <input type="text" id="crm-form-tier-reason" placeholder="VD: Khách hàng thân thiết, đặc cách tài trợ (≥10 ký tự)..." class="input-field h-8 text-xs bg-amber-50/50 border-amber-300 w-full">
                     </div>
                   </div>
 
                   <div class="space-y-1.5">
-                    <div class="pt-1">
-                      <label for="crm-form-blacklist" class="flex items-center gap-2 text-xs font-bold text-[#DC2626] cursor-pointer select-none">
-                        <input type="checkbox" id="crm-form-blacklist" onchange="handleCrmBlacklistChange()" class="w-4 h-4 rounded text-red-600 focus:ring-red-500">
-                        <span>Khóa đặt sân / Danh sách đen (Blacklist)</span>
-                      </label>
-                    </div>
-                    <p class="text-[11px] text-slate-500">Chặn số điện thoại này đặt sân trên toàn hệ thống.</p>
-                    <div id="crm-form-blacklist-reason-wrap" class="hidden pt-1">
-                      <label for="crm-form-blacklist-reason" class="block text-[11px] font-bold text-red-700 mb-1">Lý do khóa / Blacklist <span class="text-rose-500">*</span> (Bắt buộc)</label>
-                      <input type="text" id="crm-form-blacklist-reason" placeholder="VD: Gây rối trật tự sân, vi phạm nội quy sân..." class="input-field h-8 text-xs bg-red-50/50 border-red-300 w-full">
-                    </div>
+                    <label for="crm-form-note" class="block text-[11px] font-bold text-[#475569]">Ghi chú chăm sóc khách hàng (CRM Notes)</label>
+                    <textarea id="crm-form-note" rows="1" placeholder="VD: Khách đặt cố định tối thứ 5 hàng tuần, ưu tiên Sân 7-A..." class="input-field w-full h-9 text-xs bg-white"></textarea>
                   </div>
                 </div>
 
@@ -140,15 +138,9 @@
                   </div>
 
                   <div id="crm-form-points-reason-wrap" class="hidden pt-1">
-                    <label for="crm-form-points-reason" class="block text-[11px] font-bold text-amber-800 mb-1">Lý do điều chỉnh điểm <span class="text-rose-500">*</span> (Bắt buộc khi đổi điểm)</label>
+                    <label for="crm-form-points-reason" class="block text-[11px] font-bold text-amber-800 mb-1">Lý do điều chỉnh điểm <span class="text-rose-500">*</span> (Bắt buộc ≥ 10 ký tự)</label>
                     <input type="text" id="crm-form-points-reason" placeholder="VD: Thưởng giải đấu, đền bù giờ sân, đổi quà..." class="input-field h-8 text-xs bg-amber-50/50 border-amber-300 w-full">
                   </div>
-                </div>
-
-                <!-- Ghi chú CRM -->
-                <div>
-                  <label for="crm-form-note" class="block text-[11px] font-bold text-[#475569] mb-1">Ghi chú chăm sóc khách hàng (CRM Notes)</label>
-                  <textarea id="crm-form-note" rows="2" placeholder="VD: Khách đặt cố định tối thứ 5 hàng tuần, ưu tiên Sân 7-A..." class="input-field w-full h-auto py-2 text-xs bg-white"></textarea>
                 </div>
 
                 <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
