@@ -20,7 +20,7 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261124_v135">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261124_v136">
   <link rel="stylesheet" href="../css/style.css?v=20261124_v135">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
@@ -264,9 +264,6 @@
                   <p class="text-xs text-slate-500 mt-0.5">Tự động dùng thông tin hồ sơ để giữ sân &amp; tích lũy điểm</p>
                 </div>
               </div>
-              <button type="button" id="btn-toggle-friend" class="btn-base px-3 py-2 min-h-[44px] text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg shrink-0 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500">
-                Đặt hộ bạn bè / Đổi thông tin
-              </button>
             </div>
 
             <!-- Trường hợp hồ sơ thiếu SĐT -->
@@ -276,35 +273,6 @@
               </label>
               <input type="tel" id="user-missing-phone" placeholder="Ví dụ: 0987654321" class="input-field font-semibold text-sm max-w-sm">
               <div id="user-missing-phone-error" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
-            </div>
-          </div>
-
-          <!-- B. Form thông tin người đặt hộ (Chỉ hiện khi đã bấm Đặt hộ bạn bè) -->
-          <div id="booking-input-fields-wrap" class="hidden space-y-4">
-            <!-- Thông báo khi đang ở chế độ Đặt hộ bạn bè -->
-            <div id="booking-friend-mode-alert" class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span>Đang đặt hộ bạn bè. Thông tin này chỉ lưu vào đơn, không thay đổi hồ sơ của bạn. Điểm thưởng vẫn tích cho bạn.</span>
-              </div>
-              <button type="button" id="btn-revert-my-info" class="btn-base px-3 py-1.5 min-h-[44px] text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500">
-                Quay lại dùng thông tin của tôi
-              </button>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label id="lbl-cust-name" for="cust-name" class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Họ và tên người được đặt hộ *</label>
-                <input type="text" id="cust-name" placeholder="Ví dụ: Nguyễn Văn A" class="input-field font-semibold">
-                <div id="cust-name-error" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
-              </div>
-              <div>
-                <label id="lbl-cust-phone" for="cust-phone" class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1">Số điện thoại người được đặt hộ *</label>
-                <input type="tel" id="cust-phone" placeholder="Ví dụ: 0987654321" class="input-field font-semibold">
-                <div id="cust-phone-error" class="text-xs text-rose-600 font-semibold mt-1 hidden"></div>
-              </div>
             </div>
           </div>
 
@@ -442,18 +410,18 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="../js/data.js?v=20261124_v134"></script>
+  <script src="../js/data.js?v=20261124_v136"></script>
   <script src="../js/helpers.js?v=20261122_v130"></script>
   <script src="../js/db_core.js?v=20261122_v130"></script>
-  <script src="../js/db_pricing.js?v=20261122_v130"></script>
+  <script src="../js/db_pricing.js?v=20261124_v136"></script>
   <script src="../js/db_bookings.js?v=20261122_v130"></script>
-  <script src="../js/db_operations.js?v=20261124_v134"></script>
+  <script src="../js/db_operations.js?v=20261124_v136"></script>
   <script src="../js/db.js?v=20261122_v130"></script>
   <script src="../js/ui.js?v=20261124_v134"></script>
   <script src="../js/vn_datepicker.js?v=20261122_v130"></script>
   <script src="../js/app.js?v=20261122_v130"></script>
-  <script src="../js/api.js?v=20261122_v130"></script>
-  <script src="../js/booking_ui.js?v=20261124_v134"></script>
-  <script src="../js/booking.js?v=20261124_v134"></script>
+  <script src="../js/api.js?v=20261124_v136"></script>
+  <script src="../js/booking_ui.js?v=20261124_v136"></script>
+  <script src="../js/booking.js?v=20261124_v136"></script>
 </body>
 </html>

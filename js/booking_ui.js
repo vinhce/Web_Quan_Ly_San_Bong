@@ -211,10 +211,42 @@ window.toggleExtraServicesContainer = toggleExtraServicesContainer;
 let _cachedEligibleVouchers = null;
 let _eligibleVouchersInFlight = null;
 let _eligibleVouchersFailed = false;
-window.isBookingForFriend = false;
 
-async function fetchEligibleVouchers() {
+function normalizeBookingVoucher(raw) {
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  if (db && typeof db.normalizeVoucher === 'function') {
+    return db.normalizeVoucher(raw);
+  }
+  if (!raw || typeof raw !== 'object') return null;
+  const code = String(raw.code || '').trim().toUpperCase();
+  if (!code) return null;
+  const rawType = String(raw.type ?? raw.discount_type ?? 'percent').trim().toLowerCase();
+  const type = rawType === 'fixed' ? 'fixed' : 'percent';
+  const value = Math.max(0, Number(raw.value ?? raw.discount_value ?? 0) || 0);
+  const minOrder = Math.max(0, Number(raw.minOrder ?? raw.min_order ?? 0) || 0);
+  const maxDiscountAmount = Math.max(0, Number(raw.maxDiscountAmount ?? raw.max_discount_amount ?? 0) || 0);
+  const rawActive = raw.isActive ?? raw.is_active;
+  const isActive = rawActive === undefined ? true : !(rawActive === false || rawActive === 0 || rawActive === '0' || String(rawActive).toLowerCase() === 'false');
+  return Object.assign({}, raw, {
+    code,
+    type,
+    discount_type: type,
+    value,
+    discount_value: value,
+    minOrder,
+    min_order: minOrder,
+    maxDiscountAmount,
+    max_discount_amount: maxDiscountAmount,
+    isActive,
+    is_active: isActive ? 1 : 0
+  });
+}
+
+async function fetchEligibleVouchers(forceRefresh = false) {
   if (_eligibleVouchersInFlight) return _eligibleVouchersInFlight;
+  if (!forceRefresh && Array.isArray(_cachedEligibleVouchers) && !_eligibleVouchersFailed) {
+    return _cachedEligibleVouchers;
+  }
   _eligibleVouchersInFlight = (async () => {
     try {
       const url = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('api/bookings.php?action=eligible_vouchers') : '/api/bookings.php?action=eligible_vouchers';
@@ -222,12 +254,17 @@ async function fetchEligibleVouchers() {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
       if (json && json.success && Array.isArray(json.data)) {
-        _cachedEligibleVouchers = json.data;
+        const normalized = json.data.map(normalizeBookingVoucher).filter(Boolean);
+        _cachedEligibleVouchers = normalized;
         _eligibleVouchersFailed = false;
         const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
-        if (db) {
+        if (db && typeof db.setVouchers === 'function') {
+          db.setVouchers(normalized);
+        } else {
           try {
-            localStorage.setItem('sanbong_vouchers', JSON.stringify(json.data));
+            const primaryKey = window.STORAGE_KEYS?.VOUCHERS || window.SanBongDB?.STORAGE_KEYS?.VOUCHERS || 'sb_vouchers_v1';
+            localStorage.setItem(primaryKey, JSON.stringify(normalized));
+            localStorage.setItem('sanbong_vouchers', JSON.stringify(normalized));
           } catch (e) {}
         }
       } else {
@@ -251,10 +288,12 @@ async function fetchEligibleVouchers() {
       }
     }
     renderVoucherQuickList();
+    return _cachedEligibleVouchers;
   })();
   return _eligibleVouchersInFlight;
 }
 window.fetchEligibleVouchers = fetchEligibleVouchers;
+window.getCachedEligibleVouchers = () => _cachedEligibleVouchers;
 
 function renderVoucherQuickList() {
   const container = document.getElementById('voucher-quick-list');
@@ -263,18 +302,21 @@ function renderVoucherQuickList() {
   if (!db) return;
 
   if (_cachedEligibleVouchers === null) {
-    fetchEligibleVouchers();
+    fetchEligibleVouchers(true);
     return;
   }
 
   const rawVouchers = Array.isArray(_cachedEligibleVouchers) && (!_eligibleVouchersFailed || _cachedEligibleVouchers.length > 0)
     ? _cachedEligibleVouchers
-    : (_eligibleVouchersFailed ? [] : (db.getVouchers() || []));
-  const vouchers = rawVouchers.filter(v => {
-    const codeUpper = String(v?.code || '').toUpperCase();
-    if (bookingMode !== 'monthly' && codeUpper === 'DATTHANG15') return false;
-    return true;
-  });
+    : (db.getVouchers() || []);
+  const vouchers = rawVouchers
+    .map(normalizeBookingVoucher)
+    .filter(v => {
+      if (!v || v.isActive === false) return false;
+      const codeUpper = String(v.code || '').toUpperCase();
+      if (bookingMode !== 'monthly' && codeUpper === 'DATTHANG15') return false;
+      return true;
+    });
   const palettes = [
     'bg-emerald-50 hover:bg-emerald-100 text-[#16A34A] border-emerald-200',
     'bg-amber-50 hover:bg-amber-100 text-[#D97706] border-amber-200',
@@ -306,7 +348,11 @@ function renderVoucherQuickList() {
   container.innerHTML = '<span class="text-[11px] text-[#64748B]">Gợi ý 1 chạm:</span>' +
     vouchers.map((v, idx) => {
       const cls = palettes[idx % palettes.length];
-      const lbl = v.type === 'percent' ? `-${Number(v.value) || 0}%` : `-${Math.round((Number(v.value) || 0) / 1000)}k`;
+      const vType = String(v.type ?? v.discount_type ?? 'percent').trim().toLowerCase() === 'fixed' ? 'fixed' : 'percent';
+      const vVal = Math.max(0, Number(v.value ?? v.discount_value ?? 0) || 0);
+      const lbl = vType === 'percent'
+        ? `-${vVal}%`
+        : (vVal >= 1000 && vVal % 1000 === 0 ? `-${Math.round(vVal / 1000)}k` : `-${vVal.toLocaleString('vi-VN')}đ`);
       const escCode = esc(v.code || '');
       const escDesc = esc(v.description || '');
       const isApplied = typeof appliedVoucherCode !== 'undefined' && appliedVoucherCode && appliedVoucherCode.toUpperCase() === String(v.code || '').toUpperCase();
@@ -340,7 +386,6 @@ function initBookingPage() {
       const draft = JSON.parse(rawDraft);
       if (draft && draft.submittedCode) {
         sessionStorage.removeItem('sb_booking_draft');
-        window.isBookingForFriend = false;
       } else if (draft && draft.pitchId) {
         if (!paramPitch && !paramType) {
           selectedPitchId = draft.pitchId;
@@ -358,7 +403,6 @@ function initBookingPage() {
         if (draft.weeksCount) monthlyWeeks = draft.weeksCount;
         if (Array.isArray(draft.services)) appliedServices = draft.services;
         if (draft.voucherCode) appliedVoucherCode = draft.voucherCode;
-        if (draft.is_booking_for_friend) window.isBookingForFriend = true;
 
         if (draft.policy_agree) {
           const agreeBox = document.getElementById('policy-agree');
@@ -431,6 +475,9 @@ function initBookingPage() {
   if (appliedVoucherCode) {
     const voucherInput = document.getElementById('voucher-input');
     if (voucherInput) voucherInput.value = appliedVoucherCode;
+    if (typeof applyVoucher === 'function') {
+      applyVoucher();
+    }
   }
 
   function fillBookingUserInfo(u) {
@@ -444,14 +491,9 @@ function initBookingPage() {
 
     const step4Card = document.getElementById('booking-step4-card');
     const summaryCard = document.getElementById('booking-user-summary-card');
-    const inputFieldsWrap = document.getElementById('booking-input-fields-wrap');
-    const friendAlert = document.getElementById('booking-friend-mode-alert');
     const missingPhoneWrap = document.getElementById('booking-missing-phone-wrap');
     const loginReminder = document.getElementById('summary-login-reminder');
     const proceedBtn = document.getElementById('proceed-checkout-btn');
-
-    const nameInput = document.getElementById('cust-name');
-    const phoneInput = document.getElementById('cust-phone');
 
     if (curUser && (curUser.id || curUser.name || curUser.full_name)) {
       // ĐÃ ĐĂNG NHẬP: Render mục 4 gọn gàng
@@ -479,23 +521,14 @@ function initBookingPage() {
         if (missingPhoneWrap) missingPhoneWrap.classList.remove('hidden');
       } else {
         if (missingPhoneWrap) missingPhoneWrap.classList.add('hidden');
-      }
-
-      if (!window.isBookingForFriend) {
-        if (inputFieldsWrap) inputFieldsWrap.classList.add('hidden');
-        if (friendAlert) friendAlert.classList.add('hidden');
-        if (nameInput) nameInput.value = name;
-        if (phoneInput) phoneInput.value = phone;
-      } else {
-        if (inputFieldsWrap) inputFieldsWrap.classList.remove('hidden');
-        if (friendAlert) friendAlert.classList.remove('hidden');
+        if (typeof checkBookingPhoneNoShow === 'function') {
+          checkBookingPhoneNoShow(phone);
+        }
       }
     } else {
       // CHƯA ĐĂNG NHẬP: KHÔNG CÓ MỤC 4, ẩn nhắc nhở & nút luôn xanh lá "Đặt sân ngay"
       if (step4Card) step4Card.classList.add('hidden');
       if (summaryCard) summaryCard.classList.add('hidden');
-      if (inputFieldsWrap) inputFieldsWrap.classList.add('hidden');
-      if (friendAlert) friendAlert.classList.add('hidden');
       if (missingPhoneWrap) missingPhoneWrap.classList.add('hidden');
       if (loginReminder) loginReminder.classList.add('hidden');
       if (proceedBtn) {
@@ -503,9 +536,6 @@ function initBookingPage() {
         proceedBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
         proceedBtn.classList.add('btn-primary');
       }
-      if (nameInput) nameInput.value = '';
-      if (phoneInput) phoneInput.value = '';
-      window.isBookingForFriend = false;
     }
   }
   window.fillBookingUserInfo = fillBookingUserInfo;
@@ -518,16 +548,16 @@ function initBookingPage() {
     if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
     if (nextUid !== _lastVoucherAuthUid) {
       _lastVoucherAuthUid = nextUid;
-      if (!_eligibleVouchersFailed) {
-        _cachedEligibleVouchers = null;
-        renderVoucherQuickList();
-      }
+      _cachedEligibleVouchers = null;
+      renderVoucherQuickList();
     }
   });
   window.addEventListener('sb-auth-unauthenticated', () => {
+    const hadUid = _lastVoucherAuthUid !== null;
     _lastVoucherAuthUid = null;
     fillBookingUserInfo(null);
     if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
+    if (hadUid) _cachedEligibleVouchers = null;
     renderVoucherQuickList();
   });
   if (window.SanBongApp?.authReady) {
@@ -535,38 +565,6 @@ function initBookingPage() {
       fillBookingUserInfo();
       if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
       renderVoucherQuickList();
-    });
-  }
-
-  // Đặt hộ bạn bè / Đổi thông tin
-  const btnToggleFriend = document.getElementById('btn-toggle-friend');
-  if (btnToggleFriend && !btnToggleFriend._bound) {
-    btnToggleFriend._bound = true;
-    btnToggleFriend.addEventListener('click', () => {
-      window.isBookingForFriend = true;
-      const friendAlert = document.getElementById('booking-friend-mode-alert');
-      const inputFieldsWrap = document.getElementById('booking-input-fields-wrap');
-      const missingPhoneWrap = document.getElementById('booking-missing-phone-wrap');
-      if (friendAlert) friendAlert.classList.remove('hidden');
-      if (inputFieldsWrap) inputFieldsWrap.classList.remove('hidden');
-      if (missingPhoneWrap) missingPhoneWrap.classList.add('hidden');
-      const nameInput = document.getElementById('cust-name');
-      const phoneInput = document.getElementById('cust-phone');
-      if (nameInput) {
-        nameInput.value = '';
-        nameInput.focus();
-      }
-      if (phoneInput) phoneInput.value = '';
-    });
-  }
-
-  // Quay lại dùng thông tin của tôi
-  const btnRevertMyInfo = document.getElementById('btn-revert-my-info');
-  if (btnRevertMyInfo && !btnRevertMyInfo._bound) {
-    btnRevertMyInfo._bound = true;
-    btnRevertMyInfo.addEventListener('click', () => {
-      window.isBookingForFriend = false;
-      fillBookingUserInfo();
     });
   }
 
@@ -626,14 +624,14 @@ function initBookingPage() {
     });
   }
 
-  const custPhoneEl = document.getElementById('cust-phone');
-  if (custPhoneEl && !custPhoneEl._noShowBound) {
-    custPhoneEl._noShowBound = true;
-    const handleCheckPhone = () => checkBookingPhoneNoShow(custPhoneEl.value);
-    custPhoneEl.addEventListener('input', handleCheckPhone);
-    custPhoneEl.addEventListener('change', handleCheckPhone);
-    custPhoneEl.addEventListener('blur', handleCheckPhone);
-    if (custPhoneEl.value) handleCheckPhone();
+  const missingPhoneEl = document.getElementById('user-missing-phone');
+  if (missingPhoneEl && !missingPhoneEl._noShowBound) {
+    missingPhoneEl._noShowBound = true;
+    const handleCheckPhone = () => checkBookingPhoneNoShow(missingPhoneEl.value);
+    missingPhoneEl.addEventListener('input', handleCheckPhone);
+    missingPhoneEl.addEventListener('change', handleCheckPhone);
+    missingPhoneEl.addEventListener('blur', handleCheckPhone);
+    if (missingPhoneEl.value) handleCheckPhone();
   }
 
   const pitchSelect = document.getElementById('booking-pitch-select');

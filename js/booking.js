@@ -455,38 +455,108 @@ function changeServiceQty(serviceId, delta) {
   updateBillSummary();
 }
 
-function applyVoucher() {
+let _applyVoucherSeq = 0;
+
+function findNormalizedVoucher(code) {
+  const target = String(code || '').trim().toUpperCase();
+  if (!target) return null;
+  const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+  const fromDb = (db && typeof db.getVouchers === 'function') ? db.getVouchers() : [];
+  const fromCache = typeof window.getCachedEligibleVouchers === 'function' ? (window.getCachedEligibleVouchers() || []) : [];
+  const combined = [...fromDb, ...fromCache];
+  for (const item of combined) {
+    if (!item || !item.code) continue;
+    const normalized = (db && typeof db.normalizeVoucher === 'function') ? db.normalizeVoucher(item) : item;
+    if (normalized && String(normalized.code).toUpperCase() === target) {
+      return normalized;
+    }
+  }
+  return null;
+}
+
+function renderVoucherStatusUI(code, resultObj, voucherObj) {
+  const msg = document.getElementById('voucher-msg');
+  if (!msg) return;
+  const fmt = window.SanBongApp?.formatVND || (n => (Number(n) || 0).toLocaleString('vi-VN') + 'đ');
+  const cleanCode = String(code || '').trim().toUpperCase();
+  if (!cleanCode) {
+    appliedVoucherCode = '';
+    msg.textContent = '';
+    msg.className = 'text-xs mt-1.5 font-semibold';
+    if (typeof window.renderVoucherQuickList === 'function') window.renderVoucherQuickList();
+    return;
+  }
+
+  const vErr = String(resultObj?.voucherError || '');
+  const applied = String(resultObj?.appliedVoucher ?? resultObj?.voucherCode ?? '').trim().toUpperCase();
+  const rejected = String(resultObj?.rejectedVoucherCode || '').trim().toUpperCase();
+  const vDiscAmt = Number(resultObj?.voucherDiscountAmount ?? resultObj?.discountAmount ?? 0) || 0;
+  const mDiscAmt = Number(resultObj?.monthlyDiscountAmount ?? 0) || 0;
+
+  if (resultObj && !vErr && applied) {
+    appliedVoucherCode = applied;
+    const desc = voucherObj?.description ? ` (${voucherObj.description})` : '';
+    const saveNote = vDiscAmt > 0 ? ` · Giảm ${fmt(vDiscAmt)}` : '';
+    msg.textContent = `✓ Đã áp dụng: ${appliedVoucherCode}${desc}${saveNote}`;
+    msg.className = 'text-xs mt-1.5 font-semibold text-[#16A34A]';
+  } else if (rejected) {
+    appliedVoucherCode = '';
+    msg.textContent = `⚠️ Gói tháng đang giảm ${fmt(mDiscAmt)} (nhiều hơn mã ${rejected}), hệ thống tự áp dụng ưu đãi cao hơn.`;
+    msg.className = 'text-xs mt-1.5 font-semibold text-[#D97706]';
+  } else if (vErr && vErr.toLowerCase().includes('tối thiểu')) {
+    appliedVoucherCode = cleanCode;
+    msg.textContent = `⚠️ ${vErr} Hãy chọn sân giá trị cao hơn, thêm dịch vụ hoặc gói tháng!`;
+    msg.className = 'text-xs mt-1.5 font-semibold text-[#D97706]';
+  } else if (!resultObj && voucherObj && voucherObj.isActive !== false) {
+    appliedVoucherCode = cleanCode;
+    msg.textContent = `⏳ Đang kiểm tra điều kiện mã ${cleanCode}...`;
+    msg.className = 'text-xs mt-1.5 font-semibold text-[#64748B]';
+  } else {
+    appliedVoucherCode = '';
+    msg.textContent = `✕ ${vErr || 'Mã giảm giá không tồn tại hoặc đã ngừng áp dụng.'}`;
+    msg.className = 'text-xs mt-1.5 font-semibold text-[#DC2626]';
+  }
+
+  if (typeof window.renderVoucherQuickList === 'function') window.renderVoucherQuickList();
+}
+
+async function applyVoucher() {
   const input = document.getElementById('voucher-input');
   const msg = document.getElementById('voucher-msg');
   if (!input || !msg) return;
-  const code = input.value.trim().toUpperCase();
-  if (!code) {
-    appliedVoucherCode = '';
-    msg.textContent = '';
-    if (typeof window.renderVoucherQuickList === 'function') window.renderVoucherQuickList();
+
+  const seq = ++_applyVoucherSeq;
+  const initialCode = input.value.trim().toUpperCase();
+  if (!initialCode) {
+    renderVoucherStatusUI('', null, null);
     updateBillSummary();
     return;
   }
+
+  if (typeof window.fetchEligibleVouchers === 'function') {
+    msg.textContent = '⏳ Đang đồng bộ danh sách mã ưu đãi...';
+    msg.className = 'text-xs mt-1.5 font-semibold text-[#64748B]';
+    try {
+      await window.fetchEligibleVouchers(false);
+    } catch (e) {}
+  }
+
+  if (seq !== _applyVoucherSeq) return;
+  const code = input.value.trim().toUpperCase();
+  if (!code) {
+    renderVoucherStatusUI('', null, null);
+    updateBillSummary();
+    return;
+  }
+
   const db = window.SanBongApp.SanBongDB;
   const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
+  const v = findNormalizedVoucher(code);
   const testCalc = db.calculatePrice(selectedPitchId, selectedDate, selectedSlotId, appliedServices, code, weeks);
-  const v = db.getVouchers().find(vc => vc.code.toUpperCase() === code);
-  if (testCalc && !testCalc.voucherError && testCalc.voucherCode) {
-    appliedVoucherCode = testCalc.voucherCode;
-    msg.textContent = `✓ Đã áp dụng: ${appliedVoucherCode}${v?.description ? ' (' + v.description + ')' : ''}`;
-    msg.className = 'text-xs mt-1.5 font-semibold text-[#16A34A]';
-  } else if (testCalc?.voucherError && testCalc.voucherError.includes('tối thiểu') && v) {
-    appliedVoucherCode = code;
-    msg.textContent = `⚠️ ${testCalc.voucherError} Hãy chọn thêm dịch vụ hoặc gói tháng!`;
-    msg.className = 'text-xs mt-1.5 font-semibold text-[#D97706]';
-  } else {
-    appliedVoucherCode = '';
-    msg.textContent = `✕ ${testCalc?.voucherError || 'Mã giảm giá không hợp lệ hoặc đã hết hạn.'}`;
-    msg.className = 'text-xs mt-1.5 font-semibold text-[#DC2626]';
-  }
-  if (typeof window.renderVoucherQuickList === 'function') window.renderVoucherQuickList();
-  updateBillSummary();
+  renderVoucherStatusUI(code, testCalc, v);
+  updateBillSummary(code);
 }
+window.applyVoucher = applyVoucher;
 
 function quickApplyVoucher(code) {
   const input = document.getElementById('voucher-input');
@@ -600,7 +670,8 @@ function applyQuoteToSummaryUI(quote, weeks) {
   if (depPctEl) depPctEl.textContent = depRatePct;
 }
 
-function updateBillSummary() {
+function updateBillSummary(probeVoucherCode = '') {
+  const explicitProbe = typeof probeVoucherCode === 'string' ? probeVoucherCode.trim().toUpperCase() : '';
   const db = window.SanBongApp.SanBongDB;
   const pitch = db.getPitchById(selectedPitchId);
   if (!pitch) return;
@@ -623,6 +694,9 @@ function updateBillSummary() {
   }
   const calc = db.calculatePrice(selectedPitchId, selectedDate, selectedSlotId, appliedServices, appliedVoucherCode, weeks);
   if (calc) {
+    if (appliedVoucherCode && !explicitProbe) {
+      renderVoucherStatusUI(appliedVoucherCode, calc, findNormalizedVoucher(appliedVoucherCode));
+    }
     const elPitch = document.getElementById('summary-pitch-price');
     const elSrv = document.getElementById('summary-services-price');
     const elDisc = document.getElementById('summary-discount-price');
@@ -702,6 +776,7 @@ function updateBillSummary() {
   }
 
   // T3-01: Lấy báo giá chuẩn từ server để bảo đảm 100% khớp giữa giao diện & Checkout
+  const voucherToQuote = (explicitProbe || String(appliedVoucherCode || '').trim().toUpperCase());
   if (selectedPitchId && selectedSlotId && selectedDate) {
     clearTimeout(_serverQuoteTimer);
     const seq = ++_serverQuoteSeq;
@@ -726,7 +801,7 @@ function updateBillSummary() {
             weeksCount: weeks,
             bookingMode: bookingMode,
             services: appliedServices,
-            voucherCode: appliedVoucherCode,
+            voucherCode: voucherToQuote,
             redeemedBottles: Number(window.bookingRedeemedBottles || 0)
           })
         });
@@ -742,6 +817,12 @@ function updateBillSummary() {
         if (json && json.success && json.data) {
           window._lastServerQuote = json.data;
           applyQuoteToSummaryUI(json.data, weeks);
+          if (voucherToQuote) {
+            const currentInputCode = (document.getElementById('voucher-input')?.value || '').trim().toUpperCase();
+            if (currentInputCode === voucherToQuote) {
+              renderVoucherStatusUI(voucherToQuote, json.data, findNormalizedVoucher(voucherToQuote));
+            }
+          }
         }
       } catch (e) {}
     }, 150);
@@ -753,17 +834,13 @@ function saveCurrentBookingDraft() {
   const user = db ? db.getUser() : null;
   const weeks = bookingMode === 'monthly' ? monthlyWeeks : 1;
   const promo = db ? db.getPackagePromotion(weeks) : null;
-  const isFriend = Boolean(window.isBookingForFriend);
 
   let name = '';
   let phone = '';
 
-  if (user && !isFriend) {
+  if (user) {
     name = user.full_name || user.name || '';
     phone = user.phone || document.getElementById('user-missing-phone')?.value.trim() || '';
-  } else {
-    name = document.getElementById('cust-name')?.value.trim() || '';
-    phone = document.getElementById('cust-phone')?.value.trim() || '';
   }
   let note = document.getElementById('cust-note')?.value.trim() || '';
 
@@ -781,7 +858,6 @@ function saveCurrentBookingDraft() {
     customerName: name,
     phone: phone,
     note: note,
-    is_booking_for_friend: isFriend,
     policy_agree: Boolean(document.getElementById('policy-agree')?.checked)
   };
   sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
@@ -795,11 +871,11 @@ function proceedToCheckout() {
   setTimeout(() => { window._isProceedingCheckout = false; }, 1000);
 
   // Xóa các thông báo lỗi cũ dưới từng ô
-  ['cust-name-error', 'cust-phone-error', 'user-missing-phone-error', 'cust-note-error'].forEach(id => {
+  ['user-missing-phone-error', 'cust-note-error'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.textContent = ''; el.classList.add('hidden'); }
   });
-  ['cust-name', 'cust-phone', 'user-missing-phone', 'cust-note'].forEach(id => {
+  ['user-missing-phone', 'cust-note'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('border-rose-500', 'ring-2', 'ring-rose-100');
   });
@@ -890,52 +966,19 @@ function proceedToCheckout() {
   }
 
   // BƯỚC 3: Nếu đã đăng nhập: Kiểm tra tiếp thông tin người đặt
-  const isFriend = Boolean(window.isBookingForFriend);
   const missingFields = [];
 
-  let name = '';
-  let phone = '';
-
-  if (!isFriend) {
-    name = user.full_name || user.name || '';
-    phone = user.phone || '';
-    if (!phone) {
-      const missingInput = document.getElementById('user-missing-phone');
-      phone = missingInput?.value.trim() || '';
-      if (!/^0\d{9}$/.test(phone)) {
-        missingFields.push('Số điện thoại (10 chữ số)');
-        const errEl = document.getElementById('user-missing-phone-error');
-        if (errEl) { errEl.textContent = 'Hồ sơ chưa có SĐT. Vui lòng nhập số điện thoại hợp lệ (10 chữ số).'; errEl.classList.remove('hidden'); }
-        missingInput?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
-        if (!firstInvalidEl) firstInvalidEl = missingInput;
-      }
-    }
-  } else {
-    const nameInput = document.getElementById('cust-name');
-    const phoneInput = document.getElementById('cust-phone');
-    name = nameInput?.value.trim() || '';
-    phone = phoneInput?.value.trim() || '';
-
-    if (name.length < 2 || name.length > 60) {
-      missingFields.push('Họ tên người được đặt hộ (2-60 ký tự)');
-      const errEl = document.getElementById('cust-name-error');
-      if (errEl) {
-        errEl.textContent = 'Họ tên người được đặt hộ phải từ 2 đến 60 ký tự.';
-        errEl.classList.remove('hidden');
-      }
-      nameInput?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
-      if (!firstInvalidEl) firstInvalidEl = nameInput;
-    }
-
+  const name = user.full_name || user.name || '';
+  let phone = user.phone || '';
+  if (!phone) {
+    const missingInput = document.getElementById('user-missing-phone');
+    phone = missingInput?.value.trim() || '';
     if (!/^0\d{9}$/.test(phone)) {
-      missingFields.push('Số điện thoại người được đặt hộ (10 chữ số bắt đầu bằng 0)');
-      const errEl = document.getElementById('cust-phone-error');
-      if (errEl) {
-        errEl.textContent = 'Số điện thoại người được đặt hộ không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).';
-        errEl.classList.remove('hidden');
-      }
-      phoneInput?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
-      if (!firstInvalidEl) firstInvalidEl = phoneInput;
+      missingFields.push('Số điện thoại (10 chữ số)');
+      const errEl = document.getElementById('user-missing-phone-error');
+      if (errEl) { errEl.textContent = 'Hồ sơ chưa có SĐT. Vui lòng nhập số điện thoại hợp lệ (10 chữ số).'; errEl.classList.remove('hidden'); }
+      missingInput?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      if (!firstInvalidEl) firstInvalidEl = missingInput;
     }
   }
 
@@ -995,7 +1038,6 @@ function proceedToCheckout() {
     customerName: name,
     phone: phone,
     note: note,
-    is_booking_for_friend: isFriend,
     privacy_consent: true,
     turnstile_token: bookingTurnstileToken || ''
   };
@@ -1040,12 +1082,12 @@ window.openWaitlistPrompt = function(slotId, slotTime) {
     }
   }
 
-  let defaultName = document.getElementById('cust-name')?.value.trim() || '';
-  let defaultPhone = document.getElementById('cust-phone')?.value.trim() || '';
+  let defaultName = '';
+  let defaultPhone = document.getElementById('user-missing-phone')?.value.trim() || '';
   try {
     const user = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
     if (user) {
-      if (!defaultName) defaultName = user.full_name || user.name || '';
+      defaultName = user.full_name || user.name || '';
       if (!defaultPhone) defaultPhone = user.phone || '';
     }
   } catch (e) {}
@@ -1137,10 +1179,16 @@ window.openWaitlistPrompt = function(slotId, slotTime) {
       });
       if (res.status === 401) {
         closeFn();
-        if (window.SanBongApp?.handleUnauthorizedSession) {
+        const hadUser = Boolean(window.SanBongApp?.SanBongDB?.getUser?.());
+        if (window.SanBongApp?.redirectToLogin) {
+          window.SanBongApp.redirectToLogin('booking', {
+            expired: hadUser,
+            notice: hadUser ? '' : 'Vui lòng đăng nhập để đăng ký danh sách chờ.'
+          });
+        } else if (hadUser && window.SanBongApp?.handleUnauthorizedSession) {
           window.SanBongApp.handleUnauthorizedSession('booking');
         } else {
-          window.location.replace(getRel('login?redirect=booking&expired=1'));
+          window.location.replace(getRel(hadUser ? 'login?redirect=booking&expired=1' : 'login?redirect=booking'));
         }
         return;
       }
