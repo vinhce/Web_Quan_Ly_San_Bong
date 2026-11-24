@@ -231,13 +231,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Hiển thị thông báo khi được chuyển hướng từ trang cần xác thực (nếu chưa có thông báo hết phiên/đăng ký)
   const redirectParam = urlParams.get('redirect') || '';
+  const redirectBase = redirectParam.split(/[?#]/)[0].replace(/^\/+/, '').replace(/^html\//, '').replace(/\.html$/, '').replace(/\/+$/, '');
+  const savedNotice = sessionStorage.getItem('sb_login_notice');
   if (!isExpired && !isLocked && !isRegistered) {
-    if (redirectParam === 'portal-admin') {
+    if (redirectBase === 'portal-admin') {
       setAuthMessage('Vui lòng đăng nhập bằng tài khoản Quản trị hoặc Nhân sự để tiếp tục.', 'info');
-    } else if (redirectParam === 'booking' || redirectParam === 'checkout' || sessionStorage.getItem('sb_login_notice')) {
-      setAuthMessage('Đăng nhập để tiếp tục đặt sân', 'info');
-      sessionStorage.removeItem('sb_login_notice');
+    } else if (redirectBase === 'matchmaking') {
+      setAuthMessage('Vui lòng đăng nhập tài khoản để tham gia bắt kèo / đăng tin giao lưu.', 'info');
+    } else if (redirectBase === 'booking' || redirectBase === 'checkout') {
+      setAuthMessage(savedNotice || 'Đăng nhập để tiếp tục đặt sân', 'info');
+    } else if (savedNotice) {
+      setAuthMessage(savedNotice, 'info');
     }
+    if (savedNotice) sessionStorage.removeItem('sb_login_notice');
   } else {
     sessionStorage.removeItem('sb_login_notice');
   }

@@ -21,6 +21,57 @@
   let currentPosts = [];
   let currentJoinPost = null;
 
+  function getMatchmakingUser() {
+    try {
+      const s = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
+      if (s && (s.id || s.username) && s.role !== 'guest' && !s.is_guest) return s;
+    } catch (e) {}
+    const dbUser = window.SanBongApp?.SanBongDB?.getUser ? window.SanBongApp.SanBongDB.getUser() : null;
+    if (dbUser && (dbUser.id || dbUser.username) && dbUser.role !== 'guest' && !dbUser.is_guest) return dbUser;
+    return null;
+  }
+
+  let hadAuthenticatedSession = Boolean(getMatchmakingUser());
+
+  function redirectToMatchmakingLogin(isSessionExpired = false) {
+    const notice = 'Vui lòng đăng nhập tài khoản để tham gia bắt kèo / đăng tin giao lưu.';
+    if (window.SanBongApp?.redirectToLogin) {
+      window.SanBongApp.redirectToLogin('matchmaking', {
+        expired: Boolean(isSessionExpired),
+        notice: isSessionExpired ? '' : notice,
+        replace: Boolean(isSessionExpired)
+      });
+      return;
+    }
+    try {
+      sessionStorage.removeItem('sb_current_user');
+      sessionStorage.removeItem('sb_csrf_token');
+      localStorage.removeItem('sb_current_user');
+      if (!isSessionExpired) {
+        sessionStorage.setItem('sb_login_notice', notice);
+      }
+    } catch (e) {}
+    window.sb_current_user = null;
+    if (isSessionExpired) {
+      window.location.replace(getRel('login?redirect=matchmaking&expired=1'));
+    } else {
+      window.location.href = getRel('login?redirect=matchmaking');
+    }
+  }
+
+  async function ensureMatchmakingAuthenticated() {
+    if (window.SanBongApp?.authReady) {
+      try { await window.SanBongApp.authReady; } catch (e) {}
+    }
+    const user = getMatchmakingUser();
+    if (!user) {
+      redirectToMatchmakingLogin(false);
+      return false;
+    }
+    hadAuthenticatedSession = true;
+    return true;
+  }
+
   async function loadMatches() {
     const grid = document.getElementById('matches-grid');
     if (!grid) return;
@@ -200,11 +251,17 @@
   }
 
   window.addEventListener('sb-auth-synced', (e) => {
+    if (e.detail && (e.detail.id || e.detail.username)) {
+      hadAuthenticatedSession = true;
+    }
     prefillUserInfo('post-captain-name', 'post-phone', e.detail);
     prefillUserInfo('join-captain-name', 'join-phone', e.detail);
   });
   if (window.SanBongApp?.authReady) {
     window.SanBongApp.authReady.then((u) => {
+      if (u && (u.id || u.username)) {
+        hadAuthenticatedSession = true;
+      }
       prefillUserInfo('post-captain-name', 'post-phone', u);
       prefillUserInfo('join-captain-name', 'join-phone', u);
     });
@@ -254,7 +311,8 @@
     return `${year}-${month}-${day}`;
   }
 
-  function openPostModal() {
+  async function openPostModal() {
+    if (!(await ensureMatchmakingAuthenticated())) return;
     const modal = document.getElementById('post-match-modal');
     if (!modal) return;
     const dateInput = document.getElementById('post-match-date');
@@ -277,7 +335,8 @@
     clearAllFieldErrors(document.getElementById('post-match-form'));
   }
 
-  function openJoinModal(postCodeOrId) {
+  async function openJoinModal(postCodeOrId) {
+    if (!(await ensureMatchmakingAuthenticated())) return;
     const post = currentPosts.find(p => p.post_code === postCodeOrId || String(p.id) === String(postCodeOrId));
     if (!post) return;
     currentJoinPost = post;
@@ -355,11 +414,7 @@
       });
       if (res.status === 401) {
         closeCancelModal();
-        if (window.SanBongApp?.handleUnauthorizedSession) {
-          window.SanBongApp.handleUnauthorizedSession('matchmaking');
-        } else {
-          window.location.replace(getRel('login?redirect=matchmaking&expired=1'));
-        }
+        redirectToMatchmakingLogin(hadAuthenticatedSession);
         return;
       }
 
@@ -558,11 +613,7 @@
         });
         if (res.status === 401) {
           closePostModal();
-          if (window.SanBongApp?.handleUnauthorizedSession) {
-            window.SanBongApp.handleUnauthorizedSession('matchmaking');
-          } else {
-            window.location.replace(getRel('login?redirect=matchmaking&expired=1'));
-          }
+          redirectToMatchmakingLogin(hadAuthenticatedSession);
           return;
         }
         const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
@@ -653,11 +704,7 @@
         });
         if (res.status === 401) {
           closeJoinModal();
-          if (window.SanBongApp?.handleUnauthorizedSession) {
-            window.SanBongApp.handleUnauthorizedSession('matchmaking');
-          } else {
-            window.location.replace(getRel('login?redirect=matchmaking&expired=1'));
-          }
+          redirectToMatchmakingLogin(hadAuthenticatedSession);
           return;
         }
         const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
