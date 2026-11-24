@@ -37,10 +37,10 @@ function dash_is_peak_slot(string $slotTime): bool {
     return ($mins['startMin'] < 1260 && $mins['endMin'] > 1050);
 }
 
-// 1. Pitch counts (SQL aggregate)
+// 1. Pitch counts (SQL aggregate, không đếm sân đã ẩn vào mẫu số vận hành)
 $pitchAgg = $pdo->query("
     SELECT
-        COUNT(*) AS total_pitches,
+        SUM(CASE WHEN status != 'Ẩn' THEN 1 ELSE 0 END) AS total_pitches,
         SUM(CASE WHEN status = 'Hoạt động' THEN 1 ELSE 0 END) AS active_pitches,
         SUM(CASE WHEN status = 'Bảo trì' THEN 1 ELSE 0 END) AS maint_pitches
     FROM pitches

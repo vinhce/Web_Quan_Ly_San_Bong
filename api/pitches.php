@@ -6,7 +6,7 @@ secure_session_start();
 $pdo = getDBConnection();
 
 $type = isset($_GET['type']) ? (int)$_GET['type'] : null;
-$includeHidden = !empty($_GET['include_hidden']);
+$includeHidden = !empty($_GET['include_hidden']) && is_portal_operator(get_authenticated_user($pdo));
 
 try {
     if ($type && in_array($type, [5, 7, 11])) {
