@@ -29,7 +29,7 @@ if (!in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], tr
     http_response_code(403);
     $homeHref = ($basePath !== '' ? $basePath . '/' : '/');
     $historyHref = ($basePath !== '' ? $basePath : '') . '/history';
-    $cssHref = ($basePath !== '' ? $basePath : '') . '/css/tailwind.generated.css?v=20261124_v136';
+    $cssHref = ($basePath !== '' ? $basePath : '') . '/css/tailwind.generated.css?v=20261124_v139';
     ?>
     <!DOCTYPE html>
     <html lang="vi">
