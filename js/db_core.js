@@ -39,6 +39,14 @@
   window.SanBongDB.STORAGE_KEYS = STORAGE_KEYS;
   Object.assign(window.SanBongDB, {
     init() {
+      if (typeof window !== 'undefined' && window.location && /(?:\/|^)(login|forgot-password)(?:\.html|\/|$)/i.test(String(window.location.pathname || ''))) {
+        try {
+          localStorage.removeItem(STORAGE_KEYS.USER);
+          localStorage.removeItem('sb_user');
+          localStorage.removeItem('sb_current_user');
+        } catch (e) {}
+        return;
+      }
       const data = window.SanBongData || {};
       const savedPitches = JSON.parse(localStorage.getItem(STORAGE_KEYS.PITCHES) || '[]');
       if (!localStorage.getItem(STORAGE_KEYS.PITCHES) || savedPitches.length < (data.DEFAULT_PITCHES || []).length) {
@@ -233,10 +241,6 @@
       try {
         localStorage.removeItem(STORAGE_KEYS.USER);
         localStorage.removeItem('sb_user');
-        const sUser = JSON.parse(sessionStorage.getItem('sb_current_user') || 'null');
-        if (sUser && (sUser.username === 'user' || sUser.full_name === 'Trần Minh Hoàng')) {
-          sessionStorage.removeItem('sb_current_user');
-        }
       } catch (e) {}
       const currentBank = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANK) || '{}');
       if (!localStorage.getItem(STORAGE_KEYS.BANK) || currentBank.accountName === 'NGUYEN VAN HUNG' || currentBank.branch?.includes('Nam Sài Gòn')) {
@@ -349,7 +353,8 @@
 
     async syncFromServer() {
       try {
-        const res = await fetch(getRelativePath('api/pitches.php?all=1'));
+        const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
+        const res = await fetch(getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1'));
         if (!res.ok) return;
         const jsonRes = await res.json();
         if (jsonRes?.csrf_token && window.SanBongHelpers?.setCsrfToken) {

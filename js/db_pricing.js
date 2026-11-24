@@ -127,10 +127,7 @@
         hourlyRate = isPeak ? Math.max(Number(pitch.peakPrice || 0), Number(pitch.weekendPrice)) : Number(pitch.weekendPrice);
       }
 
-      let singlePitchPrice = hourlyRate;
-      if (slot && slot.duration && slot.duration > 1) {
-        singlePitchPrice = Math.round(singlePitchPrice * slot.duration);
-      }
+      let singlePitchPrice = Math.round(hourlyRate);
       const rawPitchTotal = singlePitchPrice * weeks;
 
       let singleServiceTotal = 0;

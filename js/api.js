@@ -4,7 +4,8 @@ window.SanBongApp = window.SanBongApp || {};
 window.SanBongApp.SanBongAPI = {
   async fetchInitialData() {
     try {
-      const apiUrl = window.SanBongApp.getRelativePath('api/pitches.php?all=1');
+      const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
+      const apiUrl = window.SanBongApp.getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1');
       const response = await fetch(apiUrl);
       if (response.ok) {
         const jsonRes = await response.json();

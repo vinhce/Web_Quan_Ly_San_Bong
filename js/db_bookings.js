@@ -128,9 +128,8 @@
         const slots = this.getTimeSlots();
         const slot = slots.find(s => s.id === booking.slotId || s.time === booking.slotTime);
         const isPeak = slot ? slot.isPeak : false;
-        const duration = (slot && slot.duration) ? slot.duration : 1;
         const weeks = Math.max(1, Number(booking.weeksCount) || 1);
-        const newPitchPrice = Math.round((isPeak ? newPitch.peakPrice : newPitch.basePrice) * duration) * weeks;
+        const newPitchPrice = Math.round(isPeak ? newPitch.peakPrice : newPitch.basePrice) * weeks;
         const oldPitchPrice = Number(booking.pitchPrice || 0);
         diff = newPitchPrice - oldPitchPrice;
         booking.pitchPrice = newPitchPrice;

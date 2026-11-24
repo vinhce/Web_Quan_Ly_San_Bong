@@ -8,7 +8,7 @@ const DEFAULT_PITCHES = [
     "size": "20m x 40m",
     "grass": "Cỏ nhân tạo kim cương FIFA Quality Pro, đệm hạt cao su EPDM êm ái",
     "basePrice": 250000,
-    "peakPrice": 350000,
+    "peakPrice": 250000,
     "status": "Hoạt động",
     "amenities": [
       "Đèn LED 400W chống chói",
@@ -16,7 +16,7 @@ const DEFAULT_PITCHES = [
       "Nước suối miễn phí",
       "Phòng thay đồ & tắm nóng lạnh",
       "Wifi tốc độ cao",
-      "Trọng tài theo yêu cầu"
+      "Thuê trọng tài theo yêu cầu (tính phí lẻ)"
     ],
     "variant": "standard",
     "description": "Sân 5 chuẩn thi đấu mini, vị trí gần khán đài và khu dịch vụ tiện lợi."
@@ -29,7 +29,7 @@ const DEFAULT_PITCHES = [
     "size": "20m x 40m",
     "grass": "Cỏ nhân tạo monofilament cao cấp 50mm, thoát nước nhanh sau mưa",
     "basePrice": 250000,
-    "peakPrice": 350000,
+    "peakPrice": 250000,
     "status": "Hoạt động",
     "amenities": [
       "Đèn LED 400W chống chói",
@@ -49,7 +49,7 @@ const DEFAULT_PITCHES = [
     "size": "30m x 50m",
     "grass": "Cỏ sợi đan mật độ cao, giảm thiểu trầy xước khi va chạm tối đa",
     "basePrice": 450000,
-    "peakPrice": 650000,
+    "peakPrice": 450000,
     "status": "Hoạt động",
     "amenities": [
       "Hệ thống chiếu sáng 8 trụ LED",

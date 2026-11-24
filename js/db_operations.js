@@ -256,7 +256,9 @@
       const tx = list[idx];
       const payload = (typeof payloadOrStatus === 'string') ? { status: payloadOrStatus } : (payloadOrStatus || {});
       const user = this.getUser();
-      const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const dNow = new Date();
+      const pad2 = n => String(n).padStart(2, '0');
+      const nowStr = `${dNow.getFullYear()}-${pad2(dNow.getMonth() + 1)}-${pad2(dNow.getDate())} ${pad2(dNow.getHours())}:${pad2(dNow.getMinutes())}:${pad2(dNow.getSeconds())}`;
 
       if (payload.booking_code) {
         const cleanCode = String(payload.booking_code).trim().toUpperCase();
