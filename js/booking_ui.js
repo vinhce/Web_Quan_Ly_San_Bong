@@ -49,22 +49,23 @@ function setBookingMode(mode) {
   const panel = document.getElementById('monthly-booking-panel');
 
   if (bookingMode === 'monthly') {
-    if (monthlyBtn) monthlyBtn.className = 'px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
-    if (singleBtn) singleBtn.className = 'px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
+    if (monthlyBtn) monthlyBtn.className = 'px-3 sm:px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
+    if (singleBtn) singleBtn.className = 'px-3 sm:px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
     if (panel) panel.classList.remove('hidden');
     // Khi đặt gói: Không cần gọi thêm dịch vụ vì gói đã bao gồm quà tặng trọn gói
     appliedServices = [];
     extraServicesCollapsed = true;
     updateMonthlyPackage();
   } else {
-    if (singleBtn) singleBtn.className = 'px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
-    if (monthlyBtn) monthlyBtn.className = 'px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
+    if (singleBtn) singleBtn.className = 'px-3 sm:px-4 py-2.5 rounded-xl border-2 border-[#16A34A] bg-[#DCFCE7]/50 text-[#15803D] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm';
+    if (monthlyBtn) monthlyBtn.className = 'px-3 sm:px-4 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#475569] hover:border-[#16A34A] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all';
     if (panel) panel.classList.add('hidden');
     monthlyDates = [];
     extraServicesCollapsed = false;
   }
   updatePackageServicesUI();
   renderServices();
+  renderVoucherQuickList();
   updateBillSummary();
 }
 window.setBookingMode = setBookingMode;
@@ -85,7 +86,7 @@ function updateMonthlyPackage() {
         <span class="text-xl shrink-0">${g.icon || '🎁'}</span>
         <div class="flex-1">
           <div class="font-bold text-[#0F172A] text-xs">${g.name}</div>
-          <div class="text-[11px] text-slate-500 font-medium">Tài trợ miễn phí: <b>${window.SanBongApp.formatVND(g.lineValue)}/trận</b> → <b class="text-[#15803D]">0đ</b></div>
+          <div class="text-[11px] text-slate-500 font-medium">Tài trợ miễn phí: <span class="whitespace-nowrap"><b>${window.SanBongApp.formatVND(g.lineValue)}/trận</b> → <b class="text-[#15803D]">0đ</b></span></div>
         </div>
       </div>
     `).join('');
@@ -208,26 +209,50 @@ function toggleExtraServicesContainer() {
 window.toggleExtraServicesContainer = toggleExtraServicesContainer;
 
 let _cachedEligibleVouchers = null;
+let _eligibleVouchersInFlight = null;
+let _eligibleVouchersFailed = false;
 window.isBookingForFriend = false;
 
 async function fetchEligibleVouchers() {
-  try {
-    const url = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('api/bookings.php?action=eligible_vouchers') : '/api/bookings.php?action=eligible_vouchers';
-    const res = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
-    const json = await res.json();
-    if (json && json.success && Array.isArray(json.data)) {
-      _cachedEligibleVouchers = json.data;
-      const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
-      if (db) {
-        try {
-          localStorage.setItem('sanbong_vouchers', JSON.stringify(json.data));
-        } catch (e) {}
+  if (_eligibleVouchersInFlight) return _eligibleVouchersInFlight;
+  _eligibleVouchersInFlight = (async () => {
+    try {
+      const url = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('api/bookings.php?action=eligible_vouchers') : '/api/bookings.php?action=eligible_vouchers';
+      const res = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      if (json && json.success && Array.isArray(json.data)) {
+        _cachedEligibleVouchers = json.data;
+        _eligibleVouchersFailed = false;
+        const db = window.SanBongApp?.SanBongDB || window.SanBongDB;
+        if (db) {
+          try {
+            localStorage.setItem('sanbong_vouchers', JSON.stringify(json.data));
+          } catch (e) {}
+        }
+      } else {
+        _cachedEligibleVouchers = [];
+        _eligibleVouchersFailed = true;
+      }
+    } catch (e) {
+      _cachedEligibleVouchers = [];
+      _eligibleVouchersFailed = true;
+    } finally {
+      _eligibleVouchersInFlight = null;
+    }
+    const hintEl = document.getElementById('voucher-available-hint');
+    if (hintEl) {
+      if (_eligibleVouchersFailed) {
+        hintEl.textContent = 'Tạm thời chưa tải được danh sách gợi ý (bạn vẫn có thể nhập mã trực tiếp).';
+      } else if (Array.isArray(_cachedEligibleVouchers) && _cachedEligibleVouchers.length > 0) {
+        hintEl.textContent = `Có ${_cachedEligibleVouchers.length} mã ưu đãi khả dụng.`;
+      } else {
+        hintEl.textContent = 'Hiện chưa có mã ưu đãi tự động.';
       }
     }
-  } catch (e) {
-    console.warn('[VOUCHER FETCH WARN]', e);
-  }
-  renderVoucherQuickList();
+    renderVoucherQuickList();
+  })();
+  return _eligibleVouchersInFlight;
 }
 window.fetchEligibleVouchers = fetchEligibleVouchers;
 
@@ -242,7 +267,14 @@ function renderVoucherQuickList() {
     return;
   }
 
-  const vouchers = _cachedEligibleVouchers || db.getVouchers() || [];
+  const rawVouchers = Array.isArray(_cachedEligibleVouchers) && (!_eligibleVouchersFailed || _cachedEligibleVouchers.length > 0)
+    ? _cachedEligibleVouchers
+    : (_eligibleVouchersFailed ? [] : (db.getVouchers() || []));
+  const vouchers = rawVouchers.filter(v => {
+    const codeUpper = String(v?.code || '').toUpperCase();
+    if (bookingMode !== 'monthly' && codeUpper === 'DATTHANG15') return false;
+    return true;
+  });
   const palettes = [
     'bg-emerald-50 hover:bg-emerald-100 text-[#16A34A] border-emerald-200',
     'bg-amber-50 hover:bg-amber-100 text-[#D97706] border-amber-200',
@@ -264,7 +296,10 @@ function renderVoucherQuickList() {
   const esc = window.SanBongApp?.escapeHTML || (s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
 
   if (!vouchers.length) {
-    container.innerHTML = '<span class="text-[11px] text-[#64748B]">Gợi ý 1 chạm:</span><span class="text-[11px] text-slate-400 italic">Không có mã ưu đãi phù hợp</span>';
+    const emptyNote = _eligibleVouchersFailed
+      ? 'Tạm thời chưa tải được gợi ý (bạn có thể tự nhập mã bên trên)'
+      : 'Không có mã ưu đãi phù hợp';
+    container.innerHTML = `<span class="text-[11px] text-[#64748B]">Gợi ý 1 chạm:</span><span class="text-[11px] text-slate-400 italic">${emptyNote}</span>`;
     return;
   }
 
@@ -298,12 +333,15 @@ function initBookingPage() {
 
   const today = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
 
-  // Khôi phục lựa chọn từ draft nếu có (ví dụ sau khi khách bấm Đăng nhập và quay lại)
+  // Khôi phục lựa chọn từ draft nếu chưa được tạo thành đơn hoàn chỉnh
   const rawDraft = sessionStorage.getItem('sb_booking_draft');
   if (rawDraft) {
     try {
       const draft = JSON.parse(rawDraft);
-      if (draft && draft.pitchId) {
+      if (draft && draft.submittedCode) {
+        sessionStorage.removeItem('sb_booking_draft');
+        window.isBookingForFriend = false;
+      } else if (draft && draft.pitchId) {
         if (!paramPitch && !paramType) {
           selectedPitchId = draft.pitchId;
           const p = db.getPitchById(selectedPitchId);
@@ -400,7 +438,7 @@ function initBookingPage() {
     if (!curUser && window.SanBongApp?.SanBongDB?.getUser) {
       curUser = window.SanBongApp.SanBongDB.getUser();
     }
-    if (curUser && (curUser.role === 'guest' || curUser.is_guest)) {
+    if (curUser && (curUser.role === 'guest' || curUser.is_guest || ['admin', 'manager', 'staff'].includes(String(curUser.role || '').toLowerCase()))) {
       curUser = null;
     }
 
@@ -473,21 +511,27 @@ function initBookingPage() {
   window.fillBookingUserInfo = fillBookingUserInfo;
 
   fillBookingUserInfo();
+  let _lastVoucherAuthUid = null;
   window.addEventListener('sb-auth-synced', (e) => {
-    _cachedEligibleVouchers = null;
+    const nextUid = e.detail?.id ? String(e.detail.id) : null;
     fillBookingUserInfo(e.detail);
     if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
-    renderVoucherQuickList();
+    if (nextUid !== _lastVoucherAuthUid) {
+      _lastVoucherAuthUid = nextUid;
+      if (!_eligibleVouchersFailed) {
+        _cachedEligibleVouchers = null;
+        renderVoucherQuickList();
+      }
+    }
   });
   window.addEventListener('sb-auth-unauthenticated', () => {
-    _cachedEligibleVouchers = null;
+    _lastVoucherAuthUid = null;
     fillBookingUserInfo(null);
     if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
     renderVoucherQuickList();
   });
   if (window.SanBongApp?.authReady) {
     window.SanBongApp.authReady.then(() => {
-      _cachedEligibleVouchers = null;
       fillBookingUserInfo();
       if (typeof window.initBookingWaterRedemption === 'function') window.initBookingWaterRedemption();
       renderVoucherQuickList();
@@ -729,19 +773,22 @@ function renderPitchTypeSelector() {
   container.innerHTML = types.map(t => {
     const isAct = t.type === selectedPitchType;
     return `
-      <button type="button" onclick="selectPitchType(${t.type})" class="p-2.5 sm:p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+      <button type="button" onclick="selectPitchType(${t.type})" class="p-3 rounded-xl border text-left transition-all relative flex sm:flex-col items-center sm:items-start justify-between gap-2 sm:gap-1 cursor-pointer ${
         isAct
           ? 'bg-[#DCFCE7]/60 border-[#16A34A] ring-2 ring-[#16A34A]/25 shadow-sm'
           : 'bg-white border-[#E2E8F0] hover:border-[#16A34A]/60 hover:bg-[#F8FAFC]'
       }">
-        <div class="flex items-center justify-between w-full mb-1">
-          <span class="font-heading font-extrabold text-xs sm:text-sm ${isAct ? 'text-[#15803D]' : 'text-[#0F172A]'}">
-            ${t.name}
-          </span>
-          <span class="w-2.5 h-2.5 rounded-full ${isAct ? 'bg-[#16A34A]' : 'bg-slate-300'}"></span>
+        <div class="min-w-0 sm:w-full">
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="font-heading font-extrabold text-xs sm:text-sm whitespace-nowrap ${isAct ? 'text-[#15803D]' : 'text-[#0F172A]'}">${t.name}</span>
+            <span class="hidden sm:inline-block w-2.5 h-2.5 rounded-full shrink-0 ${isAct ? 'bg-[#16A34A]' : 'bg-slate-300'}"></span>
+          </div>
+          <div class="text-[11px] sm:text-xs text-[#64748B] mt-0.5">${t.desc}</div>
         </div>
-        <div class="text-[10px] sm:text-xs text-[#64748B] truncate">${t.desc}</div>
-        <div class="text-[11px] sm:text-xs font-bold text-[#16A34A] mt-1">${t.price}</div>
+        <div class="flex items-center gap-2 shrink-0 sm:mt-1">
+          <span class="text-xs font-bold text-[#16A34A] whitespace-nowrap">${t.price}</span>
+          <span class="sm:hidden w-2.5 h-2.5 rounded-full shrink-0 ${isAct ? 'bg-[#16A34A]' : 'bg-slate-300'}"></span>
+        </div>
       </button>
     `;
   }).join('');
