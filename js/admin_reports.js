@@ -9,9 +9,78 @@ let currentReportPitchRows = [];
 let currentReportPitchSort = { key: 'revenue', dir: 'desc' };
 let currentReportUncollectedUpcoming = [];
 let currentReportUncollectedOverdue = [];
+let currentReportOverdueCodes = new Set();
+let currentReportForfeitBookings = [];
+let currentReportData = null;
+let currentReportSubtab = 'tong-quan';
+let currentReportShowAllSlots = false;
+
+const REPORT_SUBTABS = ['tong-quan', 'doi-soat', 'chi-tiet', 'chi-phi'];
+const REPORT_KPI_COLLAPSE_KEY = 'sb_rpt_kpi_collapsed_v1';
+const REPORT_FORFEIT_OR_CANCEL_PAY_STATUSES = new Set([
+  'Đã hủy',
+  'Đã hoàn cọc 100%',
+  'Tịch thu cọc 30%',
+  'Phạt 50% cọc',
+  'Bảo lưu cọc 30%'
+]);
 
 function fmtVNDReport(n) {
   return Number(n || 0).toLocaleString('vi-VN') + 'đ';
+}
+
+function fmtSignedVNDReport(n) {
+  const val = Number(n || 0);
+  if (val === 0) return '0đ';
+  const absStr = Math.abs(val).toLocaleString('vi-VN') + 'đ';
+  return val > 0 ? `+${absStr}` : `−${absStr}`;
+}
+
+function fmtDateVNReport(val) {
+  const raw = String(val || '').trim();
+  if (!raw) return '';
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}:\d{2})(?::\d{2})?)?$/);
+  if (m) {
+    const base = `${m[3]}/${m[2]}/${m[1]}`;
+    return m[4] ? `${base} ${m[4]}` : base;
+  }
+  const mShort = raw.match(/^(\d{4})-(\d{2})$/);
+  if (mShort) return `${mShort[2]}/${mShort[1]}`;
+  return raw;
+}
+window.fmtDateVNReport = fmtDateVNReport;
+
+function fmtDateShortVNReport(val) {
+  const vn = fmtDateVNReport(val);
+  const m = vn.match(/^(\d{2}\/\d{2})\/\d{4}/);
+  return m ? m[1] : vn;
+}
+
+function escapeAttrReport(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function normalizeSearchReport(str) {
+  return String(str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .trim();
+}
+
+function isValidReportMatchBooking(b) {
+  if (!b) return false;
+  const st = String(b.status || '').trim();
+  const pst = String(b.payment_status || '').trim();
+  if (st === 'Đã hủy' || st === 'Khách chưa đến') return false;
+  if (REPORT_FORFEIT_OR_CANCEL_PAY_STATUSES.has(pst)) return false;
+  return true;
 }
 
 function fmtLocalISO(d) {
@@ -32,9 +101,113 @@ function computePresetDates(preset) {
     const lEnd = new Date(now.getFullYear(), now.getMonth(), 0);
     return { from: fmtLocalISO(lm), to: fmtLocalISO(lEnd) };
   }
-  // default: 'month'
   const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   return { from: firstDay, to: todayISO };
+}
+
+function getReportSubtabFromHash() {
+  try {
+    const raw = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+    return REPORT_SUBTABS.includes(raw) ? raw : 'tong-quan';
+  } catch (e) {
+    return 'tong-quan';
+  }
+}
+
+function switchReportSubtab(subtab, opts = {}) {
+  const target = REPORT_SUBTABS.includes(String(subtab || '').toLowerCase())
+    ? String(subtab).toLowerCase()
+    : 'tong-quan';
+  currentReportSubtab = target;
+
+  document.querySelectorAll('#tab-content-reports [data-rpt-panel]').forEach(panel => {
+    const isAct = panel.getAttribute('data-rpt-panel') === target;
+    panel.classList.toggle('hidden', !isAct);
+  });
+
+  document.querySelectorAll('#tab-content-reports [data-rpt-subtab]').forEach(btn => {
+    const isAct = btn.getAttribute('data-rpt-subtab') === target;
+    btn.classList.toggle('is-active', isAct);
+    btn.setAttribute('aria-selected', isAct ? 'true' : 'false');
+  });
+
+  if (opts.updateHash !== false) {
+    try {
+      const url = new URL(window.location.href);
+      url.hash = `#${target}`;
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {}
+  }
+
+  if (currentReportData) {
+    if (target === 'tong-quan') {
+      requestAnimationFrame(() => renderDailyRevenueSVG(currentReportData.dailyRevenue || []));
+    } else if (target === 'chi-tiet') {
+      requestAnimationFrame(() => renderSlotRevenueSVG(currentReportData.bySlot || []));
+    }
+  }
+}
+window.switchReportSubtab = switchReportSubtab;
+
+window.addEventListener('hashchange', () => {
+  const reportSection = document.getElementById('tab-content-reports');
+  if (!reportSection || reportSection.classList.contains('hidden')) return;
+  const raw = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+  if (REPORT_SUBTABS.includes(raw)) {
+    switchReportSubtab(raw, { updateHash: false });
+  }
+});
+
+function getReportKpiCollapsedMap() {
+  try {
+    const raw = localStorage.getItem(REPORT_KPI_COLLAPSE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function applyReportKpiCollapsedState() {
+  const map = getReportKpiCollapsedMap();
+  document.querySelectorAll('#tab-content-reports [data-kpi-card]').forEach(card => {
+    const key = card.getAttribute('data-kpi-card');
+    if (!key) return;
+    const isCollapsed = Boolean(map[key]);
+    const body = card.querySelector('.rpt-kpi-body');
+    const btn = card.querySelector('[data-kpi-toggle]');
+    if (body) body.classList.toggle('hidden', isCollapsed);
+    if (btn) {
+      btn.textContent = isCollapsed ? '+' : '−';
+      btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      btn.setAttribute('title', isCollapsed ? 'Mở rộng thẻ' : 'Thu gọn thẻ');
+    }
+  });
+}
+
+window.toggleReportKpiCard = function(key) {
+  if (!key) return;
+  const map = getReportKpiCollapsedMap();
+  map[key] = !map[key];
+  try {
+    localStorage.setItem(REPORT_KPI_COLLAPSE_KEY, JSON.stringify(map));
+  } catch (e) {}
+  applyReportKpiCollapsedState();
+};
+
+function updatePeriodDisplayBadge(fromDate, toDate) {
+  const badge = document.getElementById('rpt-period-badge');
+  if (!badge) return;
+  const f = fmtDateVNReport(fromDate);
+  const t = fmtDateVNReport(toDate);
+  if (f && t) {
+    badge.textContent = f === t ? f : `${f} – ${t}`;
+    badge.classList.remove('hidden');
+  } else {
+    badge.textContent = '';
+    badge.classList.add('hidden');
+  }
 }
 
 function syncReportFilterUI() {
@@ -57,6 +230,7 @@ function syncReportFilterUI() {
 }
 
 function syncReportUrlState(fromDate, toDate) {
+  updatePeriodDisplayBadge(fromDate, toDate);
   try {
     const url = new URL(window.location.href);
     url.searchParams.set('r_preset', currentReportPreset);
@@ -76,6 +250,10 @@ function initReportFiltersFromURL() {
   currentReportInitialized = true;
   const fromInput = document.getElementById('rpt-from-date');
   const toInput = document.getElementById('rpt-to-date');
+  if (window.SanBongDatePicker && typeof window.SanBongDatePicker.init === 'function') {
+    const root = document.getElementById('tab-content-reports');
+    if (root) window.SanBongDatePicker.init(root);
+  }
   try {
     const url = new URL(window.location.href);
     const p = url.searchParams.get('r_preset');
@@ -100,6 +278,9 @@ function initReportFiltersFromURL() {
     if (toInput) toInput.value = range.to;
   }
   syncReportFilterUI();
+  updatePeriodDisplayBadge(fromInput?.value || '', toInput?.value || '');
+  applyReportKpiCollapsedState();
+  switchReportSubtab(getReportSubtabFromHash(), { updateHash: false });
 }
 
 window.setReportDateRange = function(rangeType) {
@@ -182,7 +363,7 @@ function renderDeltaBadge(elId, pct, invertColor) {
     ? 'text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-[#64748B]'
     : (good
       ? 'text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700'
-      : 'text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700');
+      : 'text-[11px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700');
   el.textContent = `${sign}${num}%`;
 }
 
@@ -210,11 +391,12 @@ function renderStackedBar(barId, legendId, totalId, segments, totalVal) {
   legEl.innerHTML = segments.map(seg => {
     const val = Math.max(0, Number(seg.value || 0));
     const pct = sum > 0 ? ((val / sum) * 100).toFixed(1) : '0.0';
+    const valStyle = seg.textColor ? `style="color:${seg.textColor}"` : '';
     return `
       <span class="inline-flex items-center gap-1.5">
         <span class="w-2.5 h-2.5 rounded-xs shrink-0" style="background:${seg.color}"></span>
         <span>${escapeSearchHTML(seg.label)}:</span>
-        <strong class="text-[#0F172A]">${fmtVNDReport(val)}</strong>
+        <strong class="text-[#0F172A]" ${valStyle}>${fmtVNDReport(val)}</strong>
         <span class="text-[#64748B]">(${pct}%)</span>
       </span>
     `;
@@ -223,74 +405,130 @@ function renderStackedBar(barId, legendId, totalId, segments, totalVal) {
 
 function renderReconciliationPanel(recon) {
   const badgeEl = document.getElementById('rpt-formula-badge');
-  const detailsEl = document.getElementById('rpt-recon-details');
+  const alertEl = document.getElementById('rpt-recon-alert');
   const itemsEl = document.getElementById('rpt-recon-items');
   const deviantsEl = document.getElementById('rpt-recon-deviants');
+  const deviantsEmptyEl = document.getElementById('rpt-recon-deviants-empty');
+  const dotEl = document.getElementById('rpt-recon-dot');
   if (!recon || !itemsEl) return;
 
   const checks = [recon.bankCheck, recon.shiftCashCheck, recon.pitchCollectedCheck].filter(Boolean);
-  const allMatched = recon.isMatched === true;
-  const totalDiff = checks.reduce((acc, c) => acc + Math.abs(Number(c.diff || 0)), 0);
+  const deviants = Array.isArray(recon.pitchCollectedCheck?.deviantOrders) ? recon.pitchCollectedCheck.deviantOrders : [];
+  const mismatchedChecks = checks.filter(c => (c.isMatched !== true) || (Number(c.diff || 0) !== 0));
+  const hasAnyIssue = mismatchedChecks.length > 0 || deviants.length > 0;
+
+  if (dotEl) {
+    dotEl.classList.toggle('hidden', !hasAnyIssue);
+  }
 
   if (badgeEl) {
-    if (allMatched) {
+    if (mismatchedChecks.length === 0) {
       badgeEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800';
-      badgeEl.textContent = 'Khớp (0đ lệch)';
+      badgeEl.textContent = 'Khớp';
     } else {
-      badgeEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800';
-      badgeEl.textContent = `Lệch ${fmtVNDReport(totalDiff)}`;
+      badgeEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300';
+      badgeEl.textContent = `Lệch (${mismatchedChecks.length} nguồn)`;
     }
   }
-  if (detailsEl) {
-    detailsEl.open = !allMatched;
+
+  if (alertEl) {
+    if (mismatchedChecks.length === 0) {
+      alertEl.classList.add('hidden');
+      alertEl.innerHTML = '';
+    } else {
+      alertEl.classList.remove('hidden');
+      const linesHtml = mismatchedChecks.map(c => {
+        const diffVal = Number(c.diff || 0);
+        const signedStr = fmtSignedVNDReport(diffVal);
+        const diffColor = diffVal < 0 ? 'text-rose-700' : 'text-amber-900';
+        return `
+          <li class="flex flex-wrap items-baseline justify-between gap-2">
+            <span>• ${escapeSearchHTML(c.label || '')}</span>
+            <strong class="${diffColor} font-mono whitespace-nowrap">${escapeSearchHTML(signedStr)}</strong>
+          </li>
+        `;
+      }).join('');
+      alertEl.innerHTML = `
+        <div class="font-bold text-amber-900 text-xs">⚠ Cảnh báo chênh lệch từng nguồn đối soát:</div>
+        <ul class="space-y-1 text-xs pl-1">${linesHtml}</ul>
+        <div class="text-[11px] text-amber-800 pt-1 border-t border-amber-200">
+          Lưu ý: Các khoản lệch được theo dõi độc lập theo từng nguồn dữ liệu, <strong>không bù trừ cho nhau</strong>.
+        </div>
+      `;
+    }
   }
 
   itemsEl.innerHTML = checks.map(c => {
-    const matched = c.isMatched === true;
-    const statusCls = matched ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200';
-    const statusTxt = matched ? 'Khớp' : `Lệch ${c.diff > 0 ? '+' : ''}${fmtVNDReport(c.diff)}`;
+    const diffVal = Number(c.diff || 0);
+    const matched = (c.isMatched === true && diffVal === 0);
+    let statusCls = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    let statusTxt = 'Khớp';
+    let cardBorder = 'border-[#E2E8F0]';
+
+    if (!matched) {
+      if (diffVal < 0) {
+        statusCls = 'bg-rose-50 text-rose-700 border-rose-200';
+        cardBorder = 'border-rose-300';
+      } else {
+        statusCls = 'bg-amber-50 text-amber-800 border-amber-300';
+        cardBorder = 'border-amber-300';
+      }
+      statusTxt = c.available === false ? 'Lệch (thiếu nguồn)' : `Lệch ${fmtSignedVNDReport(diffVal)}`;
+    }
+
+    const metaParts = [];
+    if (typeof c.txCount === 'number') metaParts.push(`${c.txCount} GD khớp`);
+    if (typeof c.unmatchedCount === 'number' && c.unmatchedCount > 0) metaParts.push(`${c.unmatchedCount} GD chưa khớp`);
+    if (typeof c.shiftCount === 'number') metaParts.push(`${c.shiftCount} ca đã chốt`);
+
     return `
-      <div class="p-3 rounded-xl bg-white border ${matched ? 'border-[#E2E8F0]' : 'border-amber-300'} space-y-1.5">
+      <div class="p-3 rounded-xl bg-white border ${cardBorder} space-y-2">
         <div class="flex items-start justify-between gap-2">
           <span class="font-bold text-[#0F172A] leading-snug">${escapeSearchHTML(c.label || '')}</span>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap shrink-0 ${statusCls}">${statusTxt}</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap shrink-0 ${statusCls}">${escapeSearchHTML(statusTxt)}</span>
         </div>
-        <div class="text-[11px] text-[#475569] flex items-center justify-between pt-1 border-t border-slate-100">
+        <div class="text-[11px] text-[#475569] flex items-center justify-between pt-1.5 border-t border-slate-100">
           <span>Nguồn độc lập: <strong class="text-[#0F172A]">${fmtVNDReport(c.sourceTotal)}</strong></span>
           <span>Báo cáo: <strong class="text-[#0F172A]">${fmtVNDReport(c.reportTotal)}</strong></span>
         </div>
+        ${metaParts.length ? `<div class="text-[10px] text-[#64748B]">${escapeSearchHTML(metaParts.join(' · '))}</div>` : ''}
       </div>
     `;
   }).join('');
 
-  const deviants = recon.pitchCollectedCheck?.deviantOrders || [];
-  if (deviantsEl) {
+  if (deviantsEl && deviantsEmptyEl) {
     if (deviants.length === 0) {
       deviantsEl.classList.add('hidden');
       deviantsEl.innerHTML = '';
+      deviantsEmptyEl.classList.remove('hidden');
     } else {
+      deviantsEmptyEl.classList.add('hidden');
       deviantsEl.classList.remove('hidden');
       deviantsEl.innerHTML = `
         <div class="font-bold text-amber-900 text-xs">Đơn có mức cọc khác tỷ lệ chuẩn (${deviants.length} đơn):</div>
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-[11px] min-w-[560px]">
+          <table class="w-full text-left text-[11px] min-w-[640px]">
             <thead class="text-amber-900 border-b border-amber-200">
               <tr>
                 <th class="py-1.5 pr-2">Mã đơn</th>
                 <th class="py-1.5 pr-2">Ngày &amp; Sân</th>
                 <th class="py-1.5 pr-2 text-right">Tổng tiền</th>
                 <th class="py-1.5 pr-2 text-right">Cọc ghi nhận</th>
-                <th class="py-1.5">Ghi chú lệch</th>
+                <th class="py-1.5 pr-2">Ghi chú lệch</th>
+                <th class="py-1.5 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-amber-200/60">
-              ${deviants.slice(0, 15).map(d => `
+              ${deviants.map(d => `
                 <tr>
-                  <td class="py-1.5 pr-2 font-mono font-bold"><button type="button" onclick="openInPlayModal('${escapeSearchHTML(d.code)}')" class="text-[#0F172A] hover:text-[#16A34A] underline cursor-pointer">#${escapeSearchHTML(d.code)}</button></td>
-                  <td class="py-1.5 pr-2 text-[#334155]">${escapeSearchHTML(d.booking_date)} · ${escapeSearchHTML(d.pitch_name)}</td>
+                  <td class="py-1.5 pr-2 font-mono font-bold"><button type="button" onclick="openInPlayModal('${escapeAttrReport(d.code)}')" class="text-[#0F172A] hover:text-[#16A34A] underline cursor-pointer">#${escapeSearchHTML(d.code)}</button></td>
+                  <td class="py-1.5 pr-2 text-[#334155] whitespace-nowrap">${escapeSearchHTML(fmtDateVNReport(d.booking_date))} · ${escapeSearchHTML(d.pitch_name)}</td>
                   <td class="py-1.5 pr-2 text-right font-semibold">${fmtVNDReport(d.total_price)}</td>
                   <td class="py-1.5 pr-2 text-right font-bold text-amber-800">${fmtVNDReport(d.deposit)}</td>
-                  <td class="py-1.5 text-amber-900">${escapeSearchHTML(d.reason)}</td>
+                  <td class="py-1.5 pr-2 text-amber-900">${escapeSearchHTML(d.reason)}</td>
+                  <td class="py-1.5 text-right">
+                    <button type="button" onclick="openInPlayModal('${escapeAttrReport(d.code)}')" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer whitespace-nowrap">Xử lý</button>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -309,7 +547,7 @@ function renderDailyRevenueSVG(dailyRevenue) {
     return;
   }
 
-  const w = Math.max(container.clientWidth || 400, dailyRevenue.length * 56);
+  const w = Math.max(container.clientWidth || 480, dailyRevenue.length * 56);
   const h = 190;
   const paddingBottom = 28;
   const paddingTop = 24;
@@ -323,10 +561,10 @@ function renderDailyRevenueSVG(dailyRevenue) {
     const barH = Math.max(4, Math.round((rev / maxRev) * chartH));
     const x = Math.round(idx * (w / dailyRevenue.length) + (w / dailyRevenue.length - barWidth) / 2);
     const y = h - paddingBottom - barH;
-    const safeDate = escapeSearchHTML(String(d.date || ''));
-    const dateLabel = safeDate.slice(5).replace('-', '/');
+    const dateVN = escapeSearchHTML(fmtDateVNReport(d.date));
+    const dateLabel = escapeSearchHTML(fmtDateShortVNReport(d.date));
     const shortVal = rev >= 1000000 ? (rev / 1000000).toFixed(1) + 'M' : Math.round(rev / 1000) + 'k';
-    const tipText = `Ngày ${safeDate} | Ghi nhận: ${fmtVNDReport(rev)} | Đã thu: ${fmtVNDReport(col)} (${Number(d.matches || 0)} ca)`;
+    const tipText = `Ngày ${dateVN} | Ghi nhận: ${fmtVNDReport(rev)} | Đã thu: ${fmtVNDReport(col)} (${Number(d.matches || 0)} ca)`;
 
     return `
       <g class="cursor-pointer group">
@@ -347,23 +585,41 @@ function renderDailyRevenueSVG(dailyRevenue) {
 }
 window.renderDailyRevenueSVG = renderDailyRevenueSVG;
 
+function toggleReportShowAllSlots() {
+  currentReportShowAllSlots = !currentReportShowAllSlots;
+  if (currentReportData) {
+    renderSlotRevenueSVG(currentReportData.bySlot || []);
+  }
+}
+window.toggleReportShowAllSlots = toggleReportShowAllSlots;
+
 function renderSlotRevenueSVG(bySlot) {
   const container = document.getElementById('rpt-slot-svg-container');
+  const toggleWrap = document.getElementById('rpt-slot-toggle-wrap');
   if (!container) return;
   if (!Array.isArray(bySlot) || bySlot.length === 0) {
     container.innerHTML = '<span class="text-xs text-slate-400">Chưa có dữ liệu theo khung giờ trong kỳ.</span>';
+    if (toggleWrap) {
+      toggleWrap.classList.add('hidden');
+      toggleWrap.innerHTML = '';
+    }
     return;
   }
 
-  const maxRev = Math.max(1, ...bySlot.map(s => Number(s.revenue || 0)));
-  const rowH = 26;
-  const svgH = Math.max(160, bySlot.length * rowH + 16);
-  const labelW = 92;
-  const valW = 86;
-  const totalW = 420;
-  const barMaxW = totalW - labelW - valW - 12;
+  const MAX_DEFAULT_SLOTS = 10;
+  const visibleSlots = (currentReportShowAllSlots || bySlot.length <= MAX_DEFAULT_SLOTS)
+    ? bySlot
+    : bySlot.slice(0, MAX_DEFAULT_SLOTS);
 
-  const rows = bySlot.map((s, idx) => {
+  const maxRev = Math.max(1, ...bySlot.map(s => Number(s.revenue || 0)));
+  const rowH = 28;
+  const svgH = Math.max(120, visibleSlots.length * rowH + 16);
+  const labelW = 96;
+  const valW = 96;
+  const totalW = 520;
+  const barMaxW = totalW - labelW - valW - 14;
+
+  const rows = visibleSlots.map((s, idx) => {
     const rev = Number(s.revenue || 0);
     const barW = Math.max(4, Math.round((rev / maxRev) * barMaxW));
     const y = 8 + idx * rowH;
@@ -372,10 +628,10 @@ function renderSlotRevenueSVG(bySlot) {
     return `
       <g class="cursor-pointer">
         <title>${tip}</title>
-        <text x="0" y="${y + 13}" font-size="10.5" font-weight="600" fill="#334155">${safeSlot}</text>
-        <rect x="${labelW}" y="${y + 3}" width="${barMaxW}" height="14" rx="4" fill="#F1F5F9" />
-        <rect x="${labelW}" y="${y + 3}" width="${barW}" height="14" rx="4" fill="#0F172A" />
-        <text x="${totalW}" y="${y + 13}" font-size="10.5" font-weight="700" fill="#0F172A" text-anchor="end">${fmtVNDReport(rev)}</text>
+        <text x="0" y="${y + 14}" font-size="11" font-weight="600" fill="#334155">${safeSlot}</text>
+        <rect x="${labelW}" y="${y + 3}" width="${barMaxW}" height="15" rx="4" fill="#F1F5F9" />
+        <rect x="${labelW}" y="${y + 3}" width="${barW}" height="15" rx="4" fill="#0F172A" />
+        <text x="${totalW}" y="${y + 14}" font-size="11" font-weight="700" fill="#0F172A" text-anchor="end">${fmtVNDReport(rev)}</text>
       </g>
     `;
   }).join('');
@@ -385,6 +641,21 @@ function renderSlotRevenueSVG(bySlot) {
       ${rows}
     </svg>
   `;
+
+  if (toggleWrap) {
+    if (bySlot.length > MAX_DEFAULT_SLOTS) {
+      const rem = bySlot.length - MAX_DEFAULT_SLOTS;
+      toggleWrap.classList.remove('hidden');
+      toggleWrap.innerHTML = `
+        <button type="button" onclick="toggleReportShowAllSlots()" class="px-3 py-1.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F172A] cursor-pointer">
+          ${currentReportShowAllSlots ? 'Thu gọn khung giờ ↑' : `Xem thêm (${rem} khung giờ) ↓`}
+        </button>
+      `;
+    } else {
+      toggleWrap.classList.add('hidden');
+      toggleWrap.innerHTML = '';
+    }
+  }
 }
 window.renderSlotRevenueSVG = renderSlotRevenueSVG;
 
@@ -408,7 +679,9 @@ function renderAdminPitchTable() {
   if (!tbody) return;
 
   const showZero = Boolean(document.getElementById('rpt-show-zero-pitches')?.checked);
-  let rows = showZero ? [...currentReportPitchRows] : currentReportPitchRows.filter(p => Number(p.matches || 0) > 0 || Number(p.revenue || 0) > 0);
+  const rows = showZero
+    ? [...currentReportPitchRows]
+    : currentReportPitchRows.filter(p => Number(p.matches || 0) > 0 || Number(p.revenue || 0) > 0);
 
   const { key, dir } = currentReportPitchSort;
   rows.sort((a, b) => {
@@ -421,7 +694,7 @@ function renderAdminPitchTable() {
   });
 
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-[#94A3B8]">Không có sân nào phát sinh ca trong kỳ (bật "Hiện tất cả sân" để xem đủ 26 sân).</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-[#94A3B8]">Không có sân nào phát sinh ca trong kỳ (bật "Hiện tất cả sân" để xem toàn bộ sân).</td></tr>';
     if (tfoot) tfoot.innerHTML = '';
     return;
   }
@@ -490,15 +763,15 @@ window.openUncollectedDrawer = function(mode) {
     tbody.innerHTML = list.map(i => `
       <tr class="hover:bg-slate-50">
         <td class="py-2.5 px-3 font-mono font-bold text-[#0F172A]">#${escapeSearchHTML(i.code)}</td>
-        <td class="py-2.5 px-3 whitespace-nowrap text-[#334155]">${escapeSearchHTML(i.booking_date)} <span class="text-[#64748B]">(${escapeSearchHTML(i.slot_time)})</span></td>
+        <td class="py-2.5 px-3 whitespace-nowrap text-[#334155]">${escapeSearchHTML(fmtDateVNReport(i.booking_date))} <span class="text-[#64748B]">(${escapeSearchHTML(i.slot_time)})</span></td>
         <td class="py-2.5 px-3">
           <div class="font-bold text-[#0F172A]">${escapeSearchHTML(i.pitch_name)}</div>
           <div class="text-[11px] text-[#64748B]">${escapeSearchHTML(i.customer_name)} · ${escapeSearchHTML(i.phone)}</div>
         </td>
         <td class="py-2.5 px-3 text-right font-bold text-[#16A34A]">${fmtVNDReport(i.paid_amount)}</td>
-        <td class="py-2.5 px-3 text-right font-extrabold text-amber-700">${fmtVNDReport(i.uncollected)}</td>
+        <td class="py-2.5 px-3 text-right font-extrabold rpt-text-orange" style="color:#ea580c">${fmtVNDReport(i.uncollected)}</td>
         <td class="py-2.5 px-3 text-right">
-          <button type="button" onclick="closeUncollectedDrawer();openInPlayModal('${escapeSearchHTML(i.code)}')" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">Xem đơn</button>
+          <button type="button" onclick="closeUncollectedDrawer();openInPlayModal('${escapeAttrReport(i.code)}')" class="px-2.5 py-1 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer">Xem đơn</button>
         </td>
       </tr>
     `).join('');
@@ -515,6 +788,70 @@ window.closeUncollectedDrawer = function() {
     modal.classList.remove('flex');
   }
 };
+
+window.goToOverdueBookingsFilter = function() {
+  const statusSelect = document.getElementById('rpt-ledger-status-filter');
+  const searchInput = document.getElementById('rpt-ledger-search');
+  if (statusSelect) statusSelect.value = 'overdue';
+  if (searchInput) searchInput.value = '';
+  handleReportLedgerSearch();
+  switchReportSubtab('chi-tiet');
+  requestAnimationFrame(() => {
+    document.getElementById('rpt-ledger-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+};
+
+window.resetReportLedgerFilters = function() {
+  const statusSelect = document.getElementById('rpt-ledger-status-filter');
+  const searchInput = document.getElementById('rpt-ledger-search');
+  if (statusSelect) statusSelect.value = 'all';
+  if (searchInput) searchInput.value = '';
+  handleReportLedgerSearch();
+};
+
+function renderForfeitBookingsNotice() {
+  const box = document.getElementById('rpt-forfeit-bookings-box');
+  if (!box) return;
+  if (!Array.isArray(currentReportForfeitBookings) || currentReportForfeitBookings.length === 0) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+  const totalRetained = currentReportForfeitBookings.reduce((acc, b) => acc + Number(b.paid_amount || 0), 0);
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <details class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+      <summary class="cursor-pointer font-semibold text-[#334155] flex flex-wrap items-center justify-between gap-2 select-none">
+        <span>Đơn hủy / không đến có giữ cọc (không tính vào Ca thi đấu): <strong>${currentReportForfeitBookings.length} đơn</strong></span>
+        <span class="font-bold text-[#0F172A]">Đã thu giữ cọc: ${fmtVNDReport(totalRetained)}</span>
+      </summary>
+      <div class="mt-2.5 overflow-x-auto">
+        <table class="w-full text-left text-[11px] min-w-[600px]">
+          <thead class="text-[#475569] border-b border-slate-200">
+            <tr>
+              <th class="py-1.5 pr-2">Mã đơn</th>
+              <th class="py-1.5 pr-2">Ngày &amp; Sân</th>
+              <th class="py-1.5 pr-2">Khách hàng</th>
+              <th class="py-1.5 pr-2">Trạng thái</th>
+              <th class="py-1.5 text-right">Tiền giữ cọc</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            ${currentReportForfeitBookings.map(b => `
+              <tr>
+                <td class="py-1.5 pr-2 font-mono font-bold"><button type="button" onclick="openInPlayModal('${escapeAttrReport(b.code || '')}')" class="text-[#0F172A] hover:text-[#16A34A] underline cursor-pointer">${escapeSearchHTML(b.code || '')}</button></td>
+                <td class="py-1.5 pr-2 text-[#334155] whitespace-nowrap">${escapeSearchHTML(fmtDateVNReport(b.booking_date || ''))} · ${escapeSearchHTML(b.pitch_name || b.pitch_id || '')}</td>
+                <td class="py-1.5 pr-2">${escapeSearchHTML(b.customer_name || '')}</td>
+                <td class="py-1.5 pr-2">${escapeSearchHTML(b.status || '')} (${escapeSearchHTML(b.payment_status || '')})</td>
+                <td class="py-1.5 text-right font-bold text-[#16A34A]">${fmtVNDReport(b.paid_amount)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  `;
+}
 
 function renderReportLedger() {
   const tbody = document.getElementById('rpt-ledger-tbody');
@@ -544,18 +881,22 @@ function renderReportLedger() {
   tbody.innerHTML = pageItems.map(b => {
     const stRaw = String(b.status || '').trim();
     const isCompleted = (stRaw === 'Hoàn thành' || stRaw.toLowerCase() === 'completed');
+    const isOverdueRow = stRaw === 'Đã đá - chưa tất toán' || currentReportOverdueCodes.has(String(b.code || '').trim());
     const statusBadge = isCompleted
       ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700">Hoàn thành</span>'
-      : (stRaw === 'Đã đá - chưa tất toán'
-        ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">Đã đá - chưa tất toán</span>'
+      : (isOverdueRow
+        ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold rpt-badge-orange" style="background-color:#FFF7ED;color:#ea580c;border:1px solid #FED7AA">${escapeSearchHTML(stRaw || 'Đã đá - chưa tất toán')}</span>`
         : `<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-[#334155]">${escapeSearchHTML(stRaw)}</span>`);
     const paidVal = Number(b.paid_amount ?? (Number(b.total_price || 0) - Number(b.remaining_amount || 0)));
     const uncolVal = Number(b.remaining_amount || 0);
+    const uncolHtml = uncolVal > 0
+      ? `<td class="py-2.5 px-3 text-right font-bold rpt-text-orange" style="color:#ea580c">${fmtVNDReport(uncolVal)}</td>`
+      : `<td class="py-2.5 px-3 text-right font-semibold text-[#64748B]">${fmtVNDReport(0)}</td>`;
 
     return `
       <tr class="hover:bg-slate-50 transition-colors">
-        <td class="py-2.5 px-3 font-mono font-bold"><button type="button" onclick="openInPlayModal('${escapeSearchHTML(b.code || '')}')" class="text-[#0F172A] hover:text-[#16A34A] hover:underline cursor-pointer">${escapeSearchHTML(b.code || '')}</button></td>
-        <td class="py-2.5 px-3 text-[#334155] whitespace-nowrap">${escapeSearchHTML(b.booking_date || '')} <span class="text-[#64748B]">(${escapeSearchHTML(b.slot_time || '')})</span></td>
+        <td class="py-2.5 px-3 font-mono font-bold"><button type="button" onclick="openInPlayModal('${escapeAttrReport(b.code || '')}')" class="text-[#0F172A] hover:text-[#16A34A] hover:underline cursor-pointer">${escapeSearchHTML(b.code || '')}</button></td>
+        <td class="py-2.5 px-3 text-[#334155] whitespace-nowrap">${escapeSearchHTML(fmtDateVNReport(b.booking_date || ''))} <span class="text-[#64748B]">(${escapeSearchHTML(b.slot_time || '')})</span></td>
         <td class="py-2.5 px-3 font-semibold text-[#0F172A]">${escapeSearchHTML(b.pitch_name || b.pitch_id || '')}</td>
         <td class="py-2.5 px-3">
           <div class="font-bold text-[#0F172A]">${escapeSearchHTML(b.customer_name || 'Khách vãng lai')}</div>
@@ -563,7 +904,7 @@ function renderReportLedger() {
         </td>
         <td class="py-2.5 px-3 text-right font-extrabold text-[#0F172A]">${fmtVNDReport(b.total_price)}</td>
         <td class="py-2.5 px-3 text-right font-bold text-[#16A34A]">${fmtVNDReport(paidVal)}</td>
-        <td class="py-2.5 px-3 text-right font-bold ${uncolVal > 0 ? 'text-amber-700' : 'text-[#94A3B8]'}">${fmtVNDReport(uncolVal)}</td>
+        ${uncolHtml}
         <td class="py-2.5 px-3 text-right text-[#475569] font-semibold">${fmtVNDReport(b.service_price)}</td>
         <td class="py-2.5 px-3">${statusBadge}</td>
         <td class="py-2.5 px-3 text-xs text-[#475569] max-w-[140px] truncate" title="${escapeSearchHTML(b.payment_method || '')}">${escapeSearchHTML(b.payment_method || '')}</td>
@@ -573,21 +914,57 @@ function renderReportLedger() {
 }
 window.renderReportLedger = renderReportLedger;
 
-function handleReportLedgerSearch() {
-  const q = (document.getElementById('rpt-ledger-search')?.value || '').trim().toLowerCase();
-  if (!q) {
-    currentReportLedgerFiltered = [...currentReportLedgerBookings];
-  } else {
-    currentReportLedgerFiltered = currentReportLedgerBookings.filter(b =>
-      (b.code && b.code.toLowerCase().includes(q)) ||
-      (b.customer_name && b.customer_name.toLowerCase().includes(q)) ||
-      (b.phone && b.phone.includes(q)) ||
-      (b.pitch_name && b.pitch_name.toLowerCase().includes(q)) ||
-      (b.pitch_id && b.pitch_id.toLowerCase().includes(q))
-    );
+function applyReportLedgerFilters(resetPage = true) {
+  const qRaw = (document.getElementById('rpt-ledger-search')?.value || '').trim();
+  const qNorm = normalizeSearchReport(qRaw);
+  const statusFilter = (document.getElementById('rpt-ledger-status-filter')?.value || 'all').trim();
+
+  const chipEl = document.getElementById('rpt-ledger-filter-chip');
+  const chipTxtEl = document.getElementById('rpt-ledger-filter-chip-text');
+  if (chipEl && chipTxtEl) {
+    const labels = {
+      overdue: 'Đang lọc: Đã đá chưa tất toán (cần xử lý)',
+      uncollected: 'Đang lọc: Ca còn số tiền chưa thu (> 0đ)',
+      completed: 'Đang lọc: Ca đã hoàn thành'
+    };
+    if (statusFilter !== 'all' && labels[statusFilter]) {
+      chipTxtEl.textContent = labels[statusFilter];
+      chipEl.classList.remove('hidden');
+      chipEl.classList.add('flex');
+    } else {
+      chipEl.classList.add('hidden');
+      chipEl.classList.remove('flex');
+    }
   }
-  currentReportLedgerPage = 1;
+
+  currentReportLedgerFiltered = currentReportLedgerBookings.filter(b => {
+    if (statusFilter === 'overdue') {
+      const code = String(b.code || '').trim();
+      const st = String(b.status || '').trim();
+      if (!currentReportOverdueCodes.has(code) && st !== 'Đã đá - chưa tất toán') return false;
+    } else if (statusFilter === 'uncollected') {
+      if (Number(b.remaining_amount || 0) <= 0) return false;
+    } else if (statusFilter === 'completed') {
+      const st = String(b.status || '').trim();
+      if (st !== 'Hoàn thành' && st.toLowerCase() !== 'completed') return false;
+    }
+
+    if (!qNorm) return true;
+    return (
+      normalizeSearchReport(b.code).includes(qNorm) ||
+      normalizeSearchReport(b.customer_name).includes(qNorm) ||
+      normalizeSearchReport(b.phone).includes(qNorm) ||
+      normalizeSearchReport(b.pitch_name).includes(qNorm) ||
+      normalizeSearchReport(b.pitch_id).includes(qNorm)
+    );
+  });
+
+  if (resetPage) currentReportLedgerPage = 1;
   renderReportLedger();
+}
+
+function handleReportLedgerSearch() {
+  applyReportLedgerFilters(true);
 }
 window.handleReportLedgerSearch = handleReportLedgerSearch;
 
@@ -609,6 +986,7 @@ async function renderAdminReports() {
     return;
   }
   if (errEl) errEl.classList.add('hidden');
+  updatePeriodDisplayBadge(fromDate, toDate);
 
   const qs = new URLSearchParams({ action: 'reports' });
   if (fromDate) qs.set('from', fromDate);
@@ -617,6 +995,7 @@ async function renderAdminReports() {
   const d = (r.ok && r.data) ? r.data : null;
   if (!d) return;
 
+  currentReportData = d;
   const s = d.summary || d;
   const recognized = Number(s.recognizedRevenue ?? s.totalRevenue ?? 0);
   const collected = Number(s.collectedRevenue ?? 0);
@@ -629,9 +1008,17 @@ async function renderAdminReports() {
   const servicesRec = Number(s.servicesRevenue ?? s.serviceRevenue ?? 0);
   const totalExpenses = Number(s.totalExpenses ?? 0);
   const netProfit = Number(s.netProfit ?? (collected - totalExpenses));
-  const totalMatches = Number(s.totalMatches ?? 0);
+
+  const rawDetailed = Array.isArray(d.detailedBookings) ? d.detailedBookings : [];
+  const validMatchBookings = rawDetailed.filter(isValidReportMatchBooking);
+  currentReportForfeitBookings = rawDetailed.filter(b => !isValidReportMatchBooking(b));
+  const totalMatches = Array.isArray(d.detailedBookings)
+    ? validMatchBookings.length
+    : Number(s.totalMatches ?? 0);
   const occupancyRate = Number(s.occupancyRate ?? 0);
-  const avgRev = Number(s.avgRevenue ?? 0);
+  const avgRev = totalMatches > 0
+    ? (Array.isArray(d.detailedBookings) ? Math.round(recognized / totalMatches) : Number(s.avgRevenue ?? 0))
+    : 0;
 
   const emptyEl = document.getElementById('rpt-empty-state');
   if (emptyEl) {
@@ -641,30 +1028,43 @@ async function renderAdminReports() {
 
   const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
 
-  // Hàng 1: 4 số lớn + ±% so kỳ trước
+  // Hàng 1: 4 thẻ KPI
   setTxt('rpt-total-revenue', fmtVNDReport(recognized));
   setTxt('rpt-collected-revenue', fmtVNDReport(collected));
   setTxt('rpt-uncollected-revenue', fmtVNDReport(uncollected));
   setTxt('rpt-uncollected-upcoming', fmtVNDReport(uncolUpcoming));
   setTxt('rpt-uncollected-overdue', fmtVNDReport(uncolOverdue));
+
   const profitEl = document.getElementById('rpt-net-profit');
-  if (profitEl) {
-    profitEl.textContent = fmtVNDReport(netProfit);
-    profitEl.className = `font-heading font-extrabold text-2xl mt-1.5 ${netProfit < 0 ? 'text-rose-600' : 'text-[#16A34A]'}`;
-  }
   const profitNoteEl = document.getElementById('rpt-profit-note');
-  if (profitNoteEl) {
-    const margin = collected > 0 ? ((netProfit / collected) * 100).toFixed(1) : '0.0';
-    profitNoteEl.textContent = `Cơ sở Đã thu − Chi phí (biên ${margin}%)`;
+  const deltas = d.deltas || {};
+
+  if (totalExpenses <= 0) {
+    if (profitEl) {
+      profitEl.textContent = '—';
+      profitEl.className = 'font-heading font-extrabold text-2xl text-[#475569] mt-1.5';
+    }
+    if (profitNoteEl) {
+      profitNoteEl.innerHTML = 'Chưa nhập chi phí · <a href="#chi-phi" onclick="switchReportSubtab(\'chi-phi\');return false;" class="text-[#16A34A] font-semibold hover:underline">Mở sổ chi →</a>';
+    }
+    renderDeltaBadge('rpt-delta-profit', null, false);
+  } else {
+    if (profitEl) {
+      profitEl.textContent = fmtVNDReport(netProfit);
+      profitEl.className = `font-heading font-extrabold text-2xl mt-1.5 ${netProfit < 0 ? 'text-rose-600' : 'text-[#16A34A]'}`;
+    }
+    if (profitNoteEl) {
+      const margin = collected > 0 ? ((netProfit / collected) * 100).toFixed(1) : '0.0';
+      profitNoteEl.textContent = `Cơ sở Đã thu − Chi phí (biên ${margin}%)`;
+    }
+    renderDeltaBadge('rpt-delta-profit', deltas.profitPct, false);
   }
 
-  const deltas = d.deltas || {};
   renderDeltaBadge('rpt-delta-recognized', deltas.recognizedPct, false);
   renderDeltaBadge('rpt-delta-collected', deltas.collectedPct, false);
   renderDeltaBadge('rpt-delta-uncollected', deltas.uncollectedPct, true);
-  renderDeltaBadge('rpt-delta-profit', deltas.profitPct, false);
 
-  // Hàng 2: Vận hành
+  // Thẻ vận hành ở tab #chi-tiet & chi phí ở tab #chi-phi
   setTxt('rpt-total-matches', `${totalMatches} ca`);
   setTxt('rpt-occupancy-rate', `${occupancyRate.toFixed(1)}%`);
   const occSub = document.getElementById('rpt-occupancy-sub');
@@ -677,35 +1077,34 @@ async function renderAdminReports() {
   const expSubEl = document.getElementById('rpt-expenses-sub');
   if (totalExpenses <= 0) {
     if (expValEl) expValEl.textContent = '—';
-    if (expSubEl) {
-      expSubEl.innerHTML = 'Chưa nhập chi phí · <a href="#expenses-crud-card" onclick="document.getElementById(\'expenses-crud-card\')?.scrollIntoView({behavior:\'smooth\'});return false;" class="text-[#16A34A] font-semibold hover:underline">Mở sổ chi ↓</a>';
-    }
+    if (expSubEl) expSubEl.textContent = 'Chưa nhập chi phí trong kỳ lọc';
   } else {
     if (expValEl) expValEl.textContent = fmtVNDReport(totalExpenses);
-    if (expSubEl) {
-      expSubEl.innerHTML = 'Tổng chi vận hành kỳ lọc · <a href="#expenses-crud-card" onclick="document.getElementById(\'expenses-crud-card\')?.scrollIntoView({behavior:\'smooth\'});return false;" class="text-[#16A34A] font-semibold hover:underline">Xem sổ chi ↓</a>';
-    }
+    if (expSubEl) expSubEl.textContent = 'Tổng chi vận hành kỳ lọc';
   }
   setTxt('rpt-expense-list-total', totalExpenses > 0 ? fmtVNDReport(totalExpenses) : 'Chưa nhập chi phí');
 
-  // 2 Thanh xếp chồng (cùng tổng = Doanh thu ghi nhận)
+  // 2 Thanh xếp chồng (đồng bộ #ea580c cho Chưa thu, #16A34A cho Đã thu)
   renderStackedBar('rpt-stack-pay-bar', 'rpt-stack-pay-legend', 'rpt-stack-pay-total', [
     { label: 'Chuyển khoản VietQR', value: vietqrRev, color: '#16A34A' },
     { label: 'Tiền mặt', value: cashRev, color: '#0F172A' },
-    { label: 'Chưa thu', value: uncollected, color: '#CBD5E1' }
+    { label: 'Chưa thu', value: uncollected, color: '#ea580c', textColor: '#ea580c' }
   ], recognized);
 
   renderStackedBar('rpt-stack-rev-bar', 'rpt-stack-rev-legend', 'rpt-stack-rev-total', [
-    { label: 'Tiền sân', value: pitchRec, color: '#16A34A' },
-    { label: 'Dịch vụ & Nước', value: servicesRec, color: '#0F172A' }
+    { label: 'Tiền sân', value: pitchRec, color: '#0F172A' },
+    { label: 'Dịch vụ & Nước', value: servicesRec, color: '#64748B' }
   ], recognized);
 
   // Đối soát độc lập 3 nguồn
   renderReconciliationPanel(d.reconciliation);
 
-  // Danh sách chưa thu bấm xem
+  // Danh sách chưa thu
   currentReportUncollectedUpcoming = Array.isArray(d.uncollectedUpcomingList) ? d.uncollectedUpcomingList : [];
   currentReportUncollectedOverdue = Array.isArray(d.uncollectedOverdueList) ? d.uncollectedOverdueList : [];
+  currentReportOverdueCodes = new Set(
+    currentReportUncollectedOverdue.map(x => String(x.code || '').trim()).filter(Boolean)
+  );
 
   // 2 biểu đồ SVG cục bộ
   renderDailyRevenueSVG(d.dailyRevenue || []);
@@ -715,11 +1114,10 @@ async function renderAdminReports() {
   currentReportPitchRows = Array.isArray(d.byPitch) ? d.byPitch : [];
   renderAdminPitchTable();
 
-  // Bảng kê chi tiết
-  currentReportLedgerBookings = Array.isArray(d.detailedBookings) ? d.detailedBookings : [];
-  currentReportLedgerFiltered = [...currentReportLedgerBookings];
-  currentReportLedgerPage = 1;
-  renderReportLedger();
+  // Bảng kê chi tiết (thống nhất cùng nguồn ca thi đấu hợp lệ)
+  currentReportLedgerBookings = validMatchBookings;
+  applyReportLedgerFilters(true);
+  renderForfeitBookingsNotice();
 
   // Chi phí theo danh mục
   const expChartEl = document.getElementById('rpt-expense-categories-chart');
@@ -748,6 +1146,8 @@ async function renderAdminReports() {
       }).join('');
     }
   }
+
+  applyReportKpiCollapsedState();
 
   if (typeof loadAdminExpenses === 'function') {
     await loadAdminExpenses();

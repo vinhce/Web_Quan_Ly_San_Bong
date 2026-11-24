@@ -1,7 +1,21 @@
-﻿async function loadAdminExpenses() {
+﻿function fmtExpenseDateVN(val) {
+  if (typeof fmtDateVNReport === 'function') {
+    return fmtDateVNReport(val);
+  }
+  const raw = String(val || '').trim();
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : raw;
+}
+
+async function loadAdminExpenses() {
   if (!isManagerOrAdmin()) return;
   const tbody = document.getElementById('admin-expenses-tbody');
   if (!tbody) return;
+
+  const expDateEl = document.getElementById('exp-date');
+  if (expDateEl && !expDateEl.value && typeof getLocalTodayISO === 'function') {
+    expDateEl.value = getLocalTodayISO();
+  }
 
   const fromDate = (document.getElementById('rpt-from-date')?.value || '').trim();
   const toDate = (document.getElementById('rpt-to-date')?.value || '').trim();
@@ -22,7 +36,9 @@
   const listTotal = Number(r.data?.totalAmount ?? list.reduce((sum, ex) => sum + Number(ex.amount || 0), 0));
   const listTotalEl = document.getElementById('rpt-expense-list-total');
   if (listTotalEl) {
-    listTotalEl.textContent = listTotal.toLocaleString('vi-VN') + 'đ';
+    listTotalEl.textContent = (listTotal <= 0 && category === 'all')
+      ? 'Chưa nhập chi phí'
+      : (listTotal.toLocaleString('vi-VN') + 'đ');
   }
   if (list.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-[#94A3B8]">Chưa có khoản chi nào trong kỳ lọc.</td></tr>';
@@ -47,7 +63,7 @@
       : '<span class="text-[#94A3B8]">—</span>';
     return `<tr class="hover:bg-slate-50">
       <td class="py-3 px-4 font-mono font-bold text-[#0F172A]">${escapeSearchHTML(ex.expense_code || ('EXP-' + eid))}</td>
-      <td class="py-3 px-4 font-mono text-[#334155]">${escapeSearchHTML(ex.expense_date || '')}</td>
+      <td class="py-3 px-4 font-mono text-[#334155] whitespace-nowrap">${escapeSearchHTML(fmtExpenseDateVN(ex.expense_date || ''))}</td>
       <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[11px]">${escapeSearchHTML(ex.category_name || catLabels[ex.category] || ex.category || '')}</span></td>
       <td class="py-3 px-4 font-semibold text-[#0F172A]">${escapeSearchHTML(ex.payer_name || '—')}</td>
       <td class="py-3 px-4 text-[#475569] max-w-[220px]">${escapeSearchHTML(ex.receipt_note || '—')}</td>
