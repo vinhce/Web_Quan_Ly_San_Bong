@@ -414,7 +414,11 @@ function handleLogout() {
           100% { transform: scale(1.6); opacity: 0; }
         }
       </style>
-      <div class="fixed right-3 sm:right-5 bottom-4 sm:bottom-6 z-40 flex flex-col gap-2.5 pointer-events-auto">
+      ${(() => {
+        const p = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.toLowerCase() : '';
+        if (/(?:\/|^)(booking|checkout|login|forgot-password)(?:\.html|\/|$)/.test(p)) return '';
+        return `
+      <div id="sb-floating-contact" class="fixed right-3 sm:right-5 bottom-4 sm:bottom-6 z-40 flex flex-col gap-2.5 pointer-events-auto transition-opacity duration-200">
         <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="zalo-floating-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center font-bold text-[11px] sm:text-xs" title="Chat Zalo hỗ trợ 24/7">
           <span class="zalo-pulse-ring"></span>
           <span class="zalo-pulse-wave"></span>
@@ -427,7 +431,8 @@ function handleLogout() {
             <svg class="w-5 h-5 text-white fill-current drop-shadow-sm" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z"/></svg>
           </span>
         </a>
-      </div>
+      </div>`;
+      })()}${(() => { if (typeof window !== 'undefined') setTimeout(() => { if (typeof window._sbSyncFabVisibility === 'function') window._sbSyncFabVisibility(); }, 20); return ''; })()}
     </footer>`;
   }
 
@@ -834,6 +839,52 @@ Hệ thống áp dụng các biện pháp mã hóa đường truyền HTTPS/TLS,
             el.style.display = 'none';
           }
         });
+        const syncFabVisibility = () => {
+          const fab = document.getElementById('sb-floating-contact');
+          if (!fab) return;
+          fab.style.display = '';
+          const rFab = fab.getBoundingClientRect();
+          const pad = 10;
+          const overlapsRect = (rect) => {
+            if (!rect || (rect.width === 0 && rect.height === 0)) return false;
+            return !(
+              rFab.right + pad < rect.left ||
+              rFab.left - pad > rect.right ||
+              rFab.bottom + pad < rect.top ||
+              rFab.top - pad > rect.bottom
+            );
+          };
+
+          let shouldHide = false;
+          const heroBtn = document.getElementById('hero-submit-btn');
+          if (heroBtn && overlapsRect(heroBtn.getBoundingClientRect())) {
+            shouldHide = true;
+          }
+          if (!shouldHide && window.innerWidth < 640) {
+            const vouchersList = document.getElementById('vouchers-list');
+            if (vouchersList) {
+              const rV = vouchersList.getBoundingClientRect();
+              if (rV.top <= rFab.bottom + pad && rV.bottom >= rFab.top - pad) {
+                shouldHide = true;
+              }
+            }
+          }
+          if (!shouldHide) {
+            const docEl = document.documentElement;
+            if (docEl && docEl.scrollHeight > window.innerHeight + 120) {
+              if (window.innerHeight + window.scrollY >= docEl.scrollHeight - 80) {
+                shouldHide = true;
+              }
+            }
+          }
+          if (shouldHide) {
+            fab.style.display = 'none';
+          }
+        };
+        window._sbSyncFabVisibility = syncFabVisibility;
+        syncFabVisibility();
+        window.addEventListener('scroll', syncFabVisibility, { passive: true });
+        window.addEventListener('resize', syncFabVisibility, { passive: true });
       } catch (e) {}
     });
   }
