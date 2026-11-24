@@ -222,9 +222,25 @@
   }
 
   function statusPill(label) {
-    let displayLabel = label;
-    if (displayLabel === 'Vắng mặt (No-Show)' || String(displayLabel || '').includes('No-Show')) {
+    const raw = String(label ?? '').trim();
+    const lower = raw.toLowerCase();
+    let displayLabel = raw;
+    if (lower === 'completed' || lower === 'hoàn thành') {
+      displayLabel = 'Hoàn thành';
+    } else if (lower === 'cancelled' || lower === 'canceled' || lower === 'đã hủy') {
+      displayLabel = 'Đã hủy';
+    } else if (lower === 'confirmed' || lower === 'đã xác nhận') {
+      displayLabel = 'Đã xác nhận';
+    } else if (lower === 'playing' || lower === 'đang đá') {
+      displayLabel = 'Đang đá';
+    } else if (lower === 'pending' || lower === 'hold' || lower === 'giữ chỗ') {
+      displayLabel = 'Giữ chỗ';
+    } else if (lower === 'noshow' || lower === 'no-show' || lower === 'no_show' || raw === 'Vắng mặt (No-Show)' || raw.includes('No-Show')) {
       displayLabel = 'Khách chưa đến';
+    } else if (lower === 'paid' || lower === 'đã thanh toán 100%' || lower === 'đã thanh toán đủ') {
+      displayLabel = raw === 'Đã thanh toán đủ' ? 'Đã thanh toán đủ' : 'Đã thanh toán 100%';
+    } else if (lower === 'deposited' || lower === 'đã cọc') {
+      displayLabel = 'Đã cọc';
     }
     const map = {
       'Trống': 'bg-white text-[#16A34A] border border-[#16A34A] font-semibold',
@@ -241,11 +257,13 @@
       'Khách chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
       'Quá giờ chưa đến': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-bold',
       'Tịch thu cọc 30%': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] font-semibold',
+      'Đã đá - chưa tất toán': 'bg-[#FEF3C7] text-[#B45309] border border-[#F59E0B] font-semibold',
+      'Đã thanh toán 100%': 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC] font-semibold',
       'Đã nhả sân trống': 'bg-[#DCFCE7] text-[#16A34A] border border-[#86EFAC] font-bold',
       'Đã khóa': 'bg-[#FEE2E2] text-[#DC2626] border border-[#FCA5A5] font-semibold',
       'Bảo trì': 'hatch-slate border border-[#CBD5E1] text-[#475569] font-semibold'
     };
-    const cls = map[displayLabel] || map[label] || 'bg-[#F1F5F9] text-[#475569] border border-[#CBD5E1] font-semibold';
+    const cls = map[displayLabel] || map[raw] || 'bg-[#F1F5F9] text-[#475569] border border-[#CBD5E1] font-semibold';
     return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium whitespace-nowrap ${cls}">${escapeHTML(displayLabel)}</span>`;
   }
 
