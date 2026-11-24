@@ -192,8 +192,8 @@ async function handleCreateStaff(e) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Số điện thoại nhân sự phải đủ 10 số di động Việt Nam.', 'warning');
     return;
   }
-  if (password.length < 6) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mật khẩu nhân sự phải có tối thiểu 6 ký tự.', 'warning');
+  if (password.length < 8) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mật khẩu nhân sự phải có tối thiểu 8 ký tự.', 'warning');
     return;
   }
 
@@ -240,6 +240,9 @@ async function handleCreateStaff(e) {
       }
       return;
     }
+    const nowLocal = new Date();
+    const pad2 = n => String(n).padStart(2, '0');
+    const createdLocal = `${nowLocal.getFullYear()}-${pad2(nowLocal.getMonth() + 1)}-${pad2(nowLocal.getDate())} ${pad2(nowLocal.getHours())}:${pad2(nowLocal.getMinutes())}:${pad2(nowLocal.getSeconds())}`;
     const newStaff = {
       id: Date.now(),
       username,
@@ -248,7 +251,7 @@ async function handleCreateStaff(e) {
       full_name: fullName,
       role,
       status: 'active',
-      created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      created_at: createdLocal
     };
     localList.unshift(newStaff);
     saveLocalStaffUsers(localList);
@@ -412,8 +415,8 @@ async function submitResetStaffPassword(e) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Không xác định được tài khoản nhân viên.', 'error');
     return;
   }
-  if (password.length < 6) {
-    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mật khẩu mới phải có tối thiểu 6 ký tự!', 'warning');
+  if (password.length < 8) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mật khẩu mới phải có tối thiểu 8 ký tự!', 'warning');
     return;
   }
 

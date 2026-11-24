@@ -1,4 +1,11 @@
-let selectedTimelineDate = '';
+let selectedTimelineDate = (() => {
+  try {
+    const saved = sessionStorage.getItem('sb_timeline_date') || '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(saved) ? saved : '';
+  } catch (e) {
+    return '';
+  }
+})();
 let timelineBookingsByDateCache = {};
 window.selectedTimelineDate = selectedTimelineDate;
 window.timelineBookingsByDateCache = timelineBookingsByDateCache;
@@ -67,6 +74,7 @@ window.changeTimelineDate = function(deltaDays) {
     selectedTimelineDate = `${yyyy}-${mm}-${dd}`;
   }
   window.selectedTimelineDate = selectedTimelineDate;
+  try { sessionStorage.setItem('sb_timeline_date', selectedTimelineDate); } catch (e) {}
   const picker = document.getElementById('timeline-date-picker');
   if (picker) picker.value = selectedTimelineDate;
   const lbl = document.getElementById('timeline-date-label');
@@ -80,6 +88,7 @@ window.setTimelineDate = function(dateStr) {
   if (!dateStr) return;
   selectedTimelineDate = dateStr;
   window.selectedTimelineDate = selectedTimelineDate;
+  try { sessionStorage.setItem('sb_timeline_date', selectedTimelineDate); } catch (e) {}
   const lbl = document.getElementById('timeline-date-label');
   if (lbl) lbl.textContent = formatTimelineDateLabel(selectedTimelineDate);
   fetchTimelineDateBookings(selectedTimelineDate).finally(() => {

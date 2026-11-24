@@ -481,7 +481,12 @@ function renderCrmBookings() {
     return Number(b.id || 0) - Number(a.id || 0);
   });
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = typeof window.getLocalTodayISO === 'function'
+    ? window.getLocalTodayISO()
+    : (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })();
   const totalShown = Math.min(list.length, currentCrmBookingsPage * CRM_BOOKINGS_PAGE_SIZE);
   const pagedList = list.slice(0, totalShown);
 

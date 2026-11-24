@@ -59,7 +59,9 @@ function renderAdminInventory() {
 
   const openSrvBtn = document.getElementById('btn-open-service-modal');
   if (openSrvBtn) {
-    openSrvBtn.classList.toggle('hidden', !isManagerOrAdmin());
+    const canManage = isManagerOrAdmin();
+    openSrvBtn.classList.toggle('hidden', !canManage);
+    openSrvBtn.style.display = canManage ? '' : 'none';
   }
 
   // 1. Cập nhật banner cảnh báo sắp hết hàng
@@ -120,22 +122,22 @@ function renderAdminInventory() {
 
     return `
       <tr class="hover:bg-slate-50 transition-colors ${stock <= minW ? 'bg-red-50/30' : ''}">
-        <td class="py-2.5 px-3 font-bold text-[#0F172A] whitespace-nowrap">
-          ${escapeSearchHTML(s.name)}
-          <span class="text-[10px] font-mono text-slate-400 ml-1">(${escapeSearchHTML(s.id)})</span>
+        <td class="py-2 px-2.5 font-bold text-[#0F172A] leading-snug">
+          <div>${escapeSearchHTML(s.name)}</div>
+          <div class="text-[10px] font-mono font-normal text-slate-400">${escapeSearchHTML(s.id)}</div>
         </td>
-        <td class="py-2.5 px-3 font-extrabold text-[#16A34A] whitespace-nowrap">
+        <td class="py-2 px-2 font-extrabold text-[#16A34A] whitespace-nowrap">
           ${escapeSearchHTML(fmt(s.price))} <span class="text-[11px] font-normal text-slate-500">/ ${escapeSearchHTML(s.unit || 'đơn vị')}</span>
         </td>
-        <td class="py-2.5 px-3 text-center whitespace-nowrap">
+        <td class="py-2 px-2 text-center whitespace-nowrap">
           <span class="font-mono font-extrabold text-sm ${stock <= 0 ? 'text-slate-500' : (stock <= minW ? 'text-red-600' : 'text-[#0F172A]')}">${stock}</span>
           <span class="text-[11px] text-slate-500">${escapeSearchHTML(s.unit || '')}</span>
           ${stockBadge}
         </td>
-        <td class="py-2.5 px-3 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
-          ≤ ${minW} ${escapeSearchHTML(s.unit || '')}
+        <td class="py-2 px-2 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
+          ≤ ${minW}
         </td>
-        <td class="py-2.5 px-3 text-right space-x-1.5 whitespace-nowrap">
+        <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
           ${isManagerOrAdmin() ? `
             <button type="button" onclick="promptRestockService('${safeSrvIdAttr}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer">
               + Nhập kho

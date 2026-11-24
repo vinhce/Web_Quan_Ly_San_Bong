@@ -93,6 +93,42 @@ const ADMIN_LOG_CATALOG = {
       "label": "Xóa quy tắc giờ vàng",
       "group": "pricing"
     },
+    "PACKAGE_SAVE": {
+      "label": "Lưu gói cố định theo tháng",
+      "group": "pricing"
+    },
+    "PACKAGE_DELETE": {
+      "label": "Xóa gói cố định theo tháng",
+      "group": "pricing"
+    },
+    "PACKAGE_TOGGLE": {
+      "label": "Bật/tắt gói cố định theo tháng",
+      "group": "pricing"
+    },
+    "BOOKING_BATCH_OP": {
+      "label": "Thao tác hàng loạt đơn đặt sân",
+      "group": "booking"
+    },
+    "EXPORT_REPORTS": {
+      "label": "Xuất báo cáo doanh thu",
+      "group": "payments"
+    },
+    "AUTO_CLOSE_PAST_BOOKINGS": {
+      "label": "Tự động đóng đơn quá ngày",
+      "group": "automation"
+    },
+    "AUTO_NOSHOW_15M": {
+      "label": "Tự động xử lý khách vắng mặt (quá 15p)",
+      "group": "automation"
+    },
+    "AUTO_NOSHOW_15M_UNPAID": {
+      "label": "Tự động hủy đơn chưa cọc quá giờ đá",
+      "group": "automation"
+    },
+    "CRON_IN_PLAY_UNPAID": {
+      "label": "Cảnh báo ca quá giờ chưa tất toán",
+      "group": "automation"
+    },
     "COLLECT_PAYMENT": {
       "label": "Thu tiền",
       "group": "payments"
