@@ -30,7 +30,7 @@ function assertTest(bool $condition, string $title, string $detail = '') {
 }
 
 function callBookingApi(?array $session, string $method = 'POST', array $payload = []): array {
-    $php = 'C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe';
+    $php = (defined('PHP_BINARY') && PHP_BINARY) ? PHP_BINARY : 'C:\\laragon\\bin\\php\\php-8.3.36-Win32-vs16-x64\\php.exe';
     $runner = __DIR__ . '/run_booking_action.php';
     $input = base64_encode(json_encode([
         'session' => $session,
@@ -224,50 +224,64 @@ $isBlockedAdmin = (isset($data5['success']) && $data5['success'] === false && in
 assertTest($isBlockedAdmin, "5.2 Admin gọi create_booking trên trang khách bị từ chối 403 ERR_FORBIDDEN (không tự biến thành khách)");
 
 // -------------------------------------------------------------
-// TEST 6: Khách A dùng nút "Đặt hộ": nhập tên/SĐT bạn -> đơn lưu tên/SĐT bạn, hồ sơ A không đổi, điểm cộng cho A
-echo "\n--- Test 6: Khách A Đặt hộ bạn bè ---\n";
-$friendName = 'Lê Văn Bạn Thân';
-$friendPhone = '0933445566';
-$bookingCodeFriend = 'TEST-FR-' . time();
+// TEST 6: Đã gỡ bỏ hoàn toàn phần Đặt hộ bạn bè & giữ nguyên xử lý tài khoản thiếu SĐT + giao diện checkout/login
+echo "\n--- Test 6: Kiểm tra gỡ đặt hộ bạn bè, checkout & matchmaking login ---\n";
+$jsBookingSrc = file_get_contents(__DIR__ . '/../js/booking.js');
+$jsBookingUISrc = file_get_contents(__DIR__ . '/../js/booking_ui.js');
+$htmlCheckout = file_get_contents(__DIR__ . '/../html/checkout.html');
+$jsCheckout = file_get_contents(__DIR__ . '/../js/checkout.js');
+$jsMatchmaking = file_get_contents(__DIR__ . '/../js/matchmaking.js');
+$jsLoginSrc = file_get_contents(__DIR__ . '/../js/login.js');
 
-$payloadFriend = [
-    'code' => $bookingCodeFriend,
+$noFriendHtml = (strpos($htmlBooking, 'id="btn-toggle-friend"') === false)
+    && (strpos($htmlBooking, 'id="booking-friend-mode-alert"') === false)
+    && (strpos($htmlBooking, 'id="booking-input-fields-wrap"') === false)
+    && (strpos($htmlBooking, 'id="booking-missing-phone-wrap"') !== false);
+assertTest($noFriendHtml, "6.1 html/booking.html đã xóa đặt hộ bạn bè và giữ nguyên #booking-missing-phone-wrap");
+
+$noFriendJs = (strpos($jsBookingSrc, 'isBookingForFriend') === false)
+    && (strpos($jsBookingSrc, 'toggleBookingForFriend') === false)
+    && (strpos($jsBookingUISrc, 'isBookingForFriend') === false)
+    && (strpos($jsBookingUISrc, 'toggleBookingForFriend') === false);
+assertTest($noFriendJs, "6.2 js/booking.js & js/booking_ui.js đã dọn sạch logic đặt hộ bạn bè");
+
+// Tài khoản thiếu SĐT đặt sân -> lưu SĐT hợp lệ và vẫn gán đúng user_id
+$pdo->prepare("UPDATE users SET phone = '' WHERE id = ?")->execute([$userBId]);
+$sessionBNoPhone = [
+    'user_id' => $userBId,
+    'user' => [
+        'id' => $userBId,
+        'username' => 'cust_b',
+        'full_name' => 'Trần Thị B',
+        'phone' => '',
+        'role' => 'user'
+    ]
+];
+$payloadMissingPhone = [
+    'code' => 'TEST-NP-' . time(),
     'privacy_consent' => 1,
     'pitch_id' => $pitchId,
     'date' => $testDate,
     'slot_id' => 'S04',
-    'is_booking_for_friend' => 1,
-    'customerName' => $friendName,
-    'phone' => $friendPhone
+    'phone' => '0933445566'
 ];
+$data6 = callBookingApi($sessionBNoPhone, 'POST', $payloadMissingPhone);
+$bCodeNP = $data6['data']['code'] ?? '';
+$bStmtNP = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1");
+$bStmtNP->execute([$bCodeNP]);
+$savedRowNP = $bStmtNP->fetch(PDO::FETCH_ASSOC);
+$pdo->prepare("UPDATE users SET phone = '0911223344' WHERE id = ?")->execute([$userBId]);
 
-$data6 = callBookingApi($sessionA, 'POST', $payloadFriend);
-$bCodeF = $data6['data']['code'] ?? '';
-$bStmtF = $pdo->prepare("SELECT * FROM bookings WHERE code = ? LIMIT 1");
-$bStmtF->execute([$bCodeF]);
-$savedRowF = $bStmtF->fetch(PDO::FETCH_ASSOC);
+assertTest($savedRowNP && (int)$savedRowNP['user_id'] === $userBId && $savedRowNP['phone'] === '0933445566', "6.3 Tài khoản thiếu SĐT bổ sung SĐT khi đặt sân hoạt động chính xác");
 
-assertTest($savedRowF && $savedRowF['customer_name'] === $friendName, "6.1 Đơn đặt hộ lưu đúng Họ tên bạn ({$friendName})");
-assertTest($savedRowF && $savedRowF['phone'] === $friendPhone, "6.2 Đơn đặt hộ lưu đúng SĐT bạn ({$friendPhone})");
-assertTest($savedRowF && (int)$savedRowF['user_id'] === $userAId, "6.3 user_id của đơn đặt hộ vẫn thuộc về Khách A");
+$noGuestLoginCheckout = (strpos($htmlCheckout, 'guest-login-checkout-btn') === false)
+    && (strpos($jsCheckout, 'guest-login-checkout-btn') === false);
+assertTest($noGuestLoginCheckout, "6.4 Đã xóa nút #guest-login-checkout-btn khỏi checkout.html & checkout.js");
 
-// Kiểm tra hồ sơ Khách A trong users table KHÔNG bị đổi
-$freshCustA = $pdo->query("SELECT full_name, phone FROM users WHERE id = {$userAId}")->fetch(PDO::FETCH_ASSOC);
-assertTest($freshCustA['full_name'] === 'Nguyễn Văn A' && $freshCustA['phone'] === '0987654321', "6.4 Hồ sơ của Khách A trong DB giữ nguyên (KHÔNG bị đổi theo thông tin bạn)");
-
-// Cộng điểm kiểm tra điểm vẫn về Khách A
-if ($savedRowF) {
-    $updF = $pdo->prepare("UPDATE bookings SET paid_amount = 300000, payment_status = 'Đã cọc 30%' WHERE id = ?");
-    $updF->execute([(int)$savedRowF['id']]);
-    $savedRowF['paid_amount'] = 300000;
-    $savedRowF['payment_status'] = 'Đã cọc 30%';
-    award_booking_loyalty_points($pdo, $savedRowF);
-
-    $ptsStmtF = $pdo->prepare("SELECT * FROM points_log WHERE booking_id = ? LIMIT 1");
-    $ptsStmtF->execute([(int)$savedRowF['id']]);
-    $ptsRowF = $ptsStmtF->fetch(PDO::FETCH_ASSOC);
-    assertTest($ptsRowF && (int)$ptsRowF['user_id'] === $userAId, "6.5 Điểm thưởng của đơn đặt hộ vẫn cộng cho Khách A (user_id = {$userAId})");
-}
+$matchmakingLoginClean = (strpos($jsMatchmaking, 'ensureMatchmakingAuthenticated') !== false)
+    && (strpos($jsLoginSrc, "redirectBase === 'matchmaking'") !== false)
+    && (strpos($jsLoginSrc, 'Vui lòng đăng nhập tài khoản để tham gia bắt kèo / đăng tin giao lưu.') !== false);
+assertTest($matchmakingLoginClean, "6.5 Matchmaking & login xử lý redirect=matchmaking không gắn nhầm expired=1 cho khách chưa đăng nhập");
 
 // -------------------------------------------------------------
 // TEST 7: Thử mạo danh (IDOR): A đăng nhập nhưng gửi user_id của B -> server BỎ QUA, vẫn gán cho A
@@ -320,6 +334,33 @@ $payloadValidVoucher = [
 $data8b = callBookingApi($sessionA, 'POST', $payloadValidVoucher);
 $voucherValidAccepted = (isset($data8b['success']) && $data8b['success'] === true && !empty($data8b['data']['voucherCode']));
 assertTest($voucherValidAccepted, "8.2 Mã voucher hợp lệ được chấp nhận và áp dụng vào đơn");
+
+// Kiểm tra compute_server_booking_quote với CUOITUAN100K (min_order 900k)
+require_once __DIR__ . '/../api/services/booking_quote_service.php';
+$p11Id = $pdo->query("SELECT id FROM pitches WHERE type = 11 AND status != 'Bảo trì' LIMIT 1")->fetchColumn() ?: 'P11-A';
+$qTooLow = compute_server_booking_quote($pdo, [
+    'pitchId' => 'P5-A',
+    'date' => $testDate,
+    'slotId' => 'S02',
+    'voucherCode' => 'CUOITUAN100K',
+    'userId' => $userAId
+], false);
+assertTest(
+    empty($qTooLow['appliedVoucher']) && strpos((string)($qTooLow['voucherError'] ?? ''), 'tối thiểu') !== false,
+    "8.3 Quote báo rõ thiếu giá trị tối thiểu khi đơn < 900.000đ cho CUOITUAN100K"
+);
+
+$qEligible = compute_server_booking_quote($pdo, [
+    'pitchId' => $p11Id,
+    'date' => $testDate,
+    'slotId' => 'S02',
+    'voucherCode' => 'CUOITUAN100K',
+    'userId' => $userAId
+], false);
+assertTest(
+    ($qEligible['appliedVoucher'] ?? '') === 'CUOITUAN100K' && (int)($qEligible['voucherDiscountAmount'] ?? 0) === 100000,
+    "8.4 Quote áp dụng đúng CUOITUAN100K (-100.000đ) khi đơn >= 900.000đ"
+);
 
 // -------------------------------------------------------------
 // TEST 9: Đang chọn dở sân/ngày/ca mà bấm đăng nhập -> đăng nhập xong quay lại đúng trạng thái đã chọn

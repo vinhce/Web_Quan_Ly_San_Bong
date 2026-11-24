@@ -129,7 +129,7 @@ assert_test(str_contains($msg2, "Admin Nguyễn A điều chỉnh điểm hội 
 
 // TEST 5: Phân quyền & Chặn phương thức sửa/xóa (HTTP 405 & 403)
 echo "\n5. Kiểm tra bảo mật API Endpoint (HTTP 405 & 403):\n";
-$phpBin = 'C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe';
+$phpBin = PHP_BINARY;
 
 // a) Test POST request to audit_logs -> 405
 $outputPost = shell_exec("\"{$phpBin}\" tests/sub_test_audit_api.php post_method 2>&1");
@@ -166,6 +166,10 @@ $xssLog = [
 $xssMsg = AdminLogService::formatLogMessage($xssLog);
 assert_test(!str_contains($xssMsg, '<script>'), 'Format message không cho phép thẻ script thô (đã escape hoặc làm sạch)');
 assert_test(!str_contains($xssMsg, '<img'), 'Format message không cho phép thẻ img thô (đã escape hoặc làm sạch)');
+
+// Dọn dẹp bản ghi test đã tạo
+$delStmt = $pdo->prepare("DELETE FROM audit_logs WHERE id IN (?, ?)");
+$delStmt->execute([(int)$logId, (int)$maskLogId]);
 
 echo "\n=============================================\n";
 echo "KẾT QUẢ KIỂM THỬ PHẦN A: {$passed} PASS, {$failed} FAIL\n";

@@ -26,6 +26,60 @@ function assert_test(bool $condition, string $msg): void {
     }
 }
 
+function invoke_crm_endpoint(string $action, string $method, array $payload, int $adminId, array $getParams = []): array {
+    $phpBin = (defined('PHP_BINARY') && PHP_BINARY) ? PHP_BINARY : 'php';
+    $cfg = [
+        'action'   => $action,
+        'method'   => strtoupper($method),
+        'payload'  => $payload,
+        'get'      => $getParams,
+        'admin_id' => $adminId
+    ];
+    $cfgB64 = base64_encode(json_encode($cfg, JSON_UNESCAPED_UNICODE));
+    $crmPath = realpath(__DIR__ . '/../api/admin_crm.php');
+    $code = <<<'PHP'
+$cfg = json_decode(base64_decode($argv[2]), true);
+if (session_status() === PHP_SESSION_NONE) { @session_start(); }
+$_SESSION['user_id'] = (int)$cfg['admin_id'];
+$_SESSION['user'] = [
+    'id' => (int)$cfg['admin_id'],
+    'username' => 'admin',
+    'full_name' => 'Test Admin CRM',
+    'role' => 'admin'
+];
+$csrf = 'test_csrf_crm_1234567890';
+$_SESSION['csrf_token'] = $csrf;
+$_SERVER['HTTP_X_CSRF_TOKEN'] = $csrf;
+$_SERVER['REQUEST_METHOD'] = $cfg['method'];
+$_GET = array_merge($cfg['get'], ['action' => $cfg['action']]);
+$_POST = $cfg['method'] === 'POST' ? $cfg['payload'] : [];
+ob_start();
+register_shutdown_function(static function () {
+    $raw = ob_get_clean();
+    $status = http_response_code();
+    if (!is_int($status) || $status <= 0) { $status = 200; }
+    $decoded = json_decode((string)$raw, true);
+    echo json_encode([
+        'http_status' => $status,
+        'body' => is_array($decoded) ? $decoded : ['raw' => (string)$raw]
+    ], JSON_UNESCAPED_UNICODE);
+});
+require $argv[3];
+PHP;
+    $codeB64 = base64_encode($code);
+    $cmd = escapeshellarg($phpBin) . ' -r ' . escapeshellarg('eval(base64_decode($argv[1]));')
+         . ' ' . escapeshellarg($codeB64)
+         . ' ' . escapeshellarg($cfgB64)
+         . ' ' . escapeshellarg($crmPath)
+         . ' 2>&1';
+    $rawOut = shell_exec($cmd);
+    $parsed = json_decode((string)$rawOut, true);
+    if (!is_array($parsed)) {
+        return ['http_status' => 0, 'body' => ['success' => false, 'raw' => (string)$rawOut]];
+    }
+    return $parsed;
+}
+
 echo "=== KIỂM THỬ PHẦN C: SEARCH CUSTOMERS & UPDATE MEMBER ===\n\n";
 
 try {
@@ -33,7 +87,7 @@ try {
     echo "1. Chuẩn bị dữ liệu hội viên mẫu trong DB:\n";
     
     // Dọn dữ liệu test cũ
-    $testPhones = ['0988111222', '0988333444', '0988555666', '0988777888'];
+    $testPhones = ['0988111222', '0988333444', '0988555666', '0988777888', '0988999000'];
     $inPhones = "'" . implode("','", $testPhones) . "'";
     $pdo->exec("DELETE FROM points_log WHERE user_id IN (SELECT id FROM users WHERE phone IN ({$inPhones}) OR username LIKE 'user_test_c%')");
     $pdo->exec("DELETE FROM audit_logs WHERE target_id IN ({$inPhones})");
@@ -277,10 +331,127 @@ try {
     assert_test($userBeforeFail['full_name'] === $userAfterFail['full_name'], "Sửa thất bại thì dữ liệu người dùng không thay đổi");
     assert_test($auditCountBefore === $auditCountAfter, "Sửa thất bại thì không sinh ra bất kỳ dòng log nào");
 
+    // ===============================================================
+    // TEST 3: VALIDATE LÝ DO BẮT BUỘC Ở SERVER (api/admin_crm.php)
+    // ===============================================================
+    echo "\n4. Kiểm thử validate lý do bắt buộc & chuẩn hóa hạng tại api/admin_crm.php:\n";
+
+    $stmtValUser = $pdo->prepare("INSERT INTO users (username, email, phone, full_name, password_hash, role, status, points, customer_tier, admin_note) VALUES (?, ?, ?, ?, 'hash_val', 'user', 'active', 100, 'standard', 'Ghi chú ban đầu')");
+    $stmtValUser->execute(['user_test_c_val', 'val_c@test.com', '0988999000', 'Hội Viên Validate']);
+    $valUserId = (int)$pdo->lastInsertId();
+    $pdo->prepare("INSERT INTO customer_crm (phone, full_name, customer_tier, admin_note, is_blacklisted) VALUES (?, ?, 'regular', ?, 1)")
+        ->execute(['0988999000', 'Hội Viên Validate', 'Ghi chú ban đầu']);
+
+    // 3.1 crm_customers chuẩn hóa regular -> standard
+    $listRes = invoke_crm_endpoint('crm_customers', 'GET', [], $adminId, ['search' => '0988999000']);
+    $foundVal = null;
+    foreach ($listRes['body']['data'] ?? [] as $rowItem) {
+        if (($rowItem['phone'] ?? '') === '0988999000') {
+            $foundVal = $rowItem;
+            break;
+        }
+    }
+    assert_test($foundVal !== null && ($foundVal['customerTier'] ?? '') === 'standard', "crm_customers chuẩn hóa hạng cũ 'regular' về 'standard'");
+
+    // 3.2 adjust_points từ chối lý do rỗng / < 10 ký tự / ký tự lặp rác
+    $badReasons = [
+        'rỗng' => '',
+        'ngắn < 10 ký tự' => 'abc',
+        'lặp 1 ký tự' => 'aaaaaaaaaa',
+        'lặp cặp số' => '1212121212',
+        'chuỗi rác lặp' => 'dasdawdadwdasd',
+        'chỉ toàn số' => '1234567890'
+    ];
+    foreach ($badReasons as $lbl => $badReason) {
+        $rBadPts = invoke_crm_endpoint('adjust_points', 'POST', [
+            'user_id' => $valUserId,
+            'phone'   => '0988999000',
+            'delta'   => 25,
+            'reason'  => $badReason
+        ], $adminId);
+        assert_test($rBadPts['http_status'] === 400 && empty($rBadPts['body']['success']), "adjust_points trả HTTP 400 với lý do {$lbl}");
+    }
+    $ptsAfterBad = (int)$pdo->query("SELECT points FROM users WHERE id = {$valUserId}")->fetchColumn();
+    assert_test($ptsAfterBad === 100, "Điểm DB giữ nguyên 100 sau các lần nhập lý do sai");
+
+    // 3.3 adjust_points chấp nhận lý do >= 10 ký tự có ý nghĩa & ghi AdminLogService
+    $rGoodPts = invoke_crm_endpoint('adjust_points', 'POST', [
+        'user_id' => $valUserId,
+        'phone'   => '0988999000',
+        'delta'   => 25,
+        'reason'  => 'Thưởng điểm giải đấu giao hữu cuối tuần'
+    ], $adminId);
+    assert_test($rGoodPts['http_status'] === 200 && !empty($rGoodPts['body']['success']), "adjust_points trả HTTP 200 với lý do hợp lệ");
+    $ptsAfterGood = (int)$pdo->query("SELECT points FROM users WHERE id = {$valUserId}")->fetchColumn();
+    assert_test($ptsAfterGood === 125, "Điểm DB cập nhật thành 125 sau khi nhập lý do hợp lệ");
+
+    // 3.4 update_customer_crm từ chối đổi hạng thủ công với lý do rỗng / < 10 / rác
+    foreach (['rỗng' => '', 'ngắn' => 'lên vip', 'rác lặp' => 'aaaaaaaaaa', 'vô nghĩa' => 'dasdawdadwdasd'] as $lbl => $badReason) {
+        $rBadTier = invoke_crm_endpoint('update_customer_crm', 'POST', [
+            'user_id'       => $valUserId,
+            'phone'         => '0988999000',
+            'name'          => 'Hội Viên Validate',
+            'customer_tier' => 'vip',
+            'tier_reason'   => $badReason
+        ], $adminId);
+        assert_test($rBadTier['http_status'] === 400 && empty($rBadTier['body']['success']), "update_customer_crm trả HTTP 400 khi đổi hạng với lý do {$lbl}");
+    }
+    $tierAfterBad = (string)$pdo->query("SELECT customer_tier FROM users WHERE id = {$valUserId}")->fetchColumn();
+    assert_test($tierAfterBad === 'standard', "Hạng DB vẫn giữ nguyên 'standard' khi đổi hạng thất bại");
+
+    // 3.5 update_customer_crm từ chối đổi điểm thủ công với lý do rác
+    $rBadCrmPts = invoke_crm_endpoint('update_customer_crm', 'POST', [
+        'user_id'       => $valUserId,
+        'phone'         => '0988999000',
+        'name'          => 'Hội Viên Validate',
+        'customer_tier' => 'standard',
+        'points'        => 200,
+        'points_reason' => 'dasdawdadwdasd'
+    ], $adminId);
+    assert_test($rBadCrmPts['http_status'] === 400 && empty($rBadCrmPts['body']['success']), "update_customer_crm trả HTTP 400 khi đổi điểm với lý do rác");
+
+    // 3.6 update_customer_crm cho phép sửa ghi chú không gửi blacklist (bảo toàn cột is_blacklisted)
+    $rNoteOnly = invoke_crm_endpoint('update_customer_crm', 'POST', [
+        'user_id'       => $valUserId,
+        'phone'         => '0988999000',
+        'name'          => 'Hội Viên Validate',
+        'customer_tier' => 'standard',
+        'admin_note'    => 'Chỉ cập nhật ghi chú chăm sóc'
+    ], $adminId);
+    assert_test($rNoteOnly['http_status'] === 200 && !empty($rNoteOnly['body']['success']), "update_customer_crm cho phép sửa ghi chú không cần lý do và không cần field blacklist");
+    $blkPreserved = (int)$pdo->query("SELECT is_blacklisted FROM customer_crm WHERE phone = '0988999000'")->fetchColumn();
+    assert_test($blkPreserved === 1, "Cột DB is_blacklisted được bảo toàn nguyên vẹn khi form không gửi");
+
+    // 3.7 update_customer_crm đổi hạng thủ công với lý do hợp lệ & ghi audit_logs cũ -> mới
+    $rGoodTier = invoke_crm_endpoint('update_customer_crm', 'POST', [
+        'user_id'       => $valUserId,
+        'phone'         => '0988999000',
+        'name'          => 'Hội Viên Validate',
+        'customer_tier' => 'vip',
+        'tier_reason'   => 'Khách hàng thân thiết đặt sân cố định hàng tuần'
+    ], $adminId);
+    assert_test($rGoodTier['http_status'] === 200 && !empty($rGoodTier['body']['success']), "update_customer_crm đổi hạng thủ công thành công với lý do hợp lệ");
+    $tierAfterGood = (string)$pdo->query("SELECT customer_tier FROM users WHERE id = {$valUserId}")->fetchColumn();
+    assert_test($tierAfterGood === 'vip', "Hạng DB đã cập nhật lên 'vip'");
+    $crmAudit = $pdo->query("SELECT old_value, new_value FROM audit_logs WHERE action = 'CRM_CUSTOMER_UPDATE' AND target_id = '0988999000' ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    assert_test(
+        $crmAudit && str_contains((string)$crmAudit['new_value'], 'vip') && str_contains((string)$crmAudit['new_value'], 'Khách hàng thân thiết'),
+        "AdminLogService::record ghi nhận đầy đủ cũ -> mới và lý do đổi hạng"
+    );
+
+    // 3.8 update_customer_crm hỗ trợ option 'auto'
+    $rAutoTier = invoke_crm_endpoint('update_customer_crm', 'POST', [
+        'user_id'       => $valUserId,
+        'phone'         => '0988999000',
+        'name'          => 'Hội Viên Validate',
+        'customer_tier' => 'auto'
+    ], $adminId);
+    assert_test($rAutoTier['http_status'] === 200 && !empty($rAutoTier['body']['success']), "update_customer_crm hỗ trợ tùy chọn phân hạng 'auto'");
+
     // Dọn dẹp dữ liệu test
-    $pdo->exec("DELETE FROM points_log WHERE user_id IN ({$user1Id}, {$user2Id})");
-    $pdo->exec("DELETE FROM audit_logs WHERE id = {$auditId}");
-    $pdo->exec("DELETE FROM users WHERE id IN ({$user1Id}, {$user2Id})");
+    $pdo->exec("DELETE FROM points_log WHERE user_id IN ({$user1Id}, {$user2Id}, {$valUserId})");
+    $pdo->exec("DELETE FROM audit_logs WHERE id = {$auditId} OR target_id IN ({$inPhones})");
+    $pdo->exec("DELETE FROM users WHERE id IN ({$user1Id}, {$user2Id}, {$valUserId})");
     $pdo->exec("DELETE FROM customer_crm WHERE phone IN ({$inPhones})");
 
     echo "\n=== TỔNG KẾT: {$passed} PASS, {$failed} FAIL ===\n";

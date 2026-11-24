@@ -91,3 +91,23 @@
   - **(c) Tỷ lệ lấp đầy 1%**: Mẫu số hardcode sai `$totalPitches = 17` (thực tế 26 sân), `$totalHoursOpenPerDay = 17.5`, `$bookedHours = totalMatches * 1.5` (ca thực tế 2h) và `$numDays = count($dailyRevenue)` thay vì số ngày trong kỳ lọc × số sân hoạt động (trừ bảo trì/ẩn).
   - **(d) Đối soát "Khớp 100%" không độc lập**: `formula1` (`paid + (total - paid)`) và `formula2` (`dep + (pitchNet - dep) + srv`) là đồng nhất thức đại số trên cùng 1 tập `$bookingsRows`, không đối chiếu với `bank_transactions` hay `shifts`.
 
+## [B0] Kết luận phân tích Bước 0 — Tab 11 Nhật ký Admin & Baseline DB (2026-11-24)
+- **Baseline & Hạ tầng:** Commit baseline `v135` tại `9caa77b`; `DB_HOST=127.0.0.1`, DB `quan_ly_san_bong` chạy trên MySQL `8.4.3` (`data/mysql-8.4`, đủ migration `020`/`021`; lưu ý `mysql-8.0.30` ở `data/mysql-8` dừng từ 19/11, thiếu `monthly_packages` & `vouchers.max_discount_amount`).
+- **File HTML mẫu:** Không tồn tại `"Nhật ký hệ thống – Sân Bóng Pro.html"` trong repo; Tab 11 chạy qua `portal-admin/partials/tab11_admin_logs.php`, `js/admin_logs.js`, `api/services/admin_settings.php` (`action=audit_logs`) & `AdminLogService.php`.
+- **Bảng `audit_logs`:** 12 cột, 6 index (`PRIMARY`, `idx_audit_user/action/booking/created/target`); DB hiện có **93 bản ghi / 17 mã `action`**; quét `api/` ghi nhận **82 mã `action`** (78 literal + 4 `WEBHOOK_*` tại `sepay_webhook.php`) và **3 mã tại `cron/`**.
+- **Snapshot `shifts` & `vouchers`:** `shifts` (18 cột) có 2 dòng (`id=14` closed `[TEST]` `cash=350k`, `transfer=450k`, `discrepancy=0`; `id=1` open `staff_id=3`); `vouchers` có 6 mã `is_active=1`, `used_count=0/100`, `max_discount_amount=0`.
+- **Datepicker & RBAC:** `js/vn_datepicker.js` hiển thị `dd/mm/yyyy` ở `#<id>-vn` và override `origInput.value` giữ chuẩn `yyyy-mm-dd` (`admin-log-filter-from/to` thuộc `TARGET_IDS` & `ALLOW_PAST_IDS`); `api/security_helper.php` tách rõ `require_admin`, `require_manager_or_admin`, `require_staff_or_admin`.
+
+## [B1]–[B4] Nâng cấp 17 comment UI/Logic, Tab 8 & Tab 11 Nhật ký (`v20261124_v136` — 2026-11-24)
+- **[B1] Migration 022 & Kiến trúc API/Registry:**
+  - `022_audit_reviews_and_shifts_upgrade.sql` + `config/database.php`: tạo bảng `audit_reviews`, mở rộng 5 cột/index `audit_logs`, trạng thái `pending_explanation` & `staff_counted_cash` ở `shifts`, 6 khóa ngưỡng bất thường trong `settings`.
+  - Tab 11 B1 (`AdminLogRegistry` 110 actions / 6 nhóm `TD/XH/CN/CB/TQ/TT` + 9 luật `a..i`, `AdminLogRepository`, `AdminLogService`): append-only (HTTP 405), `audit_review`, xuất CSV BOM chống formula injection & che SĐT; bổ sung `validate_mandatory_audit_reason()` trong `api/security_helper.php`.
+- **[B2]–[B3] Thực thi 17 hạng mục UI/Logic & Tab 11 B2–B3 (4 nhánh song song, 0 xung đột):**
+  - **Luồng khách (`a7fa078`):** `/booking` đồng bộ `eligible_vouchers` + chip `-30k/-50k/-100k/-15%` (`CUOITUAN100K` cảnh báo `<900k`), gỡ form đặt hộ (`#btn-toggle-friend`, `#booking-input-fields-wrap`); `/checkout` gỡ `#guest-login-checkout-btn`; `/matchmaking` → `/login?redirect=matchmaking` không gắn `&expired=1`.
+  - **Tab 1, 6, 7 (`08b79df`):** Tab 1 sửa nhãn đơn `Đã hủy`, mở `#inplay-manage-modal` cho `Giữ chỗ (chờ cọc)` (`z-40`/`z-50`); Tab 6 bỏ `Khách quen`/`regular`, `warning_noshow`, khối Blacklist, ghép `#crm-form-tier` + `#crm-form-note` cùng hàng, validate lý do server tại `api/admin_crm.php`; Tab 7 đổi `"Kỳ vọng"` → `"Số tiền nhận / Cần thu"` và căn giữa bảng.
+  - **Tab 9 Báo cáo (`01f01c0`):** `#rpt-filter-bar` sticky nền `#ffffff`, 4 tab con nhớ hash (`#tong-quan`, `#doi-soat`, `#chi-tiet`, `#chi-phi`), gộp 1 `Sổ chi` duy nhất, `#ea580c` cho `Chưa thu`, `Lợi nhuận` `0` chi phí hiện `—`, đối soát có dấu không bù trừ; thống nhất đếm ca theo `isMatchCounted` (lý do lệch `13 vs 14 ca`: đơn hủy giữ cọc vào `detailedBookings` nhưng `isMatchCounted=false`).
+  - **Tab 8 & Tab 11 UI (`6e16952`..`85e2ca8`):** Tab 8 `"✓ Khớp"`, bỏ `"Khớp 0đ"`, gộp trạng thái, tô nền dòng lệch, modal đối chiếu `bank_transactions`, chặn mở ca khi còn `open`; Tab 11 khớp 5 cột, CSS `.audit-*` + touch 44px mobile, 4 KPI, 6 chip lọc, diff/hậu kiểm, CSV BOM.
+- **[B4] Hợp nhất, Tailwind v136 & Hồi quy toàn diện:**
+  - Hợp nhất 4 nhánh vào `main`, đồng bộ `test_v10_overlap_and_toast.php` & `test_admin_customer_table.js`, build `css/tailwind.generated.css?v=20261124_v136` (0 URL CDN/Google Fonts ngoài).
+  - Cú pháp: `101/101` PHP (`php -l`) & `47/47` JS (`node --check`) PASS. Kiểm thử MySQL 8.4.3: **19/19** bộ test PHP/JS PASS 100%; Playwright E2E (`127.0.0.1:8091`): **41/41** checks PASS ở mọi viewport (`1920/1280/820/768/390/360px`), 0 lỗi console/HTTP `>=400`, DB sạch 0 bản ghi `[TEST]` mới. **Lỗi mở: 0.**
+

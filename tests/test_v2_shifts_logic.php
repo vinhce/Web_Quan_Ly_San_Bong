@@ -151,9 +151,181 @@ function runV2Tests(PDO $pdo): void {
     $results[] = ["11. Khóa sổ vĩnh viễn: ca đã đối soát không thể sửa đổi (0 rows affected)", $t11Blocked];
     if (!$t11Blocked) $allPass = false;
 
-    // Dọn dẹp dữ liệu test
+    // Dọn dẹp dữ liệu test cũ (phần SQL cơ bản)
     $pdo->prepare("DELETE FROM service_sales WHERE id = ?")->execute([$saleId]);
     $pdo->prepare("DELETE FROM shifts WHERE staff_id = ?")->execute([$staffId]);
+
+    // --- PHẦN B MỞ RỘNG: KIỂM TRA QUA ENDPOINT & VALIDATOR ---
+    $callShiftsApi = static function (array $sessionUser, string $method, array $getParams = [], array $payload = []): array {
+        $rootDir = dirname(__DIR__);
+        $cfg = [
+            'root'    => $rootDir,
+            'session' => $sessionUser,
+            'action'  => 'shifts',
+            'method'  => $method,
+            'get'     => $getParams,
+            'payload' => $payload,
+        ];
+        // Build inline one-shot invocation via temp runner so $_GET/$_POST are isolated cleanly
+        $code = <<<'PHPEOF'
+<?php
+$cfg = json_decode(base64_decode($argv[1]), true);
+$root = $cfg['root'];
+require_once $root . '/config/database.php';
+require_once $root . '/api/security_helper.php';
+if (session_status() === PHP_SESSION_NONE) session_start();
+$_SESSION = $cfg['session'];
+$csrf = 'test_csrf_v2_1234567890abcdef';
+$_SESSION['csrf_token'] = $csrf;
+$_SERVER['HTTP_X_CSRF_TOKEN'] = $csrf;
+$_SERVER['REQUEST_METHOD'] = $cfg['method'];
+$_GET = array_merge(['action' => 'shifts'], $cfg['get'] ?? []);
+$_POST = $cfg['payload'] ?? [];
+$GLOBALS['test_json_input'] = json_encode($cfg['payload'] ?? []);
+ob_start();
+require $root . '/api/admin.php';
+$out = ob_get_clean();
+echo $out;
+PHPEOF;
+        $tmpScript = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'shift_v2_runner_' . getmypid() . '.php';
+        file_put_contents($tmpScript, $code);
+        try {
+            $cmd = sprintf('"%s" "%s" %s', PHP_BINARY, $tmpScript, escapeshellarg(base64_encode(json_encode($cfg))));
+            $raw = (string)shell_exec($cmd);
+        } finally {
+            @unlink($tmpScript);
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? ['json' => $decoded, 'raw' => $raw] : ['json' => null, 'raw' => $raw];
+    };
+
+    // Kiểm tra validate_mandatory_audit_reason
+    $vShort = validate_mandatory_audit_reason('ngắn', 10);
+    $vRep1 = validate_mandatory_audit_reason('aaaaaaaaaa', 10);
+    $vRep2 = validate_mandatory_audit_reason('12121212', 10);
+    $vRep3 = validate_mandatory_audit_reason('dasdawdadwdasd', 10);
+    $vRep4 = validate_mandatory_audit_reason('test test test', 10);
+    $vGood = validate_mandatory_audit_reason('Khách trả thừa 20.000đ tiền mặt ca sáng', 10);
+    $t12Pass = !$vShort['valid'] && !$vRep1['valid'] && !$vRep2['valid'] && !$vRep3['valid'] && !$vRep4['valid'] && $vGood['valid'];
+    $results[] = ["12. validate_mandatory_audit_reason() chặn chuỗi ngắn/lặp rác và nhận lý do hợp lệ", $t12Pass];
+    if (!$t12Pass) $allPass = false;
+
+    $staffSession = ['user_id' => $staffId, 'user' => ['id' => $staffId, 'username' => $staffUname, 'full_name' => 'Test Staff V2', 'role' => 'staff']];
+    $mgrSession = ['user_id' => $mgrId, 'user' => ['id' => $mgrId, 'username' => $mgrUname, 'full_name' => 'Test Manager V2', 'role' => 'manager']];
+
+    $createdShiftIds = [];
+    $savedOpenShifts = [];
+    try {
+        // Lưu tạm ca đang open sẵn (nếu có) để test không đụng chạm dữ liệu thật và luôn hoàn nguyên
+        $openRows = $pdo->query("SELECT id, status FROM shifts WHERE status = 'open'")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($openRows as $or) {
+            $savedOpenShifts[] = (int)$or['id'];
+            $pdo->prepare("UPDATE shifts SET status = 'closed' WHERE id = ?")->execute([(int)$or['id']]);
+        }
+
+        // TEST 13: GET activeShift == null -> open_time: null, cash_total: 0, transfer_total: 0
+        $resGetEmpty = $callShiftsApi($staffSession, 'GET');
+        $dEmpty = $resGetEmpty['json']['data'] ?? [];
+        $t13Pass = ($resGetEmpty['json']['success'] ?? false) === true
+            && array_key_exists('activeShift', $dEmpty) && $dEmpty['activeShift'] === null
+            && array_key_exists('open_time', $dEmpty) && $dEmpty['open_time'] === null
+            && (int)($dEmpty['cash_total'] ?? -1) === 0
+            && (int)($dEmpty['transfer_total'] ?? -1) === 0;
+        $results[] = ["13. GET shifts khi chưa mở ca trả open_time=null, cash_total=0, transfer_total=0", $t13Pass];
+        if (!$t13Pass) $allPass = false;
+
+        // TEST 14: Mở ca qua API thành công, sau đó tài khoản KHÁC (Manager) mở ca thứ 2 bị chặn
+        $resOpen1 = $callShiftsApi($staffSession, 'POST', [], ['sub_action' => 'open_shift', 'initial_cash' => 500000, 'note' => '[TEST] Mở ca V2']);
+        $open1Id = (int)($resOpen1['json']['data']['shift_id'] ?? 0);
+        if ($open1Id > 0) $createdShiftIds[] = $open1Id;
+
+        $resOpen2 = $callShiftsApi($mgrSession, 'POST', [], ['sub_action' => 'open_shift', 'initial_cash' => 200000, 'note' => '[TEST] Mở ca đè']);
+        $t14Pass = ($resOpen1['json']['success'] ?? false) === true
+            && $open1Id > 0
+            && ($resOpen2['json']['success'] ?? true) === false
+            && ($resOpen2['json']['ref_code'] ?? '') === 'ERR_SHIFT_ALREADY_OPEN';
+        $results[] = ["14. Chặn mở ca mới khi còn bất kỳ ca nào đang open (kể cả khác nhân viên)", $t14Pass];
+        if (!$t14Pass) $allPass = false;
+
+        // TEST 15: Cảnh báo warn_level warning (>= 12h) và danger (>= 16h)
+        $pdo->prepare("UPDATE shifts SET start_time = DATE_SUB(NOW(), INTERVAL 13 HOUR) WHERE id = ?")->execute([$open1Id]);
+        $resWarn12 = $callShiftsApi($staffSession, 'GET');
+        $pdo->prepare("UPDATE shifts SET start_time = DATE_SUB(NOW(), INTERVAL 17 HOUR) WHERE id = ?")->execute([$open1Id]);
+        $resWarn16 = $callShiftsApi($staffSession, 'GET');
+        $t15Pass = ($resWarn12['json']['data']['warn_level'] ?? '') === 'warning'
+            && ($resWarn16['json']['data']['warn_level'] ?? '') === 'danger';
+        $results[] = ["15. Cảnh báo mở ca lâu: >=12h warn_level=warning, >=16h warn_level=danger", $t15Pass];
+        if (!$t15Pass) $allPass = false;
+
+        // TEST 16: Chốt ca lệch thiếu lý do / lý do rác bị chặn, lý do hợp lệ vào pending_explanation & giữ staff_counted_cash
+        $resCloseBad = $callShiftsApi($staffSession, 'POST', [], [
+            'sub_action' => 'close_shift',
+            'shift_id' => $open1Id,
+            'actual_cash_received' => 470000,
+            'discrepancy_reason' => 'dasdawdadwdasd'
+        ]);
+        $resCloseOk = $callShiftsApi($staffSession, 'POST', [], [
+            'sub_action' => 'close_shift',
+            'shift_id' => $open1Id,
+            'actual_cash_received' => 470000,
+            'discrepancy_reason' => '[TEST] Khách thiếu tiền lẻ trả sau 30.000đ'
+        ]);
+        $rowAfterClose = $pdo->query("SELECT status, staff_counted_cash, actual_cash_received FROM shifts WHERE id = {$open1Id}")->fetch(PDO::FETCH_ASSOC);
+        $t16Pass = ($resCloseBad['json']['success'] ?? true) === false
+            && ($resCloseOk['json']['success'] ?? false) === true
+            && ($rowAfterClose['status'] ?? '') === 'pending_explanation'
+            && (float)($rowAfterClose['staff_counted_cash'] ?? 0) === 470000.0;
+        $results[] = ["16. Chốt ca lệch chặn lý do rác, lưu staff_counted_cash và đặt status='pending_explanation'", $t16Pass];
+        if (!$t16Pass) $allPass = false;
+
+        // TEST 17: Đối soát ca lệch thiếu admin_note bị chặn; chỉnh số tiền thực nhận ghi SHIFT_EDIT_COUNT & giữ nguyên staff_counted_cash
+        $resConfBad = $callShiftsApi($mgrSession, 'POST', [], [
+            'sub_action' => 'confirm_shift',
+            'shift_id' => $open1Id,
+            'actual_cash_received' => 480000,
+            'admin_note' => 'ngắn'
+        ]);
+        $resConfOk = $callShiftsApi($mgrSession, 'POST', [], [
+            'sub_action' => 'confirm_shift',
+            'shift_id' => $open1Id,
+            'actual_cash_received' => 480000,
+            'admin_note' => '[TEST] Kiểm tra lại két thấy thêm tờ 10.000đ'
+        ]);
+        $rowAfterConf = $pdo->query("SELECT status, staff_counted_cash, actual_cash_received FROM shifts WHERE id = {$open1Id}")->fetch(PDO::FETCH_ASSOC);
+        $editLogCount = (int)$pdo->query("SELECT COUNT(*) FROM audit_logs WHERE action = 'SHIFT_EDIT_COUNT' AND object_code = 'SHIFT-{$open1Id}'")->fetchColumn();
+        $t17Pass = ($resConfBad['json']['success'] ?? true) === false
+            && ($resConfOk['json']['success'] ?? false) === true
+            && ($rowAfterConf['status'] ?? '') === 'confirmed'
+            && (float)($rowAfterConf['staff_counted_cash'] ?? 0) === 470000.0
+            && (int)($rowAfterConf['actual_cash_received'] ?? 0) === 480000
+            && $editLogCount >= 1;
+        $results[] = ["17. Đối soát chỉnh số đếm bắt buộc lý do, giữ staff_counted_cash=470000 và ghi SHIFT_EDIT_COUNT", $t17Pass];
+        if (!$t17Pass) $allPass = false;
+
+        // TEST 18: Lọc staff_id + confirmed_by_name + shift_detail + export_csv
+        $resList = $callShiftsApi($mgrSession, 'GET', ['staff_id' => (string)$staffId]);
+        $firstRow = $resList['json']['data']['shifts'][0] ?? [];
+        $resDetail = $callShiftsApi($mgrSession, 'GET', ['sub_action' => 'shift_detail', 'shift_id' => (string)$open1Id]);
+        $resCsv = $callShiftsApi($mgrSession, 'GET', ['sub_action' => 'export_csv', 'staff_id' => (string)$staffId]);
+        $exportLogCount = (int)$pdo->query("SELECT COUNT(*) FROM audit_logs WHERE action = 'EXPORT_CSV' AND target_type = 'shift'")->fetchColumn();
+        $t18Pass = !empty($firstRow['confirmed_by_name'])
+            && ($resDetail['json']['success'] ?? false) === true
+            && isset($resDetail['json']['data']['bank_summary'], $resDetail['json']['data']['vietqr_items'], $resDetail['json']['data']['bookings'])
+            && str_starts_with($resCsv['raw'], "\xEF\xBB\xBF")
+            && str_contains($resCsv['raw'], "SHIFT-{$open1Id}")
+            && $exportLogCount >= 1;
+        $results[] = ["18. Lọc staff_id, JOIN confirmed_by_name, shift_detail (VietQR vs bank_transactions) & export_csv BOM", $t18Pass];
+        if (!$t18Pass) $allPass = false;
+    } finally {
+        foreach ($createdShiftIds as $cid) {
+            $pdo->prepare("DELETE FROM audit_logs WHERE object_code = ? OR target_id = ?")->execute(["SHIFT-{$cid}", "SHIFT-{$cid}"]);
+            $pdo->prepare("DELETE FROM shifts WHERE id = ?")->execute([$cid]);
+        }
+        $pdo->prepare("DELETE FROM audit_logs WHERE user_id IN (?, ?) AND action = 'EXPORT_CSV' AND target_type = 'shift'")->execute([$staffId, $mgrId]);
+        foreach ($savedOpenShifts as $oid) {
+            $pdo->prepare("UPDATE shifts SET status = 'open' WHERE id = ?")->execute([$oid]);
+        }
+    }
 
     // Tổng kết
     $passedCount = count(array_filter($results, fn($r) => $r[1]));

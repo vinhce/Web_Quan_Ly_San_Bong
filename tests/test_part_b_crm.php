@@ -35,6 +35,17 @@ assert_test(!str_contains($tab6Html, 'Lịch sử Bùng/No-Show'), 'Đã bỏ c�
 assert_test(!str_contains($tab6Html, 'Công nợ chưa thu</th>'), 'Đã bỏ cột "Công nợ chưa thu" khỏi thead CRM');
 assert_test(str_contains($tab6Html, 'Đặt gần nhất'), 'Đã có cột "Đặt gần nhất"');
 assert_test(str_contains($tab6Html, 'Trận hoàn thành') || str_contains($tab6Html, 'Số lượt đặt'), 'Đã có cột "Trận hoàn thành"');
+assert_test(!str_contains($tab6Html, 'cust-filter-regular'), 'Đã bỏ nút lọc #cust-filter-regular ("Khách quen")');
+assert_test(!str_contains($tab6Html, 'value="regular"') && !str_contains($tab6Html, 'warning_noshow'), 'Đã bỏ 2 option regular & warning_noshow khỏi #crm-form-tier');
+assert_test(!str_contains($tab6Html, 'crm-form-blacklist') && !str_contains($tab6Html, 'crm-form-blacklist-reason-wrap'), 'Đã bỏ khối Blacklist khỏi #customer-crm-form');
+assert_test(preg_match('/sm:grid-cols-2[^>]*>[\s\S]*?crm-form-tier[\s\S]*?crm-form-note/u', $tab6Html) === 1, 'Đã đặt #crm-form-tier và #crm-form-note cùng 1 hàng 2 cột');
+
+$tab7Html = file_get_contents(__DIR__ . '/../portal-admin/partials/tab7_deposits.php');
+$payJs = file_get_contents(__DIR__ . '/../js/admin_payments.js');
+assert_test(!str_contains($tab7Html, 'Kỳ vọng') && !str_contains($payJs, 'Kỳ vọng'), 'Đã xóa hoàn toàn chữ "Kỳ vọng" ở Tab 7 đối soát');
+assert_test(str_contains($tab7Html, 'Số tiền nhận / Cần thu'), 'Đã đổi tiêu đề cột thành "Số tiền nhận / Cần thu"');
+assert_test(substr_count($tab7Html, 'py-3 px-4 text-center') >= 5, 'Tất cả 5 thẻ <th> bảng đối soát Tab 7 đều căn giữa');
+assert_test(str_contains($payJs, 'justify-center text-center'), 'Các ô và trạng thái rỗng bảng đối soát Tab 7 dùng justify-center text-center');
 
 // 2. Chuẩn bị dữ liệu mẫu trong DB để test API CRM
 echo "\n2. Kiểm tra tính toán ngày đặt gần nhất & số ca hoàn tất từ backend API:\n";
@@ -70,7 +81,7 @@ $pdo->exec("INSERT INTO bookings (code, customer_name, phone, booking_date, slot
 $pdo->exec("INSERT INTO bookings (code, customer_name, phone, booking_date, slot_id, slot_time, status, payment_status, total_price, deposit_amount, paid_amount, remaining_amount, pitch_id) 
             VALUES ('TEST_B_04_1', 'Khách Bùng Sân', '0999000444', '{$threeDaysAgoStr}', 'S01', '18:00 - 19:00', 'Khách chưa đến', 'Tịch thu cọc 30%', 300000, 90000, 90000, 0, '{$pitchId}')");
 
-$phpBin = 'C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe';
+$phpBin = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'C:\\laragon\\bin\\php\\php-8.3.36-Win32-vs16-x64\\php.exe';
 $resJson = shell_exec("\"{$phpBin}\" tests/sub_test_crm_api.php crm_customers 0999000 2>&1");
 $res = json_decode($resJson ?: '', true);
 

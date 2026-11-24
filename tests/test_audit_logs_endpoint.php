@@ -13,7 +13,56 @@ if (!defined('SANBONG_ADMIN_ROUTER')) {
 require_once __DIR__ . '/../api/services/admin_settings.php';
 require_once __DIR__ . '/../api/services/AdminLogService.php';
 
-$step = $argv[1] ?? 'setup';
+$step = $argv[1] ?? 'run_all';
+
+if ($step === 'run_all') {
+    $runSub = static function (string $subStep, array $extraArgs = []): string {
+        $cmd = sprintf('"%s" "%s" %s', PHP_BINARY, __FILE__, escapeshellarg($subStep));
+        foreach ($extraArgs as $a) {
+            $cmd .= ' ' . escapeshellarg((string)$a);
+        }
+        return trim((string)shell_exec($cmd));
+    };
+
+    $setupJson = json_decode($runSub('setup'), true);
+    if (!is_array($setupJson) || empty($setupJson['log1']) || empty($setupJson['log2'])) {
+        fwrite(STDERR, "Setup failed\n");
+        exit(1);
+    }
+    $id1 = (int)$setupJson['log1'];
+    $id2 = (int)$setupJson['log2'];
+    $failures = [];
+    try {
+        $postOut = json_decode($runSub('test_post'), true);
+        if (($postOut['ref_code'] ?? '') !== 'ERR_AUDIT_IMMUTABLE') {
+            $failures[] = 'test_post expected ERR_AUDIT_IMMUTABLE';
+        }
+        $pageOut = json_decode($runSub('test_get_pagination'), true);
+        if (empty($pageOut['success']) || (int)($pageOut['data']['pagination']['limit'] ?? 0) !== 10) {
+            $failures[] = 'test_get_pagination failed';
+        }
+        $searchOut = json_decode($runSub('test_search'), true);
+        if (empty($searchOut['success']) || (int)($searchOut['data']['pagination']['total'] ?? 0) < 2) {
+            $failures[] = 'test_search expected >= 2 matches for 0912888999';
+        }
+        $actOut = json_decode($runSub('test_filter_action'), true);
+        if (empty($actOut['success']) || empty($actOut['data']['logs'])) {
+            $failures[] = 'test_filter_action failed';
+        }
+        $dateOut = json_decode($runSub('test_filter_date'), true);
+        if (empty($dateOut['success']) || empty($dateOut['data']['logs'])) {
+            $failures[] = 'test_filter_date failed';
+        }
+    } finally {
+        $runSub('cleanup', [(string)$id1, (string)$id2]);
+    }
+    if ($failures !== []) {
+        echo "FAIL: " . implode('; ', $failures) . "\n";
+        exit(1);
+    }
+    echo "PASS: test_audit_logs_endpoint (5/5 checks passed, cleaned up).\n";
+    exit(0);
+}
 
 if ($step === 'setup') {
     $adminStmt = $pdo->query("SELECT id, username, full_name, role FROM users WHERE role = 'admin' LIMIT 1");
@@ -52,7 +101,6 @@ if ($step === 'cleanup') {
     exit;
 }
 
-// For action tests, mock admin user in session
 secure_session_start();
 $adminStmt = $pdo->query("SELECT id, username, full_name, role FROM users WHERE role = 'admin' LIMIT 1");
 $adminUser = $adminStmt->fetch(PDO::FETCH_ASSOC);

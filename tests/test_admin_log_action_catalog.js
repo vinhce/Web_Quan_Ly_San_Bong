@@ -1,132 +1,107 @@
+const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'js', 'admin_logs.js'), 'utf8');
-const sandbox = {
-  window: {},
-  document: { getElementById: () => null },
-  console: { warn: () => {}, error: () => {} },
-  URLSearchParams,
-  setTimeout,
-  clearTimeout
-};
-vm.createContext(sandbox);
-vm.runInContext(source, sandbox, { filename: 'admin_logs.js' });
-const catalog = vm.runInContext('ADMIN_LOG_CATALOG', sandbox);
-const failures = [];
+const rootDir = path.resolve(__dirname, '..');
+const jsPath = path.join(rootDir, 'js', 'admin_logs.js');
+const registryPath = path.join(rootDir, 'api', 'services', 'AdminLogRegistry.php');
 
-function assert(condition, message) {
-  if (!condition) failures.push(message);
-}
+const jsCode = fs.readFileSync(jsPath, 'utf8');
+const registryCode = fs.readFileSync(registryPath, 'utf8');
 
-const expectedGroups = [
-  'Giá & khuyến mãi',
-  'Tiền & đặt cọc',
-  'Đặt sân',
-  'Ca trực',
-  'Hội viên & điểm',
-  'Sân & cài đặt',
-  'Bảo mật',
-  'Hệ thống tự động'
-];
-const groupLabels = new Set(catalog.groups.map(group => group.label));
-for (const label of expectedGroups) {
-  assert(groupLabels.has(label), `Thiếu nhóm "${label}"`);
-}
+const sandbox = { window: {}, URLSearchParams, Set, Array, Object, Number, String, Boolean, JSON, Intl, Date, Math, console };
+sandbox.window = sandbox;
+vm.runInNewContext(jsCode, sandbox);
 
-for (const [code, info] of Object.entries(catalog.actions)) {
-  assert(info.label && info.label.trim() !== '', `Thiếu nhãn cho ${code}`);
-  assert(groupLabels.has(catalog.groups.find(group => group.key === info.group)?.label), `Nhóm không hợp lệ cho ${code}`);
-}
+const catalog = sandbox.ADMIN_LOG_CATALOG;
+assert.ok(catalog && typeof catalog === 'object', 'ADMIN_LOG_CATALOG phải tồn tại');
+assert.ok(catalog.actions && typeof catalog.actions === 'object', 'ADMIN_LOG_CATALOG.actions phải tồn tại');
 
-const requiredLabels = {
-  UPDATE_PRICING: 'Cập nhật giá sân',
-  VOUCHER_SAVE: 'Lưu voucher',
-  VOUCHER_DELETE: 'Xóa voucher',
-  COLLECT_PAYMENT: 'Thu tiền',
-  RECONCILE_RESOLVE: 'Xử lý đối soát',
-  WEBHOOK_UNMATCHED: 'Giao dịch ngân hàng không khớp đơn',
-  CHECKIN: 'Check-in',
-  ADD_SERVICE: 'Thêm dịch vụ vào đơn',
-  ADD_OVERTIME: 'Thêm giờ đá',
-  RESTORE_BOOKING: 'Khôi phục đơn',
-  SHIFT_CONFIRM: 'Xác nhận chốt ca',
-  PITCH_UPSERT: 'Thêm/sửa sân',
-  ENABLE_2FA: 'Bật xác thực 2 bước',
-  AUTO_CANCEL_EXPIRED: 'Tự động hủy đơn quá hạn',
-  RUN_REMINDERS: 'Chạy nhắc lịch'
-};
-for (const [code, label] of Object.entries(requiredLabels)) {
-  assert(catalog.actions[code]?.label === label, `Nhãn không đúng cho ${code}`);
-}
+// 1. Kiểm tra đúng 6 mã nhóm duy nhất và không dùng TĐ
+const expectedCategories = ['TD', 'XH', 'CN', 'CB', 'TQ', 'TT'];
+const catKeys = Object.keys(catalog.categories || {});
+assert.deepStrictEqual(catKeys.sort(), expectedCategories.slice().sort(), 'Phải có đúng 6 mã nhóm TD, XH, CN, CB, TQ, TT');
+assert.ok(!jsCode.includes("'TĐ'") && !jsCode.includes('"TĐ"'), 'Tuyệt đối không dùng mã nhóm TĐ');
 
-const mappedCodes = new Set(Object.keys(catalog.actions).map(code => code.toUpperCase()));
-const usedCodes = new Set();
-const unresolvedDynamicActions = [];
+const allowedDataGroups = new Set([
+    'Ca trực',
+    'Tiền & đặt cọc',
+    'Hội viên & điểm',
+    'Giá & voucher',
+    'Sân & Lịch đặt',
+    'Cài đặt',
+    'Nhân sự & Bảo mật',
+    'Khác'
+]);
+assert.deepStrictEqual(Array.from(allowedDataGroups), Array.from(catalog.dataGroups), 'Danh sách nhóm dữ liệu phải khớp chuẩn 7+1 nhóm');
 
-function scanPhpFile(filePath) {
-  const source = fs.readFileSync(filePath, 'utf8');
-  const assignments = new Map();
-  for (const match of source.matchAll(/\$([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(['"])([A-Za-z_][A-Za-z0-9_]*)\2/g)) {
-    const values = assignments.get(match[1]) || [];
-    values.push(match[3]);
-    assignments.set(match[1], values);
-  }
-
-  const patterns = [
-    { regex: /write_audit_log\s*\(\s*[^,]+,\s*((['"])([A-Za-z_][A-Za-z0-9_]*)\2|\$([A-Za-z_][A-Za-z0-9_]*))/gs, actionIndex: 3, variableIndex: 4 },
-    { regex: /AdminLogService::record\s*\(\s*[^,]+,\s*[^,]+,\s*((['"])([A-Za-z_][A-Za-z0-9_]*)\2|\$([A-Za-z_][A-Za-z0-9_]*))/gs, actionIndex: 3, variableIndex: 4 },
-    { regex: /(?:logAdminChange|log_admin_change)\s*\(\s*[^,]+,\s*((['"])([A-Za-z_][A-Za-z0-9_]*)\2|\$([A-Za-z_][A-Za-z0-9_]*))/gs, actionIndex: 3, variableIndex: 4 }
-  ];
-
-  for (const { regex, actionIndex, variableIndex } of patterns) {
-    for (const match of source.matchAll(regex)) {
-      if (/\bfunction\s+$/.test(source.slice(Math.max(0, match.index - 20), match.index))) continue;
-      const literal = match[actionIndex];
-      if (literal) {
-        usedCodes.add(literal.toUpperCase());
-        continue;
-      }
-
-      const variable = match[variableIndex];
-      if (path.basename(filePath) === 'security_helper.php' && variable === 'action') continue;
-      const values = assignments.get(variable) || [];
-      if (values.length === 0) {
-        unresolvedDynamicActions.push(`${path.relative(root, filePath)}: $${variable}`);
-      } else {
-        values.forEach(value => usedCodes.add(value.toUpperCase()));
-      }
+// 2. Quét toàn bộ file PHP tìm mọi mã action log
+function collectPhpFiles(dir, out = []) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (['.git', 'vendor', 'node_modules', 'tests', 'scratch'].includes(entry.name)) continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) collectPhpFiles(full, out);
+        else if (entry.name.endsWith('.php')) out.push(full);
     }
-  }
+    return out;
 }
 
-function walk(directory) {
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (entry.name === '.git' || entry.name === 'vendor' || entry.name === 'tests') continue;
-    const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) walk(fullPath);
-    else if (entry.isFile() && entry.name.endsWith('.php')) scanPhpFile(fullPath);
-  }
+const phpFiles = collectPhpFiles(rootDir);
+const discoveredActions = new Set();
+const patterns = [
+    /(?:write_audit_log|logAdminChange|log_admin_change)\s*\(\s*\$[^,;()]+?\s*,\s*['"]([A-Za-z0-9_]+)['"]/g,
+    /(?:AdminLogService::record|self::record)\s*\(\s*\$[^,;]+?\s*,\s*[^,;]+?\s*,\s*['"]([A-Za-z0-9_]+)['"]/g
+];
+
+for (const file of phpFiles) {
+    const content = fs.readFileSync(file, 'utf8');
+    for (const re of patterns) {
+        let m;
+        while ((m = re.exec(content)) !== null) {
+            discoveredActions.add(m[1]);
+        }
+    }
 }
 
-walk(root);
-for (const code of [...usedCodes].sort()) {
-  assert(mappedCodes.has(code), `Mã hành động đang được gọi nhưng chưa map: ${code}`);
-}
-for (const dynamicAction of unresolvedDynamicActions) {
-  assert(false, `Không xác định được mã hành động động: ${dynamicAction}`);
+// Quét thêm toàn bộ keys + (category, data_group) trong AdminLogRegistry::ACTIONS để đảm bảo JS & PHP khớp 100%
+const actionsBlockMatch = registryCode.match(/public const ACTIONS = \[([\s\S]*?)\n    \];/);
+assert.ok(actionsBlockMatch, 'Không tìm thấy public const ACTIONS trong AdminLogRegistry.php');
+const phpRegistryActions = {};
+const regEntryRe = /^\s*'([A-Za-z0-9_]+)'\s*=>\s*\[[^\]]*'category'\s*=>\s*'([A-Z]{2})'[^\]]*'data_group'\s*=>\s*'([^']+)'/gm;
+let rm;
+while ((rm = regEntryRe.exec(actionsBlockMatch[1])) !== null) {
+    phpRegistryActions[rm[1]] = { category: rm[2], dataGroup: rm[3] };
+    discoveredActions.add(rm[1]);
 }
 
-const peakPrice = catalog.fields.price_p5_peak;
-assert(peakPrice?.label === 'Sân 5 - Giờ cao điểm', 'Nhãn price_p5_peak không đúng');
-assert(peakPrice?.format === 'currency', 'price_p5_peak phải được định dạng tiền');
+assert.ok(Object.keys(phpRegistryActions).length >= 100, `AdminLogRegistry::ACTIONS phải có >= 100 action, hiện có ${Object.keys(phpRegistryActions).length}`);
 
-if (failures.length > 0) {
-  console.error(failures.join('\n'));
-  process.exitCode = 1;
-} else {
-  console.log(`PASS: ${usedCodes.size} mã hành động trong mã nguồn đều có mapping.`);
-  console.log(`PASS: ${Object.keys(catalog.actions).length} mã đã biết, ${catalog.groups.length} nhóm.`);
+// 3. Đảm bảo mọi mã PHP + 4 mã mới đều được map đầy đủ trong JS lẫn AdminLogRegistry.php
+const requiredNewCodes = ['SHIFT_EDIT_COUNT', 'AUDIT_REVIEW', 'EXPORT_CSV', 'SENSITIVE_DATA_ACCESS'];
+for (const code of [...discoveredActions, ...requiredNewCodes]) {
+    const canonCode = catalog.actions[code] ? code : code.toUpperCase();
+    const entry = catalog.actions[code] || catalog.actions[code.toUpperCase()];
+    assert.ok(entry, `Thiếu mã action "${code}" trong js/admin_logs.js ADMIN_LOG_CATALOG.actions`);
+    assert.ok(entry.label && entry.label.trim().length > 0, `Action "${code}" thiếu nhãn tiếng Việt`);
+    assert.ok(expectedCategories.includes(entry.category), `Action "${code}" có category không hợp lệ: ${entry.category}`);
+    assert.ok(allowedDataGroups.has(entry.dataGroup), `Action "${code}" có dataGroup không hợp lệ: ${entry.dataGroup}`);
+    const regMeta = phpRegistryActions[code] || phpRegistryActions[canonCode];
+    assert.ok(regMeta, `Thiếu mã action "${code}" trong AdminLogRegistry.php`);
+    assert.strictEqual(entry.category, regMeta.category, `Lệch category giữa JS và PHP cho "${code}": JS=${entry.category}, PHP=${regMeta.category}`);
+    assert.strictEqual(entry.dataGroup, regMeta.dataGroup, `Lệch dataGroup giữa JS và PHP cho "${code}": JS=${entry.dataGroup}, PHP=${regMeta.dataGroup}`);
 }
+
+// 4. Đảm bảo JS không chứa mã thừa không có trong AdminLogRegistry::ACTIONS và toàn bộ cặp khớp 100%
+const jsKeys = Object.keys(catalog.actions).sort();
+const phpKeys = Object.keys(phpRegistryActions).sort();
+assert.deepStrictEqual(jsKeys, phpKeys, 'Danh sách khóa action trong JS ADMIN_LOG_CATALOG.actions và PHP AdminLogRegistry::ACTIONS phải khớp 100%');
+assert.ok(!catalog.actions.TEST_TELEGRAM, 'Không được giữ mã phantom TEST_TELEGRAM trong JS catalog');
+
+for (const [code, entry] of Object.entries(catalog.actions)) {
+    assert.ok(entry.label && typeof entry.label === 'string', `${code}: label không hợp lệ`);
+    assert.ok(expectedCategories.includes(entry.category), `${code}: category ${entry.category} không thuộc 6 nhóm`);
+    assert.ok(allowedDataGroups.has(entry.dataGroup), `${code}: dataGroup ${entry.dataGroup} không hợp lệ`);
+}
+
+console.log(`PASS test_admin_log_action_catalog: ${jsKeys.length} JS & PHP actions synced 100% (${discoveredActions.size} scanned).`);

@@ -52,7 +52,8 @@ vm.runInContext(customersScript, sandbox, { filename: 'admin_customers.js' });
   assert.strictEqual(cellCount, headerCount, 'Số cột dữ liệu phải khớp số header');
   assert.strictEqual(headerCount, 8, 'Bảng CRM khách hàng phải có chính xác 8 cột (đã loại bỏ cột công nợ)');
 
-  assert(tbody.innerHTML.includes('Khách quen'));
+  assert(tbody.innerHTML.includes('Tiêu chuẩn'), 'Tier regular cũ phải được chuẩn hóa hiển thị là Tiêu chuẩn');
+  assert(!tbody.innerHTML.includes('Khách quen'), 'Không còn hiển thị nhãn Khách quen cũ');
   assert(tbody.innerHTML.includes('120 điểm'));
   assert(tbody.innerHTML.includes('5.745.000đ'));
   assert(!tbody.innerHTML.includes('4.382.000đ'), 'Không được hiển thị số nợ cũ 4.382.000đ');

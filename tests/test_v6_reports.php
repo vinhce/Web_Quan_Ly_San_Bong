@@ -23,7 +23,7 @@ function assertTest(bool $condition, string $name): void {
 }
 
 function callFinanceAction(array $cfg): string {
-    $phpBin = 'C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe';
+    $phpBin = PHP_BINARY ?: 'C:\\laragon\\bin\\php\\php-8.3.36-Win32-vs16-x64\\php.exe';
     $b64 = base64_encode(json_encode($cfg, JSON_UNESCAPED_UNICODE));
     $script = escapeshellarg(__DIR__ . '/run_admin_action.php');
     return (string)shell_exec("\"{$phpBin}\" {$script} {$b64}");
@@ -98,7 +98,7 @@ try {
     $avgRevenue = $d['avgRevenue'] ?? 0;
 
     assertTest($grossProfit === ($colRev - $totExp), "2.1 Lợi nhuận gộp = Thực thu ({$colRev}) - Tổng chi ({$totExp}) = {$grossProfit}đ");
-    assertTest($netProfit === ($totRev - $totExp), "2.2 Lợi nhuận ròng = Doanh thu thực ({$totRev}) - Tổng chi ({$totExp}) = {$netProfit}đ");
+    assertTest($netProfit === ($colRev - $totExp), "2.2 Lợi nhuận ròng = Thực thu ({$colRev}) - Tổng chi ({$totExp}) = {$netProfit}đ");
     assertTest($occupancyRate >= 0 && $occupancyRate <= 100, "2.3 Tỷ lệ lấp đầy sân hợp lệ ({$occupancyRate}%)");
     assertTest($avgRevenue > 0, "2.4 Giá trị trung bình mỗi ca đặt hợp lệ (" . number_format($avgRevenue) . "đ)");
     assertTest(count($d['detailedBookings'] ?? []) > 0, "2.5 Bảng kê chi tiết trả về đủ ca đặt sân (" . count($d['detailedBookings']) . " ca)");
@@ -196,6 +196,51 @@ try {
     assertTest(strpos($csvOut, 'III. BẢNG KÊ CHI TIẾT ĐƠN ĐẶT SÂN TRONG KỲ') !== false, "4.5 Có Mục III. Bảng kê chi tiết đơn đặt sân trong kỳ");
     assertTest(strpos($csvOut, 'Dịch vụ') !== false, "4.6 Cột bảng kê có trường Dịch vụ");
     assertTest((strpos($csvOut, 'Tổng chi phí vận hành trong kỳ') !== false && strpos($csvOut, 'Lợi nhuận (Đã thu - Chi phí)') !== false), "4.7 Có chỉ tiêu Chi phí vận hành & Lợi nhuận ròng");
+
+    // 5. Kiểm tra hợp đồng giao diện & logic Tab 9 sau refactor
+    $tabHtml = (string)file_get_contents(__DIR__ . '/../portal-admin/partials/tab8_reports.php');
+    $rptJs   = (string)file_get_contents(__DIR__ . '/../js/admin_reports.js');
+    $expJs   = (string)file_get_contents(__DIR__ . '/../js/admin_expenses.js');
+
+    assertTest(
+        strpos($tabHtml, '#tab-content-reports #rpt-filter-bar') !== false
+        && strpos($tabHtml, 'background-color: #ffffff !important') !== false
+        && strpos($tabHtml, 'bg-white/95') === false,
+        "5.1 #rpt-filter-bar sticky nền trắng đặc 100%, bù padding main, bỏ bg-white/95"
+    );
+    assertTest(
+        strpos($tabHtml, 'data-rpt-subtab="tong-quan"') !== false
+        && strpos($tabHtml, 'data-rpt-subtab="doi-soat"') !== false
+        && strpos($tabHtml, 'data-rpt-subtab="chi-tiet"') !== false
+        && strpos($tabHtml, 'data-rpt-subtab="chi-phi"') !== false
+        && strpos($tabHtml, 'id="rpt-recon-dot"') !== false,
+        "5.2 Đủ 4 tab con (#tong-quan, #doi-soat có chấm đỏ, #chi-tiet, #chi-phi)"
+    );
+    assertTest(
+        substr_count($tabHtml, 'Phân bổ chi phí theo danh mục') === 1
+        && strpos($tabHtml, '6.4 Quản Lý Chi Phí Vận Hành') === false
+        && strpos($tabHtml, '>Sổ chi<') !== false,
+        "5.3 Chỉ một Sổ chi duy nhất và không trùng khối phân bổ chi phí"
+    );
+    assertTest(
+        strpos($tabHtml, '#ea580c') !== false
+        && strpos($rptJs, "color: '#ea580c'") !== false
+        && strpos($rptJs, 'goToOverdueBookingsFilter') !== false,
+        "5.4 Đồng bộ màu cam #ea580c cho Chưa thu và luồng lọc qua #chi-tiet"
+    );
+    assertTest(
+        strpos($rptJs, "profitEl.textContent = '—'") !== false
+        && strpos($rptJs, 'Chưa nhập chi phí') !== false
+        && strpos($rptJs, 'không bù trừ cho nhau') !== false
+        && strpos($rptJs, 'isValidReportMatchBooking') !== false
+        && strpos($rptJs, 'fmtDateVNReport') !== false
+        && strpos($expJs, 'fmtExpenseDateVN') !== false,
+        "5.5 Lợi nhuận 0 chi phí hiện —, đối soát không bù trừ, thống nhất đếm ca & ngày dd/mm/yyyy"
+    );
+    assertTest(
+        !preg_match('/https?:\/\/[^\s"\']*(cdn|fonts\.googleapis|unpkg|jsdelivr)/i', $tabHtml . $rptJs . $expJs),
+        "5.6 Không có liên kết CDN ngoài trong các file Tab 9"
+    );
 
     echo "\n=== KẾT QUẢ TEST V6: {$testsPassed}/{$totalTests} ĐẠT ===\n";
     $exitCode = ($testsPassed === $totalTests) ? 0 : 1;

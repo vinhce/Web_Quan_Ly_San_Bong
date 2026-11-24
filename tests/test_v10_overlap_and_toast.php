@@ -30,7 +30,7 @@ function assertTest(bool $condition, string $title, string $detail = '') {
 }
 
 function callBookingApi(?array $session, string $method = 'POST', array $payload = []): array {
-    $php = 'C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe';
+    $php = (defined('PHP_BINARY') && PHP_BINARY) ? PHP_BINARY : 'C:\\laragon\\bin\\php\\php-8.3.36-Win32-vs16-x64\\php.exe';
     $runner = __DIR__ . '/run_booking_action.php';
     $input = base64_encode(json_encode([
         'session' => $session,
@@ -111,11 +111,19 @@ assertTest($hasDefaultLoginText, "1.3 Nút đặt sân mặc định mang text v
 echo "\n--- Test 2: Bỏ trống trường bắt buộc ---\n";
 $hasSingleValidationMsg = (strpos($jsBooking, "const singleMsg = 'Vui lòng hoàn thiện: ' + missingFields.join(', ') + '.';") !== false);
 $hasScrollToFirstInvalid = (strpos($jsBooking, "firstInvalidEl.scrollIntoView") !== false);
-$hasBorderRose = (strpos($jsBooking, "missingInput?.classList.add('border-rose-500'") !== false && strpos($jsBooking, "nameInput?.classList.add('border-rose-500'") !== false);
+$hasBorderRose = (
+    strpos($jsBooking, "missingInput?.classList.add('border-rose-500'") !== false &&
+    strpos($jsBooking, "noteEl?.classList.add('border-rose-500'") !== false &&
+    strpos($jsBooking, "slotsCont.classList.add('ring-2', 'ring-rose-500'") !== false &&
+    strpos($htmlBooking, 'id="user-missing-phone"') !== false &&
+    strpos($htmlBooking, 'id="cust-note"') !== false &&
+    strpos($htmlBooking, 'id="btn-toggle-friend"') === false &&
+    strpos($htmlBooking, 'id="booking-input-fields-wrap"') === false
+);
 
 assertTest($hasSingleValidationMsg, "2.1 Gộp tất cả trường thiếu thành đúng 1 thông báo toast rõ ràng");
 assertTest($hasScrollToFirstInvalid, "2.2 Tự động cuộn và focus vào ô lỗi đầu tiên");
-assertTest($hasBorderRose, "2.3 Tất cả các ô lỗi đều được đánh dấu viền đỏ (border-rose-500)");
+assertTest($hasBorderRose, "2.3 Các ô lỗi hiện hành (/booking bỏ đặt hộ) đều được đánh dấu viền đỏ (border-rose-500)");
 
 // -------------------------------------------------------------
 // TEST 3: Bấm nút liên tục 10 lần: không tạo 10 toast, không tạo đơn trùng
@@ -225,7 +233,7 @@ assertTest($bothAdjacentOk, "6.1 Cả hai ca liền kề S06 (14:00-15:00) và S
 // -------------------------------------------------------------
 // TEST 7: php -l, test cũ pass, không lỗi storage/logs
 echo "\n--- Test 7: Kiểm chuẩn php -l & hồi quy test cũ ---\n";
-$php = 'C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe';
+$php = (defined('PHP_BINARY') && PHP_BINARY) ? PHP_BINARY : 'C:\\laragon\\bin\\php\\php-8.3.36-Win32-vs16-x64\\php.exe';
 
 // Chạy test cũ test_v9_booking_streamline.php
 $oldTestOutput = shell_exec("\"{$php}\" tests/test_v9_booking_streamline.php");
