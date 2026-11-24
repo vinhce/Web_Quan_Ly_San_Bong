@@ -290,7 +290,7 @@ function renderSlots(skipServerFetch = false) {
     const safeId = esc(s.id);
     const safeTime = esc(s.time);
     let chipCls = 'bg-white border border-[#16A34A] text-[#0F172A] hover:bg-[#DCFCE7]/30';
-    let statusBadge = `<span class="text-[11px] text-[#16A34A] font-semibold">${s.isPeak ? 'Cao điểm' : 'Thường'}</span>`;
+    let statusBadge = '<span class="text-[11px] text-[#16A34A] font-semibold">Còn trống</span>';
     let chipTitle = '';
 
     if (isPast) {
@@ -357,11 +357,11 @@ function renderSlots(skipServerFetch = false) {
   const badge = document.getElementById('selected-slot-badge');
   if (badge) {
     if (activeSlotObj) {
-      badge.textContent = `${activeSlotObj.time} (${activeSlotObj.isPeak ? 'Giờ cao điểm' : 'Giờ thường'})`;
-      badge.className = 'px-3 py-1 rounded-full bg-[#DCFCE7] text-xs font-bold text-[#16A34A]';
+      badge.textContent = `${activeSlotObj.time} (Ca 2 tiếng)`;
+      badge.className = 'px-3 py-1 rounded-full bg-[#DCFCE7] text-xs font-bold text-[#16A34A] shrink-0 whitespace-nowrap self-start sm:self-auto';
     } else {
       badge.textContent = 'Chưa chọn giờ';
-      badge.className = 'px-3 py-1 rounded-full bg-[#F1F5F9] text-xs font-bold text-[#64748B]';
+      badge.className = 'px-3 py-1 rounded-full bg-[#F1F5F9] text-xs font-bold text-[#64748B] shrink-0 whitespace-nowrap self-start sm:self-auto';
     }
   }
   if (!skipServerFetch) {
@@ -707,11 +707,17 @@ function updateBillSummary() {
     const seq = ++_serverQuoteSeq;
     _serverQuoteTimer = setTimeout(async () => {
       try {
+        if (window.SanBongApp?.ensureCsrfToken) {
+          await window.SanBongApp.ensureCsrfToken();
+        }
         const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+        const headers = window.SanBongApp?.getAuthFetchHeaders
+          ? window.SanBongApp.getAuthFetchHeaders()
+          : { 'Content-Type': 'application/json' };
         const res = await fetch(getRel('api/bookings.php?action=quote'), {
           method: 'POST',
           credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             action: 'quote',
             pitchId: selectedPitchId,
@@ -724,8 +730,15 @@ function updateBillSummary() {
             redeemedBottles: Number(window.bookingRedeemedBottles || 0)
           })
         });
+        const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+        if (tokenHeader && window.SanBongHelpers?.setCsrfToken) {
+          window.SanBongHelpers.setCsrfToken(tokenHeader);
+        }
         if (seq !== _serverQuoteSeq || !res.ok) return;
         const json = await res.json().catch(() => null);
+        if (json?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+          window.SanBongHelpers.setCsrfToken(json.csrf_token);
+        }
         if (json && json.success && json.data) {
           window._lastServerQuote = json.data;
           applyQuoteToSummaryUI(json.data, weeks);
@@ -841,6 +854,24 @@ function proceedToCheckout() {
   const db = window.SanBongApp?.SanBongDB;
   const user = db ? db.getUser() : null;
   const isLoggedIn = Boolean(user && (user.id || user.username) && user.role !== 'guest' && !user.is_guest);
+  const isOperator = Boolean(isLoggedIn && ['admin', 'manager', 'staff'].includes(String(user.role || '').toLowerCase()));
+
+  if (isOperator) {
+    const portalQuickUrl = window.SanBongHelpers?.getRelativePath ? window.SanBongHelpers.getRelativePath('portal-admin/?tab=quick-booking') : '/portal-admin/?tab=quick-booking';
+    if (window.SanBongApp?.showModal) {
+      window.SanBongApp.showModal({
+        title: 'Tài khoản vận hành sân',
+        message: 'Tài khoản Quản trị / Nhân sự không đặt sân qua luồng khách hàng. Vui lòng sử dụng mục Đặt sân tại quầy trong Cổng Quản Trị.',
+        type: 'warning',
+        confirmText: 'Mở Đặt sân tại quầy',
+        cancelText: 'Đóng',
+        onConfirm: () => { window.location.href = portalQuickUrl; }
+      });
+    } else if (window.SanBongApp?.showToast) {
+      window.SanBongApp.showToast('Tài khoản vận hành vui lòng đặt sân tại Cổng Quản Trị.', 'warning');
+    }
+    return;
+  }
 
   // BƯỚC 2: Nếu chưa đăng nhập bất kỳ tài khoản nào (đã chọn giờ & đã tick điều khoản):
   // Lưu draft và CHUYỂN THẲNG VÀO TRANG ĐĂNG NHẬP (/login?redirect=checkout)
