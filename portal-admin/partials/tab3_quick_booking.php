@@ -120,7 +120,7 @@
                 <h3 class="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">2. Kho Nước &amp; Bán Lẻ Dịch Vụ Tại Quầy</h3>
                 <p class="text-xs text-[#64748B] mt-0.5">Bán nhanh nước uống, thuê bóng, áo Bib tại quầy — Tự động trừ tồn kho và cộng vào doanh thu ca trực.</p>
               </div>
-              <button type="button" id="btn-open-service-modal" onclick="openServiceModal()" class="btn-sm bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer inline-flex items-center gap-1.5 <?php echo (isset($isManagerOrAdmin) && !$isManagerOrAdmin) ? 'hidden' : ''; ?>">
+              <button type="button" id="btn-open-service-modal" onclick="openServiceModal()" <?php echo (isset($isManagerOrAdmin) && !$isManagerOrAdmin) ? 'style="display:none"' : ''; ?> class="btn-sm bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer <?php echo (isset($isManagerOrAdmin) && !$isManagerOrAdmin) ? 'hidden' : 'inline-flex'; ?> items-center gap-1.5">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Thêm / Quản lý dịch vụ
               </button>
@@ -182,14 +182,14 @@
 
             <!-- Bảng Danh mục Dịch vụ & Tồn kho thực tế -->
             <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
-              <table class="w-full text-left text-xs min-w-[560px]">
+              <table class="w-full text-left text-xs">
                 <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569] font-bold">
                   <tr>
-                    <th class="py-2.5 px-3">Tên dịch vụ / Mặt hàng</th>
-                    <th class="py-2.5 px-3">Đơn giá</th>
-                    <th class="py-2.5 px-3 text-center">Tồn kho hiện tại</th>
-                    <th class="py-2.5 px-3 text-center">Ngưỡng cảnh báo</th>
-                    <th class="py-2.5 px-3 text-right">Thao tác kho</th>
+                    <th class="py-2.5 px-2.5">Mặt hàng</th>
+                    <th class="py-2.5 px-2 whitespace-nowrap">Đơn giá</th>
+                    <th class="py-2.5 px-2 text-center whitespace-nowrap">Tồn kho</th>
+                    <th class="py-2.5 px-2 text-center whitespace-nowrap">Ngưỡng</th>
+                    <th class="py-2.5 px-2.5 text-right whitespace-nowrap">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody id="admin-inventory-tbody" class="divide-y divide-[#E2E8F0]">

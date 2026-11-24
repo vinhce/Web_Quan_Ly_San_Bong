@@ -31,7 +31,7 @@
               </div>
               <div>
                 <label class="block font-bold text-[#475569] mb-1">Mật khẩu đăng nhập *</label>
-                <input type="password" id="staff-password" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="input-field w-full bg-white">
+                <input type="password" id="staff-password" required minlength="8" placeholder="Tối thiểu 8 ký tự" class="input-field w-full bg-white">
               </div>
               <div>
                 <label class="block font-bold text-[#475569] mb-1">Vai trò phân quyền *</label>
@@ -87,7 +87,7 @@
               </div>
               <div>
                 <label class="block font-bold text-[#475569] mb-1.5">Mật khẩu mới *</label>
-                <input type="password" id="reset-staff-new-pw" required minlength="6" placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)" class="input-field w-full bg-white">
+                <input type="password" id="reset-staff-new-pw" required minlength="8" placeholder="Nhập mật khẩu mới (tối thiểu 8 ký tự)" class="input-field w-full bg-white">
               </div>
               <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
                 <button type="button" onclick="closeResetStaffPwModal()" class="btn-sm btn-secondary cursor-pointer">Đóng</button>

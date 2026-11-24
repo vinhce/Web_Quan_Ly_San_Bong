@@ -13,7 +13,7 @@
               <button type="button" id="pitch-filter-maint" onclick="filterAdminPitches('Bảo trì')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Bảo trì</button>
               <button type="button" id="pitch-filter-hidden" onclick="filterAdminPitches('Ẩn')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-[#475569] hover:bg-slate-200 cursor-pointer">Đã ẩn</button>
             </div>
-            <?php if (!isset($isOwnerAdmin) || $isOwnerAdmin): ?>
+            <?php if (!isset($isManagerOrAdmin) || $isManagerOrAdmin): ?>
             <button type="button" id="btn-add-pitch" onclick="openPitchModal()" class="btn-sm btn-primary font-bold flex items-center gap-1.5 cursor-pointer">
               + Thêm sân bóng mới
             </button>
