@@ -57,9 +57,8 @@ function compute_server_booking_quote(PDO $pdo, array $input, bool $forUpdate = 
     } else {
         $basePrice = $isPeak ? (int)$pitch['peak_price'] : (int)$pitch['base_price'];
     }
-    $duration         = (float)($slot['duration'] ?: 1.0);
-    $singlePitchPrice = (int)round($basePrice * $duration);
-    $rawPitchPriceFull = (int)round($basePrice * $duration * $weeksCount);
+    $singlePitchPrice = (int)round($basePrice);
+    $rawPitchPriceFull = (int)round($basePrice * $weeksCount);
 
     // Gói đặt lịch theo tháng
     $packageDiscountRate = 0.0;

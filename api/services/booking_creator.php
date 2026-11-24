@@ -68,6 +68,14 @@ function handle_create_booking(?PDO $pdo, array $data): void {
             json_error('Số điện thoại khách tại quầy không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).', 400, 'ERR_INVALID_PHONE');
         }
     } else {
+        $authUser = get_authenticated_user($pdo);
+        if ($authUser && is_portal_operator($authUser)) {
+            json_response([
+                'success'  => false,
+                'message'  => 'Tài khoản vận hành không đặt sân qua luồng khách hàng. Vui lòng tạo đơn tại mục Đặt sân tại quầy trong Cổng Quản Trị.',
+                'ref_code' => 'ERR_FORBIDDEN'
+            ], 403);
+        }
         $customer = currentCustomer($pdo);
         if (!$customer) {
             json_response([
@@ -133,12 +141,22 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 }
                 $phone = $providedPhone;
                 if ($pdo) {
-                    $updPhone = $pdo->prepare("UPDATE users SET phone = ? WHERE id = ?");
-                    $updPhone->execute([$phone, $userId]);
-                }
-                $_SESSION['user_phone'] = $phone;
-                if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
-                    $_SESSION['user']['phone'] = $phone;
+                    $dupPhoneStmt = $pdo->prepare("SELECT id FROM users WHERE (phone = ? OR REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', '') = ?) AND id != ? LIMIT 1");
+                    $dupPhoneStmt->execute([$phone, $phone, (int)$customer['id']]);
+                    if ($dupPhoneStmt->fetch()) {
+                        json_error('Số điện thoại này đã được liên kết với tài khoản khác. Nếu đặt hộ người khác, vui lòng bật chế độ Đặt hộ bạn bè.', 409, 'ERR_PHONE_IN_USE');
+                    }
+                    try {
+                        $updPhone = $pdo->prepare("UPDATE users SET phone = ? WHERE id = ?");
+                        $updPhone->execute([$phone, (int)$customer['id']]);
+                        $_SESSION['user_phone'] = $phone;
+                        if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+                            $_SESSION['user']['phone'] = $phone;
+                        }
+                    } catch (Throwable $pEx) {
+                        error_log('[BOOKING PHONE UPDATE ERROR] ' . $pEx->getMessage());
+                        json_error('Không thể cập nhật số điện thoại hồ sơ lúc này. Vui lòng thử lại.', 409, 'ERR_PHONE_UPDATE_FAILED');
+                    }
                 }
             }
             if ($customerName === '') {
