@@ -2,6 +2,7 @@ let currentOverviewFilter = 'all';
 let currentOverviewPage = 1;
 const OVERVIEW_PAGE_SIZE = 8;
 let overviewSummaryCache = null;
+window.overviewSummaryCache = null;
 let overviewLastHash = '';
 let overviewFetchInFlight = false;
 let overviewSelectedCodes = new Set();
@@ -37,6 +38,8 @@ function normalizeOverviewStatus(raw) {
   const s = String(raw || 'Đã xác nhận').trim();
   if (s === 'Vắng mặt (No-Show)' || s.includes('No-Show')) return 'Khách chưa đến';
   if (s.toLowerCase() === 'completed') return 'Hoàn thành';
+  if (s === 'Giữ chỗ (chờ cọc)') return 'Giữ chỗ';
+  if (s === 'Chờ cọc' || s === 'Chờ cọc 30%') return 'Chờ duyệt cọc';
   return s;
 }
 
@@ -247,7 +250,7 @@ function renderMiniTimeline(miniTimeline) {
       const widthPct = Math.max(3, ((e - s) / span) * 100).toFixed(2);
       const st = normalizeOverviewStatus(b.status);
       const cls = st === 'Đang đá' ? 'bg-[#16A34A] text-white' : (st === 'Hoàn thành' ? 'bg-slate-400 text-white' : 'bg-sky-500 text-white');
-      return `<button type="button" onclick="openInPlayModal('${escapeSearchHTML(b.code)}')" style="left:${leftPct}%;width:${widthPct}%" title="#${escapeSearchHTML(b.code)} · ${escapeSearchHTML(b.slotTime)} · ${escapeSearchHTML(formatTitleCaseVN(b.customerName))} (${escapeSearchHTML(st)})" class="absolute top-1 bottom-1 rounded px-1.5 text-[10px] font-bold truncate cursor-pointer hover:opacity-90 ${cls}">${escapeSearchHTML(formatTitleCaseVN(b.customerName))}</button>`;
+      return `<button type="button" data-code="${escapeSearchHTML(b.code)}" onclick="openInPlayModal(this.getAttribute('data-code'))" style="left:${leftPct}%;width:${widthPct}%" title="#${escapeSearchHTML(b.code)} · ${escapeSearchHTML(b.slotTime)} · ${escapeSearchHTML(formatTitleCaseVN(b.customerName))} (${escapeSearchHTML(st)})" class="absolute top-1 bottom-1 rounded px-1.5 text-[10px] font-bold truncate cursor-pointer hover:opacity-90 ${cls}">${escapeSearchHTML(formatTitleCaseVN(b.customerName))}</button>`;
     }).join('');
 
     return `
@@ -343,32 +346,119 @@ window.runOverviewBatchOp = async function(op) {
   await renderOverviewKPIs(true);
 };
 
-window.toggleOverviewRowMenu = function(e, menuId) {
-  if (e) e.stopPropagation();
+function closeAllOverviewRowMenus() {
   document.querySelectorAll('.ov-row-menu').forEach(m => {
-    if (m.id !== menuId) m.classList.add('hidden');
+    m.classList.add('hidden');
+    m.style.top = '';
+    m.style.bottom = '';
   });
+  document.querySelectorAll('.ov-booking-row').forEach(r => r.classList.remove('z-40'));
+}
+window.closeAllOverviewRowMenus = closeAllOverviewRowMenus;
+
+window.toggleOverviewRowMenu = function(e, menuId) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
   const el = document.getElementById(menuId);
-  if (el) el.classList.toggle('hidden');
+  const wasHidden = !el || el.classList.contains('hidden');
+  closeAllOverviewRowMenus();
+  if (!el || !wasHidden) return;
+  el.classList.remove('hidden');
+  const row = el.closest('.ov-booking-row');
+  if (row) row.classList.add('z-40');
+  try {
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight - 16) {
+      el.style.top = 'auto';
+      el.style.bottom = '2.5rem';
+    }
+  } catch (err) {}
 };
 
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.ov-row-menu') && !e.target.closest('.ov-row-menu-btn')) {
-    document.querySelectorAll('.ov-row-menu').forEach(m => m.classList.add('hidden'));
+    closeAllOverviewRowMenus();
   }
 });
 
-function buildBookingRowHTML(b, isOverdue) {
-  const code = escapeSearchHTML(b.code || '');
+function getOverviewPaymentLabelHtml(b, st) {
+  const paySt = String(b.paymentStatus || b.payment_status || '').trim();
+  const payLower = paySt.toLowerCase();
+  const totalAmt = Number(b.totalPrice ?? b.total_price ?? 0);
+  const paidAmt = Number(b.paidAmount ?? b.paid_amount ?? 0);
+  const rawRem = Number(b.remainingAmount ?? b.remaining_amount ?? 0);
+
+  const isCancelGroup = (
+    st === 'Đã hủy'
+    || st === 'Khách chưa đến'
+    || payLower.includes('hủy')
+    || payLower.includes('hoàn')
+    || payLower.includes('tịch thu')
+    || payLower.includes('phạt 50%')
+    || payLower.includes('bảo lưu')
+  );
+
+  if (isCancelGroup) {
+    if (payLower.includes('tịch thu') || (st === 'Khách chưa đến' && !payLower.includes('hoàn') && !payLower.includes('phạt') && !payLower.includes('bảo lưu') && paySt !== 'Đã hủy')) {
+      return '<span class="text-rose-600 font-bold">Tịch thu cọc 30%</span>';
+    }
+    if (payLower.includes('phạt 50%')) {
+      return '<span class="text-rose-600 font-bold">Phạt 50% cọc</span>';
+    }
+    if (payLower.includes('bảo lưu')) {
+      return '<span class="text-amber-700 font-bold">Bảo lưu cọc</span>';
+    }
+    if (payLower.includes('hoàn')) {
+      return '<span class="text-slate-500 font-semibold">Đã hoàn cọc</span>';
+    }
+    return '<span class="text-slate-500 font-semibold">Đã hủy đơn</span>';
+  }
+
+  const isHoldOrPendingGroup = (
+    st === 'Giữ chỗ'
+    || st === 'Chờ duyệt cọc'
+    || payLower.includes('chờ duyệt cọc')
+    || payLower.includes('chờ cọc')
+    || payLower.includes('chưa cọc')
+  );
+
+  if (isHoldOrPendingGroup) {
+    const unpaidAmt = rawRem > 0 ? rawRem : Math.max(0, totalAmt - paidAmt);
+    if (unpaidAmt > 0) {
+      return `<span class="text-amber-700 font-bold">Còn thu: ${fmtOverviewVND(unpaidAmt)}</span>`;
+    }
+    return `<span class="text-amber-700 font-bold">${escapeSearchHTML(paySt || 'Chờ duyệt cọc')}</span>`;
+  }
+
+  if (rawRem > 0) {
+    return `<span class="text-amber-700 font-bold">Còn thu: ${fmtOverviewVND(rawRem)}</span>`;
+  }
+
+  if (payLower.includes('chưa thanh toán') || payLower.includes('còn thiếu') || (payLower.includes('đã cọc') && totalAmt > paidAmt)) {
+    const unpaidAmt = Math.max(0, totalAmt - paidAmt);
+    if (unpaidAmt > 0) {
+      return `<span class="text-amber-700 font-bold">Còn thu: ${fmtOverviewVND(unpaidAmt)}</span>`;
+    }
+    return `<span class="text-amber-700 font-bold">${escapeSearchHTML(paySt || 'Chưa thu đủ')}</span>`;
+  }
+
+  return '<span class="text-[#16A34A] font-semibold">Đã thu đủ</span>';
+}
+
+function renderOverviewBookingRow(b, isOverdue) {
+  const rawCode = String(b.code || '');
+  const code = escapeSearchHTML(rawCode);
   const st = normalizeOverviewStatus(b.status);
   const custName = escapeSearchHTML(formatTitleCaseVN(b.customerName));
   const phone = escapeSearchHTML(formatPhoneVN(b.phone));
   const pitch = escapeSearchHTML(b.pitchName || b.pitchId || '');
   const slot = escapeSearchHTML(b.slotTime || '');
   const dateStr = escapeSearchHTML(b.date || '');
-  const rem = Number(b.remainingAmount || 0);
-  const checked = overviewSelectedCodes.has(b.code) ? 'checked' : '';
-  const menuId = `ov-menu-${code}`;
+  const checked = overviewSelectedCodes.has(rawCode) ? 'checked' : '';
+  const safeIdSuffix = rawCode.replace(/[^a-zA-Z0-9_-]/g, '_') || 'row';
+  const menuId = `ov-menu-${isOverdue ? 'od' : 'td'}-${safeIdSuffix}`;
 
   const statusPill = st === 'Đang đá'
     ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] whitespace-nowrap">Đang đá</span>'
@@ -380,7 +470,9 @@ function buildBookingRowHTML(b, isOverdue) {
           ? `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold text-[10px] whitespace-nowrap">${escapeSearchHTML(st)}</span>`
           : (st === 'Giữ chỗ'
             ? '<span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px] whitespace-nowrap">Giữ chỗ (chờ cọc)</span>'
-            : '<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold text-[10px] whitespace-nowrap">Chờ Check-in</span>'))));
+            : (st === 'Chờ duyệt cọc'
+              ? '<span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px] whitespace-nowrap">Chờ duyệt cọc</span>'
+              : '<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold text-[10px] whitespace-nowrap">Chờ Check-in</span>')))));
 
   // Mỗi dòng chỉ 1 nút chính theo trạng thái, còn lại vào menu "⋯"; không có nút bị disable
   let primaryBtn = '';
@@ -388,33 +480,35 @@ function buildBookingRowHTML(b, isOverdue) {
 
   if (st === 'Đã xác nhận' || st === 'Chờ duyệt cọc' || st === 'Giữ chỗ') {
     if (!isOverdue) {
-      primaryBtn = `<button type="button" onclick="handleCheckIn('${code}')" class="h-8 px-3 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white font-bold text-xs whitespace-nowrap cursor-pointer">Check-in</button>`;
-      menuItems.push(`<button type="button" onclick="openInPlayModal('${code}')" class="w-full text-left px-3 py-2 hover:bg-slate-50 font-semibold text-[#0F172A] cursor-pointer">Điều hành &amp; Thanh toán</button>`);
-      menuItems.push(`<button type="button" onclick="handleNoShowRelease('${code}')" class="w-full text-left px-3 py-2 hover:bg-rose-50 font-semibold text-rose-600 cursor-pointer">Hủy no-show (nhả sân)</button>`);
+      primaryBtn = `<button type="button" data-code="${code}" onclick="handleCheckIn(this.getAttribute('data-code'))" class="h-8 px-3 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white font-bold text-xs whitespace-nowrap cursor-pointer">Check-in</button>`;
+      menuItems.push(`<button type="button" data-code="${code}" onclick="closeAllOverviewRowMenus(); openInPlayModal(this.getAttribute('data-code'))" class="w-full text-left px-3 py-2 hover:bg-slate-50 font-semibold text-[#0F172A] cursor-pointer">Điều hành &amp; Thanh toán</button>`);
+      menuItems.push(`<button type="button" data-code="${code}" onclick="closeAllOverviewRowMenus(); handleNoShowRelease(this.getAttribute('data-code'))" class="w-full text-left px-3 py-2 hover:bg-rose-50 font-semibold text-rose-600 cursor-pointer">Hủy no-show (nhả sân)</button>`);
     } else {
-      primaryBtn = `<button type="button" onclick="openInPlayModal('${code}')" class="h-8 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs whitespace-nowrap cursor-pointer">Xử lý tồn đọng</button>`;
+      primaryBtn = `<button type="button" data-code="${code}" onclick="openInPlayModal(this.getAttribute('data-code'))" class="h-8 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs whitespace-nowrap cursor-pointer">Xử lý tồn đọng</button>`;
     }
   } else if (st === 'Đang đá' || st === 'Đã đá - chưa tất toán') {
-    primaryBtn = `<button type="button" onclick="openInPlayModal('${code}')" class="h-8 px-3 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs whitespace-nowrap cursor-pointer">Thu tiền &amp; Kết thúc</button>`;
+    primaryBtn = `<button type="button" data-code="${code}" onclick="openInPlayModal(this.getAttribute('data-code'))" class="h-8 px-3 rounded-lg bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs whitespace-nowrap cursor-pointer">Thu tiền &amp; Kết thúc</button>`;
   } else if (st === 'Hoàn thành') {
-    primaryBtn = `<button type="button" onclick="openInPlayModal('${code}')" class="h-8 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-[#334155] font-semibold text-xs whitespace-nowrap cursor-pointer">Xem hóa đơn</button>`;
+    primaryBtn = `<button type="button" data-code="${code}" onclick="openInPlayModal(this.getAttribute('data-code'))" class="h-8 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-[#334155] font-semibold text-xs whitespace-nowrap cursor-pointer">Xem hóa đơn</button>`;
   } else {
-    primaryBtn = `<button type="button" onclick="openInPlayModal('${code}')" class="h-8 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-[#334155] font-semibold text-xs whitespace-nowrap cursor-pointer">Chi tiết</button>`;
+    primaryBtn = `<button type="button" data-code="${code}" onclick="openInPlayModal(this.getAttribute('data-code'))" class="h-8 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-[#334155] font-semibold text-xs whitespace-nowrap cursor-pointer">Chi tiết</button>`;
   }
 
   const menuHtml = menuItems.length > 0 ? `
     <div class="relative">
-      <button type="button" onclick="toggleOverviewRowMenu(event, '${menuId}')" class="ov-row-menu-btn w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-[#475569] font-extrabold text-sm flex items-center justify-center cursor-pointer" aria-label="Thao tác khác">⋯</button>
-      <div id="${menuId}" class="ov-row-menu hidden absolute right-0 top-9 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-30 text-xs">
+      <button type="button" data-menu-id="${escapeSearchHTML(menuId)}" onclick="toggleOverviewRowMenu(event, this.getAttribute('data-menu-id'))" class="ov-row-menu-btn w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-[#475569] font-extrabold text-sm flex items-center justify-center cursor-pointer" aria-label="Thao tác khác">⋯</button>
+      <div id="${escapeSearchHTML(menuId)}" class="ov-row-menu hidden absolute right-0 top-9 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50 text-xs">
         ${menuItems.join('')}
       </div>
     </div>
   ` : '';
 
+  const paymentMetaHtml = getOverviewPaymentLabelHtml(b, st);
+
   return `
-    <div class="p-3 rounded-xl border ${isOverdue ? 'border-amber-200 bg-amber-50/30' : 'border-[#E2E8F0] bg-white'} hover:border-slate-300 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="ov-booking-row relative p-3 rounded-xl border ${isOverdue ? 'border-amber-200 bg-amber-50/30' : 'border-[#E2E8F0] bg-white'} hover:border-slate-300 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex items-start sm:items-center gap-2.5 min-w-0">
-        <input type="checkbox" data-code="${code}" ${checked} onchange="toggleOverviewRowSelect('${code}', this.checked)" class="ov-row-checkbox mt-1 sm:mt-0 w-4 h-4 rounded accent-[#16A34A] shrink-0 cursor-pointer" aria-label="Chọn ca #${code}">
+        <input type="checkbox" data-code="${code}" ${checked} onchange="toggleOverviewRowSelect(this.getAttribute('data-code'), this.checked)" class="ov-row-checkbox mt-1 sm:mt-0 w-4 h-4 rounded accent-[#16A34A] shrink-0 cursor-pointer" aria-label="Chọn ca #${code}">
         <div class="min-w-0 space-y-0.5">
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-mono font-bold text-[#0F172A]">#${code}</span>
@@ -426,7 +520,7 @@ function buildBookingRowHTML(b, isOverdue) {
             <span class="font-semibold text-[#0F172A]">${custName}</span>
             <span class="font-mono">${phone}</span>
             <span>Tổng: <b class="text-[#0F172A]">${fmtOverviewVND(b.totalPrice)}</b></span>
-            ${rem > 0 ? `<span class="text-amber-700 font-bold">Còn thu: ${fmtOverviewVND(rem)}</span>` : '<span class="text-[#16A34A] font-semibold">Đã thu đủ</span>'}
+            ${paymentMetaHtml}
           </div>
         </div>
       </div>
@@ -436,6 +530,11 @@ function buildBookingRowHTML(b, isOverdue) {
       </div>
     </div>
   `;
+}
+window.renderOverviewBookingRow = renderOverviewBookingRow;
+
+function buildBookingRowHTML(b, isOverdue) {
+  return renderOverviewBookingRow(b, isOverdue);
 }
 
 function renderOverviewLists() {
@@ -540,6 +639,7 @@ window.filterOverviewBookings = function(filterType) {
 
 function applyOverviewSummary(data) {
   overviewSummaryCache = data;
+  window.overviewSummaryCache = data;
   const kpi = data.kpi || {};
   const setTxt = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
 
