@@ -32,9 +32,11 @@ assert.ok(partialHtml.includes('flex-shrink: 0'), 'Phải dùng flex-shrink: 0')
 
 // 1b. Kiểm tra đủ toàn bộ CSS .audit-* và kiểm tra không có utility Tailwind khuyết thiếu trong Tab 8 & Tab 11
 for (const cls of [
-    '.audit-cat-badge', '.audit-cat-td', '.audit-cat-xh', '.audit-cat-cn', '.audit-cat-cb', '.audit-cat-tq', '.audit-cat-tt',
-    '.audit-diff-old', '.audit-diff-new', '.audit-row-anomaly', '.audit-anomaly-badge', '.audit-day-divider',
-    '.audit-btn-mark', '.audit-reviewed-badge', '.audit-review-editor', '.audit-page-btn', '.audit-inline-link', '.audit-json-pre'
+    '.audit-head', '.audit-kpi-grid', '.audit-kpi-card', '.audit-fbox', '.audit-frow',
+    '.audit-chips', '.audit-chip', '.t-TD', '.t-XH', '.t-CN', '.t-CB', '.t-TQ', '.t-TT',
+    '.audit-list', '.audit-th', '.audit-row', '.audit-day', '.audit-badge', '.audit-code',
+    '.audit-chg', '.audit-more', '.audit-tm', '.audit-anomaly-pill', '.audit-review-btn',
+    '.audit-reviewed-badge', '.audit-review-form', '.audit-page-num', '.audit-detail-pre'
 ]) {
     assert.ok(partialHtml.includes(cls), `Thiếu rule CSS cho ${cls} trong tab11_admin_logs.php`);
 }
@@ -56,16 +58,17 @@ for (const sCls of ['.shift-header-toolbar', '.shift-filter-select', '.shift-btn
     assert.ok(tab8Html.includes(sCls), `Thiếu CSS scoped ${sCls} trong tab8_shifts.php`);
 }
 
-// 1c. Kiểm tra <thead> Tab 11 khớp đúng 5 cột <tbody> của js/admin_logs.js
-const theadMatch = partialHtml.match(/<thead[^>]*>([\s\S]*?)<\/thead>/);
-assert.ok(theadMatch, 'Thiếu <thead> trong tab11_admin_logs.php');
-const thLabels = Array.from(theadMatch[1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)).map((m) => m[1].replace(/<[^>]+>/g, '').trim());
-assert.strictEqual(thLabels.length, 5, '<thead> Tab 11 phải có đúng 5 cột');
-assert.ok(thLabels[0].includes('Thời gian'), 'Cột 1 phải là Thời gian');
-assert.ok(thLabels[1].includes('Người thực hiện'), 'Cột 2 phải là Người thực hiện');
-assert.ok(thLabels[2].includes('Hành động'), 'Cột 3 phải là Hành động');
-assert.ok(thLabels[3].includes('Đối tượng') && thLabels[3].includes('Thay đổi'), 'Cột 4 phải là Đối tượng & Thay đổi');
-assert.ok(thLabels[4].includes('Bất thường') && thLabels[4].includes('Hậu kiểm'), 'Cột 5 phải là Bất thường / Hậu kiểm');
+// 1c. Kiểm tra header Grid 5 cột Tab 11 khớp đúng thứ tự mockup và "Quy ước màu:"
+const theadMatch = partialHtml.match(/<div id="admin-log-thead"[^>]*>([\s\S]*?)<\/div>\s*<div id="admin-log-tbody"><\/div>/);
+assert.ok(theadMatch, 'Thiếu #admin-log-thead dạng CSS Grid trong tab11_admin_logs.php');
+const thLabels = Array.from(theadMatch[1].matchAll(/<div>([\s\S]*?)<\/div>/g)).map((m) => m[1].replace(/<[^>]+>/g, '').trim());
+assert.strictEqual(thLabels.length, 5, 'Header Grid Tab 11 phải có đúng 5 cột');
+assert.ok(thLabels[0].includes('Người thực hiện'), 'Cột 1 phải là Người thực hiện');
+assert.ok(thLabels[1].includes('Hành động'), 'Cột 2 phải là Hành động');
+assert.ok(thLabels[2].includes('Đối tượng'), 'Cột 3 phải là Đối tượng');
+assert.ok(thLabels[3].includes('Nội dung thay đổi'), 'Cột 4 phải là Nội dung thay đổi (cũ → mới)');
+assert.ok(thLabels[4].includes('Thời gian'), 'Cột 5 phải là Thời gian');
+assert.ok(partialHtml.includes('Quy ước màu:'), 'Phải giữ lại thanh Quy ước màu:');
 
 // 2. Kiểm tra markup Tab 11 chuẩn UX
 assert.ok(partialHtml.includes('Nhật ký hệ thống và thao tác quản trị'), 'Thiếu tiêu đề Tab 11');
@@ -305,15 +308,16 @@ vm.runInNewContext(jsCode, sandbox);
     assert.strictEqual(elements['admin-log-range-summary'].textContent, 'Hiển thị 1–25 / 60 bản ghi');
 
     const tbodyHtml = elements['admin-log-tbody'].innerHTML;
-    const dataRowMatch = tbodyHtml.match(/<tr[^>]*data-log-id="101"[^>]*>([\s\S]*?)<\/tr>/);
-    assert.ok(dataRowMatch, 'Phải render dòng dữ liệu log 101');
-    assert.strictEqual((dataRowMatch[1].match(/<td\b/g) || []).length, 5, 'Mỗi dòng <tbody> phải có đúng 5 <td> khớp 5 <th>');
+    const dataRowMatch = tbodyHtml.match(/<div class="audit-row[^"]*" data-log-id="101">([\s\S]*?)<\/div>\s*$/);
+    assert.ok(dataRowMatch, 'Phải render dòng dữ liệu log 101 dạng .audit-row');
+    assert.ok(dataRowMatch[1].includes('audit-actor-name') && dataRowMatch[1].includes('audit-badge') && dataRowMatch[1].includes('audit-code') && dataRowMatch[1].includes('audit-chg') && dataRowMatch[1].includes('audit-tm'), 'Mỗi dòng .audit-row phải đủ 5 vùng dữ liệu khớp header Grid');
     assert.ok(tbodyHtml.includes('Hôm nay,'), 'Phải nhóm theo ngày có "Hôm nay, dd/mm/yyyy"');
     assert.ok(tbodyHtml.includes('091***678') && !tbodyHtml.includes('0912345678'), 'SĐT phải được che mặc định');
     assert.ok(tbodyHtml.includes('Xem chi tiết'), 'Phải có nút Xem chi tiết SĐT');
     assert.ok(tbodyHtml.includes('+1 thay đổi nữa'), 'Quá 2 trường thay đổi phải thu gọn thành +N thay đổi nữa');
     assert.ok(tbodyHtml.includes('Bất thường'), 'Phải hiện badge Bất thường');
     assert.ok(!elements['admin-log-filter-action'].innerHTML.includes('__group__:TD'), 'Không dùng mã nhóm category làm __group__ action filter');
+    assert.ok(elements['admin-log-filter-action'].innerHTML.includes('<optgroup label="TD – Tạo / Duyệt">') && elements['admin-log-filter-action'].innerHTML.includes('value="__cat__:TD"'), 'Dropdown hành động phải có optgroup theo 6 mã nhóm và option __cat__:');
 
     // C. Mở rộng diff & reveal SĐT nhạy cảm
     sandbox.toggleAuditDiffExpand(101);

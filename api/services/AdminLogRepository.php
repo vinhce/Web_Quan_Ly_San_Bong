@@ -87,7 +87,18 @@ final class AdminLogRepository
                 array_push($params, ...array_map('strtoupper', $codes));
             }
         } elseif ($actionType !== '') {
-            if (str_starts_with($actionType, '__group__:')) {
+            if (preg_match('/^(?:__cat__|cat):([A-Z]{2,3})$/i', $actionType, $mCat) === 1) {
+                $catCode = strtoupper($mCat[1]);
+                if ($catCode === 'XHC') {
+                    $catCode = 'XH';
+                }
+                if (isset(AdminLogRegistry::CATEGORIES[$catCode])) {
+                    $where[] = 'a.category = ?';
+                    $params[] = $catCode;
+                } else {
+                    $where[] = '1 = 0';
+                }
+            } elseif (str_starts_with($actionType, '__group__:')) {
                 $groupKey = substr($actionType, strlen('__group__:'));
                 $groupCodes = self::resolveLegacyOrDataGroupCodes($groupKey);
                 if ($groupCodes === []) {
@@ -159,8 +170,11 @@ final class AdminLogRepository
         // 8. Keyword search (including exact group code tokens like "TD", "CN", "TD+CN")
         $search = trim((string)($filters['search'] ?? ''));
         if ($search !== '') {
-            if (preg_match('/^(TD|XH|CN|CB|TQ|TT)(?:[\s,+]+(TD|XH|CN|CB|TQ|TT))*$/i', $search) === 1) {
-                $catTokens = array_values(array_unique(preg_split('/[\s,+]+/', strtoupper($search), -1, PREG_SPLIT_NO_EMPTY) ?: []));
+            if (preg_match('/^(TD|XHC?|CN|CB|TQ|TT)(?:[\s,+]+(TD|XHC?|CN|CB|TQ|TT))*$/i', $search) === 1) {
+                $catTokens = array_values(array_unique(array_map(
+                    static fn(string $t): string => $t === 'XHC' ? 'XH' : $t,
+                    preg_split('/[\s,+]+/', strtoupper($search), -1, PREG_SPLIT_NO_EMPTY) ?: []
+                )));
                 $where[] = 'a.category IN (' . implode(', ', array_fill(0, count($catTokens), '?')) . ')';
                 array_push($params, ...$catTokens);
             } else {

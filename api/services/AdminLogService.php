@@ -706,6 +706,52 @@ class AdminLogService
         }
         $log['target_type'] = $rawTargetType !== '' ? $rawTargetType : null;
         $log['target_id'] = $rawTargetId !== '' ? $rawTargetId : null;
+        $targetTypeLabels = [
+            'shift'            => 'Ca trực',
+            'shifts'           => 'Ca trực',
+            'booking'          => 'Mã ca',
+            'bookings'         => 'Mã ca',
+            'recurring'        => 'Mã ca',
+            'waitlist'         => 'Mã ca',
+            'matchmaking'      => 'Mã ca',
+            'user'             => 'Hội viên',
+            'users'            => 'Hội viên',
+            'customer'         => 'Hội viên',
+            'member'           => 'Hội viên',
+            'pitch'            => 'Sân bóng',
+            'pitches'          => 'Sân bóng',
+            'maintenance'      => 'Sân bóng',
+            'service'          => 'Dịch vụ',
+            'services'         => 'Dịch vụ',
+            'inventory'        => 'Dịch vụ',
+            'voucher'          => 'Voucher',
+            'vouchers'         => 'Voucher',
+            'monthly_package'  => 'Voucher',
+            'expense'          => 'Khoản chi',
+            'expenses'         => 'Khoản chi',
+            'bank_transaction' => 'Giao dịch',
+            'pricing'          => 'Bảng giá',
+            'price'            => 'Bảng giá',
+            'golden_hour'      => 'Bảng giá',
+            'setting'          => 'Cài đặt',
+            'settings'         => 'Cài đặt',
+            'staff'            => 'Nhân sự',
+            'security'         => 'Bảo mật',
+            'auth'             => 'Bảo mật',
+            'audit_log'        => 'Nhật ký',
+            'system'           => 'Hệ thống',
+        ];
+        $log['object_type_label'] = $targetTypeLabels[$rawTargetType] ?? ($rawTargetType !== '' ? $rawTargetType : 'Hệ thống');
+        $rawActorRole = strtolower(trim((string)($log['actor_role'] ?? '')));
+        $actorRoleLabels = [
+            'admin'   => 'Chủ sân',
+            'manager' => 'Quản lý',
+            'staff'   => 'Nhân viên',
+            'system'  => 'Hệ thống',
+        ];
+        $log['actor_role_label'] = ((int)($log['user_id'] ?? 0) === 0 || $rawActorRole === '')
+            ? 'Hệ thống'
+            : ($actorRoleLabels[$rawActorRole] ?? ucfirst($rawActorRole));
 
         if (!empty($log['review_id'])) {
             $log['review'] = [

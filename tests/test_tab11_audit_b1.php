@@ -174,6 +174,13 @@ try {
 
     $anomRow = array_values(array_filter($tdCnLogs, static fn($l): bool => (int)$l['id'] === $anomId))[0] ?? [];
     t11_assert(($anomRow['object_display'] ?? '') === '091***678', 'SĐT ngoài danh sách được che dạng 091***678');
+    t11_assert(($anomRow['object_type_label'] ?? '') === 'Hội viên' && ($anomRow['actor_role_label'] ?? '') === 'Chủ sân', 'Log trả object_type_label và actor_role_label tiếng Việt');
+
+    $resCatTd = t11_call_api($adminSession, 'audit_logs', 'GET', ['action_type' => '__cat__:TD']);
+    $catTdLogs = $resCatTd['json']['data']['logs'] ?? [];
+    $hasCatTd = count(array_filter($catTdLogs, static fn($l): bool => (int)$l['id'] === $tdId)) > 0;
+    $hasCatTt = count(array_filter($catTdLogs, static fn($l): bool => (int)$l['id'] === $ttId)) > 0;
+    t11_assert($hasCatTd && !$hasCatTt, 'Lọc dropdown action_type="__cat__:TD" khớp TD và KHÔNG khớp TT');
 
     $resDetailReveal = t11_call_api($adminSession, 'audit_log_detail', 'GET', ['id' => (string)$anomId, 'reveal' => '1']);
     t11_assert(($resDetailReveal['json']['data']['object_display'] ?? '') === '0912345678', 'Xem chi tiết reveal=1 trả SĐT đầy đủ và ghi SENSITIVE_DATA_ACCESS');

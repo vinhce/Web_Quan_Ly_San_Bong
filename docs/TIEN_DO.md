@@ -111,3 +111,8 @@
   - Hợp nhất 4 nhánh vào `main`, đồng bộ `test_v10_overlap_and_toast.php` & `test_admin_customer_table.js`, build `css/tailwind.generated.css?v=20261124_v136` (0 URL CDN/Google Fonts ngoài).
   - Cú pháp: `101/101` PHP (`php -l`) & `47/47` JS (`node --check`) PASS. Kiểm thử MySQL 8.4.3: **19/19** bộ test PHP/JS PASS 100%; Playwright E2E (`127.0.0.1:8091`): **41/41** checks PASS ở mọi viewport (`1920/1280/820/768/390/360px`), 0 lỗi console/HTTP `>=400`, DB sạch 0 bản ghi `[TEST]` mới. **Lỗi mở: 0.**
 
+## [Tab 11 UI] Chuẩn hóa Grid 5 cột & giữ thanh Quy ước màu (`v20261124_v137` — 2026-11-24)
+- **Giao diện (`tab11_admin_logs.php`, `js/admin_logs.js` 750 dòng):** Chuyển bảng sang CSS Grid 5 cột (`Người thực hiện | Hành động | Đối tượng | Nội dung thay đổi (cũ → mới) | Thời gian`), header kèm nhãn `Chỉ ghi thêm` & `Cập nhật HH:mm`, bộ lọc 1 hàng kèm `vn_datepicker`, **giữ thanh `Quy ước màu:`** 6 chip `TD/XH/CN/CB/TQ/TT`, 4 thẻ KPI lọc nhanh, thu gọn diff (`+N thay đổi nữa`), `Xem chi tiết`/`Hậu kiểm ngay`, font hệ thống cục bộ (0 CDN).
+- **Backend & Test (`AdminLogRepository.php`, `AdminLogService.php`, `test_tab11_audit_b1.php`, `test_admin_log_ui.js`):** Hỗ trợ lọc dropdown `optgroup` theo `__cat__:` / `cat:` (`XHC -> XH`, giữ `TD` tách `TT`), enrich `object_type_label` & `actor_role_label`; vượt toàn bộ unit test (`42/42` B1, `24/24` Part A, `5/5` Endpoint, `30/30` Security, Catalog & UI JS) và Playwright Chrome E2E (`1280px`/`768px`/`360px`, 0 lỗi console/HTTP/tràn ngang). **Lỗi mở: 0.**
+
+
