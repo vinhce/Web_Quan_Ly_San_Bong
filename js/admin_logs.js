@@ -1,1800 +1,652 @@
 /**
- * Module: Admin Audit Logs (Nhật ký hệ thống & Thao tác Quản trị)
- * File: js/admin_logs.js
- * Quản lý giao diện, bộ lọc, phân trang, và hiển thị chi tiết diff thay đổi
- * Tuân thủ WCAG 2.2 AA, Responsive Mobile-first từ 360px, Chống XSS triệt để.
+ * Tab 11: Nhật ký hệ thống & thao tác quản trị (Admin Logs UI + Action Catalog).
  */
+const ADMIN_LOG_CATEGORIES = {
+    TD: { code: 'TD', key: 'TD', label: 'Tạo/Duyệt', badgeClass: 'audit-cat-td' },
+    XH: { code: 'XH', key: 'XH', label: 'Xóa/Hủy/Chi tiền', badgeClass: 'audit-cat-xh' },
+    CN: { code: 'CN', key: 'CN', label: 'Cập nhật', badgeClass: 'audit-cat-cn' },
+    CB: { code: 'CB', key: 'CB', label: 'Cảnh báo', badgeClass: 'audit-cat-cb' },
+    TQ: { code: 'TQ', key: 'TQ', label: 'Tiền quầy', badgeClass: 'audit-cat-tq' },
+    TT: { code: 'TT', key: 'TT', label: 'Tự động', badgeClass: 'audit-cat-tt' }
+};
 
-// State quản lý Nhật ký Admin
-let currentLogPage = 1;
-let currentLogLimit = 20;
-let currentLogTotalPages = 1;
-let currentLogTotalRecords = 0;
-let adminLogSearchDebounceTimer = null;
-let adminLogStaffOptionsPopulated = false;
-let adminLogActionOptionsPopulated = false;
+const ADMIN_LOG_DATA_GROUPS = [
+    'Ca trực', 'Tiền & đặt cọc', 'Hội viên & điểm', 'Giá & voucher',
+    'Sân & Lịch đặt', 'Cài đặt', 'Nhân sự & Bảo mật', 'Khác'
+];
+
+const _aMeta = (label, category, dataGroup) => ({ label, category, dataGroup });
+
 const ADMIN_LOG_CATALOG = {
-  "groups": [
-    {
-      "key": "pricing",
-      "label": "Giá & khuyến mãi"
+    categories: ADMIN_LOG_CATEGORIES,
+    groups: Object.values(ADMIN_LOG_CATEGORIES),
+    dataGroups: ADMIN_LOG_DATA_GROUPS,
+    actions: {
+        // Ca trực
+        SHIFT_OPEN: _aMeta('Mở ca trực', 'TD', 'Ca trực'),
+        OPEN_SHIFT: _aMeta('Mở ca trực', 'TD', 'Ca trực'),
+        SHIFT_CLOSE: _aMeta('Đóng ca trực', 'CB', 'Ca trực'),
+        CLOSE_SHIFT: _aMeta('Đóng ca trực', 'CB', 'Ca trực'),
+        SHIFT_HANDOVER: _aMeta('Giao ca trực', 'CB', 'Ca trực'),
+        SHIFT_CONFIRM: _aMeta('Xác nhận chốt ca', 'TD', 'Ca trực'),
+        SHIFT_EDIT_COUNT: _aMeta('Sửa số liệu kiểm đếm ca', 'CB', 'Ca trực'),
+        // Tiền & đặt cọc
+        COLLECT_PAYMENT: _aMeta('Thu tiền tại quầy', 'TQ', 'Tiền & đặt cọc'),
+        COUNTER_SALE: _aMeta('Bán hàng tại quầy', 'TQ', 'Tiền & đặt cọc'),
+        ADJUST_DISCOUNT: _aMeta('Điều chỉnh giảm giá đơn', 'CB', 'Tiền & đặt cọc'),
+        UPDATE_PAYMENT: _aMeta('Cập nhật thanh toán', 'CN', 'Tiền & đặt cọc'),
+        UPDATE_FINANCE: _aMeta('Cập nhật thông tin tài chính', 'CN', 'Tiền & đặt cọc'),
+        RECONCILE_MANUAL: _aMeta('Gán giao dịch thủ công', 'TD', 'Tiền & đặt cọc'),
+        RECONCILE_RESOLVE: _aMeta('Xử lý đối soát', 'CB', 'Tiền & đặt cọc'),
+        WEBHOOK_MATCH: _aMeta('Giao dịch ngân hàng khớp đơn', 'TD', 'Tiền & đặt cọc'),
+        WEBHOOK_UNDERPAID: _aMeta('Giao dịch ngân hàng chuyển thiếu', 'XH', 'Tiền & đặt cọc'),
+        WEBHOOK_OVERPAID: _aMeta('Giao dịch ngân hàng chuyển thừa', 'CB', 'Tiền & đặt cọc'),
+        WEBHOOK_UNMATCHED: _aMeta('Giao dịch ngân hàng không khớp đơn', 'CB', 'Tiền & đặt cọc'),
+        CONFIRM_DEPOSIT: _aMeta('Xác nhận đặt cọc', 'TD', 'Tiền & đặt cọc'),
+        APPROVE_DEPOSIT: _aMeta('Duyệt đặt cọc', 'TD', 'Tiền & đặt cọc'),
+        REJECT_DEPOSIT: _aMeta('Từ chối đặt cọc', 'XH', 'Tiền & đặt cọc'),
+        EXPENSE_ADD: _aMeta('Thêm khoản chi', 'XH', 'Tiền & đặt cọc'),
+        EXPENSE_UPDATE: _aMeta('Cập nhật khoản chi', 'CN', 'Tiền & đặt cọc'),
+        EXPENSE_DELETE: _aMeta('Xóa khoản chi', 'XH', 'Tiền & đặt cọc'),
+        EXPORT_REPORTS: _aMeta('Xuất báo cáo doanh thu', 'TD', 'Tiền & đặt cọc'),
+        // Hội viên & điểm
+        ADJUST_POINTS: _aMeta('Điều chỉnh điểm', 'CN', 'Hội viên & điểm'),
+        CRM_CUSTOMER_UPDATE: _aMeta('Cập nhật hồ sơ khách hàng', 'CN', 'Hội viên & điểm'),
+        CRM_UPDATE: _aMeta('Cập nhật hồ sơ khách', 'CN', 'Hội viên & điểm'),
+        UPDATE_MEMBER: _aMeta('Cập nhật hội viên', 'CN', 'Hội viên & điểm'),
+        UPDATE_PROFILE: _aMeta('Cập nhật hồ sơ cá nhân', 'CN', 'Hội viên & điểm'),
+        USER_EDIT: _aMeta('Sửa thông tin hội viên', 'CN', 'Hội viên & điểm'),
+        // Giá & voucher
+        UPDATE_PRICING: _aMeta('Cập nhật giá sân', 'CN', 'Giá & voucher'),
+        UPDATE_PRICE: _aMeta('Cập nhật giá sân', 'CN', 'Giá & voucher'),
+        PRICE_UPDATE: _aMeta('Cập nhật giá sân', 'CN', 'Giá & voucher'),
+        VOUCHER_SAVE: _aMeta('Lưu voucher', 'CN', 'Giá & voucher'),
+        VOUCHER_CREATE: _aMeta('Tạo voucher', 'TD', 'Giá & voucher'),
+        VOUCHER_UPDATE: _aMeta('Cập nhật voucher', 'CN', 'Giá & voucher'),
+        VOUCHER_DELETE: _aMeta('Xóa voucher', 'XH', 'Giá & voucher'),
+        VOUCHER_TOGGLE: _aMeta('Bật/tắt voucher', 'CN', 'Giá & voucher'),
+        VOUCHER_TOGGLE_STATUS: _aMeta('Bật/tắt voucher', 'CN', 'Giá & voucher'),
+        GOLDEN_HOUR_SAVE: _aMeta('Lưu quy tắc giờ vàng', 'CN', 'Giá & voucher'),
+        GOLDEN_HOUR_DELETE: _aMeta('Xóa quy tắc giờ vàng', 'XH', 'Giá & voucher'),
+        PACKAGE_SAVE: _aMeta('Lưu gói cố định theo tháng', 'TD', 'Giá & voucher'),
+        PACKAGE_DELETE: _aMeta('Xóa gói cố định theo tháng', 'XH', 'Giá & voucher'),
+        PACKAGE_TOGGLE: _aMeta('Bật/tắt gói cố định theo tháng', 'CN', 'Giá & voucher'),
+        // Sân & Lịch đặt
+        WALKIN_BOOKING: _aMeta('Tạo đơn tại quầy', 'TD', 'Sân & Lịch đặt'),
+        WALKIN_PAST_SLOT: _aMeta('Duyệt đặt sân quá khứ', 'CB', 'Sân & Lịch đặt'),
+        CHECKIN: _aMeta('Check-in nhận sân', 'CN', 'Sân & Lịch đặt'),
+        COMPLETE_BOOKING: _aMeta('Hoàn tất đơn đặt sân', 'TD', 'Sân & Lịch đặt'),
+        CANCEL_BOOKING: _aMeta('Hủy đơn đặt sân', 'XH', 'Sân & Lịch đặt'),
+        EARLY_CANCEL: _aMeta('Hủy đơn sớm', 'XH', 'Sân & Lịch đặt'),
+        RESTORE_BOOKING: _aMeta('Khôi phục đơn', 'TD', 'Sân & Lịch đặt'),
+        NOSHOW_RELEASE_SLOT: _aMeta('Nhả sân khách vắng', 'CB', 'Sân & Lịch đặt'),
+        TRANSFER_PITCH: _aMeta('Chuyển sân đặt', 'CN', 'Sân & Lịch đặt'),
+        ADD_SERVICE: _aMeta('Thêm dịch vụ vào đơn', 'TD', 'Sân & Lịch đặt'),
+        ADD_OVERTIME: _aMeta('Thêm giờ đá', 'TD', 'Sân & Lịch đặt'),
+        BOOKING_BATCH_OP: _aMeta('Thao tác hàng loạt đơn đặt sân', 'CN', 'Sân & Lịch đặt'),
+        RECURRING_CREATE: _aMeta('Tạo lịch cố định', 'TD', 'Sân & Lịch đặt'),
+        RECURRING_CANCEL: _aMeta('Hủy lịch cố định', 'XH', 'Sân & Lịch đặt'),
+        RECURRING_SKIP_DATE: _aMeta('Bỏ qua buổi cố định', 'CB', 'Sân & Lịch đặt'),
+        RECURRING_BOOKING: _aMeta('Lịch đặt cố định', 'CN', 'Sân & Lịch đặt'),
+        RECURRING_CRON_GENERATE: _aMeta('Tự động tạo lịch cố định', 'TT', 'Sân & Lịch đặt'),
+        RECURRING_CONFLICT_SKIP: _aMeta('Bỏ qua lịch bị trùng', 'TT', 'Sân & Lịch đặt'),
+        RUN_RECURRING_GEN: _aMeta('Chạy tạo lịch cố định', 'TT', 'Sân & Lịch đặt'),
+        WAITLIST_ASSIGN: _aMeta('Gán khách trong danh sách chờ', 'TD', 'Sân & Lịch đặt'),
+        WAITLIST_CANCEL: _aMeta('Hủy yêu cầu danh sách chờ', 'XH', 'Sân & Lịch đặt'),
+        WAITLIST_NOTIFIED: _aMeta('Thông báo sân trống', 'CN', 'Sân & Lịch đặt'),
+        WAITLIST_HOLD_EXPIRED: _aMeta('Hết hạn giữ chỗ danh sách chờ', 'TT', 'Sân & Lịch đặt'),
+        MATCHMAKING_MODERATE: _aMeta('Kiểm duyệt tin tìm đội', 'TD', 'Sân & Lịch đặt'),
+        MATCHMAKING_CANCEL: _aMeta('Hủy tin tìm đội', 'XH', 'Sân & Lịch đặt'),
+        REVIEW_REPLY: _aMeta('Phản hồi đánh giá', 'CN', 'Sân & Lịch đặt'),
+        REVIEW_STATUS: _aMeta('Đổi trạng thái đánh giá', 'CN', 'Sân & Lịch đặt'),
+        PITCH_STATUS: _aMeta('Đổi trạng thái sân', 'CN', 'Sân & Lịch đặt'),
+        PITCH_STATUS_TOGGLE: _aMeta('Đổi trạng thái sân', 'CN', 'Sân & Lịch đặt'),
+        TOGGLE_PITCH: _aMeta('Đổi trạng thái sân', 'CN', 'Sân & Lịch đặt'),
+        PITCH_UPSERT: _aMeta('Thêm/sửa sân', 'CN', 'Sân & Lịch đặt'),
+        SERVICE_UPSERT: _aMeta('Thêm/sửa dịch vụ', 'CN', 'Sân & Lịch đặt'),
+        SERVICE_DELETE: _aMeta('Ngừng kinh doanh dịch vụ', 'XH', 'Sân & Lịch đặt'),
+        INVENTORY_RESTOCK: _aMeta('Nhập thêm hàng tồn', 'TD', 'Sân & Lịch đặt'),
+        MAINTENANCE_ADD: _aMeta('Thêm lịch bảo trì', 'TD', 'Sân & Lịch đặt'),
+        MAINTENANCE_UPDATE: _aMeta('Cập nhật lịch bảo trì', 'CN', 'Sân & Lịch đặt'),
+        AUTO_CANCEL_EXPIRED: _aMeta('Tự động hủy đơn quá hạn', 'TT', 'Sân & Lịch đặt'),
+        AUTO_CLOSE_PAST_BOOKINGS: _aMeta('Tự động đóng đơn quá ngày', 'TT', 'Sân & Lịch đặt'),
+        AUTO_NOSHOW_15M: _aMeta('Tự động xử lý khách vắng mặt (quá 15p)', 'TT', 'Sân & Lịch đặt'),
+        AUTO_NOSHOW_15M_UNPAID: _aMeta('Tự động hủy đơn chưa cọc quá giờ đá', 'TT', 'Sân & Lịch đặt'),
+        CRON_IN_PLAY_UNPAID: _aMeta('Cảnh báo ca quá giờ chưa tất toán', 'TT', 'Sân & Lịch đặt'),
+        CRON_COMPLETE_OVERDUE_IN_PLAY: _aMeta('Tự động hoàn tất ca quá giờ', 'TT', 'Sân & Lịch đặt'),
+        ADMIN_RUN_AUTO_RELEASE: _aMeta('Chạy nhả đơn quá hạn thủ công', 'TT', 'Sân & Lịch đặt'),
+        RUN_REMINDERS: _aMeta('Chạy nhắc lịch', 'TT', 'Sân & Lịch đặt'),
+        // Cài đặt
+        UPDATE_SETTINGS: _aMeta('Cập nhật cài đặt hệ thống', 'CN', 'Cài đặt'),
+        SYSTEM_SETTINGS: _aMeta('Cập nhật cài đặt hệ thống', 'CN', 'Cài đặt'),
+        UPDATE_INFO: _aMeta('Sửa thông tin hệ thống', 'CN', 'Cài đặt'),
+        DATABASE_BACKUP: _aMeta('Sao lưu cơ sở dữ liệu', 'TT', 'Cài đặt'),
+        DB_BACKUP: _aMeta('Sao lưu cơ sở dữ liệu', 'TT', 'Cài đặt'),
+        TELEGRAM_TEST: _aMeta('Kiểm tra kết nối Telegram', 'TT', 'Cài đặt'),
+        SAMPLE_DATA_CLEAN: _aMeta('Dọn dữ liệu mẫu', 'XH', 'Cài đặt'),
+        SAMPLE_DATA_SEED: _aMeta('Tạo dữ liệu mẫu', 'TT', 'Cài đặt'),
+        // Nhân sự & Bảo mật
+        STAFF_CREATE: _aMeta('Tạo tài khoản nhân sự', 'TD', 'Nhân sự & Bảo mật'),
+        STAFF_ROLE_CHANGE: _aMeta('Đổi vai trò nhân sự', 'CB', 'Nhân sự & Bảo mật'),
+        STAFF_STATUS_CHANGE: _aMeta('Đổi trạng thái nhân sự', 'CN', 'Nhân sự & Bảo mật'),
+        STAFF_RESET_PASSWORD: _aMeta('Đặt lại mật khẩu nhân sự', 'CB', 'Nhân sự & Bảo mật'),
+        CHANGE_PASSWORD: _aMeta('Đổi mật khẩu', 'CB', 'Nhân sự & Bảo mật'),
+        FORGOT_PASSWORD_REQUEST: _aMeta('Yêu cầu khôi phục mật khẩu', 'CB', 'Nhân sự & Bảo mật'),
+        ENABLE_2FA: _aMeta('Bật xác thực 2 bước', 'TD', 'Nhân sự & Bảo mật'),
+        DISABLE_2FA: _aMeta('Tắt xác thực 2 bước', 'XH', 'Nhân sự & Bảo mật'),
+        '2FA_TOGGLE': _aMeta('Thay đổi xác thực 2 bước', 'CB', 'Nhân sự & Bảo mật'),
+        DB_BACKUP_DOWNLOAD: _aMeta('Tải bản sao lưu cơ sở dữ liệu', 'CB', 'Nhân sự & Bảo mật'),
+        AUDIT_REVIEW: _aMeta('Hậu kiểm nhật ký quản trị', 'TD', 'Nhân sự & Bảo mật'),
+        EXPORT_CSV: _aMeta('Xuất dữ liệu CSV', 'CB', 'Nhân sự & Bảo mật'),
+        SENSITIVE_DATA_ACCESS: _aMeta('Truy cập dữ liệu nhạy cảm', 'CB', 'Nhân sự & Bảo mật')
     },
-    {
-      "key": "payments",
-      "label": "Tiền & đặt cọc"
-    },
-    {
-      "key": "booking",
-      "label": "Đặt sân"
-    },
-    {
-      "key": "shifts",
-      "label": "Ca trực"
-    },
-    {
-      "key": "members",
-      "label": "Hội viên & điểm"
-    },
-    {
-      "key": "venues",
-      "label": "Sân & cài đặt"
-    },
-    {
-      "key": "security",
-      "label": "Bảo mật"
-    },
-    {
-      "key": "automation",
-      "label": "Hệ thống tự động"
-    },
-    {
-      "key": "other",
-      "label": "Khác"
+    fieldLabels: {
+        status: 'Trạng thái', payment_status: 'Trạng thái thu tiền', paid_amount: 'Đã thu',
+        total_amount: 'Tổng tiền', deposit_amount: 'Tiền cọc', discount_amount: 'Giảm giá',
+        points: 'Điểm tích lũy', loyalty_points: 'Điểm tích lũy', tier: 'Hạng hội viên',
+        role: 'Phân quyền', is_active: 'Kích hoạt', is_2fa_enabled: 'Xác thực 2FA',
+        staff_counted_cash: 'NV đếm quỹ', actual_cash_received: 'Tiền mặt thực nhận',
+        discrepancy_amount: 'Chênh lệch quỹ', admin_note: 'Ghi chú quản lý', note: 'Ghi chú',
+        reason: 'Lý do', pitch_id: 'Sân', booking_date: 'Ngày đá', start_time: 'Giờ bắt đầu',
+        end_time: 'Giờ kết thúc', price: 'Đơn giá', hourly_rate: 'Giá theo giờ',
+        value: 'Giá trị', max_uses: 'Lượt dùng tối đa', customer_name: 'Tên khách hàng',
+        customer_phone: 'Số điện thoại', cash_received: 'Tiền mặt', transfer_received: 'Chuyển khoản'
     }
-  ],
-  "actions": {
-    "UPDATE_PRICING": {
-      "label": "Cập nhật giá sân",
-      "group": "pricing"
-    },
-    "UPDATE_PRICE": {
-      "label": "Cập nhật giá sân",
-      "group": "pricing"
-    },
-    "UPDATE_INFO": {
-      "label": "Sửa thông tin",
-      "group": "venues"
-    },
-    "VOUCHER_SAVE": {
-      "label": "Lưu voucher",
-      "group": "pricing"
-    },
-    "VOUCHER_DELETE": {
-      "label": "Xóa voucher",
-      "group": "pricing"
-    },
-    "VOUCHER_TOGGLE": {
-      "label": "Bật/tắt voucher",
-      "group": "pricing"
-    },
-    "VOUCHER_CREATE": {
-      "label": "Tạo voucher",
-      "group": "pricing"
-    },
-    "VOUCHER_UPDATE": {
-      "label": "Cập nhật voucher",
-      "group": "pricing"
-    },
-    "GOLDEN_HOUR_SAVE": {
-      "label": "Lưu quy tắc giờ vàng",
-      "group": "pricing"
-    },
-    "GOLDEN_HOUR_DELETE": {
-      "label": "Xóa quy tắc giờ vàng",
-      "group": "pricing"
-    },
-    "PACKAGE_SAVE": {
-      "label": "Lưu gói cố định theo tháng",
-      "group": "pricing"
-    },
-    "PACKAGE_DELETE": {
-      "label": "Xóa gói cố định theo tháng",
-      "group": "pricing"
-    },
-    "PACKAGE_TOGGLE": {
-      "label": "Bật/tắt gói cố định theo tháng",
-      "group": "pricing"
-    },
-    "BOOKING_BATCH_OP": {
-      "label": "Thao tác hàng loạt đơn đặt sân",
-      "group": "booking"
-    },
-    "EXPORT_REPORTS": {
-      "label": "Xuất báo cáo doanh thu",
-      "group": "payments"
-    },
-    "AUTO_CLOSE_PAST_BOOKINGS": {
-      "label": "Tự động đóng đơn quá ngày",
-      "group": "automation"
-    },
-    "AUTO_NOSHOW_15M": {
-      "label": "Tự động xử lý khách vắng mặt (quá 15p)",
-      "group": "automation"
-    },
-    "AUTO_NOSHOW_15M_UNPAID": {
-      "label": "Tự động hủy đơn chưa cọc quá giờ đá",
-      "group": "automation"
-    },
-    "CRON_IN_PLAY_UNPAID": {
-      "label": "Cảnh báo ca quá giờ chưa tất toán",
-      "group": "automation"
-    },
-    "COLLECT_PAYMENT": {
-      "label": "Thu tiền",
-      "group": "payments"
-    },
-    "ADJUST_DISCOUNT": {
-      "label": "Điều chỉnh giảm giá đơn",
-      "group": "payments"
-    },
-    "UPDATE_PAYMENT": {
-      "label": "Cập nhật thanh toán",
-      "group": "payments"
-    },
-    "RECONCILE_MANUAL": {
-      "label": "Gán giao dịch thủ công",
-      "group": "payments"
-    },
-    "RECONCILE_RESOLVE": {
-      "label": "Xử lý đối soát",
-      "group": "payments"
-    },
-    "WEBHOOK_MATCH": {
-      "label": "Giao dịch ngân hàng khớp đơn",
-      "group": "payments"
-    },
-    "WEBHOOK_UNDERPAID": {
-      "label": "Giao dịch ngân hàng chuyển thiếu",
-      "group": "payments"
-    },
-    "WEBHOOK_OVERPAID": {
-      "label": "Giao dịch ngân hàng chuyển thừa",
-      "group": "payments"
-    },
-    "WEBHOOK_UNMATCHED": {
-      "label": "Giao dịch ngân hàng không khớp đơn",
-      "group": "payments"
-    },
-    "EXPENSE_ADD": {
-      "label": "Thêm khoản chi",
-      "group": "payments"
-    },
-    "EXPENSE_UPDATE": {
-      "label": "Cập nhật khoản chi",
-      "group": "payments"
-    },
-    "EXPENSE_DELETE": {
-      "label": "Xóa khoản chi",
-      "group": "payments"
-    },
-    "COUNTER_SALE": {
-      "label": "Bán hàng tại quầy",
-      "group": "payments"
-    },
-    "CANCEL_BOOKING": {
-      "label": "Hủy đơn đặt sân",
-      "group": "booking"
-    },
-    "EARLY_CANCEL": {
-      "label": "Hủy đơn sớm",
-      "group": "booking"
-    },
-    "CHECKIN": {
-      "label": "Check-in",
-      "group": "booking"
-    },
-    "COMPLETE_BOOKING": {
-      "label": "Hoàn tất đơn đặt sân",
-      "group": "booking"
-    },
-    "ADD_SERVICE": {
-      "label": "Thêm dịch vụ vào đơn",
-      "group": "booking"
-    },
-    "ADD_OVERTIME": {
-      "label": "Thêm giờ đá",
-      "group": "booking"
-    },
-    "RESTORE_BOOKING": {
-      "label": "Khôi phục đơn",
-      "group": "booking"
-    },
-    "NOSHOW_RELEASE_SLOT": {
-      "label": "Nhả sân khách vắng",
-      "group": "booking"
-    },
-    "TRANSFER_PITCH": {
-      "label": "Chuyển sân đặt",
-      "group": "booking"
-    },
-    "WALKIN_BOOKING": {
-      "label": "Tạo đơn tại quầy",
-      "group": "booking"
-    },
-    "WALKIN_PAST_SLOT": {
-      "label": "Duyệt đặt sân quá khứ",
-      "group": "booking"
-    },
-    "RECURRING_CREATE": {
-      "label": "Tạo lịch cố định",
-      "group": "booking"
-    },
-    "RECURRING_CANCEL": {
-      "label": "Hủy lịch cố định",
-      "group": "booking"
-    },
-    "RECURRING_SKIP_DATE": {
-      "label": "Bỏ qua buổi cố định",
-      "group": "booking"
-    },
-    "WAITLIST_ASSIGN": {
-      "label": "Gán khách trong danh sách chờ",
-      "group": "booking"
-    },
-    "WAITLIST_CANCEL": {
-      "label": "Hủy yêu cầu danh sách chờ",
-      "group": "booking"
-    },
-    "WAITLIST_NOTIFIED": {
-      "label": "Thông báo sân trống",
-      "group": "booking"
-    },
-    "MATCHMAKING_MODERATE": {
-      "label": "Kiểm duyệt tin tìm đội",
-      "group": "booking"
-    },
-    "MATCHMAKING_CANCEL": {
-      "label": "Hủy tin tìm đội",
-      "group": "booking"
-    },
-    "REVIEW_REPLY": {
-      "label": "Phản hồi đánh giá",
-      "group": "booking"
-    },
-    "REVIEW_STATUS": {
-      "label": "Đổi trạng thái đánh giá",
-      "group": "booking"
-    },
-    "SHIFT_OPEN": {
-      "label": "Mở ca trực",
-      "group": "shifts"
-    },
-    "SHIFT_CLOSE": {
-      "label": "Đóng ca trực",
-      "group": "shifts"
-    },
-    "SHIFT_CONFIRM": {
-      "label": "Xác nhận chốt ca",
-      "group": "shifts"
-    },
-    "CRM_UPDATE": {
-      "label": "Cập nhật hồ sơ khách",
-      "group": "members"
-    },
-    "CRM_CUSTOMER_UPDATE": {
-      "label": "Cập nhật hồ sơ khách hàng",
-      "group": "members"
-    },
-    "UPDATE_MEMBER": {
-      "label": "Cập nhật hội viên",
-      "group": "members"
-    },
-    "UPDATE_PROFILE": {
-      "label": "Cập nhật hồ sơ cá nhân",
-      "group": "members"
-    },
-    "USER_EDIT": {
-      "label": "Sửa thông tin hội viên",
-      "group": "members"
-    },
-    "ADJUST_POINTS": {
-      "label": "Điều chỉnh điểm",
-      "group": "members"
-    },
-    "UPDATE_FINANCE": {
-      "label": "Cập nhật thông tin tài chính",
-      "group": "members"
-    },
-    "PITCH_STATUS": {
-      "label": "Đổi trạng thái sân",
-      "group": "venues"
-    },
-    "PITCH_UPSERT": {
-      "label": "Thêm/sửa sân",
-      "group": "venues"
-    },
-    "SERVICE_UPSERT": {
-      "label": "Thêm/sửa dịch vụ",
-      "group": "venues"
-    },
-    "SERVICE_DELETE": {
-      "label": "Ngừng kinh doanh dịch vụ",
-      "group": "venues"
-    },
-    "INVENTORY_RESTOCK": {
-      "label": "Nhập thêm hàng tồn",
-      "group": "venues"
-    },
-    "MAINTENANCE_ADD": {
-      "label": "Thêm lịch bảo trì",
-      "group": "venues"
-    },
-    "MAINTENANCE_UPDATE": {
-      "label": "Cập nhật lịch bảo trì",
-      "group": "venues"
-    },
-    "UPDATE_SETTINGS": {
-      "label": "Cập nhật cài đặt hệ thống",
-      "group": "venues"
-    },
-    "ENABLE_2FA": {
-      "label": "Bật xác thực 2 bước",
-      "group": "security"
-    },
-    "DISABLE_2FA": {
-      "label": "Tắt xác thực 2 bước",
-      "group": "security"
-    },
-    "CHANGE_PASSWORD": {
-      "label": "Đổi mật khẩu",
-      "group": "security"
-    },
-    "STAFF_CREATE": {
-      "label": "Tạo tài khoản nhân sự",
-      "group": "security"
-    },
-    "STAFF_ROLE_CHANGE": {
-      "label": "Đổi vai trò nhân sự",
-      "group": "security"
-    },
-    "STAFF_STATUS_CHANGE": {
-      "label": "Đổi trạng thái nhân sự",
-      "group": "security"
-    },
-    "STAFF_RESET_PASSWORD": {
-      "label": "Đặt lại mật khẩu nhân sự",
-      "group": "security"
-    },
-    "FORGOT_PASSWORD_REQUEST": {
-      "label": "Yêu cầu khôi phục mật khẩu",
-      "group": "security"
-    },
-    "AUTO_CANCEL_EXPIRED": {
-      "label": "Tự động hủy đơn quá hạn",
-      "group": "automation"
-    },
-    "RUN_REMINDERS": {
-      "label": "Chạy nhắc lịch",
-      "group": "automation"
-    },
-    "RECURRING_CRON_GENERATE": {
-      "label": "Tự động tạo lịch cố định",
-      "group": "automation"
-    },
-    "RECURRING_CONFLICT_SKIP": {
-      "label": "Bỏ qua lịch bị trùng",
-      "group": "automation"
-    },
-    "WAITLIST_HOLD_EXPIRED": {
-      "label": "Hết hạn giữ chỗ danh sách chờ",
-      "group": "automation"
-    },
-    "CRON_COMPLETE_OVERDUE_IN_PLAY": {
-      "label": "Tự động hoàn tất ca quá giờ",
-      "group": "automation"
-    },
-    "ADMIN_RUN_AUTO_RELEASE": {
-      "label": "Chạy nhả đơn quá hạn thủ công",
-      "group": "automation"
-    },
-    "RUN_RECURRING_GEN": {
-      "label": "Chạy tạo lịch cố định",
-      "group": "automation"
-    },
-    "TELEGRAM_TEST": {
-      "label": "Kiểm tra kết nối Telegram",
-      "group": "automation"
-    },
-    "DATABASE_BACKUP": {
-      "label": "Sao lưu cơ sở dữ liệu",
-      "group": "automation"
-    },
-    "DB_BACKUP": {
-      "label": "Sao lưu cơ sở dữ liệu",
-      "group": "automation"
-    },
-    "DB_BACKUP_DOWNLOAD": {
-      "label": "Tải bản sao lưu cơ sở dữ liệu",
-      "group": "security"
-    },
-    "SAMPLE_DATA_CLEAN": {
-      "label": "Dọn dữ liệu mẫu",
-      "group": "automation"
-    },
-    "SAMPLE_DATA_SEED": {
-      "label": "Tạo dữ liệu mẫu",
-      "group": "automation"
-    },
-    "cron_complete_overdue_in_play": {
-      "label": "Tự động hoàn tất ca quá giờ",
-      "group": "automation"
-    },
-    "matchmaking_cancel": {
-      "label": "Hủy tin tìm đội",
-      "group": "booking"
-    },
-    "PRICE_UPDATE": {
-      "label": "Cập nhật giá sân",
-      "group": "pricing"
-    },
-    "CONFIRM_DEPOSIT": {
-      "label": "Xác nhận đặt cọc",
-      "group": "payments"
-    },
-    "APPROVE_DEPOSIT": {
-      "label": "Duyệt đặt cọc",
-      "group": "payments"
-    },
-    "REJECT_DEPOSIT": {
-      "label": "Từ chối đặt cọc",
-      "group": "payments"
-    },
-    "PITCH_STATUS_TOGGLE": {
-      "label": "Đổi trạng thái sân",
-      "group": "venues"
-    },
-    "TOGGLE_PITCH": {
-      "label": "Đổi trạng thái sân",
-      "group": "venues"
-    },
-    "CLOSE_SHIFT": {
-      "label": "Đóng ca trực",
-      "group": "shifts"
-    },
-    "OPEN_SHIFT": {
-      "label": "Mở ca trực",
-      "group": "shifts"
-    },
-    "SHIFT_HANDOVER": {
-      "label": "Giao ca trực",
-      "group": "shifts"
-    },
-    "VOUCHER_TOGGLE_STATUS": {
-      "label": "Bật/tắt voucher",
-      "group": "pricing"
-    },
-    "RECURRING_BOOKING": {
-      "label": "Lịch đặt cố định",
-      "group": "booking"
+};
+
+const adminLogState = {
+    page: 1, limit: 25, total: 0, totalPages: 1, latestId: 0,
+    staffId: '', actionType: '', dataGroup: '', fromDate: '', toDate: '',
+    search: '', quickFilter: '', categories: [], logs: [],
+    revealedMap: {}, expandedDiffs: {}, expandedJson: {}, openReviewId: null,
+    summaryAbort: null, listAbort: null, searchTimer: null, pollTimer: null,
+    urlHydrated: false, pluginsReady: false
+};
+
+const AUDIT_INPUT_BINDINGS = [
+    ['admin-log-filter-staff', 'staffId'],
+    ['admin-log-filter-action', 'actionType'],
+    ['admin-log-filter-datagroup', 'dataGroup'],
+    ['admin-log-filter-from', 'fromDate'],
+    ['admin-log-filter-to', 'toDate'],
+    ['admin-log-search', 'search']
+];
+
+function auditEsc(str) {
+    if (typeof window !== 'undefined' && typeof window.escapeHTML === 'function') return window.escapeHTML(str);
+    return String(str ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function maskAuditPhone(text) {
+    if (text === null || text === undefined) return '';
+    return String(text).replace(/(?<!\d)(0\d{2})\d{4,6}(\d{3})(?!\d)/g, '$1***$2');
+}
+
+function getVnDateParts(dateObj) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(dateObj);
+    return Object.fromEntries(parts.map((p) => [p.type, p.value]));
+}
+
+function formatAuditDateTime(raw) {
+    if (!raw) return '—';
+    const str = String(raw).trim();
+    if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/.test(str)) return str.slice(0, 16);
+    const d = new Date(str.includes(' ') && !str.includes('T') ? str.replace(' ', 'T') + '+07:00' : str);
+    if (Number.isNaN(d.getTime())) return str;
+    const p = getVnDateParts(d);
+    return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+function getAuditDateKey(raw) {
+    const m = formatAuditDateTime(raw).match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+
+function formatAuditDayDivider(dateKey) {
+    if (!dateKey) return 'Khác';
+    const fmtKey = (ms) => { const p = getVnDateParts(new Date(ms)); return `${p.year}-${p.month}-${p.day}`; };
+    const [y, m, d] = dateKey.split('-');
+    const vnDate = `${d}/${m}/${y}`;
+    if (dateKey === fmtKey(Date.now())) return `Hôm nay, ${vnDate}`;
+    if (dateKey === fmtKey(Date.now() - 86400000)) return `Hôm qua, ${vnDate}`;
+    return vnDate;
+}
+
+function validateAuditReasonClient(reason, minLen = 10) {
+    const clean = String(reason || '').trim();
+    if (Array.from(clean).length < minLen) return { valid: false, error: `Vui lòng nhập ghi chú hậu kiểm tối thiểu ${minLen} ký tự.` };
+    const compact = clean.replace(/\s+/gu, '').toLowerCase();
+    if (new Set(Array.from(compact)).size < 4 || /(.)\1{4,}/u.test(compact)) {
+        return { valid: false, error: 'Ghi chú hậu kiểm không hợp lệ (không nhập ký tự lặp vô nghĩa).' };
     }
-  },
-  "fields": {
-    "price_p5_base": {
-      "label": "Sân 5 - Giá thường",
-      "format": "currency"
-    },
-    "price_p5_peak": {
-      "label": "Sân 5 - Giờ cao điểm",
-      "format": "currency"
-    },
-    "price_p5_weekend": {
-      "label": "Sân 5 - Cuối tuần",
-      "format": "currency"
-    },
-    "price_p7_base": {
-      "label": "Sân 7 - Giá thường",
-      "format": "currency"
-    },
-    "price_p7_peak": {
-      "label": "Sân 7 - Giờ cao điểm",
-      "format": "currency"
-    },
-    "price_p7_weekend": {
-      "label": "Sân 7 - Cuối tuần",
-      "format": "currency"
-    },
-    "price_p11_base": {
-      "label": "Sân 11 - Giá thường",
-      "format": "currency"
-    },
-    "price_p11_peak": {
-      "label": "Sân 11 - Giờ cao điểm",
-      "format": "currency"
-    },
-    "price_p11_weekend": {
-      "label": "Sân 11 - Cuối tuần",
-      "format": "currency"
-    },
-    "deposit_rate": {
-      "label": "Tỷ lệ đặt cọc",
-      "format": "percent"
-    },
-    "bank_name": {
-      "label": "Ngân hàng"
-    },
-    "bank_code": {
-      "label": "Mã ngân hàng"
-    },
-    "bank_account": {
-      "label": "Số tài khoản"
-    },
-    "bank_holder": {
-      "label": "Chủ tài khoản"
-    },
-    "hotline": {
-      "label": "Hotline"
-    },
-    "open_hours": {
-      "label": "Giờ hoạt động"
-    },
-    "hold_minutes": {
-      "label": "Thời gian giữ sân",
-      "format": "minutes"
-    },
-    "waitlist_hold_minutes": {
-      "label": "Thời gian giữ chỗ danh sách chờ",
-      "format": "minutes"
-    },
-    "refund_full_hours": {
-      "label": "Mốc hoàn cọc đầy đủ",
-      "format": "hours"
-    },
-    "refund_partial_hours": {
-      "label": "Mốc hoàn cọc một phần",
-      "format": "hours"
-    },
-    "auto_cancel_enabled": {
-      "label": "Tự động hủy đơn quá hạn",
-      "format": "boolean"
-    },
-    "reminder_enabled": {
-      "label": "Bật nhắc lịch",
-      "format": "boolean"
-    },
-    "reminder_hours_before": {
-      "label": "Nhắc trước trận",
-      "format": "hours"
-    },
-    "customer_notify_enabled": {
-      "label": "Bật thông báo khách hàng",
-      "format": "boolean"
-    },
-    "customer_notify_webhook": {
-      "label": "Webhook thông báo khách hàng"
-    },
-    "booking_confirm_template": {
-      "label": "Mẫu xác nhận đặt sân"
-    },
-    "reminder_template": {
-      "label": "Mẫu nhắc lịch"
-    },
-    "telegram_notify_enabled": {
-      "label": "Bật thông báo Telegram",
-      "format": "boolean"
-    },
-    "telegram_bot_token": {
-      "label": "Telegram bot token"
-    },
-    "telegram_chat_id": {
-      "label": "Telegram chat ID"
-    },
-    "full_name": {
-      "label": "Họ tên"
-    },
-    "customer_name": {
-      "label": "Tên khách/đội bóng"
-    },
-    "phone": {
-      "label": "Số điện thoại"
-    },
-    "email": {
-      "label": "Email"
-    },
-    "points": {
-      "label": "Điểm tích lũy",
-      "format": "number"
-    },
-    "points_reason": {
-      "label": "Lý do điều chỉnh điểm"
-    },
-    "points_delta": {
-      "label": "Thay đổi điểm",
-      "format": "number"
-    },
-    "tier": {
-      "label": "Hạng hội viên"
-    },
-    "customer_tier": {
-      "label": "Hạng khách hàng"
-    },
-    "tier_reason": {
-      "label": "Lý do đổi hạng"
-    },
-    "admin_note": {
-      "label": "Ghi chú chăm sóc"
-    },
-    "is_blacklisted": {
-      "label": "Danh sách đen",
-      "format": "boolean"
-    },
-    "blacklist_reason": {
-      "label": "Lý do khóa tài khoản"
-    },
-    "status": {
-      "label": "Trạng thái"
-    },
-    "payment_status": {
-      "label": "Trạng thái thanh toán"
-    },
-    "pitch_id": {
-      "label": "Mã sân"
-    },
-    "slot_id": {
-      "label": "Khung giờ"
-    },
-    "slot_time": {
-      "label": "Giờ đá"
-    },
-    "booking_date": {
-      "label": "Ngày đặt sân"
-    },
-    "total_price": {
-      "label": "Tổng tiền",
-      "format": "currency"
-    },
-    "deposit_amount": {
-      "label": "Tiền đặt cọc",
-      "format": "currency"
-    },
-    "paid_amount": {
-      "label": "Đã thanh toán",
-      "format": "currency"
-    },
-    "remaining_amount": {
-      "label": "Còn phải thu",
-      "format": "currency"
-    },
-    "price_per_match": {
-      "label": "Giá mỗi trận",
-      "format": "currency"
-    },
-    "deposit_per_match": {
-      "label": "Tiền cọc mỗi trận",
-      "format": "currency"
-    },
-    "price": {
-      "label": "Đơn giá",
-      "format": "currency"
-    },
-    "amount": {
-      "label": "Số tiền",
-      "format": "currency"
-    },
-    "quantity": {
-      "label": "Số lượng",
-      "format": "number"
-    },
-    "stock_qty": {
-      "label": "Tồn kho",
-      "format": "number"
-    },
-    "min_stock_warning": {
-      "label": "Ngưỡng cảnh báo tồn kho",
-      "format": "number"
-    },
-    "is_active": {
-      "label": "Đang hoạt động",
-      "format": "boolean"
-    },
-    "role": {
-      "label": "Vai trò"
-    },
-    "username": {
-      "label": "Tên đăng nhập"
-    },
-    "name": {
-      "label": "Tên"
-    },
-    "reason": {
-      "label": "Lý do"
-    },
-    "code": {
-      "label": "Mã"
-    },
-    "type": {
-      "label": "Loại"
+    for (let len = 2; len <= 3; len++) {
+        const u = compact.slice(0, len);
+        if (u.length === len && compact.length >= len * 3 && u.repeat(Math.ceil(compact.length / len)).slice(0, compact.length) === compact) {
+            return { valid: false, error: 'Ghi chú hậu kiểm không được lặp chuỗi vô nghĩa.' };
+        }
     }
-  }
-};
-let adminLogCatalog = ADMIN_LOG_CATALOG;
-let adminLogActionTypes = [];
-const adminLogWarnedActionCodes = new Set();
-
-const ADMIN_LOG_ACTION_COLOR_MAP = {
-  // 1. XANH LÁ (green) - Tạo mới, mở ca, duyệt cọc, khớp tiền thành công
-  'WALKIN_BOOKING': 'green',
-  'RECURRING_CREATE': 'green',
-  'STAFF_CREATE': 'green',
-  'SAMPLE_DATA_SEED': 'green',
-  'ADD_SERVICE': 'green',
-  'ADD_OVERTIME': 'green',
-  'MAINTENANCE_ADD': 'green',
-  'INVENTORY_RESTOCK': 'green',
-  'SHIFT_OPEN': 'green',
-  'OPEN_SHIFT': 'green',
-  'APPROVE_DEPOSIT': 'green',
-  'CONFIRM_DEPOSIT': 'green',
-  'MATCHMAKING_MODERATE': 'green',
-  'RESTORE_BOOKING': 'green',
-  'SHIFT_CONFIRM': 'green',
-  'WAITLIST_ASSIGN': 'green',
-  'ENABLE_2FA': 'green',
-  'WEBHOOK_MATCH': 'green',
-  'RECONCILE_MANUAL': 'green',
-  'COMPLETE_BOOKING': 'green',
-
-  // 2. ĐỎ (red) - Xóa, hủy, từ chối, tắt bảo mật, thiếu tiền, chi tiền ra
-  'VOUCHER_DELETE': 'red',
-  'GOLDEN_HOUR_DELETE': 'red',
-  'EXPENSE_DELETE': 'red',
-  'CANCEL_BOOKING': 'red',
-  'EARLY_CANCEL': 'red',
-  'RECURRING_CANCEL': 'red',
-  'MATCHMAKING_CANCEL': 'red',
-  'WAITLIST_CANCEL': 'red',
-  'REJECT_DEPOSIT': 'red',
-  'DISABLE_2FA': 'red',
-  'WEBHOOK_UNDERPAID': 'red',
-  'AUTO_CANCEL_EXPIRED': 'red',
-  'WAITLIST_HOLD_EXPIRED': 'red',
-  'ADMIN_RUN_AUTO_RELEASE': 'red',
-  'EXPENSE_ADD': 'red',
-
-  // 3. XANH DƯƠNG (blue) - Cập nhật cấu hình, sửa thông tin, vận hành sân
-  'UPDATE_PRICING': 'blue',
-  'UPDATE_PRICE': 'blue',
-  'PRICE_UPDATE': 'blue',
-  'EXPENSE_UPDATE': 'blue',
-  'UPDATE_PAYMENT': 'blue',
-  'CRM_UPDATE': 'blue',
-  'CRM_CUSTOMER_UPDATE': 'blue',
-  'UPDATE_MEMBER': 'blue',
-  'UPDATE_FINANCE': 'blue',
-  'SERVICE_UPSERT': 'blue',
-  'PITCH_UPSERT': 'blue',
-  'GOLDEN_HOUR_SAVE': 'blue',
-  'VOUCHER_SAVE': 'blue',
-  'VOUCHER_CREATE': 'blue',
-  'VOUCHER_UPDATE': 'blue',
-  'VOUCHER_TOGGLE': 'blue',
-  'VOUCHER_TOGGLE_STATUS': 'blue',
-  'UPDATE_INFO': 'blue',
-  'USER_EDIT': 'blue',
-  'ADJUST_POINTS': 'blue',
-  'CHECKIN': 'blue',
-  'TRANSFER_PITCH': 'blue',
-  'RECURRING_BOOKING': 'blue',
-  'PITCH_STATUS': 'blue',
-  'PITCH_STATUS_TOGGLE': 'blue',
-  'TOGGLE_PITCH': 'blue',
-  'STAFF_STATUS_CHANGE': 'blue',
-  'REVIEW_STATUS': 'blue',
-  'REVIEW_REPLY': 'blue',
-  'WAITLIST_NOTIFIED': 'blue',
-  'MAINTENANCE_UPDATE': 'blue',
-  'UPDATE_SETTINGS': 'blue',
-  'SYSTEM_SETTINGS': 'blue',
-
-  // 4. CAM (orange) - Cảnh báo, lệch tiền, nhạy cảm, đóng/giao ca
-  'WEBHOOK_OVERPAID': 'orange',
-  'WEBHOOK_UNMATCHED': 'orange',
-  'RECONCILE_RESOLVE': 'orange',
-  'ADJUST_DISCOUNT': 'orange',
-  'WALKIN_PAST_SLOT': 'orange',
-  'RECURRING_SKIP_DATE': 'orange',
-  'RECURRING_CONFLICT_SKIP': 'orange',
-  'NOSHOW_RELEASE_SLOT': 'orange',
-  'STAFF_ROLE_CHANGE': 'orange',
-  'CHANGE_PASSWORD': 'orange',
-  'STAFF_RESET_PASSWORD': 'orange',
-  'FORGOT_PASSWORD_REQUEST': 'orange',
-  'DB_BACKUP_DOWNLOAD': 'orange',
-  'SAMPLE_DATA_CLEAN': 'orange',
-  'SERVICE_DELETE': 'orange',
-  'SHIFT_CLOSE': 'orange',
-  'CLOSE_SHIFT': 'orange',
-  'SHIFT_HANDOVER': 'orange',
-
-  // 5. TÍM (purple) - Thu ngân, dòng tiền tại quầy
-  'COLLECT_PAYMENT': 'purple',
-  'COUNTER_SALE': 'purple',
-
-  // 6. XÁM (gray) - Hệ thống chạy ngầm, không cần chú ý
-  'RUN_REMINDERS': 'gray',
-  'RUN_RECURRING_GEN': 'gray',
-  'RECURRING_CRON_GENERATE': 'gray',
-  'CRON_COMPLETE_OVERDUE_IN_PLAY': 'gray',
-  'DATABASE_BACKUP': 'gray',
-  'DB_BACKUP': 'gray',
-  'TELEGRAM_TEST': 'gray'
-};
-
-const ADMIN_LOG_COLOR_EMOJI_MAP = {
-  green: '🟢',
-  red: '🔴',
-  blue: '🔵',
-  orange: '🟠',
-  purple: '🟣',
-  gray: '⚪'
-};
-
-function getAdminLogActionColor(action) {
-  const code = String(action || '').trim().toUpperCase();
-  if (Object.prototype.hasOwnProperty.call(ADMIN_LOG_ACTION_COLOR_MAP, code)) {
-    return ADMIN_LOG_ACTION_COLOR_MAP[code];
-  }
-  return 'gray'; // Mặc định là xám nếu chưa có trong map
+    return { valid: true, clean };
 }
 
-function getAdminLogActionClass(action) {
-  const color = getAdminLogActionColor(action);
-  return `badge-action badge-${color}`;
-}
-
-function getAdminLogActionEmoji(action) {
-  const color = getAdminLogActionColor(action);
-  return ADMIN_LOG_COLOR_EMOJI_MAP[color] || '⚪';
-}
-
-const ADMIN_LOG_BADGE_CLASSES = {
-  green: 'badge-action badge-green',
-  red: 'badge-action badge-red',
-  blue: 'badge-action badge-blue',
-  orange: 'badge-action badge-orange',
-  purple: 'badge-action badge-purple',
-  gray: 'badge-action badge-gray',
-  other: 'badge-action badge-gray'
-};
-
-const ADMIN_LOG_SCALAR_FIELD_LABELS = {
-  PITCH_STATUS: 'Trạng thái',
-  PITCH_STATUS_TOGGLE: 'Trạng thái',
-  TOGGLE_PITCH: 'Trạng thái',
-  CHECKIN: 'Trạng thái',
-  COMPLETE_BOOKING: 'Trạng thái',
-  RESTORE_BOOKING: 'Trạng thái',
-  CANCEL_BOOKING: 'Trạng thái',
-  EARLY_CANCEL: 'Trạng thái',
-  NOSHOW_RELEASE_SLOT: 'Trạng thái',
-  UPDATE_PAYMENT: 'Trạng thái thanh toán',
-  ENABLE_2FA: 'Xác thực 2 bước',
-  DISABLE_2FA: 'Xác thực 2 bước',
-  SHIFT_CONFIRM: 'Trạng thái ca trực',
-  SHIFT_CLOSE: 'Trạng thái ca trực',
-  CLOSE_SHIFT: 'Trạng thái ca trực',
-  RECURRING_CANCEL: 'Trạng thái lịch cố định',
-  RECURRING_SKIP_DATE: 'Trạng thái lịch cố định'
-};
-
-/**
- * Helper escape HTML an toàn chống XSS
- */
-function escapeAdminLogHTML(str) {
-  if (typeof window.escapeHTML === 'function') {
-    return window.escapeHTML(str);
-  }
-  return String(str ?? '').replace(/[&<>"']/g, m => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-  })[m]);
-}
-
-function loadAdminLogCatalog() {
-  return adminLogCatalog;
-}
-
-function getCatalogAction(action) {
-  const code = String(action || '').trim();
-  const normalizedCode = code.toUpperCase();
-  const actions = adminLogCatalog?.actions || {};
-  const exact = Object.prototype.hasOwnProperty.call(actions, code) ? actions[code] : null;
-  if (exact) return exact;
-
-  const entry = Object.entries(actions).find(([knownCode]) => knownCode.toUpperCase() === normalizedCode);
-  return entry ? entry[1] : null;
-}
-
-function getActionBadgeInfo(action) {
-  const code = String(action || '').trim();
-  const info = getCatalogAction(code);
-  const color = getAdminLogActionColor(code);
-  const colorClass = getAdminLogActionClass(code);
-
-  if (!info) {
-    if (code && !adminLogWarnedActionCodes.has(code)) {
-      console.warn('[ADMIN LOG] Mã hành động chưa có mapping:', code);
-      adminLogWarnedActionCodes.add(code);
-    }
+function resolveActionMeta(actionCode, row = {}) {
+    const key = String(actionCode || '').trim();
+    const hit = ADMIN_LOG_CATALOG.actions[key] || ADMIN_LOG_CATALOG.actions[key.toUpperCase()] || null;
+    const cat = ADMIN_LOG_CATEGORIES[row.category] ? row.category : (hit?.category || 'CN');
     return {
-      label: code || 'Thao tác khác',
-      group: 'other',
-      groupLabel: 'Khác',
-      color: color,
-      class: colorClass
+        label: row.action_label || hit?.label || key || 'Thao tác khác',
+        category: cat,
+        categoryMeta: ADMIN_LOG_CATEGORIES[cat] || ADMIN_LOG_CATEGORIES.CN,
+        dataGroup: row.data_group || hit?.dataGroup || 'Khác',
+        registered: row.action_registered !== undefined ? Boolean(row.action_registered) : Boolean(hit)
     };
-  }
-
-  const group = adminLogCatalog.groups.find(item => item.key === info.group);
-  return {
-    label: info.label,
-    group: info.group,
-    groupLabel: group?.label || 'Khác',
-    color: color,
-    class: colorClass
-  };
 }
 
-function getActionCodesForGroup(groupKey, actionTypes) {
-  const actions = adminLogCatalog?.actions || {};
-  if (groupKey === 'other') {
-    return [...new Set((actionTypes || [])
-      .map(code => String(code))
-      .filter(code => !getCatalogAction(code)))];
-  }
-
-  const groupCodes = Object.entries(actions)
-    .filter(([, info]) => info.group === groupKey)
-    .map(([code]) => code);
-  const observedCodes = new Map((actionTypes || []).map(code => [String(code).toUpperCase(), String(code)]));
-  const uniqueCodes = new Map();
-  groupCodes.forEach(code => {
-    const normalized = code.toUpperCase();
-    if (!uniqueCodes.has(normalized)) {
-      uniqueCodes.set(normalized, observedCodes.get(normalized) || code);
-    }
-  });
-  return [...uniqueCodes.values()];
+function normalizeLogApiUrl(path) {
+    if (typeof window !== 'undefined' && typeof window.normalizeAdminApiUrl === 'function') return window.normalizeAdminApiUrl(path);
+    if (typeof window !== 'undefined' && typeof window.getRelativePath === 'function') return window.getRelativePath(path);
+    return path.startsWith('/') ? path : `../${path}`;
 }
 
-/**
- * Hiển thị 1 trong 4 trạng thái của bảng nhật ký:
- * 'loading' | 'error' | 'empty' | 'success'
- */
-function showAdminLogState(state, errorMessage = '') {
-  const loadingEl = document.getElementById('admin-log-loading');
-  const errorEl   = document.getElementById('admin-log-error');
-  const emptyEl   = document.getElementById('admin-log-empty');
-  const tableEl   = document.getElementById('admin-log-table-container');
-  const paginEl   = document.getElementById('admin-log-pagination');
-  const errorMsgEl = document.getElementById('admin-log-error-msg');
-
-  if (loadingEl) loadingEl.classList.toggle('hidden', state !== 'loading');
-  if (errorEl)   errorEl.classList.toggle('hidden', state !== 'error');
-  if (emptyEl)   emptyEl.classList.toggle('hidden', state !== 'empty');
-  if (tableEl)   tableEl.classList.toggle('hidden', state !== 'success');
-  if (paginEl)   paginEl.classList.toggle('hidden', state === 'loading' || state === 'error');
-
-  if (state === 'error' && errorMsgEl) {
-    errorMsgEl.textContent = errorMessage || 'Đã xảy ra lỗi kết nối khi tải nhật ký hệ thống.';
-  }
+function showAuditToast(msg, type = 'info') {
+    if (typeof window !== 'undefined' && window.SanBongApp?.showToast) window.SanBongApp.showToast(msg, type);
 }
 
-/**
- * Tải danh sách nhật ký quản trị từ Backend API
- * Hỗ trợ phân trang, lọc theo nhân viên, loại hành động, khoảng ngày, tìm kiếm
- */
-async function loadAdminLogs(page = 1) {
-  if (typeof isOwnerAdmin === 'function' && !isOwnerAdmin()) {
-    if (window.SanBongApp && typeof window.SanBongApp.showToast === 'function') {
-      window.SanBongApp.showToast('Bạn không có quyền xem nhật ký', 'error');
+async function auditApiRequest(path, options = {}) {
+    const headers = Object.assign({ Accept: 'application/json' }, options.headers || {});
+    if (typeof window !== 'undefined' && window.CSRF_TOKEN && !headers['X-CSRF-Token']) headers['X-CSRF-Token'] = window.CSRF_TOKEN;
+    const fetchOpts = { method: options.method || 'GET', credentials: 'same-origin', headers, signal: options.signal };
+    if (options.body !== undefined) {
+        fetchOpts.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
+        if (!headers['Content-Type']) headers['Content-Type'] = 'application/json';
     }
-    return;
-  }
-  currentLogPage = Math.max(1, parseInt(page, 10) || 1);
-  showAdminLogState('loading');
-
-  const staffSelect = document.getElementById('admin-log-filter-staff');
-  const actionSelect = document.getElementById('admin-log-filter-action');
-  const fromInput   = document.getElementById('admin-log-filter-from');
-  const toInput     = document.getElementById('admin-log-filter-to');
-  const searchInput = document.getElementById('admin-log-search');
-
-  const staffId    = staffSelect ? staffSelect.value.trim() : '';
-  const actionType = actionSelect ? actionSelect.value.trim() : '';
-  const fromDate   = fromInput ? fromInput.value.trim() : '';
-  const toDate     = toInput ? toInput.value.trim() : '';
-  const search     = searchInput ? searchInput.value.trim() : '';
-
-  const params = new URLSearchParams({
-    action: 'audit_logs',
-    page: String(currentLogPage),
-    limit: String(currentLogLimit)
-  });
-
-  if (staffId !== '') params.set('admin_id', staffId);
-  if (actionType.startsWith('__group__:')) {
-    const groupKey = actionType.slice('__group__:'.length);
-    const actionCodes = getActionCodesForGroup(groupKey, adminLogActionTypes);
-    params.set('action_codes', actionCodes.length > 0 ? actionCodes.join(',') : '__NO_MATCH__');
-  } else if (actionType !== '') {
-    params.set('action_codes', actionType);
-  }
-  if (fromDate !== '') params.set('from_date', fromDate);
-  if (toDate !== '') params.set('to_date', toDate);
-  if (search !== '') params.set('search', search);
-
-  try {
-    await loadAdminLogCatalog();
-    const fetchFn = window.adminFetchJson || async function (url) {
-      const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
-      const j = await r.json();
-      return { ok: r.ok, ...j };
-    };
-
-    const res = await fetchFn('../api/admin.php?' + params.toString());
-
-    const isOk = res && (res.ok === true || res.success === true);
-    const payload = res ? (res.data || res.json?.data) : null;
-    if (!isOk || !payload) {
-      const errMsg = res?.message || res?.json?.message || (res && res.message) || 'Không thể lấy dữ liệu nhật ký hệ thống.';
-      showAdminLogState('error', errMsg);
-      const tbody = document.getElementById('admin-log-tbody');
-      if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-xs text-red-500">${escapeAdminLogHTML(errMsg)}</td></tr>`;
-      }
-      return;
+    const res = await fetch(normalizeLogApiUrl(path), fetchOpts);
+    if (res.status === 401) {
+        if (typeof window !== 'undefined' && window.location) window.location.href = normalizeLogApiUrl('login?redirect=portal-admin');
+        const err = new Error('Phiên đăng nhập đã hết hạn.');
+        err.status = 401;
+        throw err;
     }
-
-    const data = payload;
-    adminLogActionTypes = Array.isArray(data.actionTypes) ? data.actionTypes.map(String) : [];
-    const logs = Array.isArray(data.logs) ? data.logs : [];
-    const pagination = data.pagination || {};
-
-    currentLogTotalRecords = parseInt(pagination.total, 10) || logs.length;
-    currentLogTotalPages   = Math.max(1, parseInt(pagination.totalPages, 10) || 1);
-    currentLogLimit        = parseInt(pagination.limit, 10) || currentLogLimit;
-
-    // Cập nhật bộ lọc dropdown (Staff & Action types) từ server nếu chưa nạp
-    populateAdminLogFilters(data.staffList, data.actionTypes);
-
-    // Cập nhật thông tin phân trang & badge tổng
-    updateAdminLogPaginationUI();
-
-    if (logs.length === 0) {
-      showAdminLogState('empty');
-      return;
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+        const msg = json?.error?.message || json?.message || (res.status === 403 ? 'Chỉ Admin mới có quyền xem Nhật ký quản trị.' : `Lỗi máy chủ (${res.status})`);
+        const err = new Error(msg);
+        err.status = res.status;
+        throw err;
     }
-
-    // Render bảng dữ liệu
-    renderAdminLogTable(logs, data.staffList);
-    showAdminLogState('success');
-  } catch (err) {
-    console.error('[ADMIN LOG ERROR]', err);
-    showAdminLogState('error', 'Lỗi ngoại lệ khi tải nhật ký: ' + (err.message || 'Network error'));
-  }
+    return json;
 }
-window.loadAdminLogs = loadAdminLogs;
 
-/**
- * Đổ dữ liệu vào 2 dropdown bộ lọc (Staff & Action Types)
- */
-function populateAdminLogFilters(staffList, actionTypes) {
-  adminLogActionTypes = Array.isArray(actionTypes) ? actionTypes.map(String) : [];
+function buildAuditFilterParams(includePagination = true) {
+    const p = new URLSearchParams();
+    if (includePagination) { p.set('page', String(adminLogState.page)); p.set('limit', String(adminLogState.limit)); }
+    if (adminLogState.staffId) p.set('admin_id', adminLogState.staffId);
+    if (adminLogState.actionType) p.set('action_type', adminLogState.actionType);
+    if (adminLogState.dataGroup) p.set('data_group', adminLogState.dataGroup);
+    if (adminLogState.fromDate) p.set('from_date', adminLogState.fromDate);
+    if (adminLogState.toDate) p.set('to_date', adminLogState.toDate);
+    if (adminLogState.search) p.set('search', adminLogState.search);
+    if (adminLogState.categories.length) p.set('categories', adminLogState.categories.join(','));
+    if (adminLogState.quickFilter) p.set('quick_filter', adminLogState.quickFilter);
+    return p;
+}
 
-  // 1. Staff dropdown
-  const staffSelect = document.getElementById('admin-log-filter-staff');
-  if (staffSelect && !adminLogStaffOptionsPopulated) {
-    const currentVal = staffSelect.value;
-    staffSelect.innerHTML = '<option value="">Tất cả nhân sự</option>';
-    (Array.isArray(staffList) ? staffList : []).forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = String(s.id);
-      const roleLabel = s.role === 'admin' ? 'Chủ sân' : (s.role === 'manager' ? 'Quản lý' : 'Nhân viên');
-      opt.textContent = `${s.full_name || s.username} (${roleLabel})`;
-      staffSelect.appendChild(opt);
+function hydrateAdminLogFiltersFromUrl() {
+    if (adminLogState.urlHydrated || typeof window === 'undefined' || !window.location?.search) return;
+    adminLogState.urlHydrated = true;
+    const sp = new URLSearchParams(window.location.search);
+    [['admin_id', 'staffId'], ['action_type', 'actionType'], ['data_group', 'dataGroup'], ['from_date', 'fromDate'],
+     ['to_date', 'toDate'], ['search', 'search'], ['quick_filter', 'quickFilter']].forEach(([q, k]) => {
+        if (sp.get(q)) adminLogState[k] = sp.get(q);
     });
-    const systemOption = document.createElement('option');
-    systemOption.value = 'system';
-    systemOption.textContent = 'Hệ thống (tự động)';
-    staffSelect.appendChild(systemOption);
-    if (currentVal) staffSelect.value = currentVal;
-    adminLogStaffOptionsPopulated = true;
-  }
+    if (sp.get('categories')) {
+        adminLogState.categories = sp.get('categories').split(',').map((c) => c.trim().toUpperCase()).filter((c) => Boolean(ADMIN_LOG_CATEGORIES[c]));
+    }
+    if (['10', '25', '50', '100'].includes(sp.get('limit'))) adminLogState.limit = Number(sp.get('limit'));
+    if (sp.get('page')) adminLogState.page = Math.max(1, Number(sp.get('page')) || 1);
+}
 
-  // 2. Action types dropdown
-  const actionSelect = document.getElementById('admin-log-filter-action');
-  if (actionSelect && adminLogCatalog && !adminLogActionOptionsPopulated) {
-    const currentVal = actionSelect.value;
-    actionSelect.innerHTML = '<option value="">Tất cả loại hành động</option>';
-
-    adminLogCatalog.groups.forEach(group => {
-      const knownActions = Object.entries(adminLogCatalog.actions)
-        .filter(([, info]) => info.group === group.key);
-      const unknownActions = group.key === 'other'
-        ? [...new Set(adminLogActionTypes.filter(code => !getCatalogAction(code)))]
-        : [];
-      if (group.key === 'other' && unknownActions.length === 0) return;
-
-      const options = [];
-      if (group.key !== 'other') {
-        const groupOption = document.createElement('option');
-        groupOption.value = `__group__:${group.key}`;
-        groupOption.textContent = `Cả nhóm · ${group.label}`;
-        options.push(groupOption);
-
-        const observedCodes = new Map(adminLogActionTypes.map(code => [code.toUpperCase(), code]));
-        const groupedByLabel = new Map();
-
-        knownActions.forEach(([code, info]) => {
-          let label = String(info.label || '').trim();
-          const upperCode = code.toUpperCase();
-          if (['VOUCHER_SAVE', 'VOUCHER_CREATE', 'VOUCHER_UPDATE'].includes(upperCode)) {
-            label = 'Lưu / Cập nhật voucher';
-          }
-
-          if (!groupedByLabel.has(label)) {
-            groupedByLabel.set(label, {
-              label: label,
-              codes: []
-            });
-          }
-
-          const entry = groupedByLabel.get(label);
-          const actualCode = observedCodes.get(upperCode) || code;
-          if (!entry.codes.includes(actualCode)) {
-            entry.codes.push(actualCode);
-          }
-          if (!entry.codes.includes(upperCode)) {
-            entry.codes.push(upperCode);
-          }
-        });
-
-        [...groupedByLabel.values()]
-          .sort((a, b) => a.label.localeCompare(b.label, 'vi', { sensitivity: 'base' }))
-          .forEach(action => {
-            const firstCode = action.codes[0] || '';
-            const emoji = getAdminLogActionEmoji(firstCode);
-            const option = document.createElement('option');
-            option.value = action.codes.join(',');
-            option.textContent = `${emoji} ${action.label}`;
-            options.push(option);
-          });
-      } else {
-        unknownActions.sort((a, b) => a.localeCompare(b, 'vi', { sensitivity: 'base' }))
-          .forEach(code => {
-            const emoji = getAdminLogActionEmoji(code);
-            const option = document.createElement('option');
-            option.value = code;
-            option.textContent = `${emoji} ${code}`;
-            options.push(option);
-          });
-      }
-
-      const optgroup = document.createElement('optgroup');
-      optgroup.label = group.label;
-      options.forEach(option => optgroup.appendChild(option));
-      actionSelect.appendChild(optgroup);
+function syncAdminLogInputsFromState() {
+    AUDIT_INPUT_BINDINGS.forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el && el.value !== adminLogState[key]) el.value = adminLogState[key];
     });
-    if (currentVal) actionSelect.value = currentVal;
-    adminLogActionOptionsPopulated = true;
-  }
+    const lim = document.getElementById('admin-log-limit-select');
+    if (lim) lim.value = String(adminLogState.limit);
+    const clr = document.getElementById('admin-log-search-clear');
+    if (clr) clr.classList.toggle('hidden', !adminLogState.search);
+    document.querySelectorAll('#admin-log-category-chips .audit-chip').forEach((btn) => {
+        const active = adminLogState.categories.includes(btn.getAttribute('data-cat'));
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('#admin-log-kpi-grid .audit-kpi-card').forEach((card) => {
+        const active = (card.getAttribute('data-quick') || '') === adminLogState.quickFilter;
+        card.classList.toggle('active', active);
+        card.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
 }
 
-function getActionDisplayLabel(action) {
-  const info = getActionBadgeInfo(action);
-  return info.label;
+function readAdminLogInputsToState() {
+    AUDIT_INPUT_BINDINGS.forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el) adminLogState[key] = el.value.trim();
+    });
+    const clr = document.getElementById('admin-log-search-clear');
+    if (clr) clr.classList.toggle('hidden', !adminLogState.search);
 }
 
-function formatAdminLogValue(key, value) {
-  if (value === undefined || value === null) return '(trống)';
-  const field = adminLogCatalog?.fields?.[key];
-  const raw = typeof value === 'object' ? JSON.stringify(value) : String(value);
-  if (!field?.format) return raw;
-
-  if (field.format === 'currency') {
-    const digits = raw.replace(/[^\d-]/g, '');
-    if (!digits || digits === '-') return raw;
-    const amount = Number(digits);
-    return Number.isFinite(amount) ? `${amount.toLocaleString('vi-VN')}đ` : raw;
-  }
-
-  if (field.format === 'number') {
-    const number = Number(raw);
-    return Number.isFinite(number) ? number.toLocaleString('vi-VN') : raw;
-  }
-
-  if (field.format === 'percent') {
-    return /%$/.test(raw.trim()) ? raw : `${raw}%`;
-  }
-
-  if (field.format === 'minutes' || field.format === 'hours') {
-    const unit = field.format === 'minutes' ? ' phút' : ' giờ';
-    return /(?:phút|giờ)$/.test(raw.trim()) ? raw : `${raw}${unit}`;
-  }
-
-  if (field.format === 'boolean') {
-    const normalized = raw.trim().toLowerCase();
-    if (['1', 'true', 'yes', 'on'].includes(normalized)) return 'Bật';
-    if (['0', 'false', 'no', 'off'].includes(normalized)) return 'Tắt';
-  }
-
-  return raw;
+function syncAdminLogUrlParams() {
+    if (typeof window === 'undefined' || !window.history?.replaceState) return;
+    const cur = new URLSearchParams(window.location.search);
+    if (cur.get('tab') !== 'logs') return;
+    const next = new URLSearchParams();
+    next.set('tab', 'logs');
+    for (const [k, v] of buildAuditFilterParams(true).entries()) {
+        if ((k === 'page' && v === '1') || (k === 'limit' && v === '25')) continue;
+        next.set(k, v);
+    }
+    window.history.replaceState(null, '', `${window.location.pathname}?${next.toString()}`);
 }
 
-/**
- * Giải mã JSON audit, kể cả khi JSON đã được encode lồng một lần.
- */
-function parseAdminLogValue(value) {
-  if (typeof value !== 'string') return value;
+function initAdminLogPlugins() {
+    if (adminLogState.pluginsReady) return;
+    adminLogState.pluginsReady = true;
+    const root = typeof document !== 'undefined' ? document.getElementById('tab-content-logs') : null;
+    if (root && typeof window !== 'undefined' && window.SanBongDatePicker?.init) window.SanBongDatePicker.init(root);
+    startAdminLogAutoCheck();
+}
 
-  let raw = value.trim();
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    if (!/^[{["]/.test(raw)) return value;
+function updateAuditTimestamp() {
+    const el = document.getElementById('admin-log-updated-at');
+    if (!el) return;
+    const p = getVnDateParts(new Date());
+    el.textContent = `Cập nhật ${p.hour}:${p.minute}`;
+}
+
+async function loadAdminLogSummary() {
+    if (adminLogState.summaryAbort) adminLogState.summaryAbort.abort();
+    adminLogState.summaryAbort = new AbortController();
     try {
-      const parsed = JSON.parse(raw);
-      if (typeof parsed === 'string') {
-        raw = parsed.trim();
-        continue;
-      }
-      return parsed;
-    } catch (error) {
-      return value;
+        const qs = buildAuditFilterParams(false).toString();
+        const res = await auditApiRequest(`api/admin.php?action=audit_summary${qs ? '&' + qs : ''}`, { signal: adminLogState.summaryAbort.signal });
+        const d = res.data || {};
+        const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setTxt('audit-kpi-total-val', Number(d.total_actions || 0).toLocaleString('vi-VN'));
+        setTxt('audit-kpi-total-sub', (d.period && d.period.is_today === false) ? 'Theo bộ lọc đang chọn' : 'Hôm nay (theo giờ VN)');
+        const unrev = Number(d.unreviewed_anomalies || 0);
+        setTxt('audit-kpi-anomaly-val', unrev.toLocaleString('vi-VN'));
+        const anoCard = document.getElementById('audit-kpi-anomaly');
+        if (anoCard) anoCard.classList.toggle('is-alert-red', unrev > 0);
+        setTxt('audit-kpi-finance-val', Number(d.finance_cash_count || 0).toLocaleString('vi-VN'));
+        setTxt('audit-kpi-shifts-val', Number(d.shift_count || 0).toLocaleString('vi-VN'));
+        const shiftSub = document.getElementById('audit-kpi-shifts-sub');
+        if (shiftSub) {
+            const st = d.latest_shift_status || {};
+            shiftSub.textContent = st.text || 'Chưa có ca trực trong kỳ';
+            shiftSub.style.color = st.level === 'danger' ? 'var(--r)' : (st.level === 'warning' ? 'var(--y)' : (st.level === 'ok' ? 'var(--g)' : 'var(--n)'));
+        }
+        if (d.latest_id && Number(d.latest_id) > adminLogState.latestId) adminLogState.latestId = Number(d.latest_id);
+        updateAuditTimestamp();
+    } catch (err) {
+        if (err.name !== 'AbortError') { /* giữ nguyên KPI gần nhất */ }
     }
-  }
-  return value;
 }
 
-function normalizeAdminLogObject(value) {
-  if (!Array.isArray(value)) return value;
-  if (value.length === 1 && value[0] && typeof value[0] === 'object' && !Array.isArray(value[0])) {
-    return value[0];
-  }
+function populateAuditFilterOptions(staffList = [], actionTypes = []) {
+    const staffSel = document.getElementById('admin-log-filter-staff');
+    if (staffSel && Array.isArray(staffList) && staffList.length) {
+        const cur = adminLogState.staffId || staffSel.value;
+        staffSel.innerHTML = '<option value="">Tất cả nhân sự</option>' + staffList.map((s) => {
+            const name = s.full_name || s.username || ('NV #' + s.id);
+            return `<option value="${auditEsc(s.id)}">${auditEsc(s.role ? `${name} (${s.role})` : name)}</option>`;
+        }).join('');
+        staffSel.value = cur;
+    }
+    const actSel = document.getElementById('admin-log-filter-action');
+    if (actSel) {
+        const curAct = adminLogState.actionType || actSel.value;
+        let html = '<option value="">Tất cả thao tác</option><optgroup label="Theo nhóm nghiệp vụ">';
+        ADMIN_LOG_DATA_GROUPS.filter((g) => g !== 'Khác').forEach((dg) => {
+            html += `<option value="__group__:${auditEsc(dg)}">Nhóm: ${auditEsc(dg)}</option>`;
+        });
+        html += '<option value="__group__:automation">Nhóm: Tự động hệ thống (TT)</option></optgroup><optgroup label="Chi tiết mã thao tác">';
+        const codes = new Set([...(Array.isArray(actionTypes) ? actionTypes : []), ...Object.keys(ADMIN_LOG_CATALOG.actions)]);
+        Array.from(codes).sort().forEach((code) => {
+            html += `<option value="${auditEsc(code)}">${auditEsc(resolveActionMeta(code).label)} [${auditEsc(code)}]</option>`;
+        });
+        html += '</optgroup>';
+        actSel.innerHTML = html;
+        actSel.value = curAct;
+    }
+}
+const populateAdminLogFilters = populateAuditFilterOptions;
 
-  if (value.length > 0 && value.every(item => item && typeof item === 'object' && !Array.isArray(item))) {
-    const mapped = {};
-    let hasKeyValuePairs = false;
-    value.forEach(item => {
-      const key = item.key ?? item.setting_key;
-      if (typeof key === 'string') {
-        mapped[key] = item.value ?? item.setting_value ?? '';
-        hasKeyValuePairs = true;
-      }
+function setAdminLogViewState(mode, errorMsg = '') {
+    [['admin-log-loading', 'loading'], ['admin-log-error', 'error'], ['admin-log-empty', 'empty'],
+     ['admin-log-table-container', 'ready']].forEach(([id, target]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', mode !== target);
     });
-    if (hasKeyValuePairs) return mapped;
-  }
-
-  return value;
+    const pgEl = document.getElementById('admin-log-pagination');
+    if (pgEl) pgEl.classList.toggle('hidden', mode !== 'ready' && mode !== 'empty');
+    if (mode === 'error') {
+        const msgEl = document.getElementById('admin-log-error-msg');
+        if (msgEl) msgEl.textContent = errorMsg || 'Không thể tải dữ liệu nhật ký.';
+    }
 }
 
-function renderLogMessage(message) {
-  const text = String(message || '').trim();
-  if (!text) return '';
-
-  const safeText = escapeAdminLogHTML(text);
-  const containsSerializedData = /(?:\{\s*["']?[A-Za-z_][\w-]*["']?\s*:|\[\s*\{)/.test(text);
-  if (text.length <= 180 && !containsSerializedData) {
-    return `<div class="text-xs text-slate-600 leading-relaxed line-clamp-2 break-words">${safeText}</div>`;
-  }
-
-  const preview = `${escapeAdminLogHTML(text.slice(0, 130))}${text.length > 130 ? '…' : ''}`;
-  return `
-    <details class="rounded-lg border border-slate-200 bg-slate-50">
-      <summary class="cursor-pointer px-2.5 py-2 text-xs text-slate-600 leading-relaxed break-words">
-        <span class="line-clamp-2">${preview}</span>
-        <span class="mt-1 inline-block text-[10px] font-semibold text-emerald-700">Xem nội dung đầy đủ</span>
-      </summary>
-      <div class="max-h-40 overflow-auto whitespace-pre-wrap break-words border-t border-slate-200 px-2.5 py-2 text-xs text-slate-600">${safeText}</div>
-    </details>
-  `;
+function renderAuditDiffBlock(row) {
+    const meta = resolveActionMeta(row.action, row);
+    const diffs = Array.isArray(row.diffs) ? row.diffs : [];
+    const maxInline = 2;
+    let html = `<div class="audit-detail-summary">${auditEsc(maskAuditPhone(row.formatted_message || meta.label))}</div>`;
+    if (diffs.length) {
+        const isExp = Boolean(adminLogState.expandedDiffs[row.id]);
+        html += '<div class="audit-diff-list">' + (isExp ? diffs : diffs.slice(0, maxInline)).map((df) => {
+            const fLabel = df.label || ADMIN_LOG_CATALOG.fieldLabels[df.field] || df.field || 'Giá trị';
+            return `<div class="audit-diff-item"><span class="audit-diff-key">${auditEsc(fLabel)}:</span> <del class="audit-diff-old">${auditEsc(maskAuditPhone(df.old ?? '—'))}</del> <span aria-hidden="true">→</span> <ins class="audit-diff-new">${auditEsc(maskAuditPhone(df.new ?? '—'))}</ins></div>`;
+        }).join('') + '</div>';
+        if (diffs.length > maxInline) {
+            html += `<button type="button" class="audit-inline-link" onclick="toggleAuditDiffExpand(${Number(row.id)})">${isExp ? 'Thu gọn thay đổi' : `+${diffs.length - maxInline} thay đổi nữa`}</button>`;
+        }
+    } else if (meta.dataGroup === 'Khác' && (row.old_value || row.new_value)) {
+        const openJson = Boolean(adminLogState.expandedJson[row.id]);
+        html += `<button type="button" class="audit-inline-link" onclick="toggleAuditJsonExpand(${Number(row.id)})">${openJson ? 'Ẩn JSON chi tiết' : 'Xem JSON chi tiết'}</button>`;
+        if (openJson) html += `<pre class="audit-json-pre">${auditEsc(maskAuditPhone(JSON.stringify({ old: row.old_value, new: row.new_value }, null, 2)))}</pre>`;
+    }
+    return html;
 }
 
-/**
- * So sánh thay đổi theo trường và chỉ mở rộng khi người dùng cần xem.
- */
-function renderLogDiffContent(oldValRaw, newValRaw, action = '') {
-  const oldValue = normalizeAdminLogObject(parseAdminLogValue(oldValRaw));
-  const newValue = normalizeAdminLogObject(parseAdminLogValue(newValRaw));
-  const isPlainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-  const isJsonCandidate = value => typeof value === 'string' && /^[\s]*[{[]/.test(value);
-  const isMalformedJson = (raw, parsed) => isJsonCandidate(raw) && parsed === raw;
-
-  if (isMalformedJson(oldValRaw, oldValue) || isMalformedJson(newValRaw, newValue)) {
-    const rawText = [oldValRaw, newValRaw]
-      .filter(value => value !== null && value !== undefined && String(value) !== '')
-      .map(value => String(value))
-      .join(' → ');
-    const safeText = escapeAdminLogHTML(rawText);
-    if (rawText.length <= 150) {
-      return `<div class="whitespace-pre-wrap break-all text-[11px] text-slate-600">${safeText}</div>`;
+function renderAuditReviewCell(row) {
+    const reasons = Array.isArray(row.anomaly_reasons) ? row.anomaly_reasons : [];
+    let html = Number(row.is_anomaly) === 1
+        ? `<div class="mb-1"><span class="audit-anomaly-badge" title="${auditEsc(reasons.join('; ') || 'Thao tác vượt ngưỡng kiểm soát')}">Bất thường</span><div class="audit-anomaly-reason">${auditEsc(reasons[0] || '')}</div></div>`
+        : '';
+    if (row.review) {
+        const revTime = formatAuditDateTime(row.review.created_at_formatted || row.review.created_at);
+        return html + `<div class="audit-review-done"><span class="audit-reviewed-badge">Đã hậu kiểm</span><div class="audit-review-note">${auditEsc(row.review.note)}</div><div class="audit-review-meta">${auditEsc(row.review.reviewer_name || 'Admin')} · ${auditEsc(revTime)}</div></div>`;
     }
-
-    return `
-      <details class="rounded-lg border border-slate-200 bg-slate-50">
-        <summary class="cursor-pointer break-all px-2.5 py-2 text-xs text-slate-600">
-          ${escapeAdminLogHTML(rawText.slice(0, 150))}…
-          <span class="ml-1 font-semibold text-emerald-700">Xem thêm</span>
-        </summary>
-        <div class="whitespace-pre-wrap break-all overflow-x-hidden border-t border-slate-200 px-2.5 py-2 text-xs text-slate-600">${safeText}</div>
-      </details>
-    `;
-  }
-
-  const comparableValue = value => {
-    if (Array.isArray(value)) return `[${value.map(comparableValue).join(',')}]`;
-    if (isPlainObject(value)) {
-      return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${comparableValue(value[key])}`).join(',')}}`;
+    if (adminLogState.openReviewId === Number(row.id)) {
+        return html + `<div class="audit-review-editor"><textarea id="audit-review-input-${Number(row.id)}" class="audit-review-textarea" rows="2" placeholder="Nhập ghi chú hậu kiểm (>= 10 ký tự)..."></textarea><div class="audit-review-actions"><button type="button" id="audit-review-submit-${Number(row.id)}" class="audit-btn-save" onclick="submitAuditReview(${Number(row.id)})">Lưu hậu kiểm</button><button type="button" class="audit-btn-cancel" onclick="toggleAuditReviewEditor(${Number(row.id)}, false)">Hủy</button></div></div>`;
     }
-    return String(value);
-  };
-  const diffItems = [];
+    return html + `<button type="button" class="audit-btn-mark" onclick="toggleAuditReviewEditor(${Number(row.id)}, true)">Hậu kiểm</button>`;
+}
 
-  if (isPlainObject(oldValue) || isPlainObject(newValue)) {
-    const oldObj = isPlainObject(oldValue) ? oldValue : {};
-    const newObj = isPlainObject(newValue) ? newValue : {};
-    const allKeys = Array.from(new Set([...Object.keys(oldObj), ...Object.keys(newObj)]))
-      .sort((a, b) => {
-        const labelA = adminLogCatalog?.fields?.[a]?.label || a;
-        const labelB = adminLogCatalog?.fields?.[b]?.label || b;
-        return labelA.localeCompare(labelB, 'vi', { sensitivity: 'base' });
-      });
-
-    allKeys.forEach(k => {
-      // Bỏ qua các key hệ thống / nhạy cảm
-      if (['password', 'password_hash', 'token', 'csrf_token', 'totp_secret', 'api_key'].includes(k)) return;
-      const field = Object.prototype.hasOwnProperty.call(adminLogCatalog?.fields || {}, k)
-        ? adminLogCatalog.fields[k]
-        : null;
-      const fieldLabel = field?.label || k;
-      const oldExists = Object.prototype.hasOwnProperty.call(oldObj, k);
-      const newExists = Object.prototype.hasOwnProperty.call(newObj, k);
-      if (oldExists && newExists && comparableValue(oldObj[k]) === comparableValue(newObj[k])) return;
-
-      const vOld = oldExists ? formatAdminLogValue(k, oldObj[k]) : '—';
-      const vNew = newExists ? formatAdminLogValue(k, newObj[k]) : '—';
-      diffItems.push(`
-        <div class="whitespace-normal break-all py-0.5 text-[11px] leading-relaxed">
-          <span class="font-semibold text-slate-600">- ${escapeAdminLogHTML(fieldLabel)}:</span>
-          <del class="text-rose-700">${escapeAdminLogHTML(vOld)}</del>
-          <span class="text-slate-400"> → </span>
-          <strong class="text-emerald-800">${escapeAdminLogHTML(vNew)}</strong>
-        </div>
-      `);
+function renderAdminLogRows(logs = []) {
+    const tbody = document.getElementById('admin-log-tbody');
+    if (!tbody) return;
+    let html = '';
+    let prevDateKey = '';
+    logs.forEach((rawRow) => {
+        const revealed = adminLogState.revealedMap[rawRow.id];
+        const row = revealed ? Object.assign({}, rawRow, revealed) : rawRow;
+        const meta = resolveActionMeta(row.action, row);
+        const dateKey = getAuditDateKey(row.created_at_formatted || row.created_at);
+        if (dateKey && dateKey !== prevDateKey) {
+            prevDateKey = dateKey;
+            html += `<tr class="audit-day-divider"><td colspan="5">${auditEsc(formatAuditDayDivider(dateKey))}</td></tr>`;
+        }
+        const objStr = revealed ? (row.object_code || row.object_display || '') : (row.object_display || maskAuditPhone(row.object_code || ''));
+        const revealBtn = row.has_sensitive_phone && !revealed ? ` <button type="button" class="audit-inline-link" onclick="revealAuditSensitive(${Number(row.id)})">Xem chi tiết</button>` : '';
+        html += `<tr class="${Number(row.is_anomaly) === 1 && !row.review ? 'audit-row-anomaly' : ''}" data-log-id="${Number(row.id)}">
+            <td class="audit-td-time"><div class="audit-time-main">${auditEsc(formatAuditDateTime(row.created_at_formatted || row.created_at))}</div><div class="audit-ip">${auditEsc(row.ip || '—')}</div></td>
+            <td><div class="audit-actor-name">${auditEsc(row.actor_name || row.actor_username || 'Hệ thống')}</div><div class="audit-actor-role">${auditEsc(row.actor_role || 'system')}</div></td>
+            <td><span class="audit-cat-badge ${auditEsc(meta.categoryMeta.badgeClass)}">${auditEsc(meta.category)} · ${auditEsc(meta.categoryMeta.label)}</span><div class="audit-action-label">${auditEsc(meta.label)}</div><div class="audit-data-group">${auditEsc(meta.dataGroup)}</div></td>
+            <td>${objStr ? `<div class="audit-obj-row"><span class="audit-obj-code">${auditEsc(objStr)}</span>${revealBtn}</div>` : ''}${renderAuditDiffBlock(row)}</td>
+            <td>${renderAuditReviewCell(row)}</td></tr>`;
     });
-  } else if (oldValue !== null || newValue !== null) {
-    const oldExists = oldValue !== null && oldValue !== undefined;
-    const newExists = newValue !== null && newValue !== undefined;
-    if (!oldExists || !newExists || comparableValue(oldValue) !== comparableValue(newValue)) {
-      const vOld = oldExists ? formatAdminLogValue('', oldValue) : '—';
-      const vNew = newExists ? formatAdminLogValue('', newValue) : '—';
-      const actionCode = String(action || '').trim().toUpperCase();
-      const fieldLabel = ADMIN_LOG_SCALAR_FIELD_LABELS[actionCode] || String(action || 'UNKNOWN_ACTION');
-      diffItems.push(`
-        <div class="whitespace-normal break-all py-0.5 text-[11px] leading-relaxed">
-          <span class="font-semibold text-slate-600">- ${escapeAdminLogHTML(fieldLabel)}:</span>
-          <del class="text-rose-700">${escapeAdminLogHTML(vOld)}</del>
-          <span class="text-slate-400"> → </span>
-          <strong class="text-emerald-800">${escapeAdminLogHTML(vNew)}</strong>
-        </div>
-      `);
-    }
-  }
-
-  if (diffItems.length === 0) return '<div class="text-[11px] italic text-slate-500">Không có thay đổi giá trị</div>';
-  if (diffItems.length <= 5) {
-    return `<div class="max-w-full overflow-x-hidden">${diffItems.join('')}</div>`;
-  }
-
-  return `
-    <details class="max-w-full rounded-lg border border-slate-200 bg-white">
-      <summary class="cursor-pointer px-2.5 py-2 text-xs font-semibold text-slate-700">
-        ${diffItems.length} trường thay đổi · Xem chi tiết
-      </summary>
-      <div class="max-h-64 overflow-y-auto overflow-x-hidden border-t border-slate-200 px-2.5 py-1">
-        ${diffItems.join('')}
-      </div>
-    </details>
-  `;
+    tbody.innerHTML = html;
 }
 
-function formatAdminLogTimestamp(value) {
-  const text = String(value || '').trim();
-  if (!text) return '---';
-  if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}$/.test(text)) return text;
-
-  const sqlTimestamp = text.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-  if (sqlTimestamp) {
-    return `${sqlTimestamp[3]}/${sqlTimestamp[2]}/${sqlTimestamp[1]} ${sqlTimestamp[4]}:${sqlTimestamp[5]}`;
-  }
-  return text;
+function renderAdminLogPagination() {
+    const p = adminLogState.page, tp = Math.max(1, adminLogState.totalPages || 1), tot = Number(adminLogState.total || 0);
+    const start = tot === 0 ? 0 : (p - 1) * adminLogState.limit + 1, end = tot === 0 ? 0 : Math.min(tot, p * adminLogState.limit);
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('admin-log-range-summary', `Hiển thị ${start}–${end} / ${tot} bản ghi`);
+    setTxt('admin-log-page-current', String(p));
+    setTxt('admin-log-page-total', String(tp));
+    setTxt('admin-log-total-count', String(tot));
+    const prev = document.getElementById('admin-log-prev-btn'), next = document.getElementById('admin-log-next-btn');
+    if (prev) prev.disabled = p <= 1;
+    if (next) next.disabled = p >= tp;
+    const nums = document.getElementById('admin-log-page-numbers');
+    if (nums) {
+        const from = Math.max(1, p - 2), to = Math.min(tp, from + 4);
+        nums.innerHTML = Array.from({ length: to - from + 1 }, (_, i) => from + i).map((i) =>
+            `<button type="button" class="audit-page-btn${i === p ? ' active' : ''}" onclick="loadAdminLogs(${i})" aria-current="${i === p ? 'page' : 'false'}">${i}</button>`
+        ).join('');
+    }
 }
 
-function formatAdminLogRelativeTime(value) {
-  const text = String(value || '').trim();
-  if (!text) return '';
-
-  let d = null;
-  const sqlMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (sqlMatch) {
-    d = new Date(
-      parseInt(sqlMatch[1], 10),
-      parseInt(sqlMatch[2], 10) - 1,
-      parseInt(sqlMatch[3], 10),
-      parseInt(sqlMatch[4], 10),
-      parseInt(sqlMatch[5], 10),
-      parseInt(sqlMatch[6] || 0, 10)
-    );
-  } else {
-    const dmyMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?/);
-    if (dmyMatch) {
-      d = new Date(
-        parseInt(dmyMatch[3], 10),
-        parseInt(dmyMatch[2], 10) - 1,
-        parseInt(dmyMatch[1], 10),
-        parseInt(dmyMatch[4] || 0, 10),
-        parseInt(dmyMatch[5] || 0, 10)
-      );
-    } else {
-      d = new Date(text);
+async function loadAdminLogs(page = 1) {
+    if (!adminLogState.urlHydrated) hydrateAdminLogFiltersFromUrl();
+    else readAdminLogInputsToState();
+    initAdminLogPlugins();
+    adminLogState.page = Math.max(1, Number(page) || 1);
+    syncAdminLogInputsFromState();
+    syncAdminLogUrlParams();
+    hideAuditNewBanner();
+    setAdminLogViewState('loading');
+    if (adminLogState.listAbort) adminLogState.listAbort.abort();
+    adminLogState.listAbort = new AbortController();
+    loadAdminLogSummary();
+    try {
+        const res = await auditApiRequest(`api/admin.php?action=audit_logs&${buildAuditFilterParams(true).toString()}`, { signal: adminLogState.listAbort.signal });
+        const d = res.data || {}, pg = d.pagination || {};
+        adminLogState.logs = Array.isArray(d.logs) ? d.logs : [];
+        adminLogState.page = Number(pg.page || adminLogState.page);
+        adminLogState.total = Number(pg.total ?? adminLogState.logs.length);
+        adminLogState.totalPages = Number(pg.totalPages || Math.max(1, Math.ceil(adminLogState.total / adminLogState.limit)));
+        if (d.latest_id && Number(d.latest_id) > adminLogState.latestId) adminLogState.latestId = Number(d.latest_id);
+        populateAuditFilterOptions(d.staffList || [], d.actionTypes || []);
+        if (!adminLogState.logs.length) { setAdminLogViewState('empty'); renderAdminLogPagination(); return; }
+        renderAdminLogRows(adminLogState.logs);
+        renderAdminLogPagination();
+        setAdminLogViewState('ready');
+        updateAuditTimestamp();
+    } catch (err) {
+        if (err.name !== 'AbortError') setAdminLogViewState('error', err.message || 'Lỗi tải nhật ký quản trị.');
     }
-  }
-
-  if (!d || isNaN(d.getTime())) return '';
-
-  const now = new Date();
-  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
-
-  if (diffSec < 60) return 'Vừa xong';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin} phút trước`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24 && now.getDate() === d.getDate() && now.getMonth() === d.getMonth() && now.getFullYear() === d.getFullYear()) {
-    return `${diffHours} giờ trước`;
-  }
-
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (yesterday.getDate() === d.getDate() && yesterday.getMonth() === d.getMonth() && yesterday.getFullYear() === d.getFullYear()) {
-    return 'Hôm qua';
-  }
-
-  const diffDays = Math.floor(diffSec / 86400);
-  if (diffDays <= 7) {
-    return `${Math.max(1, diffDays)} ngày trước`;
-  }
-
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
 }
 
-/**
- * Chuẩn hóa và suy đoán thông tin Đối tượng thao tác (Loại đối tượng + Tên/Mã đối tượng)
- */
-function resolveAdminLogTarget(item) {
-  const action = String(item.action || '').trim().toUpperCase();
-  let rawType = String(item.target_type || '').trim().toLowerCase();
-  let rawId = String(item.target_id || item.booking_id || '').trim();
-
-  // 1. Nếu có sẵn rawId nhưng rawType rỗng hoặc generic 'other', suy luận loại dựa trên ID và Action
-  if (rawId !== '') {
-    if (!rawType || rawType === 'null' || rawType === 'other' || rawType === 'đối tượng') {
-      if (/^P\d+-/i.test(rawId) || action.includes('PITCH')) {
-        rawType = 'pitch';
-      } else if (/^BK-/i.test(rawId) || /^[A-Z0-9]{8,12}$/i.test(rawId) || action.includes('BOOKING') || action === 'CHECKIN' || action === 'RESTORE_BOOKING') {
-        rawType = 'booking';
-      } else if (action.includes('VOUCHER') || /^VC-/i.test(rawId) || /^QA/i.test(rawId)) {
-        rawType = 'voucher';
-      } else if (action.includes('SERVICE') || /^SRV-/i.test(rawId)) {
-        rawType = 'service';
-      } else if (action.includes('EXPENSE') || /^EXP-/i.test(rawId)) {
-        rawType = 'expense';
-      } else if (action.includes('SHIFT')) {
-        rawType = 'shift';
-      } else if (action.includes('USER') || action.includes('MEMBER') || action.includes('STAFF')) {
-        rawType = 'user';
-      }
-    }
-  } else {
-    // 2. Nếu rawId hoàn toàn rỗng (các thao tác cấp hệ thống, bảng giá, bảo mật...)
-    if (['UPDATE_PRICING', 'UPDATE_PRICE', 'PRICE_UPDATE'].includes(action)) {
-      return { typeLabel: 'Bảng giá', idText: 'Bảng giá sân' };
-    }
-    if (['ENABLE_2FA', 'DISABLE_2FA', '2FA_TOGGLE'].includes(action)) {
-      return { typeLabel: 'Bảo mật', idText: 'Xác thực 2FA' };
-    }
-    if (['UPDATE_SETTINGS', 'SYSTEM_SETTINGS'].includes(action)) {
-      return { typeLabel: 'Cài đặt', idText: 'Cấu hình chung' };
-    }
-    if (['DB_BACKUP', 'DB_BACKUP_DOWNLOAD'].includes(action)) {
-      return { typeLabel: 'Hệ thống', idText: 'Sao lưu CSDL' };
-    }
-    if (['GOLDEN_HOUR_SAVE', 'GOLDEN_HOUR_DELETE'].includes(action)) {
-      return { typeLabel: 'Khuyến mãi', idText: 'Giờ vàng' };
-    }
-    if (['SAMPLE_DATA_CLEAN', 'SAMPLE_DATA_SEED'].includes(action)) {
-      return { typeLabel: 'Dữ liệu', idText: 'Dữ liệu mẫu' };
-    }
-    if (['TELEGRAM_TEST', 'TEST_TELEGRAM'].includes(action)) {
-      return { typeLabel: 'Thông báo', idText: 'Bot Telegram' };
-    }
-    if (['RUN_RECURRING_GEN'].includes(action)) {
-      return { typeLabel: 'Lịch lặp', idText: 'Tự động sinh' };
-    }
-    if (['RUN_REMINDERS'].includes(action)) {
-      return { typeLabel: 'Nhắc lịch', idText: 'Gửi nhắc đá' };
-    }
-    if (action.includes('SHIFT')) {
-      return { typeLabel: 'Ca trực', idText: 'Ca trực' };
-    }
-    if (action.includes('CHANGE_PASSWORD')) {
-      return { typeLabel: 'Tài khoản', idText: 'Đổi mật khẩu' };
-    }
-    if (['FORGOT_PASSWORD_REQUEST'].includes(action)) {
-      return { typeLabel: 'Bảo mật', idText: 'Khôi phục mật khẩu' };
-    }
-    if (action.includes('WALKIN')) {
-      return { typeLabel: 'Đặt tại quầy', idText: 'Đơn tại quầy' };
-    }
-  }
-
-  // 3. Mapping nhãn loại đối tượng
-  let typeLabel = 'Đối tượng';
-  if (['user', 'customer', 'member'].includes(rawType)) typeLabel = 'Hội viên';
-  else if (['staff'].includes(rawType)) typeLabel = 'Nhân sự';
-  else if (rawType === 'booking') typeLabel = 'Mã ca';
-  else if (rawType === 'pitch') typeLabel = 'Sân';
-  else if (rawType === 'service') typeLabel = 'Dịch vụ';
-  else if (rawType === 'voucher') typeLabel = 'Voucher';
-  else if (rawType === 'expense') typeLabel = 'Khoản chi';
-  else if (rawType === 'shift') typeLabel = 'Ca trực';
-  else if (rawType === 'settings') typeLabel = 'Cài đặt';
-  else if (rawType === 'pricing') typeLabel = 'Bảng giá';
-  else if (rawType === 'security') typeLabel = 'Bảo mật';
-  else if (rawType === 'database' || rawType === 'system') typeLabel = 'Hệ thống';
-
-  return {
-    typeLabel: typeLabel,
-    idText: rawId || 'Toàn hệ thống'
-  };
-}
-
-/**
- * Render dữ liệu vào tbody của bảng
- */
-function renderAdminLogTable(logs, staffList = []) {
-  const tbody = document.getElementById('admin-log-tbody');
-  if (!tbody) return;
-
-  const staffById = new Map(
-    (Array.isArray(staffList) ? staffList : []).map(staff => [String(staff.id), staff])
-  );
-  const html = logs.map(item => {
-    const timeStr = formatAdminLogTimestamp(item.created_at_formatted || item.created_at);
-    const relativeTimeStr = formatAdminLogRelativeTime(item.created_at || item.created_at_formatted);
-    const storedActorRole = String(item.actor_role || 'admin').toLowerCase();
-    const isSystemActor = storedActorRole === 'system' || item.user_id === null || item.user_id === 0 || item.user_id === '0';
-    const actorRole = isSystemActor ? 'system' : storedActorRole;
-    const actorStaff = staffById.get(String(item.user_id || ''));
-    const actorNameUsername = String(item.actor_name || '').match(/\(([^()]*)\)\s*$/)?.[1];
-    const actorUsername = escapeAdminLogHTML(isSystemActor
-      ? 'Hệ thống (tự động)'
-      : (item.actor_username || item.username || actorStaff?.username || actorNameUsername || item.actor_name || ('User #' + (item.user_id || '0'))));
-    
-    // Role styling
-    let roleBadgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
-    let roleLabel = 'Nhân sự';
-    if (actorRole === 'admin') {
-      roleBadgeClass = 'bg-rose-100 text-rose-800 border-rose-200';
-      roleLabel = 'Chủ sân';
-    } else if (actorRole === 'manager') {
-      roleBadgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-      roleLabel = 'Quản lý';
-    } else if (actorRole === 'staff') {
-      roleBadgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
-      roleLabel = 'Nhân viên';
-    } else if (actorRole === 'system') {
-      roleBadgeClass = 'bg-slate-200 text-slate-700 border-slate-300';
-      roleLabel = 'Tự động';
-    }
-
-    // Action info
-    const actionBadge = getActionBadgeInfo(item.action);
-
-    // Target display
-    const targetInfo = resolveAdminLogTarget(item);
-    const targetDisplayHtml = `
-      <div class="min-w-0">
-        <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${escapeAdminLogHTML(targetInfo.typeLabel)}</div>
-        <div class="font-mono font-bold text-xs text-[#0F172A] truncate" title="${escapeAdminLogHTML(targetInfo.idText)}">${escapeAdminLogHTML(targetInfo.idText)}</div>
-      </div>
-    `;
-
-    // Ưu tiên diff có cấu trúc để không lặp lại JSON dài từ API.
-    const diffHtml = renderLogDiffContent(item.old_value, item.new_value, item.action);
-    const formattedMsg = item.formatted_message || `${actorUsername} thực hiện thao tác ${actionBadge.label}`;
-    const contentHtml = diffHtml || renderLogMessage(formattedMsg);
-
-    // IP & User Agent
-    const ip = escapeAdminLogHTML(item.ip || item.ip_address || '---');
-
-    return `
-      <tr class="hover:bg-slate-50/80 transition-colors">
-        <!-- 1. Người thực hiện -->
-        <td class="py-3 px-4 align-top">
-          <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-full bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
-              ${actorUsername.charAt(0).toUpperCase()}
-            </div>
-            <div class="min-w-0">
-              <div class="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
-                <span class="inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${roleBadgeClass}">${roleLabel}</span>
-                <span class="break-all text-xs font-bold text-[#0F172A]">(${actorUsername})</span>
-              </div>
-              <div class="text-[10px] text-slate-400">#${item.id}</div>
-            </div>
-          </div>
-        </td>
-
-        <!-- 2. Hành động -->
-        <td class="py-3 px-4 align-top min-w-[220px] whitespace-nowrap">
-          <div class="mb-1 text-[10px] font-semibold text-slate-500">Hành động:</div>
-          <span class="inline-flex w-fit whitespace-nowrap items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${actionBadge.class}" title="Mã kỹ thuật: ${escapeAdminLogHTML(item.action)}">
-            ${escapeAdminLogHTML(actionBadge.label)}
-          </span>
-          <div class="text-[10px] text-slate-400 mt-0.5">${escapeAdminLogHTML(actionBadge.groupLabel)}</div>
-        </td>
-
-        <!-- 3. Đối tượng -->
-        <td class="py-3 px-4 align-top whitespace-nowrap">
-          ${targetDisplayHtml}
-        </td>
-
-        <!-- 4. Tóm tắt hoặc diff chi tiết -->
-        <td class="py-3 px-4 align-top min-w-0">
-          ${contentHtml}
-        </td>
-
-        <!-- 5. Thời gian (IP tooltip khi rê chuột) -->
-        <td class="py-3 px-4 align-top text-right whitespace-nowrap" title="IP: ${escapeAdminLogHTML(ip)}">
-          <div class="font-mono text-xs font-medium text-slate-700">${escapeAdminLogHTML(timeStr)}</div>
-          <div class="text-[10px] text-slate-400 mt-0.5">${escapeAdminLogHTML(relativeTimeStr)}</div>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  tbody.innerHTML = html;
-}
-
-/**
- * Cập nhật giao diện phân trang & tổng số bản ghi
- */
-function updateAdminLogPaginationUI() {
-  const currentEl = document.getElementById('admin-log-page-current');
-  const totalEl   = document.getElementById('admin-log-page-total');
-  const countEl   = document.getElementById('admin-log-total-count');
-  const badgeEl   = document.getElementById('admin-log-total-badge');
-  const limitSel  = document.getElementById('admin-log-limit-select');
-
-  const firstBtn = document.getElementById('admin-log-first-btn');
-  const prevBtn  = document.getElementById('admin-log-prev-btn');
-  const nextBtn  = document.getElementById('admin-log-next-btn');
-  const lastBtn  = document.getElementById('admin-log-last-btn');
-
-  if (currentEl) currentEl.textContent = String(currentLogPage);
-  if (totalEl)   totalEl.textContent   = String(currentLogTotalPages);
-  if (countEl)   countEl.textContent   = String(currentLogTotalRecords.toLocaleString('vi-VN'));
-  if (badgeEl)   badgeEl.textContent   = `${currentLogTotalRecords.toLocaleString('vi-VN')} bản ghi`;
-  if (limitSel)  limitSel.value        = String(currentLogLimit);
-
-  if (firstBtn) firstBtn.disabled = (currentLogPage <= 1);
-  if (prevBtn)  prevBtn.disabled  = (currentLogPage <= 1);
-  if (nextBtn)  nextBtn.disabled  = (currentLogPage >= currentLogTotalPages);
-  if (lastBtn)  lastBtn.disabled  = (currentLogPage >= currentLogTotalPages);
-}
-
-/**
- * Điều hướng trang
- */
-function goToAdminLogPage(page) {
-  const p = Math.max(1, Math.min(currentLogTotalPages, parseInt(page, 10) || 1));
-  if (p === currentLogPage) return;
-  loadAdminLogs(p);
-}
-window.goToAdminLogPage = goToAdminLogPage;
-
-function prevAdminLogPage() {
-  if (currentLogPage > 1) {
-    goToAdminLogPage(currentLogPage - 1);
-  }
-}
-window.prevAdminLogPage = prevAdminLogPage;
-
-function nextAdminLogPage() {
-  if (currentLogPage < currentLogTotalPages) {
-    goToAdminLogPage(currentLogPage + 1);
-  }
-}
-window.nextAdminLogPage = nextAdminLogPage;
-
-function goToAdminLogLastPage() {
-  goToAdminLogPage(currentLogTotalPages);
-}
-window.goToAdminLogLastPage = goToAdminLogLastPage;
-
-function handleAdminLogLimitChange(newLimit) {
-  currentLogLimit = Math.max(10, Math.min(100, parseInt(newLimit, 10) || 20));
-  loadAdminLogs(1);
-}
-window.handleAdminLogLimitChange = handleAdminLogLimitChange;
-
-/**
- * Xử lý thay đổi bộ lọc Dropdown hoặc Ngày
- */
-function handleAdminLogFilterChange() {
-  loadAdminLogs(1);
-}
-window.handleAdminLogFilterChange = handleAdminLogFilterChange;
-
-/**
- * Debounce tìm kiếm từ khóa (300ms)
- */
+function refreshAdminLogsAll() { loadAdminLogs(1); }
+function handleAdminLogFilterChange() { readAdminLogInputsToState(); loadAdminLogs(1); }
 function handleAdminLogSearchDebounced() {
-  const searchInput = document.getElementById('admin-log-search');
-  const clearBtn    = document.getElementById('admin-log-search-clear');
-  if (clearBtn && searchInput) {
-    clearBtn.classList.toggle('hidden', searchInput.value.trim() === '');
-  }
-
-  if (adminLogSearchDebounceTimer) {
-    clearTimeout(adminLogSearchDebounceTimer);
-  }
-  adminLogSearchDebounceTimer = setTimeout(() => {
-    loadAdminLogs(1);
-  }, 300);
+    readAdminLogInputsToState();
+    if (adminLogState.searchTimer) clearTimeout(adminLogState.searchTimer);
+    adminLogState.searchTimer = setTimeout(() => loadAdminLogs(1), 300);
 }
-window.handleAdminLogSearchDebounced = handleAdminLogSearchDebounced;
-
-/**
- * Xóa ô tìm kiếm
- */
 function clearAdminLogSearch() {
-  const searchInput = document.getElementById('admin-log-search');
-  const clearBtn    = document.getElementById('admin-log-search-clear');
-  if (searchInput) searchInput.value = '';
-  if (clearBtn) clearBtn.classList.add('hidden');
-  loadAdminLogs(1);
+    const el = document.getElementById('admin-log-search');
+    if (el) el.value = '';
+    adminLogState.search = '';
+    loadAdminLogs(1);
 }
-window.clearAdminLogSearch = clearAdminLogSearch;
-
-/**
- * Đặt lại tất cả bộ lọc về mặc định
- */
+function toggleAuditCategoryChip(catCode) {
+    if (!ADMIN_LOG_CATEGORIES[catCode]) return;
+    const idx = adminLogState.categories.indexOf(catCode);
+    if (idx >= 0) adminLogState.categories.splice(idx, 1); else adminLogState.categories.push(catCode);
+    loadAdminLogs(1);
+}
+function toggleAuditQuickFilter(quickKey) { adminLogState.quickFilter = adminLogState.quickFilter === quickKey ? '' : quickKey; loadAdminLogs(1); }
 function resetAdminLogFilters() {
-  const staffSelect = document.getElementById('admin-log-filter-staff');
-  const actionSelect = document.getElementById('admin-log-filter-action');
-  const fromInput   = document.getElementById('admin-log-filter-from');
-  const toInput     = document.getElementById('admin-log-filter-to');
-  const searchInput = document.getElementById('admin-log-search');
-  const clearBtn    = document.getElementById('admin-log-search-clear');
-
-  if (staffSelect)  staffSelect.value = '';
-  if (actionSelect) actionSelect.value = '';
-  if (fromInput)    fromInput.value = '';
-  if (toInput)      toInput.value = '';
-  if (searchInput)  searchInput.value = '';
-  if (clearBtn)     clearBtn.classList.add('hidden');
-
-  loadAdminLogs(1);
+    Object.assign(adminLogState, { staffId: '', actionType: '', dataGroup: '', fromDate: '', toDate: '', search: '', quickFilter: '', categories: [] });
+    syncAdminLogInputsFromState();
+    loadAdminLogs(1);
 }
-window.resetAdminLogFilters = resetAdminLogFilters;
+function handleAdminLogLimitChange(val) { adminLogState.limit = [10, 25, 50, 100].includes(Number(val)) ? Number(val) : 25; loadAdminLogs(1); }
+function prevAdminLogPage() { if (adminLogState.page > 1) loadAdminLogs(adminLogState.page - 1); }
+function nextAdminLogPage() { if (adminLogState.page < adminLogState.totalPages) loadAdminLogs(adminLogState.page + 1); }
+function toggleAuditDiffExpand(logId) { adminLogState.expandedDiffs[logId] = !adminLogState.expandedDiffs[logId]; renderAdminLogRows(adminLogState.logs); }
+function toggleAuditJsonExpand(logId) { adminLogState.expandedJson[logId] = !adminLogState.expandedJson[logId]; renderAdminLogRows(adminLogState.logs); }
+function toggleAuditReviewEditor(logId, open) {
+    adminLogState.openReviewId = open ? Number(logId) : null;
+    renderAdminLogRows(adminLogState.logs);
+    if (open) { const inp = document.getElementById(`audit-review-input-${Number(logId)}`); if (inp) inp.focus(); }
+}
+
+async function submitAuditReview(logId) {
+    const inp = document.getElementById(`audit-review-input-${Number(logId)}`);
+    const btn = document.getElementById(`audit-review-submit-${Number(logId)}`);
+    const check = validateAuditReasonClient(inp?.value || '', 10);
+    if (!check.valid) { showAuditToast(check.error, 'error'); if (inp) inp.focus(); return; }
+    if (btn) btn.disabled = true;
+    try {
+        const res = await auditApiRequest('api/admin.php?action=audit_review', { method: 'POST', body: { log_id: Number(logId), note: check.clean } });
+        const row = adminLogState.logs.find((r) => Number(r.id) === Number(logId));
+        if (row) row.review = res.data || { note: check.clean, reviewer_name: 'Admin', created_at_formatted: formatAuditDateTime(new Date().toISOString()) };
+        adminLogState.openReviewId = null;
+        renderAdminLogRows(adminLogState.logs);
+        loadAdminLogSummary();
+        showAuditToast('Đã lưu ghi chú hậu kiểm.', 'success');
+    } catch (err) {
+        showAuditToast(err.message || 'Không thể lưu hậu kiểm.', 'error');
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function revealAuditSensitive(logId) {
+    try {
+        const res = await auditApiRequest(`api/admin.php?action=audit_log_detail&id=${Number(logId)}&reveal=1`);
+        if (res.data) { adminLogState.revealedMap[logId] = res.data; renderAdminLogRows(adminLogState.logs); showAuditToast('Đã ghi nhận lượt xem dữ liệu nhạy cảm.', 'info'); }
+    } catch (err) { showAuditToast(err.message || 'Không thể mở chi tiết bản ghi.', 'error'); }
+}
+
+function exportAdminLogsCsv() {
+    readAdminLogInputsToState();
+    const qs = buildAuditFilterParams(false).toString();
+    const url = normalizeLogApiUrl(`api/admin.php?action=audit_export_csv${qs ? '&' + qs : ''}`);
+    if (typeof window !== 'undefined' && window.open) window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function hideAuditNewBanner() { const b = document.getElementById('admin-log-new-banner'); if (b) b.classList.add('hidden'); }
+
+function startAdminLogAutoCheck() {
+    if (adminLogState.pollTimer) clearInterval(adminLogState.pollTimer);
+    adminLogState.pollTimer = setInterval(async () => {
+        if (typeof document === 'undefined' || document.hidden || !adminLogState.latestId) return;
+        const pane = document.getElementById('tab-content-logs');
+        if (!pane || pane.classList.contains('hidden')) return;
+        try {
+            const res = await auditApiRequest(`api/admin.php?action=audit_check_new&since_id=${adminLogState.latestId}`);
+            const cnt = Number(res.data?.new_count || 0), banner = document.getElementById('admin-log-new-banner'), txt = document.getElementById('admin-log-new-banner-text');
+            if (cnt > 0 && banner && txt) { txt.textContent = `Có ${cnt} bản ghi mới — Bấm để tải`; banner.classList.remove('hidden'); }
+        } catch (e) { /* bỏ qua lỗi poll tạm thời */ }
+    }, 60000);
+}
+
+if (typeof window !== 'undefined') {
+    Object.assign(window, {
+        ADMIN_LOG_CATALOG, ADMIN_LOG_CATEGORIES, ADMIN_LOG_DATA_GROUPS, adminLogState,
+        loadAdminLogs, refreshAdminLogsAll, loadAdminLogSummary, handleAdminLogFilterChange,
+        handleAdminLogSearchDebounced, clearAdminLogSearch, toggleAuditCategoryChip,
+        toggleAuditQuickFilter, resetAdminLogFilters, handleAdminLogLimitChange,
+        prevAdminLogPage, nextAdminLogPage, toggleAuditDiffExpand, toggleAuditJsonExpand,
+        toggleAuditReviewEditor, submitAuditReview, revealAuditSensitive, exportAdminLogsCsv,
+        populateAuditFilterOptions, populateAdminLogFilters, formatAuditDateTime,
+        maskAuditPhone, resolveActionMeta, validateAuditReasonClient
+    });
+}
