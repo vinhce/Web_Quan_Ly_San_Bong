@@ -869,18 +869,59 @@ function write_audit_log($pdo, $action, $bookingId = null, $oldValue = null, $ne
             $targetType = sanitize_string($explicitTargetType, 40);
         }
 
+        $cleanAction = sanitize_string($action, 80);
+        $cleanBookingId = $bookingId !== null ? sanitize_string((string)$bookingId, 40) : null;
+        $clientIp = get_client_ip();
+
+        if (db_table_has_column($pdo, 'audit_logs', 'category')) {
+            require_once __DIR__ . '/services/AdminLogRegistry.php';
+            $nowVn = (new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('Y-m-d H:i:s');
+            $candidate = [
+                'action'      => $cleanAction,
+                'actor_role'  => $actorRole,
+                'target_type' => $targetType,
+                'target_id'   => $targetId,
+                'booking_id'  => $cleanBookingId,
+                'old_value'   => $oldValue,
+                'new_value'   => $newValue,
+                'created_at'  => $nowVn,
+            ];
+            $metaData = AdminLogRegistry::prepareMetadataForInsert($pdo, $candidate);
+
+            $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, actor_name, actor_role, action, category, data_group, target_type, target_id, object_code, booking_id, old_value, new_value, is_anomaly, anomaly_reasons, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $userId,
+                $actorName,
+                $actorRole,
+                $cleanAction,
+                $metaData['category'],
+                $metaData['data_group'],
+                $targetType,
+                $targetId,
+                $metaData['object_code'],
+                $cleanBookingId,
+                $oldValue,
+                $newValue,
+                $metaData['is_anomaly'],
+                $metaData['anomaly_reasons'],
+                $clientIp,
+                $nowVn,
+            ]);
+            return true;
+        }
+
         $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, actor_name, actor_role, action, target_type, target_id, booking_id, old_value, new_value, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $userId,
             $actorName,
             $actorRole,
-            sanitize_string($action, 80),
+            $cleanAction,
             $targetType,
             $targetId,
-            $bookingId !== null ? sanitize_string((string)$bookingId, 40) : null,
+            $cleanBookingId,
             $oldValue,
             $newValue,
-            get_client_ip()
+            $clientIp
         ]);
         return true;
     } catch (Exception $e) {
@@ -993,6 +1034,12 @@ function get_system_settings_map(?PDO $pdo): array {
         'tg_event_waitlist'            => '1',
         'tg_event_matchmaking'         => '1',
         'tg_event_review'              => '1',
+        'audit_anomaly_shift_strong_vnd' => '50000',
+        'audit_anomaly_points_strong'    => '50',
+        'audit_anomaly_discount_pct'     => '50',
+        'audit_anomaly_night_start'      => '0',
+        'audit_anomaly_night_end'        => '5',
+        'audit_reason_min_len'           => '10',
     ];
     if (!$pdo) {
         return $map;
@@ -1008,6 +1055,11 @@ function get_system_settings_map(?PDO $pdo): array {
         error_log("[SETTINGS MAP WARN] " . $e->getMessage());
     }
     return $map;
+}
+
+function validate_mandatory_audit_reason(string $reason, int $minLen = 10): array {
+    require_once __DIR__ . '/services/AdminLogRegistry.php';
+    return AdminLogRegistry::validateReason($reason, $minLen);
 }
 
 function is_phone_blacklisted(?PDO $pdo, ?string $phone): bool {
@@ -1034,14 +1086,14 @@ function is_phone_blacklisted(?PDO $pdo, ?string $phone): bool {
     }
 }
 
-function db_table_has_column(?PDO $pdo, string $table, string $column): bool {
+function db_table_has_column(?PDO $pdo, string $table, string $column, bool $refresh = false): bool {
     if (!$pdo) {
         return false;
     }
     static $columnsCache = [];
-    $tableKey = strtolower(trim($table));
+    $tableKey = spl_object_id($pdo) . ':' . strtolower(trim($table));
     $colKey = strtolower(trim($column));
-    if (!isset($columnsCache[$tableKey])) {
+    if ($refresh || !isset($columnsCache[$tableKey])) {
         $columnsCache[$tableKey] = [];
         try {
             $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}`");

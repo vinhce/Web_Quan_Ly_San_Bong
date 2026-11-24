@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../security_helper.php';
+require_once __DIR__ . '/AdminLogRegistry.php';
+require_once __DIR__ . '/AdminLogRepository.php';
 
 /**
  * AdminLogService - Quản lý và định dạng nhật ký thao tác quản trị (Audit Logs)
@@ -120,6 +122,51 @@ class AdminLogService
             $bookingId = substr($cleanTargetId, 0, 40);
         }
 
+        $cleanAction = sanitize_string($action, 80);
+        $resolvedTargetType = $cleanTargetType !== '' ? substr($cleanTargetType, 0, 50) : null;
+        $resolvedTargetId = $cleanTargetId !== '' ? substr($cleanTargetId, 0, 50) : null;
+        $resolvedIp = substr($ip, 0, 45);
+
+        if (function_exists('db_table_has_column') && db_table_has_column($pdo, 'audit_logs', 'category')) {
+            require_once __DIR__ . '/AdminLogRegistry.php';
+            $metaData = AdminLogRegistry::prepareMetadataForInsert($pdo, [
+                'action'      => $cleanAction,
+                'actor_role'  => $actorRole,
+                'target_type' => $resolvedTargetType,
+                'target_id'   => $resolvedTargetId,
+                'booking_id'  => $bookingId,
+                'old_value'   => $oldJson,
+                'new_value'   => $newJson,
+                'created_at'  => $createdAt,
+            ]);
+            $stmt = $pdo->prepare("
+                INSERT INTO audit_logs (
+                    user_id, actor_name, actor_role, action, category, data_group, target_type, target_id, object_code, booking_id, old_value, new_value, is_anomaly, anomaly_reasons, ip, created_at
+                ) VALUES (
+                    :user_id, :actor_name, :actor_role, :action, :category, :data_group, :target_type, :target_id, :object_code, :booking_id, :old_value, :new_value, :is_anomaly, :anomaly_reasons, :ip, :created_at
+                )
+            ");
+            $stmt->execute([
+                ':user_id'         => $adminId > 0 ? $adminId : null,
+                ':actor_name'      => $actorName,
+                ':actor_role'      => $actorRole,
+                ':action'          => $cleanAction,
+                ':category'        => $metaData['category'],
+                ':data_group'      => $metaData['data_group'],
+                ':target_type'     => $resolvedTargetType,
+                ':target_id'       => $resolvedTargetId,
+                ':object_code'     => $metaData['object_code'],
+                ':booking_id'      => $bookingId,
+                ':old_value'       => $oldJson,
+                ':new_value'       => $newJson,
+                ':is_anomaly'      => $metaData['is_anomaly'],
+                ':anomaly_reasons' => $metaData['anomaly_reasons'],
+                ':ip'              => $resolvedIp,
+                ':created_at'      => $createdAt
+            ]);
+            return (int)$pdo->lastInsertId();
+        }
+
         // 6. Chèn vào DB trong CÙNG transaction với thao tác nghiệp vụ
         $stmt = $pdo->prepare("
             INSERT INTO audit_logs (
@@ -133,13 +180,13 @@ class AdminLogService
             ':user_id'     => $adminId > 0 ? $adminId : null,
             ':actor_name'  => $actorName,
             ':actor_role'  => $actorRole,
-            ':action'      => sanitize_string($action, 80),
-            ':target_type' => $cleanTargetType !== '' ? substr($cleanTargetType, 0, 50) : null,
-            ':target_id'   => $cleanTargetId !== '' ? substr($cleanTargetId, 0, 50) : null,
+            ':action'      => $cleanAction,
+            ':target_type' => $resolvedTargetType,
+            ':target_id'   => $resolvedTargetId,
             ':booking_id'  => $bookingId,
             ':old_value'   => $oldJson,
             ':new_value'   => $newJson,
-            ':ip'          => substr($ip, 0, 45),
+            ':ip'          => $resolvedIp,
             ':created_at'  => $createdAt
         ]);
 
@@ -592,5 +639,346 @@ class AdminLogService
             }
         }
         return $trimmed;
+    }
+
+    public static function backfillLegacyAuditMetadata(PDO $pdo): void
+    {
+        AdminLogRegistry::backfillMissingMetadata($pdo);
+    }
+
+    public static function enrichRow(array $log, bool $maskPii = true): array
+    {
+        $meta = AdminLogRegistry::resolveActionMeta((string)($log['action'] ?? ''), $log['actor_role'] ?? null);
+        $category = !empty($log['category']) && isset(AdminLogRegistry::CATEGORIES[(string)$log['category']])
+            ? (string)$log['category']
+            : $meta['category'];
+        $catInfo = AdminLogRegistry::CATEGORIES[$category] ?? AdminLogRegistry::CATEGORIES['CN'];
+        $dataGroup = !empty($log['data_group']) ? (string)$log['data_group'] : $meta['data_group'];
+        $objectCode = AdminLogRegistry::extractObjectCode($log);
+        $objectMasked = AdminLogRegistry::maskPhonesInText($objectCode);
+        $objectDisplay = $maskPii ? $objectMasked : $objectCode;
+        $hasSensitivePhone = $objectMasked !== $objectCode
+            || AdminLogRegistry::maskPhonesInText((string)($log['old_value'] ?? '')) !== (string)($log['old_value'] ?? '')
+            || AdminLogRegistry::maskPhonesInText((string)($log['new_value'] ?? '')) !== (string)($log['new_value'] ?? '');
+
+        $reasons = [];
+        if (!empty($log['anomaly_reasons'])) {
+            $decodedReasons = json_decode((string)$log['anomaly_reasons'], true);
+            if (is_array($decodedReasons)) {
+                $reasons = array_values(array_map('strval', $decodedReasons));
+            }
+        }
+
+        $log['category'] = $category;
+        $log['category_label'] = $catInfo['label'];
+        $log['category_color'] = $catInfo['color'];
+        $log['data_group'] = $dataGroup;
+        $log['action_label'] = $meta['label'];
+        $log['action_registered'] = $meta['registered'];
+        $log['object_code'] = $maskPii ? $objectDisplay : $objectCode;
+        $log['object_display'] = $objectDisplay;
+        $log['has_sensitive_phone'] = $hasSensitivePhone;
+        $log['is_anomaly'] = !empty($log['is_anomaly']) ? 1 : 0;
+        $log['anomaly_reasons'] = $reasons;
+        $log['diffs'] = AdminLogRegistry::extractDiffs($log, $maskPii);
+        $log['created_at_formatted'] = AdminLogRegistry::formatDateTimeVn((string)($log['created_at'] ?? ''));
+
+        if ($maskPii) {
+            if (isset($log['target_id']) && $log['target_id'] !== null) {
+                $log['target_id'] = AdminLogRegistry::maskPhonesInText((string)$log['target_id']);
+            }
+            if (isset($log['old_value']) && $log['old_value'] !== null) {
+                $log['old_value'] = AdminLogRegistry::maskPhonesInText((string)$log['old_value']);
+            }
+            if (isset($log['new_value']) && $log['new_value'] !== null) {
+                $log['new_value'] = AdminLogRegistry::maskPhonesInText((string)$log['new_value']);
+            }
+        }
+
+        $formattedMsg = self::formatLogMessage($log);
+        $log['formatted_message'] = $maskPii ? AdminLogRegistry::maskPhonesInText($formattedMsg) : $formattedMsg;
+
+        $rawTargetType = strtolower(trim((string)($log['target_type'] ?? '')));
+        $rawTargetId = trim((string)($log['target_id'] ?? $log['booking_id'] ?? $objectDisplay));
+        if ($rawTargetId === '') {
+            $rawTargetType = 'system';
+            $rawTargetId = $objectDisplay;
+        }
+        $log['target_type'] = $rawTargetType !== '' ? $rawTargetType : null;
+        $log['target_id'] = $rawTargetId !== '' ? $rawTargetId : null;
+
+        if (!empty($log['review_id'])) {
+            $log['review'] = [
+                'id'                   => (int)$log['review_id'],
+                'reviewer_id'          => (int)$log['reviewer_id'],
+                'reviewer_name'        => (string)($log['reviewer_name'] ?? ''),
+                'note'                 => (string)($log['review_note'] ?? ''),
+                'created_at'           => (string)($log['review_created_at'] ?? ''),
+                'created_at_formatted' => AdminLogRegistry::formatDateTimeVn((string)($log['review_created_at'] ?? '')),
+            ];
+        } else {
+            $log['review'] = null;
+        }
+        unset($log['review_id'], $log['reviewer_id'], $log['reviewer_name'], $log['review_note'], $log['review_created_at']);
+
+        return $log;
+    }
+
+    public static function listLogs(PDO $pdo, array $query): array
+    {
+        $page = max(1, (int)($query['page'] ?? 1));
+        $limit = max(1, min(100, (int)($query['limit'] ?? 25)));
+
+        $filters = [
+            'admin_id'      => $query['admin_id'] ?? $query['user_id'] ?? $query['user'] ?? '',
+            'categories'    => $query['categories'] ?? $query['category'] ?? '',
+            'action_codes'  => $query['action_codes'] ?? '',
+            'action_type'   => $query['action_type'] ?? $query['filter_action'] ?? $query['log_action'] ?? '',
+            'data_group'    => $query['data_group'] ?? '',
+            'from_date'     => $query['from_date'] ?? '',
+            'to_date'       => $query['to_date'] ?? '',
+            'date'          => $query['date'] ?? '',
+            'anomaly_only'  => $query['anomaly_only'] ?? $query['is_anomaly'] ?? '',
+            'review_status' => $query['review_status'] ?? '',
+            'quick_filter'  => $query['quick_filter'] ?? '',
+            'search'        => $query['search'] ?? '',
+        ];
+
+        $res = AdminLogRepository::fetchPaginated($pdo, $filters, $page, $limit);
+        $logs = array_map(static fn(array $r): array => self::enrichRow($r, true), $res['rows']);
+
+        return [
+            'logs'        => $logs,
+            'pagination'  => [
+                'page'       => $page,
+                'limit'      => $limit,
+                'total'      => $res['total'],
+                'totalPages' => $res['totalPages'],
+            ],
+            'staffList'   => $res['staffList'],
+            'actionTypes' => $res['actionTypes'],
+            'categories'  => array_values(AdminLogRegistry::CATEGORIES),
+            'dataGroups'  => AdminLogRegistry::DATA_GROUPS,
+            'latest_id'   => $res['latestId'],
+        ];
+    }
+
+    public static function getSummary(PDO $pdo, array $query): array
+    {
+        $filters = [
+            'admin_id'      => $query['admin_id'] ?? $query['user_id'] ?? $query['user'] ?? '',
+            'categories'    => $query['categories'] ?? $query['category'] ?? '',
+            'action_codes'  => $query['action_codes'] ?? '',
+            'action_type'   => $query['action_type'] ?? $query['filter_action'] ?? '',
+            'data_group'    => $query['data_group'] ?? '',
+            'from_date'     => $query['from_date'] ?? '',
+            'to_date'       => $query['to_date'] ?? '',
+            'date'          => $query['date'] ?? '',
+            'anomaly_only'  => $query['anomaly_only'] ?? '',
+            'review_status' => $query['review_status'] ?? '',
+            'search'        => $query['search'] ?? '',
+        ];
+        return AdminLogRepository::fetchSummaryKpi($pdo, $filters);
+    }
+
+    public static function getLogDetail(PDO $pdo, int $logId, bool $revealSensitive, array $actor): array
+    {
+        $row = AdminLogRepository::findByIdWithReview($pdo, $logId);
+        if (!$row) {
+            return ['ok' => false, 'status' => 404, 'ref_code' => 'ERR_LOG_NOT_FOUND', 'message' => 'Không tìm thấy bản ghi nhật ký tương ứng.'];
+        }
+        $enriched = self::enrichRow($row, !$revealSensitive);
+        if ($revealSensitive && !empty($enriched['has_sensitive_phone'])) {
+            self::record(
+                $pdo,
+                (int)($actor['id'] ?? 0),
+                'SENSITIVE_DATA_ACCESS',
+                'audit_log',
+                'LOG-' . $logId,
+                null,
+                ['log_id' => $logId, 'reason' => 'Xem chi tiết SĐT/dữ liệu đầy đủ trên Tab 11 Nhật ký'],
+                get_client_ip()
+            );
+        }
+        return ['ok' => true, 'data' => $enriched];
+    }
+
+    public static function submitReview(PDO $pdo, int $logId, string $note, array $actor): array
+    {
+        if ($logId <= 0) {
+            return ['ok' => false, 'status' => 400, 'ref_code' => 'ERR_INVALID_LOG_ID', 'message' => 'Thiếu mã nhật ký cần hậu kiểm.'];
+        }
+        $thresholds = AdminLogRegistry::loadThresholds($pdo);
+        $minLen = (int)($thresholds['reason_min_len'] ?? 10);
+        $noteCheck = validate_mandatory_audit_reason($note, $minLen);
+        if (!$noteCheck['valid']) {
+            return ['ok' => false, 'status' => 400, 'ref_code' => 'ERR_INVALID_REVIEW_NOTE', 'message' => $noteCheck['message']];
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $existing = AdminLogRepository::findByIdWithReview($pdo, $logId);
+            if (!$existing) {
+                $pdo->rollBack();
+                return ['ok' => false, 'status' => 404, 'ref_code' => 'ERR_LOG_NOT_FOUND', 'message' => 'Không tìm thấy bản ghi nhật ký cần hậu kiểm.'];
+            }
+            if (!empty($existing['review_id'])) {
+                $pdo->rollBack();
+                return ['ok' => false, 'status' => 409, 'ref_code' => 'ERR_ALREADY_REVIEWED', 'message' => 'Bản ghi nhật ký này đã được hậu kiểm trước đó.'];
+            }
+
+            $reviewerId = (int)($actor['id'] ?? 0);
+            $reviewerName = !empty($actor['full_name'])
+                ? (string)$actor['full_name']
+                : (string)($actor['username'] ?? ('Admin #' . $reviewerId));
+            $nowVn = (new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('Y-m-d H:i:s');
+
+            $ins = $pdo->prepare("INSERT INTO audit_reviews (log_id, reviewer_id, reviewer_name, note, created_at) VALUES (?, ?, ?, ?, ?)");
+            $ins->execute([$logId, $reviewerId, substr($reviewerName, 0, 100), $noteCheck['reason'], $nowVn]);
+            $reviewId = (int)$pdo->lastInsertId();
+
+            self::record(
+                $pdo,
+                $reviewerId,
+                'AUDIT_REVIEW',
+                'audit_log',
+                'LOG-' . $logId,
+                null,
+                ['log_id' => $logId, 'note' => $noteCheck['reason']],
+                get_client_ip()
+            );
+
+            $pdo->commit();
+
+            return [
+                'ok'   => true,
+                'data' => [
+                    'id'                   => $reviewId,
+                    'log_id'               => $logId,
+                    'reviewer_id'          => $reviewerId,
+                    'reviewer_name'        => $reviewerName,
+                    'note'                 => $noteCheck['reason'],
+                    'created_at'           => $nowVn,
+                    'created_at_formatted' => AdminLogRegistry::formatDateTimeVn($nowVn),
+                ],
+            ];
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public static function exportCsv(PDO $pdo, array $query, array $actor): void
+    {
+        $filters = [
+            'admin_id'      => $query['admin_id'] ?? $query['user_id'] ?? $query['user'] ?? '',
+            'categories'    => $query['categories'] ?? $query['category'] ?? '',
+            'action_codes'  => $query['action_codes'] ?? '',
+            'action_type'   => $query['action_type'] ?? $query['filter_action'] ?? '',
+            'data_group'    => $query['data_group'] ?? '',
+            'from_date'     => $query['from_date'] ?? '',
+            'to_date'       => $query['to_date'] ?? '',
+            'date'          => $query['date'] ?? '',
+            'anomaly_only'  => $query['anomaly_only'] ?? '',
+            'review_status' => $query['review_status'] ?? '',
+            'quick_filter'  => $query['quick_filter'] ?? '',
+            'search'        => $query['search'] ?? '',
+        ];
+
+        $rows = AdminLogRepository::fetchForExport($pdo, $filters, 5000);
+        $enrichedRows = array_map(static fn(array $r): array => self::enrichRow($r, true), $rows);
+
+        $activeFilters = array_filter($filters, static fn($v): bool => is_array($v) ? $v !== [] : trim((string)$v) !== '');
+        self::record(
+            $pdo,
+            (int)($actor['id'] ?? 0),
+            'EXPORT_CSV',
+            'audit_log',
+            'audit_logs',
+            null,
+            [
+                'module'    => 'audit_logs',
+                'filters'   => $activeFilters,
+                'row_count' => count($enrichedRows),
+            ],
+            get_client_ip()
+        );
+
+        $neutralize = static function (string $cell): string {
+            if ($cell !== '' && in_array($cell[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+                return "'" . $cell;
+            }
+            return $cell;
+        };
+
+        $tz = new DateTimeZone('Asia/Ho_Chi_Minh');
+        $stamp = (new DateTime('now', $tz))->format('Ymd-His');
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="nhat-ky-quan-tri-' . $stamp . '.csv"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
+        $out = fopen('php://output', 'w');
+        if ($out !== false) {
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, [
+                'ID',
+                'Thời gian',
+                'Người thực hiện',
+                'Vai trò',
+                'Nhóm mã',
+                'Mã hành động',
+                'Hành động',
+                'Nhóm dữ liệu',
+                'Đối tượng',
+                'Nội dung / Thay đổi',
+                'Bất thường',
+                'Lý do bất thường',
+                'Trạng thái hậu kiểm',
+                'Người hậu kiểm',
+                'Ghi chú hậu kiểm',
+                'IP',
+            ]);
+            foreach ($enrichedRows as $r) {
+                $diffText = '';
+                if (!empty($r['diffs'])) {
+                    $parts = [];
+                    foreach ($r['diffs'] as $d) {
+                        $parts[] = "{$d['label']}: {$d['old']} -> {$d['new']}";
+                    }
+                    $diffText = implode(' | ', $parts);
+                } else {
+                    $diffText = (string)($r['formatted_message'] ?? '');
+                }
+                $rev = $r['review'] ?? null;
+                fputcsv($out, [
+                    (int)$r['id'],
+                    $neutralize((string)$r['created_at_formatted']),
+                    $neutralize((string)($r['actor_name'] ?? 'Hệ thống')),
+                    $neutralize((string)($r['actor_role'] ?? 'system')),
+                    $neutralize((string)$r['category']),
+                    $neutralize((string)$r['action']),
+                    $neutralize((string)$r['action_label']),
+                    $neutralize((string)$r['data_group']),
+                    $neutralize((string)$r['object_display']),
+                    $neutralize($diffText),
+                    !empty($r['is_anomaly']) ? 'Có' : 'Không',
+                    $neutralize(implode('; ', $r['anomaly_reasons'] ?? [])),
+                    $rev ? 'Đã hậu kiểm' : (!empty($r['is_anomaly']) ? 'Chờ hậu kiểm' : 'Bình thường'),
+                    $neutralize((string)($rev['reviewer_name'] ?? '')),
+                    $neutralize((string)($rev['note'] ?? '')),
+                    $neutralize((string)($r['ip'] ?? '')),
+                ]);
+            }
+            fclose($out);
+        }
+        exit;
+    }
+
+    public static function checkNewLogs(PDO $pdo, int $sinceId): array
+    {
+        return AdminLogRepository::checkNewLogsSince($pdo, $sinceId);
     }
 }

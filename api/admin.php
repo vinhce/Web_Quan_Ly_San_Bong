@@ -22,6 +22,10 @@ if (!empty($rawInput)) {
 $data = array_merge($_POST, $data);
 $action = $_GET['action'] ?? $data['action'] ?? 'overview';
 if (!in_array(strtoupper($method), ['GET', 'POST'], true)) {
+    if (in_array($action, ['audit_logs', 'audit_update', 'audit_delete', 'delete_audit_log', 'update_audit_log'], true)) {
+        require_admin($pdo);
+        json_error('Nhật ký thao tác chỉ cho phép đọc, nghiêm cấm chỉnh sửa hoặc xóa!', 405, 'ERR_AUDIT_IMMUTABLE');
+    }
     require_csrf_if_session_authenticated($data);
     json_error('Phương thức HTTP không được hỗ trợ.', 405, 'ERR_METHOD_NOT_ALLOWED');
 }
@@ -37,7 +41,8 @@ $postOnlyActions = [
     'save_monthly_package', 'delete_monthly_package', 'toggle_monthly_package',
     'save_maintenance', 'update_maintenance', 'add_expense', 'update_expense', 'delete_expense',
     'test_telegram', 'run_match_reminders', 'run_recurring_cron',
-    'moderate_matchmaking', 'backup_database_now', 'update_member', 'adjust_customer_points'
+    'moderate_matchmaking', 'backup_database_now', 'update_member', 'adjust_customer_points',
+    'audit_review'
 ];
 if (in_array($action, $postOnlyActions, true) && strtoupper($method) !== 'POST') {
     json_error('Hành động thay đổi dữ liệu bắt buộc dùng phương thức POST.', 405, 'ERR_METHOD_NOT_ALLOWED');
@@ -112,6 +117,12 @@ function admin_build_settings_response(?PDO $pdo): array {
                 'review'       => ((string)($settingsMap['tg_event_review'] ?? '1') !== '0'),
             ],
             'turnstileHealth'            => function_exists('check_turnstile_health') ? check_turnstile_health() : null,
+            'auditAnomalyShiftStrongVnd' => max(0, (int)($settingsMap['audit_anomaly_shift_strong_vnd'] ?? 50000)),
+            'auditAnomalyPointsStrong'   => max(1, (int)($settingsMap['audit_anomaly_points_strong'] ?? 50)),
+            'auditAnomalyDiscountPct'    => max(1, min(100, (int)($settingsMap['audit_anomaly_discount_pct'] ?? 50))),
+            'auditAnomalyNightStart'     => max(0, min(23, (int)($settingsMap['audit_anomaly_night_start'] ?? 0))),
+            'auditAnomalyNightEnd'       => max(0, min(23, (int)($settingsMap['audit_anomaly_night_end'] ?? 5))),
+            'auditReasonMinLen'          => max(3, (int)($settingsMap['audit_reason_min_len'] ?? 10)),
             'pricingTable' => [
                 'p5'  => [
                     'base'    => (int)($settingsMap['price_p5_base'] ?? 250000),
@@ -342,15 +353,32 @@ if (!$pdo) {
             ]);
         }
     }
-    if ($action === 'audit_logs') {
+    if (in_array($action, ['audit_logs', 'audit_summary', 'audit_check_new', 'audit_log_detail', 'audit_review', 'audit_export_csv'], true)) {
         $admin = require_admin($pdo);
+        if ($action === 'audit_logs' && strtoupper($method) !== 'GET') {
+            json_error('Nhật ký thao tác chỉ cho phép đọc, nghiêm cấm chỉnh sửa hoặc xóa!', 405, 'ERR_AUDIT_IMMUTABLE');
+        }
+        if ($action === 'audit_summary') {
+            json_response(['success' => true, 'data' => ['total_actions' => 0, 'unreviewed_anomalies' => 0, 'finance_cash_count' => 0, 'shift_count' => 0, 'latest_shift_status' => ['level' => 'neutral', 'text' => 'DB chưa khả dụng']]]);
+        }
         json_response(['success' => true, 'data' => ['logs' => [], 'staffList' => [], 'actionTypes' => []]]);
     }
     if ($action === 'shifts') {
         if ($method === 'POST' && sanitize_string($data['sub_action'] ?? '', 30) === 'confirm_shift') {
             require_manager_or_admin($pdo);
         }
-        json_response(['success' => true, 'data' => ['activeShift' => null, 'currentShift' => null, 'shifts' => []]]);
+        json_response([
+            'success' => true,
+            'data'    => [
+                'activeShift'    => null,
+                'currentShift'   => null,
+                'open_time'      => null,
+                'cash_total'     => 0,
+                'transfer_total' => 0,
+                'warn_level'     => 'none',
+                'shifts'         => []
+            ]
+        ]);
     }
     if (in_array($action, ['inventory', 'counter_sale', 'services_inventory'], true)) {
         if ($method === 'POST') {
