@@ -169,20 +169,20 @@ function renderPitches() {
             <div class="text-xs text-[#64748B] mb-2">${esc(p.size)} · ${esc(p.grass)}</div>
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="text-base font-extrabold text-[#16A34A]">${app?.formatVND ? app.formatVND(p.basePrice) : esc(p.basePrice) + 'đ'}/ca 2h</span>
-              <span class="text-xs text-[#94A3B8]">Cao điểm: ${app?.formatVND ? app.formatVND(p.peakPrice) : esc(p.peakPrice) + 'đ'}/ca 2h</span>
+              <span class="text-xs text-[#64748B]">Đồng giá mọi khung giờ</span>
             </div>
           </div>
 
-          <div class="pt-3 border-t border-[#F1F5F9] flex items-center gap-3">
-            <button type="button" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" class="btn-base btn-secondary flex-1 text-xs">
-              Xem chi tiết sân
+          <div class="pt-3 border-t border-[#F1F5F9] flex items-center gap-2">
+            <button type="button" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" class="btn-base btn-secondary flex-1 !px-3 whitespace-nowrap justify-center text-xs font-bold">
+              Chi tiết sân
             </button>
             ${isMaint ? `
-              <button class="btn-base btn-disabled flex-1 text-xs opacity-50 cursor-not-allowed" disabled>
+              <button class="btn-base btn-disabled flex-1 !px-3 whitespace-nowrap justify-center text-xs font-bold opacity-50 cursor-not-allowed" disabled>
                 Đang bảo trì
               </button>
             ` : `
-              <a href="${buildBookingHref(p.id)}" class="btn-base btn-primary flex-1 text-xs text-center">
+              <a href="${buildBookingHref(p.id)}" class="btn-base btn-primary flex-1 !px-3 whitespace-nowrap justify-center text-xs font-bold text-center">
                 Đặt sân này
               </a>
             `}

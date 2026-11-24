@@ -52,7 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const pricePeakEl = document.getElementById('detail-price-peak');
   if (pricePeakEl && window.SanBongApp) {
-    pricePeakEl.textContent = `${window.SanBongApp.formatVND(pitch.peakPrice)}/ca 2h`;
+    if (!pitch.peakPrice || Number(pitch.peakPrice) === Number(pitch.basePrice)) {
+      pricePeakEl.textContent = 'Không phụ thu cao điểm & cuối tuần';
+    } else {
+      pricePeakEl.textContent = `${window.SanBongApp.formatVND(pitch.peakPrice)}/ca 2h`;
+    }
   }
 
   const specSize = document.getElementById('detail-spec-size');
@@ -86,12 +90,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Wifi tốc độ cao',
       'Trọng tài theo yêu cầu'
     ];
-    amenitiesList.innerHTML = amenities.map(a => `
+    amenitiesList.innerHTML = amenities.map(a => {
+      const displayAmenity = /^Trọng tài theo yêu cầu$/i.test(String(a).trim())
+        ? 'Thuê trọng tài theo yêu cầu (150k/trận · Miễn phí gói 3 tháng)'
+        : a;
+      return `
       <div class="flex items-center gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div class="w-6 h-6 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center shrink-0 text-xs font-bold">✓</div>
-        <span class="font-medium text-[#0F172A]">${esc(a)}</span>
+        <span class="font-medium text-[#0F172A]">${esc(displayAmenity)}</span>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   const today = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
@@ -323,6 +332,13 @@ async function loadFieldReviews(pitchId) {
       `;
     }).join('');
   } catch (err) {
-    listEl.innerHTML = `<div class="text-xs text-[#64748B] py-4 text-center">Chưa có nhận xét nào.</div>`;
+    if (avgEl) avgEl.textContent = '★ —';
+    if (countEl) countEl.textContent = '(Tạm thời chưa tải được đánh giá)';
+    const heroRatingEl = document.getElementById('detail-hero-rating');
+    if (heroRatingEl) {
+      heroRatingEl.className = 'flex items-center gap-1 text-xs font-bold text-[#64748B] bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200';
+      heroRatingEl.textContent = 'Chưa có đánh giá';
+    }
+    listEl.innerHTML = `<div class="text-xs text-[#64748B] py-4 text-center">Tạm thời chưa tải được nhận xét. Vui lòng thử lại sau.</div>`;
   }
 }

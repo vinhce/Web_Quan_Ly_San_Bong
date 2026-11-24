@@ -20,8 +20,8 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261122_v128">
-  <link rel="stylesheet" href="../css/style.css?v=20261122_v128">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261124_v135">
+  <link rel="stylesheet" href="../css/style.css?v=20261124_v135">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -76,16 +76,16 @@
           </p>
 
           <div class="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-[#64748B]">Khung giờ thường (05:30 - 16:30)</span>
-              <span id="detail-price-base" class="font-heading font-bold text-base text-[#0F172A]">0đ/ca 2h</span>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-medium text-[#64748B]">Đơn giá niêm yết (Ca 2 tiếng)</span>
+              <span id="detail-price-base" class="font-heading font-bold text-base text-[#0F172A] shrink-0 whitespace-nowrap">0đ/ca 2h</span>
             </div>
-            <div class="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
+            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-2 gap-y-1 pt-2 border-t border-[#E2E8F0]">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-bold text-[#16A34A]">Khung giờ cao điểm (16:30 - 20:30)</span>
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#DCFCE7] text-[#16A34A]">Hot</span>
+                <span class="text-xs font-bold text-[#16A34A]">Khung giờ 05:30 - 22:30</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#DCFCE7] text-[#16A34A] whitespace-nowrap">Đồng giá</span>
               </div>
-              <span id="detail-price-peak" class="font-heading font-extrabold text-lg text-[#16A34A]">0đ/ca 2h</span>
+              <span id="detail-price-peak" class="text-xs sm:text-sm font-bold text-[#16A34A] text-right">Không phụ thu cao điểm &amp; cuối tuần</span>
             </div>
           </div>
         </div>
@@ -94,7 +94,7 @@
           <a id="detail-primary-book-btn" href="/booking" class="btn-base btn-primary w-full text-center font-bold text-sm shadow-md">
             Đặt khung giờ sân này ngay →
           </a>
-          <div class="flex items-center justify-center gap-2 text-xs text-[#64748B]">
+          <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-[#64748B]">
             <span>✓ Giữ chỗ 15 phút khi chờ QR</span>
             <span>·</span>
             <span>✓ Cọc 30% (đặt lẻ) · 60% (gói tháng)</span>
@@ -140,7 +140,7 @@
         <div class="ui-card p-6 space-y-4">
           <h2 class="font-heading font-bold text-xl text-[#0F172A] flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
-            Dịch vụ & Tiện ích đi kèm miễn phí
+            Tiện ích sân &amp; Dịch vụ hỗ trợ
           </h2>
 
           <div id="detail-amenities-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -201,7 +201,7 @@
 
             <div>
               <label class="block font-bold text-[#475569] uppercase tracking-wider mb-1">Khung giờ ưa thích</label>
-              <select id="widget-slot" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] font-medium text-sm focus:outline-none focus:border-[#16A34A]">
+              <select id="widget-slot" class="w-full h-10 px-3 rounded-lg border border-[#E2E8F0] bg-white font-medium text-sm focus:outline-none focus:border-[#16A34A]">
                 
               </select>
             </div>
@@ -252,18 +252,18 @@
   </main>
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
-  <script src="../js/data.js?v=20261122_v128"></script>
-  <script src="../js/helpers.js?v=20261122_v128"></script>
-  <script src="../js/db_core.js?v=20261122_v128"></script>
-  <script src="../js/db_pricing.js?v=20261122_v128"></script>
-  <script src="../js/db_bookings.js?v=20261122_v128"></script>
-  <script src="../js/db_operations.js?v=20261122_v128"></script>
-  <script src="../js/db.js?v=20261122_v128"></script>
-  <script src="../js/ui.js?v=20261122_v128"></script>
-  <script src="../js/vn_datepicker.js?v=20261122_v128"></script>
-  <script src="../js/app.js?v=20261122_v128"></script>
-  <script src="../js/api.js?v=20261122_v128"></script>
-  <script src="../js/field-detail.js?v=20261122_v128"></script>
+  <script src="../js/data.js?v=20261124_v134"></script>
+  <script src="../js/helpers.js?v=20261122_v130"></script>
+  <script src="../js/db_core.js?v=20261122_v130"></script>
+  <script src="../js/db_pricing.js?v=20261122_v130"></script>
+  <script src="../js/db_bookings.js?v=20261122_v130"></script>
+  <script src="../js/db_operations.js?v=20261124_v134"></script>
+  <script src="../js/db.js?v=20261122_v130"></script>
+  <script src="../js/ui.js?v=20261124_v134"></script>
+  <script src="../js/vn_datepicker.js?v=20261122_v130"></script>
+  <script src="../js/app.js?v=20261122_v130"></script>
+  <script src="../js/api.js?v=20261122_v130"></script>
+  <script src="../js/field-detail.js?v=20261124_v134"></script>
 </body>
 </html>
 
