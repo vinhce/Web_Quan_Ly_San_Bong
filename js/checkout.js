@@ -11,6 +11,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const db = window.SanBongApp?.SanBongDB;
   if (!db) return;
 
+  if (window.SanBongApp?.authReady) {
+    try {
+      await window.SanBongApp.authReady;
+    } catch (e) {}
+  } else if (window.SanBongUI?.syncAuthMe) {
+    try {
+      await window.SanBongUI.syncAuthMe();
+    } catch (e) {}
+  }
+
   const currentUser = db ? db.getUser() : null;
   const rawDraft = sessionStorage.getItem('sb_booking_draft');
   if (rawDraft) {
@@ -33,6 +43,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     sessionStorage.setItem('sb_login_notice', 'Vui lòng đăng nhập để hoàn tất đặt sân & quét mã QR thanh toán cọc');
     const loginUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login?redirect=checkout') : '/login?redirect=checkout';
     window.location.replace(loginUrl);
+    return;
+  }
+
+  if (['admin', 'manager', 'staff'].includes(String(currentUser.role || '').toLowerCase())) {
+    const portalQuickUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('portal-admin/?tab=quick-booking') : '/portal-admin/?tab=quick-booking';
+    if (window.SanBongApp?.showModal) {
+      window.SanBongApp.showModal({
+        title: 'Tài khoản vận hành sân',
+        message: 'Tài khoản Quản trị / Nhân sự không thanh toán qua luồng khách hàng. Vui lòng tạo đơn tại mục Đặt sân tại quầy trong Cổng Quản Trị (phiên đăng nhập của bạn vẫn được giữ nguyên).',
+        type: 'warning',
+        confirmText: 'Về Cổng Quản Trị',
+        onConfirm: () => window.location.replace(portalQuickUrl)
+      });
+    } else {
+      window.location.replace(portalQuickUrl);
+    }
     return;
   }
 
@@ -351,6 +377,23 @@ async function createInitialBookingRecord() {
         }
         return false;
       }
+      if (apiRes && apiRes.status === 403) {
+        if (countdownTimer) clearInterval(countdownTimer);
+        if (sepayPollTimer) clearInterval(sepayPollTimer);
+        const forbidMsg = apiRes.message || 'Tài khoản hiện tại không có quyền thực hiện thao tác đặt sân này.';
+        if (window.SanBongApp?.showModal) {
+          window.SanBongApp.showModal({
+            title: 'Không đủ quyền thực hiện',
+            message: forbidMsg,
+            type: 'warning',
+            confirmText: 'Quay lại',
+            onConfirm: () => window.location.replace(bookingUrl)
+          });
+        } else if (window.SanBongApp?.showToast) {
+          window.SanBongApp.showToast(forbidMsg, 'warning', 4000);
+        }
+        return false;
+      }
       if (apiRes && !apiRes.success && !apiRes.localOnly) {
         if (countdownTimer) clearInterval(countdownTimer);
         if (sepayPollTimer) clearInterval(sepayPollTimer);
@@ -376,6 +419,10 @@ async function createInitialBookingRecord() {
         return false;
       }
       if (apiRes && apiRes.success && apiRes.data) {
+        if (currentDraft && apiRes.data.code) {
+          currentDraft.submittedCode = apiRes.data.code;
+          try { sessionStorage.setItem('sb_booking_draft', JSON.stringify(currentDraft)); } catch (e) {}
+        }
         applyServerBookingToUI(apiRes.data);
       }
     } catch (e) {}
@@ -518,7 +565,7 @@ function renderCheckoutDetails(shouldLoadQR = true) {
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5 text-xs font-bold text-[#15803D]">
             <span>🎁</span>
-            <span class="uppercase tracking-wide">Đặc quyền tài trợ mỗi trận (${promo.title})</span>
+            <span class="uppercase tracking-wide">Đặc quyền tài trợ mỗi trận · ${promo.title}</span>
           </div>
           <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">MIỄN PHÍ</span>
         </div>
