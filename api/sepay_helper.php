@@ -183,8 +183,11 @@ function verify_sepay_payment_for_booking($pdo, $bookingCode, $expectedAmount = 
             $bStmt->execute([$bookingCode]);
             $bRow = $bStmt->fetch();
             if ($bRow && $bRow['payment_status'] === 'Chờ duyệt cọc') {
-                $updateStmt = $pdo->prepare("UPDATE bookings SET status = 'Đã xác nhận', payment_status = 'Đã cọc 30%', payment_method = 'VietQR SePay (Tự động)' WHERE id = ?");
-                $updateStmt->execute([(int)$bRow['id']]);
+                $depAmt = max(0, (int)($bRow['deposit_amount'] ?? 0));
+                $paidAmt = max((int)($bRow['paid_amount'] ?? 0), $depAmt);
+                $remAmt = max(0, (int)($bRow['total_price'] ?? 0) - $paidAmt);
+                $updateStmt = $pdo->prepare("UPDATE bookings SET status = 'Đã xác nhận', payment_status = 'Đã cọc 30%', payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, transfer_paid_amount = GREATEST(transfer_paid_amount, ?), remaining_amount = ? WHERE id = ?");
+                $updateStmt->execute([$paidAmt, $paidAmt, $remAmt, (int)$bRow['id']]);
                 award_booking_loyalty_points($pdo, $bRow);
             }
             $pdo->commit();

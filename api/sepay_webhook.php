@@ -309,8 +309,8 @@ try {
             $newTotalPaid    = $alreadyPaid + $transferAmount;
 
             if ($newTotalPaid < $targetDep) {
-                $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
-                $updB->execute([$newTotalPaid, $newTotalPaid, (int)$booking['id']]);
+                $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
+                $updB->execute([$newTotalPaid, $transferAmount, $newTotalPaid, (int)$booking['id']]);
 
                 $matchStatus    = 'underpaid';
                 $matchedCode    = $bCode;
@@ -323,8 +323,8 @@ try {
                 $depLabel     = $isMonthlyBooking ? 'Đã cọc 60%' : 'Đã cọc 30%';
                 $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : $depLabel;
                 $newStatus    = in_array($bStatus, ['Chờ duyệt cọc', 'Giữ chỗ'], true) ? 'Đã xác nhận' : $bStatus;
-                $updB = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
-                $updB->execute([$newStatus, $newPayStatus, $newTotalPaid, $newTotalPaid, (int)$booking['id']]);
+                $updB = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
+                $updB->execute([$newStatus, $newPayStatus, $newTotalPaid, $transferAmount, $newTotalPaid, (int)$booking['id']]);
 
                 $matchStatus    = 'matched';
                 $matchedCode    = $bCode;
@@ -340,8 +340,8 @@ try {
                 $depLabel     = $isMonthlyBooking ? 'Đã cọc 60%' : 'Đã cọc 30%';
                 $newPayStatus = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 'Đã thanh toán đủ' : $depLabel;
                 $newRem       = ($totalPrice > 0 && $newTotalPaid >= $totalPrice) ? 0 : max(0, $totalPrice - $newTotalPaid);
-                $updB = $pdo->prepare("UPDATE bookings SET status = IF(status IN ('Đang đá', 'completed', 'Hoàn thành'), status, 'Đã xác nhận'), payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = ? WHERE id = ?");
-                $updB->execute([$newPayStatus, $newTotalPaid, $newRem, (int)$booking['id']]);
+                $updB = $pdo->prepare("UPDATE bookings SET status = IF(status IN ('Đang đá', 'completed', 'Hoàn thành'), status, 'Đã xác nhận'), payment_status = ?, payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ?, remaining_amount = ? WHERE id = ?");
+                $updB->execute([$newPayStatus, $newTotalPaid, $transferAmount, $newRem, (int)$booking['id']]);
 
                 $matchStatus    = 'overpaid';
                 $matchedCode    = $bCode;
@@ -359,8 +359,8 @@ try {
             $expectedAmount = $expectedRem;
 
             if ($expectedRem > 0 && $transferAmount === $expectedRem) {
-                $updB = $pdo->prepare("UPDATE bookings SET status = IF(status IN ('Chờ duyệt cọc', 'Giữ chỗ'), 'Đã xác nhận', status), payment_status = 'Đã thanh toán 100%', payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = 0 WHERE id = ?");
-                $updB->execute([$newTotalPaid, (int)$booking['id']]);
+                $updB = $pdo->prepare("UPDATE bookings SET status = IF(status IN ('Chờ duyệt cọc', 'Giữ chỗ'), 'Đã xác nhận', status), payment_status = 'Đã thanh toán 100%', payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ?, remaining_amount = 0 WHERE id = ?");
+                $updB->execute([$newTotalPaid, $transferAmount, (int)$booking['id']]);
 
                 $matchStatus    = 'matched';
                 $matchedCode    = $bCode;
@@ -371,8 +371,8 @@ try {
                 $newAuditVal    = "Khớp đủ phần còn lại " . number_format($transferAmount) . "đ (Đã thanh toán 100%)";
                 award_booking_loyalty_points($pdo, $booking);
             } elseif ($expectedRem > 0 && $transferAmount < $expectedRem) {
-                $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
-                $updB->execute([$newTotalPaid, $newTotalPaid, (int)$booking['id']]);
+                $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
+                $updB->execute([$newTotalPaid, $transferAmount, $newTotalPaid, (int)$booking['id']]);
 
                 $matchStatus    = 'underpaid';
                 $matchedCode    = $bCode;
@@ -381,8 +381,8 @@ try {
                 $auditAction    = 'WEBHOOK_UNDERPAID';
                 $newAuditVal    = $mismatchReason;
             } elseif ($expectedRem === 0) {
-                $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ? WHERE id = ?");
-                $updB->execute([$newTotalPaid, (int)$booking['id']]);
+                $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ? WHERE id = ?");
+                $updB->execute([$newTotalPaid, $transferAmount, (int)$booking['id']]);
 
                 $matchStatus    = 'overpaid';
                 $matchedCode    = $bCode;
@@ -391,8 +391,8 @@ try {
                 $auditAction    = 'WEBHOOK_OVERPAID';
                 $newAuditVal    = $mismatchReason;
             } else {
-                $updB = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã thanh toán 100%', payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, remaining_amount = 0 WHERE id = ?");
-                $updB->execute([$newTotalPaid, (int)$booking['id']]);
+                $updB = $pdo->prepare("UPDATE bookings SET payment_status = 'Đã thanh toán 100%', payment_method = 'VietQR SePay (Webhook)', paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ?, remaining_amount = 0 WHERE id = ?");
+                $updB->execute([$newTotalPaid, $transferAmount, (int)$booking['id']]);
                 award_booking_loyalty_points($pdo, $booking);
 
                 $matchStatus    = 'overpaid';
@@ -405,8 +405,8 @@ try {
         } else {
             $paidBase = max($alreadyPaid, $totalPrice);
             $newTotalPaid = $paidBase + $transferAmount;
-            $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ? WHERE id = ?");
-            $updB->execute([$newTotalPaid, (int)$booking['id']]);
+            $updB = $pdo->prepare("UPDATE bookings SET paid_amount = ?, transfer_paid_amount = transfer_paid_amount + ? WHERE id = ?");
+            $updB->execute([$newTotalPaid, $transferAmount, (int)$booking['id']]);
 
             $matchStatus    = 'overpaid';
             $matchedCode    = $bCode;
