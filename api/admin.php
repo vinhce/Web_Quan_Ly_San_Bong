@@ -125,19 +125,19 @@ function admin_build_settings_response(?PDO $pdo): array {
             'auditReasonMinLen'          => max(3, (int)($settingsMap['audit_reason_min_len'] ?? 10)),
             'pricingTable' => [
                 'p5'  => [
-                    'base'    => (int)($settingsMap['price_p5_base'] ?? 250000),
-                    'peak'    => (int)($settingsMap['price_p5_peak'] ?? 350000),
-                    'weekend' => (int)($settingsMap['price_p5_weekend'] ?? 380000)
+                    'base'    => (int)($settingsMap['price_p5_base'] ?? 350000),
+                    'peak'    => (int)($settingsMap['price_p5_peak'] ?? ($settingsMap['price_p5_base'] ?? 350000)),
+                    'weekend' => (int)($settingsMap['price_p5_weekend'] ?? ($settingsMap['price_p5_base'] ?? 350000))
                 ],
                 'p7'  => [
                     'base'    => (int)($settingsMap['price_p7_base'] ?? 450000),
-                    'peak'    => (int)($settingsMap['price_p7_peak'] ?? 650000),
-                    'weekend' => (int)($settingsMap['price_p7_weekend'] ?? 700000)
+                    'peak'    => (int)($settingsMap['price_p7_peak'] ?? ($settingsMap['price_p7_base'] ?? 450000)),
+                    'weekend' => (int)($settingsMap['price_p7_weekend'] ?? ($settingsMap['price_p7_base'] ?? 450000))
                 ],
                 'p11' => [
                     'base'    => (int)($settingsMap['price_p11_base'] ?? 900000),
-                    'peak'    => (int)($settingsMap['price_p11_peak'] ?? 1200000),
-                    'weekend' => (int)($settingsMap['price_p11_weekend'] ?? 1400000)
+                    'peak'    => (int)($settingsMap['price_p11_peak'] ?? ($settingsMap['price_p11_base'] ?? 900000)),
+                    'weekend' => (int)($settingsMap['price_p11_weekend'] ?? ($settingsMap['price_p11_base'] ?? 900000))
                 ]
             ]
         ],

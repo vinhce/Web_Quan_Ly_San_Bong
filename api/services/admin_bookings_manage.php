@@ -113,8 +113,20 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
                 ? (string)$oldRow['status']
                 : 'Đã xác nhận';
 
-            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = ?, paid_amount = GREATEST(paid_amount, deposit_amount), remaining_amount = GREATEST(0, total_price - GREATEST(paid_amount, deposit_amount)), note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-            $stmt->execute([$approvedPayLabel, $nextBookingStatus, $noteAdd, $code]);
+            $oldPaid = max(0, (int)($oldRow['paid_amount'] ?? 0));
+            $targetPaid = max($oldPaid, (int)($oldRow['deposit_amount'] ?? 0));
+            $deltaPaid = max(0, $targetPaid - $oldPaid);
+            $oldPayMethod = (string)($oldRow['payment_method'] ?? '');
+            $isOldCash = (mb_stripos($oldPayMethod, 'Tiền mặt') !== false);
+            $oldCash = max(0, (int)($oldRow['cash_paid_amount'] ?? 0));
+            $oldTransfer = max(0, (int)($oldRow['transfer_paid_amount'] ?? 0));
+            if ($oldPaid > 0 && $oldCash === 0 && $oldTransfer === 0) {
+                if ($isOldCash) { $oldCash = $oldPaid; } else { $oldTransfer = $oldPaid; }
+            }
+            if ($isOldCash) { $oldCash += $deltaPaid; } else { $oldTransfer += $deltaPaid; }
+
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = ?, paid_amount = GREATEST(paid_amount, deposit_amount), cash_paid_amount = ?, transfer_paid_amount = ?, remaining_amount = GREATEST(0, total_price - GREATEST(paid_amount, deposit_amount)), note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+            $stmt->execute([$approvedPayLabel, $nextBookingStatus, $oldCash, $oldTransfer, $noteAdd, $code]);
             award_booking_loyalty_points($pdo, $oldRow);
             $status = $approvedPayLabel;
         } elseif ($status === 'Đã hoàn cọc 100%') {
@@ -146,8 +158,20 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
                 $pdo->rollBack();
                 json_error('Không thể cập nhật thanh toán đủ cho đơn đã hủy hoặc khách chưa đến.', 400, 'ERR_INVALID_BOOKING_STATUS');
             }
-            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = 'completed', paid_amount = total_price, remaining_amount = 0 WHERE code = ?");
-            $stmt->execute([$status, $code]);
+            $oldPaid = max(0, (int)($oldRow['paid_amount'] ?? 0));
+            $totPriceRow = max(0, (int)($oldRow['total_price'] ?? 0));
+            $deltaPaid = max(0, $totPriceRow - $oldPaid);
+            $oldPayMethod = (string)($oldRow['payment_method'] ?? '');
+            $isPayCash = (mb_stripos($oldPayMethod, 'Tiền mặt') !== false);
+            $oldCash = max(0, (int)($oldRow['cash_paid_amount'] ?? 0));
+            $oldTransfer = max(0, (int)($oldRow['transfer_paid_amount'] ?? 0));
+            if ($oldPaid > 0 && $oldCash === 0 && $oldTransfer === 0) {
+                if ($isPayCash) { $oldCash = $oldPaid; } else { $oldTransfer = $oldPaid; }
+            }
+            if ($isPayCash) { $oldCash += $deltaPaid; } else { $oldTransfer += $deltaPaid; }
+
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_status = ?, status = 'completed', paid_amount = total_price, cash_paid_amount = ?, transfer_paid_amount = ?, remaining_amount = 0 WHERE code = ?");
+            $stmt->execute([$status, $oldCash, $oldTransfer, $code]);
             award_booking_loyalty_points($pdo, $oldRow);
         } elseif ($status === 'completed' || $status === 'Hoàn thành') {
             if ($isTerminalStatus) {
@@ -683,11 +707,28 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
                 json_error('Đơn này đã hoàn tất và thanh toán đủ 100%.', 400, 'ERR_ALREADY_PAID');
             }
 
+            $deltaPaid = max(0, $totPrice - $paidAmt);
+            $existingCash = max(0, (int)($lockedBooking['cash_paid_amount'] ?? 0));
+            $existingTransfer = max(0, (int)($lockedBooking['transfer_paid_amount'] ?? 0));
+            $origPayMethod = (string)($lockedBooking['payment_method'] ?? '');
+            if ($paidAmt > 0 && $existingCash === 0 && $existingTransfer === 0) {
+                if (mb_stripos($origPayMethod, 'Tiền mặt') !== false) {
+                    $existingCash = $paidAmt;
+                } else {
+                    $existingTransfer = $paidAmt;
+                }
+            }
+            if (mb_stripos($payMethod, 'Tiền mặt') !== false) {
+                $existingCash += $deltaPaid;
+            } else {
+                $existingTransfer += $deltaPaid;
+            }
+
             $noteAdd = " [Đã tất toán 100% qua {$payMethod}]";
             $existingNote = (string)($lockedBooking['note'] ?? '');
             $appendNote = ($existingNote !== '' && mb_stripos($existingNote, trim($noteAdd)) !== false) ? '' : $noteAdd;
-            $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', payment_status = 'Đã thanh toán 100%', paid_amount = total_price, remaining_amount = 0, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
-            $stmt->execute([$appendNote, $code]);
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'completed', payment_status = 'Đã thanh toán 100%', paid_amount = total_price, cash_paid_amount = ?, transfer_paid_amount = ?, remaining_amount = 0, note = CONCAT(IFNULL(note,''), ?) WHERE code = ?");
+            $stmt->execute([$existingCash, $existingTransfer, $appendNote, $code]);
 
             award_booking_loyalty_points($pdo, $lockedBooking);
             write_audit_log($pdo, 'COLLECT_PAYMENT', $code, (string)$remAmount, "Đã thu đủ 100% qua {$payMethod} (Số tiền: {$remAmount}đ)", $actor);
