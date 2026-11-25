@@ -57,7 +57,7 @@ try {
         $p['peakPrice'] = (int)$p['peakPrice'];
         $p['weekendPrice'] = (int)($p['weekendPrice'] ?? 0);
         if ($p['weekendPrice'] <= 0) {
-            $p['weekendPrice'] = $p['type'] === 5 ? 380000 : ($p['type'] === 7 ? 700000 : 1400000);
+            $p['weekendPrice'] = $p['basePrice'] > 0 ? $p['basePrice'] : ($p['type'] === 5 ? 350000 : ($p['type'] === 7 ? 450000 : 900000));
         }
         $p['rating'] = $ratingMap[$p['id']]['avg'] ?? 0;
         $p['reviewCount'] = $ratingMap[$p['id']]['count'] ?? 0;
@@ -320,19 +320,19 @@ try {
             'matchmakingRequireApproval' => ((string)($settingsMap['matchmaking_require_approval'] ?? '0') === '1'),
             'pricingTable' => [
                 'p5'  => [
-                    'base'    => (int)($settingsMap['price_p5_base'] ?? 250000),
-                    'peak'    => (int)($settingsMap['price_p5_peak'] ?? 350000),
-                    'weekend' => (int)($settingsMap['price_p5_weekend'] ?? 380000)
+                    'base'    => (int)($settingsMap['price_p5_base'] ?? 350000),
+                    'peak'    => (int)($settingsMap['price_p5_peak'] ?? ($settingsMap['price_p5_base'] ?? 350000)),
+                    'weekend' => (int)($settingsMap['price_p5_weekend'] ?? ($settingsMap['price_p5_base'] ?? 350000))
                 ],
                 'p7'  => [
                     'base'    => (int)($settingsMap['price_p7_base'] ?? 450000),
-                    'peak'    => (int)($settingsMap['price_p7_peak'] ?? 650000),
-                    'weekend' => (int)($settingsMap['price_p7_weekend'] ?? 700000)
+                    'peak'    => (int)($settingsMap['price_p7_peak'] ?? ($settingsMap['price_p7_base'] ?? 450000)),
+                    'weekend' => (int)($settingsMap['price_p7_weekend'] ?? ($settingsMap['price_p7_base'] ?? 450000))
                 ],
                 'p11' => [
                     'base'    => (int)($settingsMap['price_p11_base'] ?? 900000),
-                    'peak'    => (int)($settingsMap['price_p11_peak'] ?? 1200000),
-                    'weekend' => (int)($settingsMap['price_p11_weekend'] ?? 1400000)
+                    'peak'    => (int)($settingsMap['price_p11_peak'] ?? ($settingsMap['price_p11_base'] ?? 900000)),
+                    'weekend' => (int)($settingsMap['price_p11_weekend'] ?? ($settingsMap['price_p11_base'] ?? 900000))
                 ]
             ]
         ];
