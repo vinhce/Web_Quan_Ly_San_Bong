@@ -50,6 +50,9 @@ if (in_array($action, ['manage_pitch', 'upsert_pitch'], true) && $method === 'PO
             json_error('Loại sân phải là sân 5, 7 hoặc 11 người.', 400, 'ERR_INVALID_PITCH_TYPE');
         }
         $pitchId = strtoupper(sanitize_string($data['id'] ?? $data['pitch_id'] ?? '', 20));
+        if ($pitchId !== '' && !preg_match('/^[A-Z0-9][A-Z0-9\-_]{1,19}$/', $pitchId)) {
+            json_error('Mã sân chỉ được chứa chữ cái, chữ số, dấu gạch ngang (-) hoặc gạch dưới (_), dài 2–20 ký tự.', 400, 'ERR_INVALID_PITCH_ID');
+        }
         if (empty($pitchId)) {
             $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM pitches WHERE type = ?");
             $cntStmt->execute([$type]);
@@ -70,9 +73,10 @@ if (in_array($action, ['manage_pitch', 'upsert_pitch'], true) && $method === 'PO
         $defaultSize = $type === 5 ? '20m x 40m' : ($type === 7 ? '30m x 50m' : '68m x 105m');
         $size = sanitize_string($data['size'] ?? $defaultSize, 50) ?: $defaultSize;
         $grass = sanitize_string($data['grass'] ?? 'Cỏ nhân tạo tiêu chuẩn FIFA Quality Pro', 255) ?: 'Cỏ nhân tạo tiêu chuẩn FIFA Quality Pro';
-        $basePrice = max(50000, (int)($data['base_price'] ?? $data['basePrice'] ?? ($type === 5 ? 250000 : ($type === 7 ? 450000 : 900000))));
-        $peakPrice = max(50000, (int)($data['peak_price'] ?? $data['peakPrice'] ?? ($type === 5 ? 350000 : ($type === 7 ? 650000 : 1200000))));
-        $weekendPrice = max(50000, (int)($data['weekend_price'] ?? $data['weekendPrice'] ?? ($type === 5 ? 380000 : ($type === 7 ? 700000 : 1400000))));
+        $defaultFlatPrice = ($type === 5 ? 350000 : ($type === 7 ? 450000 : 900000));
+        $basePrice = max(50000, (int)($data['base_price'] ?? $data['basePrice'] ?? $defaultFlatPrice));
+        $peakPrice = max(50000, (int)($data['peak_price'] ?? $data['peakPrice'] ?? $basePrice));
+        $weekendPrice = max(50000, (int)($data['weekend_price'] ?? $data['weekendPrice'] ?? $basePrice));
         $status = sanitize_string($data['status'] ?? 'Hoạt động', 30);
         if (!in_array($status, ['Hoạt động', 'Bảo trì', 'Ẩn'], true)) {
             $status = 'Hoạt động';

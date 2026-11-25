@@ -237,12 +237,8 @@ function report_compute_period_core(PDO $pdo, string $fromDate, string $toDate, 
             }
         }
 
-        $isCash = (mb_stripos($payMethod, 'Tiền mặt') !== false);
-        if ($isCash) {
-            $cashRevenue += $orderPaid;
-        } else {
-            $vietqrRevenue += $orderPaid;
-        }
+        $cashRevenue   += (int)($eval['orderCashPaid'] ?? (($eval['isCash'] ?? false) ? $orderPaid : 0));
+        $vietqrRevenue += (int)($eval['orderTransferPaid'] ?? (($eval['isCash'] ?? false) ? 0 : $orderPaid));
 
         $slotHours = $isMatchCounted ? report_parse_slot_hours($slotTime) : 0.0;
         if ($isMatchCounted) {

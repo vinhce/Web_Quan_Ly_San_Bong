@@ -867,7 +867,7 @@ final class AdminLogRegistry
         if ($action === 'AUDIT_REVIEW' && array_key_exists('note', $newArr)) {
             return trim((string)($newArr['note'] ?? ''));
         }
-        if (preg_match('/lý do\s*:\s*([^|)\]]+)/ui', $newText, $rm)) {
+        if (preg_match('/lý do\s*:\s*([^|)\n]+)/ui', $newText, $rm)) {
             return trim($rm[1]);
         }
         // Shift discrepancy without reason text

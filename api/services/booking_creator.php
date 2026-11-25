@@ -113,7 +113,6 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 'ref_code' => 'ERR_RATE_LIMITED'
             ], 429);
         }
-        increment_rate_limit($pdo, 'create_booking');
 
         // Bỏ qua mọi user_id client gửi lên, lấy tuyệt đối từ session server chống IDOR
         $userId = (int)$customer['id'];
@@ -196,7 +195,6 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 'ref_code' => 'ERR_RATE_LIMITED'
             ], 429);
         }
-        increment_rate_limit($pdo, 'create_booking_phone', $phone);
     }
 
     if (!$isWalkin && $pdo !== null && $phone !== '') {
@@ -332,6 +330,13 @@ function handle_create_booking(?PDO $pdo, array $data): void {
 
     if ($pdo === null) {
         json_error('Lỗi kết nối cơ sở dữ liệu hệ thống.', 503, 'ERR_DB_UNAVAILABLE');
+    }
+
+    if (!$isWalkin) {
+        increment_rate_limit($pdo, 'create_booking');
+        if ($phone !== '') {
+            increment_rate_limit($pdo, 'create_booking_phone', $phone);
+        }
     }
 
     if (stripos($pitchId, 'P5') === 0) {
@@ -606,8 +611,12 @@ function handle_create_booking(?PDO $pdo, array $data): void {
         $hasBottlesCol = db_table_has_column($pdo, 'bookings', 'redeemed_bottles');
         $hasConsentCol = db_table_has_column($pdo, 'bookings', 'privacy_consent_at');
 
-        $bCols = ['code', 'user_id', 'customer_name', 'phone', 'email', 'pitch_id', 'booking_date', 'slot_id', 'slot_time', 'services_json', 'voucher_code', 'original_price', 'discount_amount', 'total_price', 'deposit_amount', 'paid_amount', 'remaining_amount', 'status', 'payment_status', 'payment_method', 'weeks_count', 'booking_mode', 'note', 'expires_at'];
-        $bVals = [$code, $userId, $customerName, $phone, $email, $pitchId, $date, $slotId, $slot['slot_time'], $servicesJson, $appliedVoucher, $originalPrice, $discountAmount, $totalPrice, $depositAmount, $paidAmount, $remainingAmount, $bookingStatus, $paymentStatus, $paymentMethod, $weeksCount, $bookingMode, $note, $expiresAt];
+        $isCashInit = (mb_stripos($paymentMethod, 'Tiền mặt') !== false);
+        $initCashPaid = ($paidAmount > 0 && $isCashInit) ? $paidAmount : 0;
+        $initTransferPaid = ($paidAmount > 0 && !$isCashInit) ? $paidAmount : 0;
+
+        $bCols = ['code', 'user_id', 'customer_name', 'phone', 'email', 'pitch_id', 'booking_date', 'slot_id', 'slot_time', 'services_json', 'voucher_code', 'original_price', 'discount_amount', 'total_price', 'deposit_amount', 'paid_amount', 'cash_paid_amount', 'transfer_paid_amount', 'remaining_amount', 'status', 'payment_status', 'payment_method', 'weeks_count', 'booking_mode', 'note', 'expires_at'];
+        $bVals = [$code, $userId, $customerName, $phone, $email, $pitchId, $date, $slotId, $slot['slot_time'], $servicesJson, $appliedVoucher, $originalPrice, $discountAmount, $totalPrice, $depositAmount, $paidAmount, $initCashPaid, $initTransferPaid, $remainingAmount, $bookingStatus, $paymentStatus, $paymentMethod, $weeksCount, $bookingMode, $note, $expiresAt];
 
         if ($hasPtsUsedCol) { $bCols[] = 'points_used'; $bVals[] = $pointsUsed; }
         if ($hasBottlesCol) { $bCols[] = 'redeemed_bottles'; $bVals[] = $redeemedBottles; }

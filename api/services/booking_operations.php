@@ -51,8 +51,8 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
             $remAmt = max(0, $totPrice - $depAmt);
             $newPayStatus = "Đã cọc {$depRate}%";
 
-            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = ?, paid_amount = ?, remaining_amount = ? WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
-            $stmt->execute([$newPayStatus, $depAmt, $remAmt, $code]);
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá', payment_status = ?, paid_amount = ?, cash_paid_amount = cash_paid_amount + ?, remaining_amount = ? WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
+            $stmt->execute([$newPayStatus, $depAmt, $depAmt, $remAmt, $code]);
             if ($stmt->rowCount() === 0) {
                 json_error('Mã QR này đã được quét check-in trước đó. Mỗi mã QR chỉ có hiệu lực 1 lần duy nhất!', 409, 'ERR_ALREADY_CHECKED_IN');
             }

@@ -12,7 +12,7 @@ function pricing_fetch_current_snapshot(PDO $pdo): array {
     $settingsMap = get_system_settings_map($pdo);
 
     $pitchStats = [
-        5  => ['base' => (int)($settingsMap['price_p5_base'] ?? 250000), 'count' => 0],
+        5  => ['base' => (int)($settingsMap['price_p5_base'] ?? 350000), 'count' => 0],
         7  => ['base' => (int)($settingsMap['price_p7_base'] ?? 450000), 'count' => 0],
         11 => ['base' => (int)($settingsMap['price_p11_base'] ?? 900000), 'count' => 0],
     ];

@@ -250,11 +250,80 @@ function ensureAuditInvertedIndexSchema(PDO $pdo, bool $force = false): void {
     }
 }
 
+function ensureFixedPricingAndPaymentSplitSchema(PDO $pdo, bool $force = false): void {
+    $v24Marker = dirname(__DIR__) . '/logs/.schema_v24_p5_350k_split_ready';
+    if (!$force && is_file($v24Marker)) {
+        return;
+    }
+    if ($pdo->inTransaction()) {
+        return;
+    }
+    try {
+        ensureColumnExists($pdo, 'bookings', 'cash_paid_amount', 'INT NOT NULL DEFAULT 0 AFTER `paid_amount`');
+        ensureColumnExists($pdo, 'bookings', 'transfer_paid_amount', 'INT NOT NULL DEFAULT 0 AFTER `cash_paid_amount`');
+
+        try {
+            $pdo->exec("DELETE FROM `pitches` WHERE `id` REGEXP '[^A-Za-z0-9_-]'");
+        } catch (PDOException $delEx) {
+            error_log("[SCHEMA V24 CLEAN PITCH WARN] " . $delEx->getMessage());
+        }
+
+        $pdo->exec("UPDATE `pitches` SET `base_price` = 350000, `peak_price` = 350000, `weekend_price` = 350000 WHERE `type` = 5");
+        $pdo->exec("UPDATE `pitches` SET `base_price` = 450000, `peak_price` = 450000, `weekend_price` = 450000 WHERE `type` = 7");
+        $pdo->exec("UPDATE `pitches` SET `base_price` = 900000, `peak_price` = 900000, `weekend_price` = 900000 WHERE `type` = 11");
+
+        $pdo->exec("
+            INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES
+            ('price_p5_base', '350000'),
+            ('price_p5_peak', '350000'),
+            ('price_p5_weekend', '350000'),
+            ('price_p7_base', '450000'),
+            ('price_p7_peak', '450000'),
+            ('price_p7_weekend', '450000'),
+            ('price_p11_base', '900000'),
+            ('price_p11_peak', '900000'),
+            ('price_p11_weekend', '900000')
+            ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`)
+        ");
+
+        $pdo->exec("
+            UPDATE `bookings`
+            SET
+              `transfer_paid_amount` = CASE
+                WHEN (`note` LIKE '%Đã tất toán 100% qua Tiền mặt%' OR `note` LIKE '%qua Tiền mặt%')
+                     AND (`payment_method` LIKE '%VietQR%' OR `payment_method` LIKE '%Chuyển khoản%' OR `payment_method` LIKE '%SePay%')
+                  THEN LEAST(COALESCE(`paid_amount`, 0), GREATEST(0, COALESCE(`deposit_amount`, 0)))
+                WHEN (`payment_method` LIKE '%Tiền mặt%' OR `note` LIKE '%Tiền mặt%')
+                  THEN 0
+                ELSE COALESCE(`paid_amount`, 0)
+              END,
+              `cash_paid_amount` = CASE
+                WHEN (`note` LIKE '%Đã tất toán 100% qua Tiền mặt%' OR `note` LIKE '%qua Tiền mặt%')
+                     AND (`payment_method` LIKE '%VietQR%' OR `payment_method` LIKE '%Chuyển khoản%' OR `payment_method` LIKE '%SePay%')
+                  THEN GREATEST(0, COALESCE(`paid_amount`, 0) - LEAST(COALESCE(`paid_amount`, 0), GREATEST(0, COALESCE(`deposit_amount`, 0))))
+                WHEN (`payment_method` LIKE '%Tiền mặt%' OR `note` LIKE '%Tiền mặt%')
+                  THEN COALESCE(`paid_amount`, 0)
+                ELSE 0
+              END
+            WHERE `paid_amount` > 0 AND `cash_paid_amount` = 0 AND `transfer_paid_amount` = 0
+        ");
+
+        $logDir = dirname($v24Marker);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        @file_put_contents($v24Marker, date('c'));
+    } catch (PDOException $e) {
+        error_log("[SCHEMA V24 PRICING/SPLIT ERROR] " . $e->getMessage());
+    }
+}
+
 function ensureSchemaInitialized(PDO $pdo) {
     ensurePasswordResetsTable($pdo);
     ensureBookingIdempotencySchema($pdo);
     ensureAuditReviewsAndShiftsUpgrade($pdo);
     ensureAuditInvertedIndexSchema($pdo);
+    ensureFixedPricingAndPaymentSplitSchema($pdo);
     $markerFile = dirname(__DIR__) . '/logs/.schema_v18_full_sync_ready';
     if (is_file($markerFile)) {
         return;
@@ -290,7 +359,7 @@ function ensureSchemaInitialized(PDO $pdo) {
             "UPDATE users SET role = 'staff' WHERE username = 'nhanvien' AND (role = '' OR role IS NULL)",
             "INSERT IGNORE INTO users (username, email, phone, full_name, password_hash, role, status) VALUES ('quanly', 'quanly@sanbongpro.vn', '0352000222', 'Nguyễn Hoàng Minh (Quản Lý Sân)', '\$argon2id\$v=19\$m=65536,t=4,p=1\$QlFIYnZIRlNaV3Nic1JwUw\$dpni2Ou0GPfpjEfeFv47syHwOMDHcpxU0LmksbbT4HI', 'manager', 'active')",
             "CREATE TABLE IF NOT EXISTS `settings` (`setting_key` VARCHAR(100) PRIMARY KEY, `setting_value` TEXT NOT NULL, `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-            "INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES ('deposit_rate', '30'), ('bank_name', 'MBBank'), ('bank_code', 'MB'), ('bank_account', '0352313548'), ('bank_holder', 'NGUYEN QUANG VINH'), ('hotline', '0352 313 548'), ('open_hours', '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)'), ('price_p5_base', '250000'), ('price_p5_peak', '350000'), ('price_p5_weekend', '380000'), ('price_p7_base', '450000'), ('price_p7_peak', '650000'), ('price_p7_weekend', '700000'), ('price_p11_base', '900000'), ('price_p11_peak', '1200000'), ('price_p11_weekend', '1400000'), ('hold_minutes', '15'), ('refund_full_hours', '24'), ('refund_partial_hours', '4'), ('auto_cancel_enabled', '1')",
+            "INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES ('deposit_rate', '30'), ('bank_name', 'MBBank'), ('bank_code', 'MB'), ('bank_account', '0352313548'), ('bank_holder', 'NGUYEN QUANG VINH'), ('hotline', '0352 313 548'), ('open_hours', '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)'), ('price_p5_base', '350000'), ('price_p5_peak', '350000'), ('price_p5_weekend', '350000'), ('price_p7_base', '450000'), ('price_p7_peak', '450000'), ('price_p7_weekend', '450000'), ('price_p11_base', '900000'), ('price_p11_peak', '900000'), ('price_p11_weekend', '900000'), ('hold_minutes', '15'), ('refund_full_hours', '24'), ('refund_partial_hours', '4'), ('auto_cancel_enabled', '1')",
             "CREATE TABLE IF NOT EXISTS `audit_logs` (`id` INT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NULL DEFAULT NULL, `actor_name` VARCHAR(100) NULL DEFAULT NULL, `actor_role` VARCHAR(20) NULL DEFAULT NULL, `action` VARCHAR(80) NOT NULL, `booking_id` VARCHAR(40) NULL DEFAULT NULL, `old_value` TEXT NULL DEFAULT NULL, `new_value` TEXT NULL DEFAULT NULL, `ip` VARCHAR(45) NOT NULL DEFAULT '127.0.0.1', `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX `idx_audit_user` (`user_id`), INDEX `idx_audit_action` (`action`), INDEX `idx_audit_booking` (`booking_id`), INDEX `idx_audit_created` (`created_at`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
             "CREATE TABLE IF NOT EXISTS `shifts` (`id` INT AUTO_INCREMENT PRIMARY KEY, `staff_id` INT NOT NULL, `staff_name` VARCHAR(100) NOT NULL DEFAULT '', `start_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, `end_time` DATETIME NULL DEFAULT NULL, `cash_total` INT NOT NULL DEFAULT 0, `transfer_total` INT NOT NULL DEFAULT 0, `actual_cash_received` INT NULL DEFAULT NULL, `discrepancy_amount` INT NULL DEFAULT NULL, `note` TEXT NULL DEFAULT NULL, `admin_note` TEXT NULL DEFAULT NULL, `status` ENUM('open', 'closed', 'confirmed') NOT NULL DEFAULT 'open', `confirmed_by` INT NULL DEFAULT NULL, `confirmed_at` DATETIME NULL DEFAULT NULL, INDEX `idx_shifts_staff` (`staff_id`), INDEX `idx_shifts_status` (`status`), INDEX `idx_shifts_start` (`start_time`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
             "CREATE TABLE IF NOT EXISTS `service_sales` (`id` INT AUTO_INCREMENT PRIMARY KEY, `service_id` VARCHAR(30) NOT NULL, `service_name` VARCHAR(150) NOT NULL, `quantity` INT NOT NULL DEFAULT 1, `unit_price` INT NOT NULL DEFAULT 0, `total_amount` INT NOT NULL DEFAULT 0, `payment_method` VARCHAR(50) NOT NULL DEFAULT 'Tiền mặt tại quầy', `booking_code` VARCHAR(40) NULL DEFAULT NULL, `staff_id` INT NULL DEFAULT NULL, `note` VARCHAR(255) NULL DEFAULT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX `idx_srv_sales_created` (`created_at`), INDEX `idx_srv_sales_staff` (`staff_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -456,9 +525,9 @@ LEFT JOIN `users` real_u ON (
 )
 SET b.user_id = COALESCE(real_u.id, (SELECT id FROM (SELECT id FROM `users` WHERE `role` = 'walkin' LIMIT 1) w))
 WHERE b.user_id IS NOT NULL",
-            "UPDATE `pitches` SET `weekend_price` = 380000 WHERE `type` = 5 AND `weekend_price` = 0",
-            "UPDATE `pitches` SET `weekend_price` = 700000 WHERE `type` = 7 AND `weekend_price` = 0",
-            "UPDATE `pitches` SET `weekend_price` = 1400000 WHERE `type` = 11 AND `weekend_price` = 0",
+            "UPDATE `pitches` SET `weekend_price` = 350000 WHERE `type` = 5 AND `weekend_price` = 0",
+            "UPDATE `pitches` SET `weekend_price` = 450000 WHERE `type` = 7 AND `weekend_price` = 0",
+            "UPDATE `pitches` SET `weekend_price` = 900000 WHERE `type` = 11 AND `weekend_price` = 0",
             "UPDATE `extra_services` SET `track_inventory` = 0 WHERE `id` = 'SRV-REF'",
             "UPDATE `extra_services` SET `track_inventory` = 1, `stock_qty` = 80, `min_stock_warning` = 10 WHERE `id` IN ('SRV-WATER', 'SRV-WATER-BOTTLE', 'SRV-BIB', 'SRV-BALL') AND `stock_qty` = 100",
             "UPDATE `bookings` SET `paid_amount` = `total_price` WHERE `payment_status` IN ('Đã thanh toán đủ', 'Đã thanh toán 100%') AND `paid_amount` = 0",

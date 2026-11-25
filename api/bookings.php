@@ -230,8 +230,18 @@ if ($method === 'POST') {
                         continue;
                     }
                     $delta = max(0, $tot - $paid);
-                    $pdo->prepare("UPDATE bookings SET status = 'Hoàn thành', payment_status = 'Đã thanh toán đủ', paid_amount = ?, remaining_amount = 0 WHERE id = ?")
-                        ->execute([$tot, (int)$b['id']]);
+                    $curCash = max(0, (int)($b['cash_paid_amount'] ?? 0));
+                    $curTrans = max(0, (int)($b['transfer_paid_amount'] ?? 0));
+                    if ($paid > 0 && $curCash === 0 && $curTrans === 0) {
+                        if (mb_stripos((string)($b['payment_method'] ?? ''), 'Tiền mặt') !== false) {
+                            $curCash = $paid;
+                        } else {
+                            $curTrans = $paid;
+                        }
+                    }
+                    $curCash += $delta;
+                    $pdo->prepare("UPDATE bookings SET status = 'Hoàn thành', payment_status = 'Đã thanh toán đủ', paid_amount = ?, cash_paid_amount = ?, transfer_paid_amount = ?, remaining_amount = 0 WHERE id = ?")
+                        ->execute([$tot, $curCash, $curTrans, (int)$b['id']]);
                     if (function_exists('award_booking_loyalty_points')) {
                         award_booking_loyalty_points($pdo, $b);
                     }
@@ -245,8 +255,18 @@ if ($method === 'POST') {
                         continue;
                     }
                     $delta = max(0, $tot - $paid);
-                    $pdo->prepare("UPDATE bookings SET payment_status = 'Đã thanh toán đủ', paid_amount = ?, remaining_amount = 0 WHERE id = ?")
-                        ->execute([$tot, (int)$b['id']]);
+                    $curCash = max(0, (int)($b['cash_paid_amount'] ?? 0));
+                    $curTrans = max(0, (int)($b['transfer_paid_amount'] ?? 0));
+                    if ($paid > 0 && $curCash === 0 && $curTrans === 0) {
+                        if (mb_stripos((string)($b['payment_method'] ?? ''), 'Tiền mặt') !== false) {
+                            $curCash = $paid;
+                        } else {
+                            $curTrans = $paid;
+                        }
+                    }
+                    $curCash += $delta;
+                    $pdo->prepare("UPDATE bookings SET payment_status = 'Đã thanh toán đủ', paid_amount = ?, cash_paid_amount = ?, transfer_paid_amount = ?, remaining_amount = 0 WHERE id = ?")
+                        ->execute([$tot, $curCash, $curTrans, (int)$b['id']]);
                     if (function_exists('award_booking_loyalty_points')) {
                         award_booking_loyalty_points($pdo, $b);
                     }
