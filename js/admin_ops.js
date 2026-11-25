@@ -287,7 +287,7 @@ async function refreshWalkinBookedSlots() {
     if (bookedCode) {
       return `<option value="${escapeSearchHTML(s.id)}" disabled class="text-slate-400">${escapeSearchHTML(s.time)} (🔒 Đã đặt - #${escapeSearchHTML(bookedCode)})</option>`;
     }
-    return `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? '★ Giờ cao điểm' : ''}</option>`;
+    return `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)}</option>`;
   }).join('');
 
   const prevSlotObj = slots.find(s => s.id === prevSlotId);
@@ -329,7 +329,7 @@ function updateWalkinPricePreview() {
   if (elPitchPrice) {
     elPitchPrice.textContent = weeksCount > 1
       ? `${fmt(calc.pitchPrice)} (${weeksCount} buổi · ${fmt(calc.singlePitchPrice)}/buổi)`
-      : `${fmt(calc.pitchPrice)}${calc.isWeekend ? ' (Giá cuối tuần)' : (calc.isPeak ? ' (Giờ cao điểm)' : '')}`;
+      : `${fmt(calc.pitchPrice)}`;
   }
 
   if (elPromoRow) {

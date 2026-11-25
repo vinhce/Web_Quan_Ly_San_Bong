@@ -30,7 +30,7 @@
             <!-- Timeline Hours Header 05:30 -> 22:30 (Mỗi ca 2 tiếng · Nghỉ trưa 11:30 - 14:30) -->
             <div class="grid grid-cols-12 border-b border-[#E2E8F0] pb-2 text-[11px] font-bold text-[#64748B] pl-28 text-center">
               <div>05:30</div><div>07:30</div><div>09:30</div><div class="text-amber-600">11:30 (Trưa)</div><div class="text-amber-600 col-span-2">Nghỉ trưa (11:30-14:30)</div>
-              <div>14:30</div><div class="text-[#DC2626] font-extrabold">16:30 ▼</div><div class="text-[#DC2626] font-extrabold">18:30 (Cao điểm)</div>
+              <div>14:30</div><div class="text-[#DC2626] font-extrabold">16:30 ▼</div><div class="text-[#DC2626] font-extrabold">18:30</div>
               <div>20:30</div><div class="col-span-2">22:30 (Hết ca)</div>
             </div>
 

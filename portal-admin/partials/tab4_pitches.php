@@ -82,23 +82,15 @@
               </div>
 
               <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2.5">
-                <div class="font-bold text-[#0F172A] text-xs flex items-center justify-between">
-                  <span>Thiết lập đơn giá riêng cho sân này (VNĐ / ca 2 tiếng)</span>
-                  <span class="text-[11px] font-normal text-[#64748B]">Ưu tiên áp dụng khi tính tiền</span>
+                <div class="font-bold text-[#0F172A] text-xs flex flex-wrap items-center justify-between gap-2">
+                  <span>Đơn giá cố định cho sân này (VNĐ / ca 2 tiếng)</span>
+                  <span class="text-[11px] font-normal text-[#64748B]">Đồng giá mọi khung giờ &amp; cuối tuần</span>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label class="block font-bold text-[#475569] mb-1">Giá giờ thường *</label>
-                    <input type="number" id="pitch-form-base-price" min="0" step="10000" required placeholder="300000" class="input-field w-full font-bold text-[#0F172A] bg-white">
-                  </div>
-                  <div>
-                    <label class="block font-bold text-[#D97706] mb-1">Giá giờ cao điểm *</label>
-                    <input type="number" id="pitch-form-peak-price" min="0" step="10000" required placeholder="450000" class="input-field w-full font-bold text-[#D97706] bg-white">
-                  </div>
-                  <div>
-                    <label class="block font-bold text-[#2563EB] mb-1">Giá cuối tuần *</label>
-                    <input type="number" id="pitch-form-weekend-price" min="0" step="10000" required placeholder="500000" class="input-field w-full font-bold text-[#2563EB] bg-white">
-                  </div>
+                <div>
+                  <label class="block font-bold text-[#475569] mb-1">Giá cố định / ca 2 tiếng *</label>
+                  <input type="number" id="pitch-form-base-price" min="50000" step="10000" required placeholder="350000" oninput="const pEl=document.getElementById('pitch-form-peak-price');const wEl=document.getElementById('pitch-form-weekend-price');if(pEl)pEl.value=this.value;if(wEl)wEl.value=this.value;" class="input-field w-full font-bold text-[#0F172A] bg-white">
+                  <input type="hidden" id="pitch-form-peak-price" value="350000">
+                  <input type="hidden" id="pitch-form-weekend-price" value="350000">
                 </div>
               </div>
 

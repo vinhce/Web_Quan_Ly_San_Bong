@@ -544,14 +544,13 @@ function renderOverviewLists() {
   const todayAll = Array.isArray(data.todayBookings) ? data.todayBookings : [];
   const overdueAll = Array.isArray(data.overdueBookings) ? data.overdueBookings : [];
 
-  // Cập nhật số đếm tab lọc (gồm cả hôm nay + tồn đọng)
-  const combined = [...todayAll, ...overdueAll];
+  // Cập nhật số đếm tab lọc khớp danh sách hôm nay đang hiển thị
   const counts = {
-    all: combined.length,
-    playing: combined.filter(b => matchesOverviewFilter(b, 'playing')).length,
-    confirmed: combined.filter(b => matchesOverviewFilter(b, 'confirmed')).length,
-    completed: combined.filter(b => matchesOverviewFilter(b, 'completed')).length,
-    noshow: combined.filter(b => matchesOverviewFilter(b, 'noshow')).length
+    all: todayAll.length,
+    playing: todayAll.filter(b => matchesOverviewFilter(b, 'playing')).length,
+    confirmed: todayAll.filter(b => matchesOverviewFilter(b, 'confirmed')).length,
+    completed: todayAll.filter(b => matchesOverviewFilter(b, 'completed')).length,
+    noshow: todayAll.filter(b => matchesOverviewFilter(b, 'noshow')).length
   };
   Object.keys(counts).forEach(k => {
     const el = document.getElementById('ov-cnt-' + k);

@@ -569,7 +569,7 @@ function renderHistory() {
             ${monthlyTag}
             ${overtimeTag}
           </div>
-          <div class="text-xs text-[#64748B] shrink-0">Tạo lúc: ${esc(b.createdAt || 'Hôm nay')}</div>
+          <div class="text-xs text-[#64748B] shrink-0">Tạo lúc: ${esc((() => { const raw = String(b.createdAt || '').trim(); const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2}))?/); return m ? `${m[3]}/${m[2]}/${m[1]}${m[4] ? ' ' + m[4] : ''}` : (raw || 'Hôm nay'); })())}</div>
         </div>
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -588,9 +588,11 @@ function renderHistory() {
           </div>
 
           <div class="w-full sm:w-64 shrink-0 flex flex-col gap-2">
+            ${(normStatus !== 'Đã hủy' && normStatus !== 'Khách chưa đến') ? `
             <button type="button" data-action="view-qr" data-code="${safeCode}" class="w-full min-h-[44px] sm:min-h-[40px] px-3.5 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#0F172A] border border-[#E2E8F0] inline-flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap transition-colors cursor-pointer">
               <span>📷</span><span>Xem vé QR &amp; Hóa đơn</span>
             </button>
+            ` : ''}
             ${isConfirmed ? `
               <button type="button" data-action="cancel-booking" data-code="${safeCode}" class="w-full min-h-[44px] sm:min-h-[40px] px-3.5 rounded-xl bg-white hover:bg-[#FEE2E2] text-[#DC2626] border border-[#FECACA] inline-flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap transition-colors cursor-pointer">
                 <span>${isUnpaidHold ? '🛑 Hủy giữ chỗ' : '🛑 Hủy trước hạn &amp; Hoàn cọc'}</span>

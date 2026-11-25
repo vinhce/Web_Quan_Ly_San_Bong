@@ -107,9 +107,10 @@ function openPitchModal(pitchId = '') {
     if (typeEl) typeEl.value = String(pitch.type || 5);
     if (sizeEl) sizeEl.value = pitch.size || '20m x 40m';
     if (grassEl) grassEl.value = pitch.grass || 'Cỏ nhân tạo FIFA Quality Pro 50mm';
-    if (baseEl) baseEl.value = Number(pitch.basePrice || 250000);
-    if (peakEl) peakEl.value = Number(pitch.peakPrice || 350000);
-    if (wkndEl) wkndEl.value = Number(pitch.weekendPrice || pitch.peakPrice || 380000);
+    const fixedPrice = Number(pitch.basePrice || 350000);
+    if (baseEl) baseEl.value = fixedPrice;
+    if (peakEl) peakEl.value = fixedPrice;
+    if (wkndEl) wkndEl.value = fixedPrice;
     if (statusEl) statusEl.value = pitch.status || 'Hoạt động';
   } else {
     const nextIdx = db ? db.getPitches().length + 1 : 9;
@@ -119,9 +120,9 @@ function openPitchModal(pitchId = '') {
     if (typeEl) typeEl.value = '5';
     if (sizeEl) sizeEl.value = '20m x 40m';
     if (grassEl) grassEl.value = 'Cỏ nhân tạo FIFA Quality Pro 50mm';
-    if (baseEl) baseEl.value = 250000;
+    if (baseEl) baseEl.value = 350000;
     if (peakEl) peakEl.value = 350000;
-    if (wkndEl) wkndEl.value = 380000;
+    if (wkndEl) wkndEl.value = 350000;
     if (statusEl) statusEl.value = 'Hoạt động';
   }
 
@@ -148,13 +149,18 @@ async function savePitchForm(e) {
   const type = parseInt(document.getElementById('pitch-form-type')?.value || '5', 10);
   const size = (document.getElementById('pitch-form-size')?.value || '20m x 40m').trim();
   const grass = (document.getElementById('pitch-form-grass')?.value || 'Cỏ nhân tạo FIFA Quality Pro').trim();
-  const basePrice = Math.max(10000, parseInt(document.getElementById('pitch-form-base-price')?.value || '250000', 10));
-  const peakPrice = Math.max(10000, parseInt(document.getElementById('pitch-form-peak-price')?.value || '350000', 10));
-  const weekendPrice = Math.max(10000, parseInt(document.getElementById('pitch-form-weekend-price')?.value || '380000', 10));
+  const defaultByType = type === 11 ? 900000 : (type === 7 ? 450000 : 350000);
+  const basePrice = Math.max(50000, parseInt(document.getElementById('pitch-form-base-price')?.value || String(defaultByType), 10));
+  const peakPrice = basePrice;
+  const weekendPrice = basePrice;
   const status = document.getElementById('pitch-form-status')?.value || 'Hoạt động';
 
   if (!id || !name) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Vui lòng nhập đầy đủ Mã sân và Tên sân!', 'warning');
+    return;
+  }
+  if (!/^[A-Z0-9][A-Z0-9\-_]{1,19}$/.test(id)) {
+    if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Mã sân chỉ gồm chữ cái, số, dấu gạch ngang (-) hoặc gạch dưới (_)!', 'warning');
     return;
   }
 
@@ -545,7 +551,9 @@ function renderAdminPitches() {
             </div>
             <div class="text-[11px] text-[#64748B]">${escapeSearchHTML(p.grass || '')} ${p.size ? '· ' + escapeSearchHTML(p.size) : ''}</div>
             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] text-[#334155] leading-relaxed">
-              Thường: <b class="text-[#16A34A]">${fmt(p.basePrice)}</b> | Cao điểm: <b class="text-amber-700">${fmt(p.peakPrice)}</b> | Cuối tuần: <b class="text-purple-700">${fmt(weekendP)}</b>
+              ${Number(p.basePrice) === Number(p.peakPrice) && Number(p.basePrice) === Number(weekendP)
+                ? `Đồng giá mọi khung giờ: <b class="text-[#16A34A]">${fmt(p.basePrice)}/ca 2h</b>`
+                : `Thường: <b class="text-[#16A34A]">${fmt(p.basePrice)}</b> | Chiều tối: <b class="text-amber-700">${fmt(p.peakPrice)}</b> | Cuối tuần: <b class="text-purple-700">${fmt(weekendP)}</b>`}
             </div>
           </div>
         </div>

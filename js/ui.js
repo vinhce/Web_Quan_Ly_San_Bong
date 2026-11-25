@@ -266,7 +266,7 @@ function handleLogout() {
             <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 5 người tiêu chuẩn</a></li>
             <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 7 người trung tâm</a></li>
             <li><a href="${getRelativePath('fields')}" class="hover:text-white transition-colors">Sân 11 người ghép chuẩn VFF</a></li>
-            <li><a href="${getRelativePath('booking')}" class="hover:text-white transition-colors">Bảng giá & Giờ cao điểm</a></li>
+            <li><a href="${getRelativePath('booking')}" class="hover:text-white transition-colors">Bảng giá &amp; Khung giờ</a></li>
           </ul>
         </div>
 
@@ -418,7 +418,7 @@ function handleLogout() {
         const p = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname.toLowerCase() : '';
         if (/(?:\/|^)(booking|checkout|login|forgot-password)(?:\.html|\/|$)/.test(p)) return '';
         return `
-      <div id="sb-floating-contact" class="fixed right-3 sm:right-5 bottom-4 sm:bottom-6 z-40 flex flex-col gap-2.5 pointer-events-auto transition-opacity duration-200">
+      <div id="sb-floating-contact" class="fixed right-3 sm:right-5 bottom-16 sm:bottom-6 z-40 flex flex-col gap-2.5 pointer-events-auto transition-opacity duration-200">
         <a href="https://zalo.me/0352313548" target="_blank" rel="noopener noreferrer" class="zalo-floating-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#0068FF] text-white flex items-center justify-center font-bold text-[11px] sm:text-xs" title="Chat Zalo hỗ trợ 24/7">
           <span class="zalo-pulse-ring"></span>
           <span class="zalo-pulse-wave"></span>
@@ -445,7 +445,7 @@ function handleLogout() {
       container.setAttribute('aria-label', 'Thông báo hệ thống');
       container.setAttribute('aria-live', 'polite');
       container.setAttribute('aria-atomic', 'true');
-      container.className = 'fixed bottom-5 right-5 z-[9999] flex flex-col-reverse gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0';
+      container.className = 'fixed bottom-20 sm:bottom-5 right-3 sm:right-5 left-3 sm:left-auto z-[9999] flex flex-col-reverse gap-2.5 sm:max-w-sm w-auto pointer-events-none';
       document.body.appendChild(container);
     }
 

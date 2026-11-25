@@ -438,6 +438,7 @@ function switchAdminTab(moduleKey) {
   } catch (e) {}
 
   if (typeof closeAdminMobileDrawer === 'function') closeAdminMobileDrawer();
+  if (typeof clearAdminSearch === 'function') clearAdminSearch();
   const allModules = ['overview', 'timeline', 'quick-booking', 'pitches', 'pricing', 'customers', 'payments', 'shifts', 'reports', 'settings', 'logs'];
 
   allModules.forEach(m => {

@@ -347,8 +347,9 @@ function renderSlots(skipServerFetch = false) {
     } else {
       clickAttr = `onclick="selectSlot(this.getAttribute('data-slot-id'))"`;
     }
+    const interactiveAttrs = clickAttr ? `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"` : '';
     return `
-      <div data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} class="slot-chip p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${chipTitle}">
+      <div data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} ${interactiveAttrs} class="slot-chip p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${chipTitle}">
         <div class="text-xs sm:text-sm font-extrabold">${safeTime}</div>
         <div class="mt-1">${statusBadge}</div>
       </div>
@@ -837,10 +838,17 @@ function saveCurrentBookingDraft() {
 
   let name = '';
   let phone = '';
+  const isBookingForFriend = Boolean(document.getElementById('booking-for-friend-checkbox')?.checked);
+  const friendName = isBookingForFriend ? (document.getElementById('friend-name')?.value || '').trim() : '';
+  const friendPhone = isBookingForFriend ? (document.getElementById('friend-phone')?.value || '').replace(/\s+/g, '') : '';
 
   if (user) {
     name = user.full_name || user.name || '';
     phone = user.phone || document.getElementById('user-missing-phone')?.value.trim() || '';
+  }
+  if (isBookingForFriend) {
+    name = friendName || name;
+    phone = friendPhone || phone;
   }
   const cleanUserNote = (typeof window.stripBookingSystemNoteTags === 'function')
     ? window.stripBookingSystemNoteTags(document.getElementById('cust-note')?.value || '')
@@ -863,6 +871,9 @@ function saveCurrentBookingDraft() {
     services: appliedServices,
     voucherCode: appliedVoucherCode,
     redeemedBottles: Number(window.bookingRedeemedBottles || 0),
+    isBookingForFriend: isBookingForFriend,
+    friendName: friendName,
+    friendPhone: friendPhone,
     customerName: name,
     phone: phone,
     customerNote: cleanUserNote,
@@ -880,11 +891,11 @@ function proceedToCheckout() {
   setTimeout(() => { window._isProceedingCheckout = false; }, 1000);
 
   // Xóa các thông báo lỗi cũ dưới từng ô
-  ['user-missing-phone-error', 'cust-note-error'].forEach(id => {
+  ['user-missing-phone-error', 'cust-note-error', 'friend-name-error', 'friend-phone-error'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.textContent = ''; el.classList.add('hidden'); }
   });
-  ['user-missing-phone', 'cust-note'].forEach(id => {
+  ['user-missing-phone', 'cust-note', 'friend-name', 'friend-phone'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('border-rose-500', 'ring-2', 'ring-rose-100');
   });
@@ -977,9 +988,29 @@ function proceedToCheckout() {
   // BƯỚC 3: Nếu đã đăng nhập: Kiểm tra tiếp thông tin người đặt
   const missingFields = [];
 
-  const name = user.full_name || user.name || '';
+  const isBookingForFriend = Boolean(document.getElementById('booking-for-friend-checkbox')?.checked);
+  let name = user.full_name || user.name || '';
   let phone = user.phone || '';
-  if (!phone) {
+  if (isBookingForFriend) {
+    const friendNameEl = document.getElementById('friend-name');
+    const friendPhoneEl = document.getElementById('friend-phone');
+    name = (friendNameEl?.value || '').trim();
+    phone = (friendPhoneEl?.value || '').replace(/\s+/g, '');
+    if (name.length < 2 || name.length > 60) {
+      missingFields.push('Họ tên người nhận sân (2–60 ký tự)');
+      const errEl = document.getElementById('friend-name-error');
+      if (errEl) { errEl.textContent = 'Vui lòng nhập họ tên người nhận sân (2–60 ký tự).'; errEl.classList.remove('hidden'); }
+      friendNameEl?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      if (!firstInvalidEl) firstInvalidEl = friendNameEl;
+    }
+    if (!/^0\d{9}$/.test(phone)) {
+      missingFields.push('Số điện thoại người nhận sân (10 chữ số)');
+      const errEl = document.getElementById('friend-phone-error');
+      if (errEl) { errEl.textContent = 'Vui lòng nhập SĐT hợp lệ (10 chữ số bắt đầu bằng 0).'; errEl.classList.remove('hidden'); }
+      friendPhoneEl?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      if (!firstInvalidEl) firstInvalidEl = friendPhoneEl;
+    }
+  } else if (!phone) {
     const missingInput = document.getElementById('user-missing-phone');
     phone = missingInput?.value.trim() || '';
     if (!/^0\d{9}$/.test(phone)) {
@@ -1048,6 +1079,7 @@ function proceedToCheckout() {
     voucherCode: appliedVoucherCode,
     redeemedBottles: Number(window.bookingRedeemedBottles || 0),
     serverQuote: window._lastServerQuote || null,
+    isBookingForFriend: isBookingForFriend,
     customerName: name,
     phone: phone,
     customerNote: cleanUserNote,

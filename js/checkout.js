@@ -156,7 +156,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const createdOk = await createInitialBookingRecord();
   if (createdOk === false) {
     const qrImg = document.getElementById('sepay-qr-img');
-    if (qrImg) qrImg.src = '';
+    if (qrImg) {
+      qrImg.removeAttribute('src');
+      qrImg.classList.add('hidden');
+    }
+    const qrLoading = document.getElementById('sepay-qr-loading');
+    if (qrLoading) {
+      qrLoading.classList.remove('hidden');
+      qrLoading.innerHTML = '<span class="text-rose-600 font-bold text-center px-3">Không thể tạo mã giữ chỗ</span>';
+    }
+    const timerEl = document.getElementById('countdown-timer');
+    if (timerEl) timerEl.textContent = '--:--';
     return;
   }
   window._bookingCreatedOk = true;
@@ -340,6 +350,7 @@ async function createInitialBookingRecord() {
         idempotencyKey: currentDraft.idempotencyKey || '',
         customerName: currentDraft.customerName,
         phone: currentDraft.phone,
+        isBookingForFriend: Boolean(currentDraft.isBookingForFriend),
         email: 'khachhang@sanbongpro.vn',
         pitchId: currentDraft.pitchId,
         date: currentDraft.date,
@@ -427,7 +438,7 @@ async function createInitialBookingRecord() {
 
 function renderCheckoutDetails(shouldLoadQR = true) {
   const db = window.SanBongApp.SanBongDB;
-  const pitch = db.getPitchById(currentDraft.pitchId) || db.getPitches()[0];
+  const pitch = db.getPitchById(currentDraft.pitchId) || db.getPitches()[0] || { id: currentDraft.pitchId, name: 'Sân bóng', typeName: 'Sân bóng', variant: 'standard' };
   const slots = db.getTimeSlots();
   const slot = slots.find(s => s.id === currentDraft.slotId) || slots[3];
 
@@ -439,7 +450,7 @@ function renderCheckoutDetails(shouldLoadQR = true) {
     currentDraft.services,
     currentDraft.voucherCode,
     weeks
-  );
+  ) || { depositAmount: 0, totalPrice: 0, remainingAmount: 0, appliedServices: [], depositRatePct: 30 };
 
   const bank = db.getBankInfo();
 
@@ -467,7 +478,8 @@ function renderCheckoutDetails(shouldLoadQR = true) {
   const qrLoading = document.getElementById('sepay-qr-loading');
   if (qrImg) {
     if (!shouldLoadQR) {
-      qrImg.src = '';
+      qrImg.removeAttribute('src');
+      qrImg.classList.add('hidden');
       if (qrLoading) qrLoading.classList.add('hidden');
     } else {
       const sepayBank = bank.bankCode || 'MB';
@@ -476,10 +488,19 @@ function renderCheckoutDetails(shouldLoadQR = true) {
       const sepayDes = generatedBookingCode;
       const qrUrl = `https://qr.sepay.vn/img?bank=${encodeURIComponent(sepayBank)}&acc=${encodeURIComponent(sepayAcc)}&template=compact&amount=${sepayAmt}&des=${encodeURIComponent(sepayDes)}`;
 
-      qrImg.src = qrUrl;
       qrImg.onload = () => {
+        qrImg.classList.remove('hidden');
         if (qrLoading) qrLoading.classList.add('hidden');
       };
+      qrImg.onerror = () => {
+        qrImg.removeAttribute('src');
+        qrImg.classList.add('hidden');
+        if (qrLoading) {
+          qrLoading.classList.remove('hidden');
+          qrLoading.innerHTML = '<span class="text-amber-700 font-semibold text-center px-2">Không tải được ảnh QR. Vui lòng chuyển khoản thủ công theo STK bên cạnh.</span>';
+        }
+      };
+      qrImg.src = qrUrl;
     }
   }
 

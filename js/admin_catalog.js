@@ -102,6 +102,14 @@ function renderAdminInventory() {
     updatePosSalePreview();
   }
 
+  const pitchDatalist = document.getElementById('pos-pitch-code-options');
+  if (pitchDatalist && typeof db.getPitches === 'function') {
+    const pitchList = db.getPitches().filter(p => p && p.status !== 'Ẩn');
+    pitchDatalist.innerHTML = pitchList.map(p =>
+      `<option value="${escapeSearchHTML(p.id)}">${escapeSearchHTML(p.name || p.id)}</option>`
+    ).join('');
+  }
+
   // 3. Render bảng tồn kho
   const tbody = document.getElementById('admin-inventory-tbody');
   if (!tbody) return;
@@ -137,17 +145,19 @@ function renderAdminInventory() {
         <td class="py-2 px-2 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
           ≤ ${minW}
         </td>
-        <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
+        <td class="py-2 px-2.5 text-right whitespace-nowrap">
           ${isManagerOrAdmin() ? `
-            <button type="button" onclick="promptRestockService('${safeSrvIdAttr}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer">
-              + Nhập kho
-            </button>
-            <button type="button" onclick="openServiceModal('${safeSrvIdAttr}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0F172A] border border-slate-300 font-bold text-[11px] cursor-pointer">
-              Sửa
-            </button>
-            <button type="button" onclick="handleDeleteService('${safeSrvIdAttr}')" class="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-[11px] cursor-pointer" title="Ngừng kinh doanh / Xóa dịch vụ">
-              <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            </button>
+            <div class="inline-flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
+              <button type="button" onclick="promptRestockService('${safeSrvIdAttr}')" class="inline-flex items-center justify-center h-7 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer whitespace-nowrap shrink-0">
+                + Nhập kho
+              </button>
+              <button type="button" onclick="openServiceModal('${safeSrvIdAttr}')" class="inline-flex items-center justify-center h-7 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0F172A] border border-slate-300 font-bold text-[11px] cursor-pointer whitespace-nowrap shrink-0">
+                Sửa
+              </button>
+              <button type="button" onclick="handleDeleteService('${safeSrvIdAttr}')" class="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-[11px] cursor-pointer shrink-0" title="Ngừng kinh doanh / Xóa dịch vụ">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
           ` : `
             <span class="text-[11px] text-slate-400 italic">Chỉ xem</span>
           `}
@@ -158,7 +168,7 @@ function renderAdminInventory() {
 }
 window.renderAdminInventory = renderAdminInventory;
 
-// [hoisted to admin.js]
+let isPosSaleSubmitting = false;
 
 async function handleCounterServiceSale(e) {
   if (e && e.preventDefault) e.preventDefault();

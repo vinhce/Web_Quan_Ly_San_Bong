@@ -422,6 +422,17 @@ function initBookingPage() {
           if (agreeBox) agreeBox.checked = true;
         }
 
+        if (draft.isBookingForFriend) {
+          const friendChk = document.getElementById('booking-for-friend-checkbox');
+          const friendWrap = document.getElementById('booking-friend-fields-wrap');
+          const friendNameEl = document.getElementById('friend-name');
+          const friendPhoneEl = document.getElementById('friend-phone');
+          if (friendChk) friendChk.checked = true;
+          if (friendWrap) friendWrap.classList.remove('hidden');
+          if (friendNameEl) friendNameEl.value = draft.friendName || draft.customerName || '';
+          if (friendPhoneEl) friendPhoneEl.value = draft.friendPhone || draft.phone || '';
+        }
+
         const restoredUserNote = stripBookingSystemNoteTags(draft.customerNote ?? draft.note ?? '');
         if (restoredUserNote) {
           const noteInput = document.getElementById('cust-note');
@@ -652,6 +663,38 @@ function initBookingPage() {
     if (missingPhoneEl.value) handleCheckPhone();
   }
 
+  const friendChkEl = document.getElementById('booking-for-friend-checkbox');
+  const friendWrapEl = document.getElementById('booking-friend-fields-wrap');
+  const friendPhoneEl = document.getElementById('friend-phone');
+  if (friendChkEl && !friendChkEl._bound) {
+    friendChkEl._bound = true;
+    friendChkEl.addEventListener('change', () => {
+      if (friendWrapEl) friendWrapEl.classList.toggle('hidden', !friendChkEl.checked);
+      ['friend-name-error', 'friend-phone-error'].forEach(id => {
+        const err = document.getElementById(id);
+        if (err) { err.textContent = ''; err.classList.add('hidden'); }
+      });
+      if (friendChkEl.checked) {
+        if (typeof checkBookingPhoneNoShow === 'function') checkBookingPhoneNoShow(friendPhoneEl?.value || '');
+      } else if (typeof checkBookingPhoneNoShow === 'function') {
+        const curU = window.SanBongApp?.SanBongDB?.getUser ? window.SanBongApp.SanBongDB.getUser() : null;
+        checkBookingPhoneNoShow(curU?.phone || document.getElementById('user-missing-phone')?.value || '');
+      }
+    });
+  }
+  if (friendPhoneEl && !friendPhoneEl._noShowBound) {
+    friendPhoneEl._noShowBound = true;
+    const handleCheckFriendPhone = () => {
+      if (friendChkEl?.checked && typeof checkBookingPhoneNoShow === 'function') {
+        checkBookingPhoneNoShow(friendPhoneEl.value);
+      }
+    };
+    friendPhoneEl.addEventListener('input', handleCheckFriendPhone);
+    friendPhoneEl.addEventListener('change', handleCheckFriendPhone);
+    friendPhoneEl.addEventListener('blur', handleCheckFriendPhone);
+    if (friendChkEl?.checked && friendPhoneEl.value) handleCheckFriendPhone();
+  }
+
   const pitchSelect = document.getElementById('booking-pitch-select');
   if (pitchSelect && !pitchSelect._bound) {
     pitchSelect._bound = true;
@@ -781,9 +824,9 @@ function renderPitchTypeSelector() {
   };
 
   const types = [
-    { type: 5, name: 'Sân 5 người', desc: 'Mini 5 vs 5 · 20m x 40m', price: getMinPriceLabel(5, 250000) },
-    { type: 7, name: 'Sân 7 người', desc: 'Chuẩn 7 vs 7 · 30m x 50m', price: getMinPriceLabel(7, 280000) },
-    { type: 11, name: 'Sân 11 người', desc: 'Chuẩn FIFA · 68m x 105m', price: getMinPriceLabel(11, 800000) }
+    { type: 5, name: 'Sân 5 người', desc: 'Mini 5 vs 5 · 20m x 40m', price: getMinPriceLabel(5, 350000) },
+    { type: 7, name: 'Sân 7 người', desc: 'Chuẩn 7 vs 7 · 30m x 50m', price: getMinPriceLabel(7, 450000) },
+    { type: 11, name: 'Sân 11 người', desc: 'Chuẩn FIFA · 68m x 105m', price: getMinPriceLabel(11, 900000) }
   ];
 
   container.innerHTML = types.map(t => {

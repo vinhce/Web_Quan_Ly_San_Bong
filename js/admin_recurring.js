@@ -24,7 +24,7 @@ function initRecurringScheduleForm() {
   if (slotSel) {
     const prevS = slotSel.value;
     slotSel.innerHTML = db.getTimeSlots().map(s => (
-      `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? '★ Cao điểm' : ''}</option>`
+      `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)}</option>`
     )).join('');
     if (prevS && Array.from(slotSel.options).some(o => o.value === prevS)) {
       slotSel.value = prevS;

@@ -213,10 +213,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const user = db.getUser ? db.getUser() : {};
+  const sysCfgPts = db.getSystemConfig ? db.getSystemConfig() : null;
+  const ptsPer10k = Math.max(1, Number(sysCfgPts?.loyaltyPointsPer10k) || 1);
+  const stLower = String(booking.status || '').trim().toLowerCase();
+  const isCancelledTicket = (stLower === 'đã hủy' || stLower === 'khách chưa đến' || stLower === 'cancelled');
+  const paidForPts = Number(booking.paidAmount ?? booking.depositAmount ?? 0) || 0;
+  const explicitPts = booking.pointsEarned !== undefined ? Number(booking.pointsEarned) : (booking.earnedPoints !== undefined ? Number(booking.earnedPoints) : null);
+  const earnedPoints = isCancelledTicket
+    ? 0
+    : (explicitPts !== null && !isNaN(explicitPts) ? Math.max(0, explicitPts) : (paidForPts > 0 ? Math.max(1, Math.floor(paidForPts / 10000) * ptsPer10k) : 0));
+  const earnedEl = document.getElementById('ticket-points-earned');
+  if (earnedEl) {
+    earnedEl.textContent = `Điểm thưởng đơn này: +${earnedPoints.toLocaleString('vi-VN')} điểm`;
+  }
   const currentBalance = booking.newPointsBalance !== undefined ? booking.newPointsBalance : (user?.points ?? 0);
   const balanceEl = document.getElementById('ticket-points-balance');
   if (balanceEl) {
-    balanceEl.textContent = `${currentBalance} điểm`;
+    balanceEl.textContent = `${Number(currentBalance || 0).toLocaleString('vi-VN')} điểm`;
   }
 
   const isCheckedInStatus = (st) => {

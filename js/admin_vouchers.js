@@ -702,7 +702,7 @@ function populateGoldenHourSlots() {
   const prev = slotSel.value;
   const slots = db.getTimeSlots();
   slotSel.innerHTML = `<option value="">Tất cả khung giờ</option>` + slots.map(s => (
-    `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)} ${s.isPeak ? '★ Cao điểm' : ''}</option>`
+    `<option value="${escapeSearchHTML(s.id)}">${escapeSearchHTML(s.time)}</option>`
   )).join('');
   if (prev && Array.from(slotSel.options).some(o => o.value === prev)) {
     slotSel.value = prev;

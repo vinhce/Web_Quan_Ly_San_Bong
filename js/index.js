@@ -150,6 +150,10 @@
       if (pitchEl && Number(stats.pitchCount) > 0) {
         pitchEl.textContent = `${Number(stats.pitchCount)} sân`;
       }
+      const allPitchesLbl = document.getElementById('home-all-pitches-label');
+      if (allPitchesLbl && Number(stats.pitchCount) > 0) {
+        allPitchesLbl.textContent = `Xem tất cả ${Number(stats.pitchCount)} sân`;
+      }
       const matchesCnt = Number(stats.completedMatchesCount || 0);
       if (matchEl && matchesCnt > 0) {
         matchEl.textContent = `${matchesCnt.toLocaleString('vi-VN')} đơn`;
@@ -321,8 +325,22 @@
     const app = window.SanBongApp;
     if (!grid || !app) return;
     const esc = (s) => (app.escapeHTML ? app.escapeHTML(s) : String(s ?? ''));
+    const allPitches = Array.isArray(pitches) ? pitches : [];
+    const activeCount = allPitches.filter(p => p.status !== 'Ẩn').length;
+    if (activeCount > 0) {
+      const heroPitchEl = document.getElementById('hero-stat-pitches');
+      const allLblEl = document.getElementById('home-all-pitches-label');
+      if (heroPitchEl) heroPitchEl.textContent = `${activeCount} sân`;
+      if (allLblEl) allLblEl.textContent = `Xem tất cả ${activeCount} sân`;
+    }
 
-    grid.innerHTML = pitches.map(p => {
+    const featuredPitches = allPitches.filter(p => p.status !== 'Ẩn' && p.status !== 'Bảo trì' && !p.inMaintenance);
+    if (featuredPitches.length === 0) {
+      grid.innerHTML = `<div class="w-full py-10 text-center text-sm text-[#64748B]">Hiện chưa có sân đang mở đặt.</div>`;
+      return;
+    }
+
+    grid.innerHTML = featuredPitches.map(p => {
       const safeId = esc(p.id);
       const isMaint = p.status === 'Bảo trì' || Boolean(p.inMaintenance);
       const ratingBadge = Number(p.reviewCount || 0) > 0

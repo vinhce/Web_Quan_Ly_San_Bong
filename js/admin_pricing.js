@@ -4,7 +4,7 @@
 const PRICING_SUBTABS = ['pricing', 'packages', 'vouchers'];
 let activePricingSubTab = 'pricing';
 let pricingServerSnapshot = {
-  p5: 250000,
+  p5: 350000,
   p7: 450000,
   p11: 900000,
   effective_from: ''
@@ -13,7 +13,7 @@ let pricingInputsBound = false;
 let isLoadingPricing = false;
 let monthlyPackagesCache = [];
 let packageServicesCatalog = [];
-let packageRefPrices = { p5: 250000, p7: 450000, p11: 900000 };
+let packageRefPrices = { p5: 350000, p7: 450000, p11: 900000 };
 let packageModalInputsBound = false;
 
 function canManagePricing() {
@@ -214,7 +214,7 @@ async function loadPricingTable() {
   const r = await adminFetchJson('../api/admin.php?action=get_pricing');
   if (r.ok && r.data) {
     const d = r.data;
-    const p5Base = Number(d.p5?.base ?? d.p5?.basePrice ?? 250000) || 250000;
+    const p5Base = Number(d.p5?.base ?? d.p5?.basePrice ?? 350000) || 350000;
     const p7Base = Number(d.p7?.base ?? d.p7?.basePrice ?? 450000) || 450000;
     const p11Base = Number(d.p11?.base ?? d.p11?.basePrice ?? 900000) || 900000;
     const effFrom = String(d.pricing_effective_from ?? d.effective_from ?? '').trim();
@@ -233,12 +233,12 @@ async function loadPricingTable() {
   // Fallback to pitches cache if network offline
   const db = window.SanBongApp?.SanBongDB;
   const pitches = db ? db.getPitches() : [];
-  const p5 = pitches.find(p => Number(p.type) === 5) || { basePrice: 250000 };
+  const p5 = pitches.find(p => Number(p.type) === 5) || { basePrice: 350000 };
   const p7 = pitches.find(p => Number(p.type) === 7) || { basePrice: 450000 };
   const p11 = pitches.find(p => Number(p.type) === 11) || { basePrice: 900000 };
 
   pricingServerSnapshot = {
-    p5: Number(p5.basePrice || 250000),
+    p5: Number(p5.basePrice || 350000),
     p7: Number(p7.basePrice || 450000),
     p11: Number(p11.basePrice || 900000),
     effective_from: ''

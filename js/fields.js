@@ -94,6 +94,13 @@ if (document.readyState === 'loading') {
 }
 
 function renderPitches() {
+  const visibleBase = currentPitches.filter(p => p.status !== 'Ẩn');
+  const setCountTxt = (id, label) => { const el = document.getElementById(id); if (el) el.textContent = label; };
+  setCountTxt('filter-count-all', `Tất cả sân (${visibleBase.length} sân)`);
+  setCountTxt('filter-count-5', `Sân 5 người (${visibleBase.filter(p => Number(p.type) === 5).length} sân)`);
+  setCountTxt('filter-count-7', `Sân 7 người (${visibleBase.filter(p => Number(p.type) === 7).length} sân)`);
+  setCountTxt('filter-count-11', `Sân 11 người (${visibleBase.filter(p => Number(p.type) === 11).length} sân)`);
+
   const typeVal = document.querySelector('input[name="filter-type"]:checked')?.value || 'all';
   const activeOnly = document.getElementById('filter-active-only')?.checked;
   const maxPrice = Number(document.getElementById('price-range')?.value) || 1500000;
@@ -313,8 +320,9 @@ function openPitchDetail(pitchId) {
       <div class="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div class="text-xs text-[#64748B]">Bảng giá theo ca (2 tiếng)</div>
         <div class="text-xs font-bold text-[#16A34A] mt-1">
-          Thường (05:30-16:30): ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/ca 2h<br>
-          Giờ cao điểm (16:30-20:30): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : esc(pitch.peakPrice)}/ca 2h
+          ${!pitch.peakPrice || Number(pitch.peakPrice) === Number(pitch.basePrice)
+            ? `Đồng giá mọi khung giờ (05:30-22:30): ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/ca 2h<br><span class="text-[#64748B] font-medium">Không phụ thu cao điểm &amp; cuối tuần</span>`
+            : `Thường (05:30-16:30): ${app?.formatVND ? app.formatVND(pitch.basePrice) : esc(pitch.basePrice)}/ca 2h<br>Chiều tối (16:30-20:30): ${app?.formatVND ? app.formatVND(pitch.peakPrice) : esc(pitch.peakPrice)}/ca 2h`}
         </div>
       </div>
     </div>

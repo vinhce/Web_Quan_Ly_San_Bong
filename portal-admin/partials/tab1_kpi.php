@@ -4,7 +4,7 @@
         <!-- 1. KPI ROW -->
         <div id="overview-kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 <?php echo (!isset($isManagerOrAdmin) || $isManagerOrAdmin) ? 'lg:grid-cols-4' : 'lg:grid-cols-3'; ?> gap-4">
           <?php if (!isset($isManagerOrAdmin) || $isManagerOrAdmin): ?>
-          <div id="kpi-card-revenue" class="ui-card p-4 bg-white border border-[#E2E8F0]">
+          <div id="kpi-card-revenue" class="ui-card min-w-0 p-4 bg-white border border-[#E2E8F0]">
             <div class="flex items-center justify-between text-xs font-semibold text-[#64748B]">
               <span>Doanh thu ghi nhận hôm nay</span>
               <span id="kpi-rev-refresh-dot" class="w-2 h-2 rounded-full bg-emerald-500" title="Tự cập nhật mỗi 30s"></span>
@@ -33,9 +33,9 @@
             <div id="kpi-occupancy-formula" class="mt-1.5 text-[10px] text-[#64748B]">Ca cao điểm / (Sân hoạt động × khung 17:30–21:00)</div>
           </div>
 
-          <div class="ui-card p-4 bg-white border border-[#E2E8F0]">
+          <div class="ui-card min-w-0 p-4 bg-white border border-[#E2E8F0]">
             <div class="text-xs font-semibold text-[#64748B]">Trạng thái sân hiện tại</div>
-            <div id="kpi-pitches-ready" class="font-heading font-extrabold text-2xl text-[#0F172A] mt-1">0/0 Sân sẵn sàng</div>
+            <div id="kpi-pitches-ready" class="font-heading font-extrabold text-xl sm:text-2xl text-[#0F172A] mt-1 break-words">0/0 Sân sẵn sàng</div>
             <div id="kpi-pitches-sub" class="mt-2 text-xs text-[#64748B]">---</div>
           </div>
         </div>

@@ -85,14 +85,14 @@
                       <input
                         type="text"
                         id="price-p5-base"
-                        value="250.000đ"
+                        value="350.000đ"
                         inputmode="numeric"
                         aria-label="Giá cố định Sân 5 người"
                         oninput="document.getElementById('price-p5-peak').value=this.value;document.getElementById('price-p5-weekend').value=this.value;"
                         class="input-field w-44 h-9 text-xs font-bold text-[#0F172A] tabular-nums"
                       >
-                      <input type="hidden" id="price-p5-peak" value="250.000đ">
-                      <input type="hidden" id="price-p5-weekend" value="250.000đ">
+                      <input type="hidden" id="price-p5-peak" value="350.000đ">
+                      <input type="hidden" id="price-p5-weekend" value="350.000đ">
                     </td>
                   </tr>
                   <tr class="hover:bg-slate-50/70">

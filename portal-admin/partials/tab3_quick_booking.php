@@ -3,7 +3,7 @@
       <div id="tab-content-quick-booking" class="space-y-6 hidden">
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           <!-- KHỐI 1: ĐẶT SÂN TẠI QUẦY & KHÓA LỊCH TỨC THÌ (5 CỘT) -->
-          <div class="xl:col-span-5 ui-card p-5 sm:p-6 space-y-4">
+          <div class="xl:col-span-5 min-w-0 ui-card p-4 sm:p-6 space-y-4">
             <div class="border-b border-[#E2E8F0] pb-3 flex items-center justify-between gap-2">
               <div>
                 <h3 class="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">Đặt sân tại quầy</h3>
@@ -114,7 +114,7 @@
           </div>
 
           <!-- KHỐI 2: KHO NƯỚC & BÁN LẺ DỊCH VỤ TẠI QUẦY (7 CỘT) -->
-          <div id="counter-pos-inventory-card" class="xl:col-span-7 ui-card p-5 sm:p-6 space-y-4">
+          <div id="counter-pos-inventory-card" class="xl:col-span-7 min-w-0 ui-card p-4 sm:p-6 space-y-4">
             <div class="border-b border-[#E2E8F0] pb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 class="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">2. Kho Nước &amp; Bán Lẻ Dịch Vụ Tại Quầy</h3>
@@ -168,8 +168,9 @@
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div class="sm:col-span-8">
-                  <label class="block font-bold text-[#475569] mb-1">Ghi chú / Mã đơn liên kết (tùy chọn)</label>
-                  <input type="text" id="pos-sale-note" placeholder="VD: Khách Sân 7-A mua 5 chai nước, hoặc mã đơn..." class="input-field w-full h-9 text-xs bg-white">
+                  <label class="block font-bold text-[#475569] mb-1">Mã sân / Mã đơn (tùy chọn)</label>
+                  <input type="text" id="pos-sale-note" list="pos-pitch-code-options" placeholder="VD: P7-A (mã sân) hoặc ASFS123456 (mã đơn)..." class="input-field w-full h-9 text-xs bg-white">
+                  <datalist id="pos-pitch-code-options"></datalist>
                 </div>
                 <div class="sm:col-span-4">
                   <button type="submit" id="pos-sale-submit-btn" class="btn-base btn-primary w-full h-9 text-xs font-extrabold cursor-pointer shadow-sm inline-flex items-center justify-center gap-1.5">

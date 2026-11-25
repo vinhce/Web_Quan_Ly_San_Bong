@@ -394,9 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const nameRegex = /^[\p{L}\p{N}\s._-]+$/u;
+    const nameRegex = /^[\p{L}\p{N}\s._\[\]-]+$/u;
     if (!nameRegex.test(fullName)) {
-      setAuthMessage('Họ và tên chỉ được chứa chữ cái, chữ số, khoảng trắng và dấu gạch ngang/dưới.', 'error');
+      setAuthMessage('Họ và tên chỉ được chứa chữ cái, chữ số, khoảng trắng và dấu gạch ngang/dưới/ngoặc vuông.', 'error');
       markFieldError('reg-name');
       return;
     }

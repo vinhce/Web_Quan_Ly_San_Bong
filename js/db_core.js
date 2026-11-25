@@ -66,7 +66,7 @@
         let pChanged = false;
         pList.forEach(p => {
           if (!p.weekendPrice || Number(p.weekendPrice) <= 0) {
-            p.weekendPrice = p.type === 11 ? 1400000 : (p.type === 7 ? 700000 : 380000);
+            p.weekendPrice = Number(p.basePrice) > 0 ? Number(p.basePrice) : (p.type === 11 ? 900000 : (p.type === 7 ? 450000 : 350000));
             pChanged = true;
           }
         });

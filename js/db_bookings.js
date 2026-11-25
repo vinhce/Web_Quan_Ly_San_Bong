@@ -259,9 +259,9 @@
       const existingIdx = list.findIndex(p => String(p.id).toUpperCase() === cleanId);
       const oldPitch = existingIdx >= 0 ? Object.assign({}, list[existingIdx]) : null;
       const pType = Number(pitchData.type) || (cleanId.startsWith('P11') ? 11 : (cleanId.startsWith('P7') ? 7 : 5));
-      const basePrice = Math.max(0, Number(pitchData.basePrice) || (pType === 11 ? 900000 : (pType === 7 ? 450000 : 250000)));
-      const peakPrice = Math.max(0, Number(pitchData.peakPrice) || (pType === 11 ? 1200000 : (pType === 7 ? 650000 : 350000)));
-      const weekendPrice = Math.max(0, Number(pitchData.weekendPrice) || (pType === 11 ? 1400000 : (pType === 7 ? 700000 : 380000)));
+      const basePrice = Math.max(0, Number(pitchData.basePrice) || (pType === 11 ? 900000 : (pType === 7 ? 450000 : 350000)));
+      const peakPrice = Math.max(0, Number(pitchData.peakPrice) || basePrice);
+      const weekendPrice = Math.max(0, Number(pitchData.weekendPrice) || basePrice);
 
       const updatedPitch = Object.assign({}, oldPitch || {}, {
         id: cleanId,
@@ -290,7 +290,7 @@
         'PITCH_UPSERT',
         cleanId,
         oldPitch ? `${oldPitch.name} (${oldPitch.basePrice.toLocaleString('vi-VN')}đ / ${oldPitch.peakPrice.toLocaleString('vi-VN')}đ) [${oldPitch.status}]` : 'Tạo sân mới',
-        `${updatedPitch.name} (Thường: ${basePrice.toLocaleString('vi-VN')}đ | Cao điểm: ${peakPrice.toLocaleString('vi-VN')}đ | Cuối tuần: ${weekendPrice.toLocaleString('vi-VN')}đ) [${updatedPitch.status}]`
+        `${updatedPitch.name} (Đồng giá: ${basePrice.toLocaleString('vi-VN')}đ/ca 2h) [${updatedPitch.status}]`
       );
       return updatedPitch;
     },

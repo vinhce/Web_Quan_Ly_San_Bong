@@ -508,8 +508,7 @@
     if (!Array.isArray(dbSlots) || dbSlots.length === 0) return;
     const prevVal = sel.value;
     sel.innerHTML = dbSlots.map(s => {
-      const peakLabel = s.isPeak ? ' (Cao điểm)' : '';
-      return `<option value="${esc(s.time)}" data-slot-id="${esc(s.id)}">${esc(s.time)}${peakLabel}</option>`;
+      return `<option value="${esc(s.time)}" data-slot-id="${esc(s.id)}">${esc(s.time)}</option>`;
     }).join('');
     if (prevVal && [...sel.options].some(o => o.value === prevVal)) {
       sel.value = prevVal;
