@@ -246,9 +246,9 @@ recordResult(
 // 7. Test save_pricing by Admin: Success + Warning about future bookings
 $res6 = callAdminApi($adminSession, 'save_pricing', 'POST', [
     'pricing' => [
-        'p5'  => ['base' => 250000, 'peak' => 350000, 'weekend' => 380000],
-        'p7'  => ['base' => 450000, 'peak' => 650000, 'weekend' => 700000],
-        'p11' => ['base' => 900000, 'peak' => 1200000, 'weekend' => 1400000]
+        'p5'  => ['base' => 350000, 'peak' => 350000, 'weekend' => 350000],
+        'p7'  => ['base' => 450000, 'peak' => 450000, 'weekend' => 450000],
+        'p11' => ['base' => 900000, 'peak' => 900000, 'weekend' => 900000]
     ]
 ]);
 recordResult(

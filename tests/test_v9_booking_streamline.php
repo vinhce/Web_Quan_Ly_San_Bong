@@ -233,17 +233,15 @@ $jsCheckout = file_get_contents(__DIR__ . '/../js/checkout.js');
 $jsMatchmaking = file_get_contents(__DIR__ . '/../js/matchmaking.js');
 $jsLoginSrc = file_get_contents(__DIR__ . '/../js/login.js');
 
-$noFriendHtml = (strpos($htmlBooking, 'id="btn-toggle-friend"') === false)
-    && (strpos($htmlBooking, 'id="booking-friend-mode-alert"') === false)
-    && (strpos($htmlBooking, 'id="booking-input-fields-wrap"') === false)
+$hasFriendToggleHtml = (strpos($htmlBooking, 'id="booking-for-friend-checkbox"') !== false)
+    && (strpos($htmlBooking, 'id="booking-friend-fields-wrap"') !== false)
     && (strpos($htmlBooking, 'id="booking-missing-phone-wrap"') !== false);
-assertTest($noFriendHtml, "6.1 html/booking.html đã xóa đặt hộ bạn bè và giữ nguyên #booking-missing-phone-wrap");
+assertTest($hasFriendToggleHtml, "6.1 html/booking.html có chế độ Đặt hộ bạn bè và giữ nguyên #booking-missing-phone-wrap");
 
-$noFriendJs = (strpos($jsBookingSrc, 'isBookingForFriend') === false)
-    && (strpos($jsBookingSrc, 'toggleBookingForFriend') === false)
-    && (strpos($jsBookingUISrc, 'isBookingForFriend') === false)
-    && (strpos($jsBookingUISrc, 'toggleBookingForFriend') === false);
-assertTest($noFriendJs, "6.2 js/booking.js & js/booking_ui.js đã dọn sạch logic đặt hộ bạn bè");
+$hasFriendJs = (strpos($jsBookingSrc, 'booking-for-friend-checkbox') !== false)
+    && (strpos($jsBookingSrc, 'isBookingForFriend') !== false)
+    && (strpos($jsBookingUISrc, 'booking-for-friend-checkbox') !== false);
+assertTest($hasFriendJs, "6.2 js/booking.js & js/booking_ui.js đồng bộ logic Đặt hộ bạn bè");
 
 // Tài khoản thiếu SĐT đặt sân -> lưu SĐT hợp lệ và vẫn gán đúng user_id
 $pdo->prepare("UPDATE users SET phone = '' WHERE id = ?")->execute([$userBId]);
