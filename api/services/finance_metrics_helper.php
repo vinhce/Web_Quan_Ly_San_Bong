@@ -9,6 +9,46 @@ function finance_is_cash_method(?string $method): bool {
     return mb_stripos((string)$method, 'Tiền mặt') !== false;
 }
 
+function finance_split_paid_by_method(array $row, int $orderPaid, bool $isCash): array {
+    if ($orderPaid <= 0) {
+        return ['cash' => 0, 'transfer' => 0];
+    }
+    $cashCol     = max(0, (int)($row['cash_paid_amount'] ?? 0));
+    $transferCol = max(0, (int)($row['transfer_paid_amount'] ?? 0));
+    $colSum      = $cashCol + $transferCol;
+
+    if ($colSum > 0) {
+        if ($colSum === $orderPaid) {
+            return ['cash' => $cashCol, 'transfer' => $transferCol];
+        }
+        if ($colSum > $orderPaid) {
+            if ($cashCol > 0 && $transferCol === 0) {
+                return ['cash' => $orderPaid, 'transfer' => 0];
+            }
+            if ($transferCol > 0 && $cashCol === 0) {
+                return ['cash' => 0, 'transfer' => $orderPaid];
+            }
+            $ratio = $orderPaid / $colSum;
+            $cash = (int)round($cashCol * $ratio);
+            return ['cash' => $cash, 'transfer' => max(0, $orderPaid - $cash)];
+        }
+        $extra = $orderPaid - $colSum;
+        return [
+            'cash'     => $cashCol + ($isCash ? $extra : 0),
+            'transfer' => $transferCol + ($isCash ? 0 : $extra),
+        ];
+    }
+
+    $noteStr = (string)($row['note'] ?? '');
+    if (!$isCash && (mb_stripos($noteStr, 'Đã tất toán 100% qua Tiền mặt') !== false || mb_stripos($noteStr, 'qua Tiền mặt') !== false)) {
+        $dep = max(0, (int)($row['deposit_amount'] ?? 0));
+        $transferPart = ($dep > 0) ? min($orderPaid, $dep) : 0;
+        return ['cash' => max(0, $orderPaid - $transferPart), 'transfer' => $transferPart];
+    }
+
+    return $isCash ? ['cash' => $orderPaid, 'transfer' => 0] : ['cash' => 0, 'transfer' => $orderPaid];
+}
+
 function finance_evaluate_booking_row(array $row): array {
     $bStatus   = trim((string)($row['status'] ?? 'Đã xác nhận'));
     $payStatus = trim((string)($row['payment_status'] ?? 'Chờ duyệt cọc'));
@@ -41,6 +81,8 @@ function finance_evaluate_booking_row(array $row): array {
             'isMatchCounted'        => false,
             'isDepositConfirmed'    => false,
             'isCash'                => finance_is_cash_method($payMethod),
+            'orderCashPaid'         => 0,
+            'orderTransferPaid'     => 0,
             'orderRevenue'          => 0,
             'orderPitchRecognized'  => 0,
             'orderServices'         => 0,
@@ -64,6 +106,8 @@ function finance_evaluate_booking_row(array $row): array {
                 'isMatchCounted'        => false,
                 'isDepositConfirmed'    => false,
                 'isCash'                => finance_is_cash_method($payMethod),
+                'orderCashPaid'         => 0,
+                'orderTransferPaid'     => 0,
                 'orderRevenue'          => 0,
                 'orderPitchRecognized'  => 0,
                 'orderServices'         => 0,
@@ -79,13 +123,18 @@ function finance_evaluate_booking_row(array $row): array {
         $actualPool = ($depAmt > 0) ? min($paidAmt, $depAmt) : $paidAmt;
         $kept = ($payStatus === 'Phạt 50% cọc') ? (int)round($actualPool * 0.5) : $actualPool;
 
+        $isCashForfeit = finance_is_cash_method($payMethod);
+        $splitForfeit = finance_split_paid_by_method($row, $kept, $isCashForfeit);
+
         return [
             'excluded'              => false,
             'isCancelled'           => true,
             'isCompleted'           => false,
             'isMatchCounted'        => false,
             'isDepositConfirmed'    => true,
-            'isCash'                => finance_is_cash_method($payMethod),
+            'isCash'                => $isCashForfeit,
+            'orderCashPaid'         => $splitForfeit['cash'],
+            'orderTransferPaid'     => $splitForfeit['transfer'],
             'orderRevenue'          => $kept,
             'orderPitchRecognized'  => $kept,
             'orderServices'         => 0,
@@ -153,13 +202,18 @@ function finance_evaluate_booking_row(array $row): array {
         $orderRemCollected     = $orderPitchCollected;
     }
 
+    $isCashNormal = finance_is_cash_method($payMethod);
+    $splitNormal = finance_split_paid_by_method($row, $orderPaid, $isCashNormal);
+
     return [
         'excluded'              => false,
         'isCancelled'           => $isCancelledOrForfeit,
         'isCompleted'           => $isCompleted,
         'isMatchCounted'        => true,
         'isDepositConfirmed'    => $isDepositConfirmed,
-        'isCash'                => finance_is_cash_method($payMethod),
+        'isCash'                => $isCashNormal,
+        'orderCashPaid'         => $splitNormal['cash'],
+        'orderTransferPaid'     => $splitNormal['transfer'],
         'orderRevenue'          => $orderRevenue,
         'orderPitchRecognized'  => $orderPitchRecognized,
         'orderServices'         => $orderServices,
