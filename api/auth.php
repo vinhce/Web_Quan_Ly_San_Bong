@@ -142,8 +142,8 @@ if ($action === 'login') {
     $password = (string)($data['password'] ?? '');
     $acctRateKey = strtolower($username);
 
-    if (!check_rate_limit($pdo, 'login', 5, 900) || ($acctRateKey !== '' && !check_rate_limit($pdo, 'login_acct', 5, 900, $acctRateKey))) {
-        json_response(['success' => false, 'message' => 'Bạn đã đăng nhập sai quá 5 lần. Vui lòng thử lại sau ít phút để bảo vệ tài khoản.', 'ref_code' => 'ERR_RATE_LIMITED'], 429);
+    if (!check_rate_limit($pdo, 'login', 40, 900) || ($acctRateKey !== '' && !check_rate_limit($pdo, 'login_acct', 10, 900, $acctRateKey))) {
+        json_response(['success' => false, 'message' => 'Bạn đã đăng nhập sai quá 10 lần. Vui lòng thử lại sau ít phút để bảo vệ tài khoản.', 'ref_code' => 'ERR_RATE_LIMITED'], 429);
     }
 
     if (!empty($_COOKIE[session_name()]) && !verify_csrf_token($data)) {
