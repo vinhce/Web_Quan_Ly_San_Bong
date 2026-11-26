@@ -189,26 +189,52 @@ function send_telegram_notification_detailed(string $message, ?string $eventKey 
     loadEnv();
     $settings = $pdo ? get_system_settings_map($pdo) : [];
 
-    $enabled = ((string)($settings['telegram_notify_enabled'] ?? '0') === '1');
+    $envEnabledRaw = strtolower(trim((string)($_ENV['TELEGRAM_NOTIFY_ENABLED'] ?? getenv('TELEGRAM_NOTIFY_ENABLED') ?: '')));
+    $envEnabledOverride = null;
+    if (in_array($envEnabledRaw, ['1', 'true', 'on', 'yes'], true)) {
+        $envEnabledOverride = true;
+    } elseif (in_array($envEnabledRaw, ['0', 'false', 'off', 'no'], true)) {
+        $envEnabledOverride = false;
+    }
+
+    $enabled = ($envEnabledOverride !== null)
+        ? $envEnabledOverride
+        : ((string)($settings['telegram_notify_enabled'] ?? '0') === '1');
     if (!$forceTest && !$enabled) {
         return ['sent' => false, 'reason' => 'telegram_disabled'];
     }
 
-    $allowedEvents = ['new_booking', 'cancel', 'shift_diff', 'unmatched_tx', 'low_stock', 'waitlist', 'matchmaking', 'review'];
+    $allowedEvents = ['new_booking', 'payment', 'cancel', 'shift_diff', 'unmatched_tx', 'low_stock', 'waitlist', 'matchmaking', 'review'];
+    $envEventsRaw = trim((string)($_ENV['TELEGRAM_EVENTS'] ?? getenv('TELEGRAM_EVENTS') ?: ''));
     if (!$forceTest && $eventKey !== null && in_array($eventKey, $allowedEvents, true)) {
-        $evEnabled = ((string)($settings["tg_event_{$eventKey}"] ?? '1') !== '0');
-        if (!$evEnabled) {
-            return ['sent' => false, 'reason' => 'event_disabled', 'event' => $eventKey];
+        if ($envEventsRaw !== '') {
+            $envEventList = array_values(array_filter(array_map('trim', explode(',', strtolower($envEventsRaw)))));
+            if (!in_array(strtolower($eventKey), $envEventList, true)) {
+                return ['sent' => false, 'reason' => 'event_disabled', 'event' => $eventKey];
+            }
+        } else {
+            $evEnabled = ((string)($settings["tg_event_{$eventKey}"] ?? '1') !== '0');
+            if (!$evEnabled) {
+                return ['sent' => false, 'reason' => 'event_disabled', 'event' => $eventKey];
+            }
         }
     }
 
+    $envToken = trim((string)($_ENV['TELEGRAM_BOT_TOKEN'] ?? getenv('TELEGRAM_BOT_TOKEN') ?: ''));
+    $envChatId = trim((string)($_ENV['TELEGRAM_CHAT_ID'] ?? getenv('TELEGRAM_CHAT_ID') ?: ''));
+
     $botToken = trim((string)($settings['telegram_bot_token'] ?? ''));
     if ($botToken === '' || $botToken === '********') {
-        $botToken = trim((string)($_ENV['TELEGRAM_BOT_TOKEN'] ?? getenv('TELEGRAM_BOT_TOKEN') ?: ''));
+        $botToken = $envToken;
+    } elseif ($envToken !== '' && strpos($envToken, 'YOUR_') !== 0) {
+        $botToken = $envToken;
     }
+
     $chatId = trim((string)($settings['telegram_chat_id'] ?? ''));
     if ($chatId === '') {
-        $chatId = trim((string)($_ENV['TELEGRAM_CHAT_ID'] ?? getenv('TELEGRAM_CHAT_ID') ?: ''));
+        $chatId = $envChatId;
+    } elseif ($envChatId !== '' && strpos($envChatId, 'YOUR_') !== 0) {
+        $chatId = $envChatId;
     }
 
     if ($botToken === '' || $chatId === '') {
@@ -258,9 +284,72 @@ function send_telegram_notification_detailed(string $message, ?string $eventKey 
     ];
 }
 
+function _sb_has_deferred_telegram(): bool {
+    return !empty($GLOBALS['_sb_deferred_telegram_queue']);
+}
+
+function _sb_finish_http_response_if_possible(): void {
+    static $finished = false;
+    if ($finished) {
+        return;
+    }
+    $finished = true;
+    @ignore_user_abort(true);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        @session_write_close();
+    }
+    while (ob_get_level() > 0) {
+        @ob_end_flush();
+    }
+    @flush();
+    if (function_exists('litespeed_finish_request')) {
+        @litespeed_finish_request();
+    } elseif (function_exists('fastcgi_finish_request')) {
+        @fastcgi_finish_request();
+    }
+}
+
+function _sb_flush_deferred_telegram_queue(): void {
+    $queue = $GLOBALS['_sb_deferred_telegram_queue'] ?? [];
+    if (empty($queue) || !is_array($queue)) {
+        return;
+    }
+    $GLOBALS['_sb_deferred_telegram_queue'] = [];
+    if (PHP_SAPI !== 'cli') {
+        _sb_finish_http_response_if_possible();
+    }
+    foreach ($queue as $item) {
+        try {
+            send_telegram_notification_detailed(
+                (string)($item['message'] ?? ''),
+                $item['eventKey'] ?? null,
+                $item['pdo'] ?? null,
+                false
+            );
+        } catch (Throwable $e) {
+            error_log("[TELEGRAM DEFERRED ERROR] " . $e->getMessage());
+        }
+    }
+}
+
 function send_telegram_notification($message, ?string $eventKey = null, ?PDO $pdo = null): bool {
     if (!is_string($message) || trim($message) === '') {
         return false;
+    }
+    if (PHP_SAPI !== 'cli') {
+        if (!isset($GLOBALS['_sb_deferred_telegram_queue']) || !is_array($GLOBALS['_sb_deferred_telegram_queue'])) {
+            $GLOBALS['_sb_deferred_telegram_queue'] = [];
+        }
+        $GLOBALS['_sb_deferred_telegram_queue'][] = [
+            'message'  => $message,
+            'eventKey' => $eventKey,
+            'pdo'      => $pdo
+        ];
+        if (empty($GLOBALS['_sb_deferred_telegram_registered'])) {
+            $GLOBALS['_sb_deferred_telegram_registered'] = true;
+            register_shutdown_function('_sb_flush_deferred_telegram_queue');
+        }
+        return true;
     }
     try {
         $res = send_telegram_notification_detailed($message, $eventKey, $pdo, false);

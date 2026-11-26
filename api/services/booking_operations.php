@@ -14,7 +14,7 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                 'data'    => ['code' => $code, 'status' => 'Đang đá', 'paymentStatus' => 'Đã cọc 30%']
             ]);
         }
-        $oldStmt = $pdo->prepare("SELECT id, status, payment_status, weeks_count, total_price, deposit_amount, paid_amount FROM bookings WHERE code = ? LIMIT 1");
+        $oldStmt = $pdo->prepare("SELECT id, customer_name, status, payment_status, weeks_count, total_price, deposit_amount, paid_amount FROM bookings WHERE code = ? LIMIT 1");
         $oldStmt->execute([$code]);
         $oldRow = $oldStmt->fetch();
         if (!$oldRow) {
@@ -57,6 +57,15 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
                 json_error('Mã QR này đã được quét check-in trước đó. Mỗi mã QR chỉ có hiệu lực 1 lần duy nhất!', 409, 'ERR_ALREADY_CHECKED_IN');
             }
             write_audit_log($pdo, 'COLLECT_PAYMENT', $code, (string)$depAmt, "Thu cọc tại quầy khi check-in qua Tiền mặt tại quầy (Số tiền: {$depAmt}đ)", $actor);
+            if ($depAmt > 0 && function_exists('send_telegram_notification')) {
+                $tgMsg = "💵 <b>THU CỌC TẠI QUẦY KHI CHECK-IN</b>\n"
+                       . "• Mã vé: <code>" . tg_escape($code) . "</code>\n"
+                       . "• Khách: <b>" . tg_escape($oldRow['customer_name'] ?? '') . "</b>\n"
+                       . "• Số tiền thu: <b>+" . number_format($depAmt) . " đ</b> (Tiền mặt tại quầy)\n"
+                       . "• Trạng thái: <b>" . tg_escape($newPayStatus) . "</b>\n"
+                       . "• Nhân viên: " . tg_escape($actor['full_name'] ?? $actor['username'] ?? 'Nhân viên');
+                send_telegram_notification($tgMsg, 'payment', $pdo);
+            }
         } else {
             $stmt = $pdo->prepare("UPDATE bookings SET status = 'Đang đá' WHERE code = ? AND status NOT IN ('Đang đá', 'Hoàn thành', 'completed', 'Đã hủy', 'Khách chưa đến')");
             $stmt->execute([$code]);
@@ -253,6 +262,16 @@ function handle_booking_operation(string $action, ?PDO $pdo, array $data): bool 
 
             write_audit_log($pdo, 'EARLY_CANCEL', $booking['code'], $booking['status'], 'Đã hủy (' . $paymentStatus . ')', $currentUser);
             $pdo->commit();
+
+            if (function_exists('send_telegram_notification')) {
+                $tgMsg = "⚠️ <b>KHÁCH TỰ HỦY ĐƠN ĐẶT SÂN</b>\n"
+                       . "• Mã vé: <code>" . tg_escape($booking['code'] ?? $code) . "</code>\n"
+                       . "• Khách: <b>" . tg_escape($booking['customer_name'] ?? '') . "</b> (" . tg_escape($booking['phone'] ?? '') . ")\n"
+                       . "• Sân: <b>" . tg_escape($booking['pitch_name'] ?? $booking['pitch_id'] ?? '') . "</b> ngày <b>" . date('d/m/Y', strtotime((string)($booking['booking_date'] ?? date('Y-m-d')))) . "</b> (" . tg_escape($booking['slot_time'] ?? '') . ")\n"
+                       . "• Kết quả: <b>" . tg_escape($paymentStatus) . "</b> | Hoàn: " . number_format((int)$refundAmount) . " đ\n"
+                       . "• Lý do: <i>" . tg_escape($reason !== '' ? $reason : 'Khách tự hủy trên hệ thống') . "</i>";
+                send_telegram_notification($tgMsg, 'cancel', $pdo);
+            }
 
             try {
                 trigger_waitlist_notification(

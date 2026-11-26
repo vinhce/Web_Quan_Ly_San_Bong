@@ -258,6 +258,14 @@ if ($action === 'pending_deposits') {
                     $mgr
                 );
 
+                if (function_exists('send_telegram_notification')) {
+                    $tgMsg = "🔗 <b>ĐỐI SOÁT VIETQR THỦ CÔNG</b>\n"
+                           . "• Giao dịch: <b>#TX-{$txId}</b> → Đơn <code>" . tg_escape($booking['code']) . "</code>\n"
+                           . "• Số tiền: <b>+" . number_format($txAmt) . " đ</b> (" . tg_escape($finalPayStatus) . ")\n"
+                           . "• Người duyệt: " . tg_escape($mgr['full_name'] ?? $mgr['username'] ?? 'Quản lý');
+                    send_telegram_notification($tgMsg, 'payment', $pdo);
+                }
+
                 json_response([
                     'success' => true,
                     'message' => "Đã gán giao dịch #{$txId} vào đơn {$booking['code']} ({$finalPayStatus}) thành công!",
@@ -439,6 +447,15 @@ if ($action === 'pending_deposits') {
         $stmt->execute([$expCode, $cat, $catName, $amt, $date, $payer, $mgr['id'], $note]);
 
         write_audit_log($pdo, 'EXPENSE_ADD', $expCode, null, "Thêm khoản chi: {$catName} (" . number_format($amt) . "đ) ngày {$date} - {$note}", $mgr);
+
+        if (function_exists('send_telegram_notification')) {
+            $tgMsg = "💸 <b>KHOẢN CHI VẬN HÀNH MỚI</b>\n"
+                   . "• Mã chi: <code>" . tg_escape($expCode) . "</code>\n"
+                   . "• Hạng mục: <b>" . tg_escape($catName) . "</b>\n"
+                   . "• Số tiền chi: <b>-" . number_format($amt) . " đ</b> (Ngày: " . tg_escape($date) . ")\n"
+                   . "• Người chi: " . tg_escape($payer) . ($note !== '' ? ("\n• Ghi chú: <i>" . tg_escape($note) . "</i>") : '');
+            send_telegram_notification($tgMsg, 'payment', $pdo);
+        }
 
         json_response([
             'success'      => true,

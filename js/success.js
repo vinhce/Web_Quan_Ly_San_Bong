@@ -34,15 +34,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  const checkPath = `api/check_payment.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`;
+  const checkUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(checkPath) : `../${checkPath}`;
+  const bookingPath = `api/bookings.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`;
+  const bookingApiUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(bookingPath) : `../${bookingPath}`;
+
+  const [checkSettled, bookingSettled] = await Promise.allSettled([
+    fetch(checkUrl, { cache: 'no-store', credentials: 'same-origin' }),
+    fetch(bookingApiUrl, { cache: 'no-store', credentials: 'same-origin' })
+  ]);
+
   let serverVerifiedPaid = false;
   try {
-    const checkPath = `api/check_payment.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`;
-    const checkUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(checkPath) : `../${checkPath}`;
-    const res = await fetch(checkUrl, {
-      cache: 'no-store',
-      credentials: 'same-origin'
-    });
-    if (res.ok) {
+    const res = checkSettled.status === 'fulfilled' ? checkSettled.value : null;
+    if (res && res.ok) {
       const data = await res.json();
       if (data && data.paid === true) {
         serverVerifiedPaid = true;
@@ -66,13 +71,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    const bookingPath = `api/bookings.php?code=${encodeURIComponent(checkCode)}&_t=${Date.now()}`;
-    const bookingApiUrl = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath(bookingPath) : `../${bookingPath}`;
-    const bRes = await fetch(bookingApiUrl, {
-      cache: 'no-store',
-      credentials: 'same-origin'
-    });
-    if (bRes.ok) {
+    const bRes = bookingSettled.status === 'fulfilled' ? bookingSettled.value : null;
+    if (bRes && bRes.ok) {
       const bJson = await bRes.json();
       const rawList = Array.isArray(bJson?.data) ? bJson.data : (bJson?.data ? [bJson.data] : []);
       const bData = rawList.find(item => String(item?.code || '').toUpperCase() === String(checkCode).toUpperCase()) || rawList[0] || null;

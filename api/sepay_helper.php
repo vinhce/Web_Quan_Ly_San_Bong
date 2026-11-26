@@ -144,6 +144,7 @@ function verify_sepay_payment($bookingCode, $expectedAmount = 0) {
                     'paid'           => true,
                     'payment_status' => 'Đã cọc 30%',
                     'transaction'    => [
+                        'id'        => $tx['id'] ?? $tx['transaction_id'] ?? '',
                         'amount'    => $amountIn,
                         'reference' => $tx['reference_number'] ?? $tx['referenceCode'] ?? '',
                         'content'   => $content,

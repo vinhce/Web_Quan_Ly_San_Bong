@@ -3,17 +3,18 @@
 defined('SANBONG_APP') or define('SANBONG_APP', true);
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 
-function loadEnv($path = null) {
-    if ($path === null) {
-        $outsidePath = dirname(__DIR__, 2) . '/.env';
-        $insidePath = dirname(__DIR__) . '/.env';
-        $path = file_exists($outsidePath) ? $outsidePath : $insidePath;
-    }
-    if (!file_exists($path)) {
+function _parseAndApplyEnvFile(string $filePath, bool $override = false): void {
+    if (!file_exists($filePath)) {
         return;
     }
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines)) {
+        return;
+    }
+    foreach ($lines as $idx => $line) {
+        if ($idx === 0) {
+            $line = preg_replace('/^\xEF\xBB\xBF/', '', $line);
+        }
         $line = trim($line);
         if (empty($line) || strpos($line, '#') === 0) {
             continue;
@@ -22,13 +23,27 @@ function loadEnv($path = null) {
             list($key, $val) = explode('=', $line, 2);
             $key = trim($key);
             $val = trim($val, " \t\n\r\0\x0B\"'");
-            if (!array_key_exists($key, $_ENV)) {
+            if ($override || !array_key_exists($key, $_ENV)) {
                 putenv("$key=$val");
                 $_ENV[$key] = $val;
                 $_SERVER[$key] = $val;
             }
         }
     }
+}
+
+function loadEnv($path = null) {
+    if ($path !== null) {
+        _parseAndApplyEnvFile((string)$path, false);
+        return;
+    }
+    $outsidePath = dirname(__DIR__, 2) . '/.env';
+    $insidePath = dirname(__DIR__) . '/.env';
+    _parseAndApplyEnvFile(file_exists($outsidePath) ? $outsidePath : $insidePath, false);
+
+    $outsideLocal = dirname(__DIR__, 2) . '/.env.local';
+    $insideLocal = dirname(__DIR__) . '/.env.local';
+    _parseAndApplyEnvFile(file_exists($outsideLocal) ? $outsideLocal : $insideLocal, true);
 }
 
 loadEnv();
@@ -318,12 +333,37 @@ function ensureFixedPricingAndPaymentSplitSchema(PDO $pdo, bool $force = false):
     }
 }
 
+function ensureVoucherAndReviewDataFixSchema(PDO $pdo, bool $force = false): void {
+    $v25Marker = dirname(__DIR__) . '/logs/.schema_v25_vouchers_reviews_fix_ready';
+    if (!$force && is_file($v25Marker)) {
+        return;
+    }
+    if ($pdo->inTransaction()) {
+        return;
+    }
+    try {
+        $pdo->exec("UPDATE `vouchers` SET `discount_type` = 'fixed', `discount_value` = 100000, `min_order` = 900000 WHERE `code` = 'CUOITUAN100K' AND (`discount_type` <> 'fixed' OR `discount_value` <> 100000 OR `min_order` = 0)");
+        $pdo->exec("UPDATE `vouchers` SET `discount_type` = 'fixed', `discount_value` = 30000, `min_order` = 200000 WHERE `code` = 'SINHVIEN30K' AND (`discount_type` <> 'fixed' OR `discount_value` <> 30000 OR `min_order` = 0)");
+        $pdo->exec("UPDATE `vouchers` SET `discount_type` = 'percent', `discount_value` = 15, `min_order` = 800000 WHERE `code` = 'DATTHANG15' AND (`discount_type` <> 'percent' OR `discount_value` <> 15 OR `min_order` = 0)");
+        $pdo->exec("UPDATE `reviews` SET `rating` = 5 WHERE `id` = 1 AND `rating` < 5");
+
+        $logDir = dirname($v25Marker);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        @file_put_contents($v25Marker, date('c'));
+    } catch (PDOException $e) {
+        error_log("[SCHEMA V25 VOUCHER/REVIEW FIX ERROR] " . $e->getMessage());
+    }
+}
+
 function ensureSchemaInitialized(PDO $pdo) {
     ensurePasswordResetsTable($pdo);
     ensureBookingIdempotencySchema($pdo);
     ensureAuditReviewsAndShiftsUpgrade($pdo);
     ensureAuditInvertedIndexSchema($pdo);
     ensureFixedPricingAndPaymentSplitSchema($pdo);
+    ensureVoucherAndReviewDataFixSchema($pdo);
     $markerFile = dirname(__DIR__) . '/logs/.schema_v18_full_sync_ready';
     if (is_file($markerFile)) {
         return;

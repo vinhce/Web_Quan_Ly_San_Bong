@@ -148,6 +148,9 @@ try {
         $newPaid = $booking ? max((int)($booking['paid_amount'] ?? 0), $targetAmount) : $targetAmount;
         $newPaymentStatus = 'Đã cọc 30%';
         if ($pdo && $booking) {
+            $justConfirmed = false;
+            $notifyTxAmount = 0;
+            $notifyTxContent = '';
             try {
                 $pdo->beginTransaction();
                 $lockStmt = $pdo->prepare("SELECT id, user_id, code, status, payment_status, total_price, deposit_amount, paid_amount, weeks_count, booking_mode FROM bookings WHERE id = ? FOR UPDATE");
@@ -224,13 +227,25 @@ try {
                         $depLabel = $isMonthlyBooking ? 'Đã cọc 60%' : 'Đã cọc 30%';
                         $newPaymentStatus = ($remainingAmount <= 0) ? 'Đã thanh toán đủ' : $depLabel;
                         $newStatus = in_array($freshStatus, ['Chờ duyệt cọc', 'Giữ chỗ'], true) ? 'Đã xác nhận' : $freshStatus;
-                        $updateStmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
-                        $updateStmt->execute([$newStatus, $newPaymentStatus, $newPaid, $newPaid, (int)$freshBooking['id']]);
+                        $updateStmt = $pdo->prepare("UPDATE bookings SET status = ?, payment_status = ?, payment_method = 'VietQR SePay (Tự động)', paid_amount = ?, transfer_paid_amount = GREATEST(transfer_paid_amount, ?), remaining_amount = GREATEST(0, total_price - ?) WHERE id = ?");
+                        $updateStmt->execute([$newStatus, $newPaymentStatus, $newPaid, $newPaid, $newPaid, (int)$freshBooking['id']]);
                         award_booking_loyalty_points($pdo, $freshBooking);
+                        $justConfirmed = true;
+                        $notifyTxAmount = $txAmount;
+                        $notifyTxContent = $txContent;
                     }
                 }
                 $pdo->commit();
                 $result['payment_status'] = $newPaymentStatus;
+                if ($justConfirmed && function_exists('send_telegram_notification')) {
+                    $tgMsg = "💰 <b>TIỀN VỀ TÀI KHOẢN (VIETQR TỰ ĐỘNG)</b>\n"
+                           . "• Đơn: <code>" . tg_escape($freshBooking['code']) . "</code>\n"
+                           . "• Khách: <b>" . tg_escape($booking['customer_name'] ?? '') . "</b>\n"
+                           . "• Số tiền: <b>+" . number_format($notifyTxAmount) . " đ</b>\n"
+                           . "• Nội dung: <i>" . tg_escape($notifyTxContent) . "</i>\n"
+                           . "• Trạng thái: <b>" . tg_escape($newPaymentStatus) . "</b>";
+                    send_telegram_notification($tgMsg, 'payment', $pdo);
+                }
             } catch (Throwable $updEx) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();

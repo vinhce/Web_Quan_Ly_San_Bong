@@ -336,6 +336,9 @@ function json_response($data, $statusCode = 200) {
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
+    if (function_exists('_sb_has_deferred_telegram') && _sb_has_deferred_telegram() && function_exists('_sb_finish_http_response_if_possible')) {
+        _sb_finish_http_response_if_possible();
+    }
     exit;
 }
 

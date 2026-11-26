@@ -641,7 +641,7 @@ function handleSePayPaymentSuccess(result) {
 
   setTimeout(() => {
     confirmPayment(true);
-  }, 1500);
+  }, 250);
 }
 
 function startCountdown(seconds) {

@@ -196,6 +196,25 @@ function handle_admin_update_payment(PDO $pdo, array $data, string $method, arra
         write_audit_log($pdo, 'UPDATE_PAYMENT', $code, $oldPaymentStatus, $status, $mgr);
         $pdo->commit();
 
+        if (function_exists('send_telegram_notification')) {
+            if (in_array($status, ['Đã cọc 30%', 'Đã cọc 60%', 'Đã cọc', 'Đã thanh toán 100%', 'Đã thanh toán đủ'], true)) {
+                $tgDelta = max(0, (int)($deltaPaid ?? 0));
+                $tgMsg = "💳 <b>DUYỆT / CẬP NHẬT THANH TOÁN</b>\n"
+                       . "• Mã vé: <code>" . tg_escape($code) . "</code>\n"
+                       . "• Khách: <b>" . tg_escape($oldRow['customer_name'] ?? '') . "</b>\n"
+                       . "• Trạng thái: <b>" . tg_escape($status) . "</b>" . ($tgDelta > 0 ? (" (+<b>" . number_format($tgDelta) . " đ</b>)") : '') . "\n"
+                       . "• Người duyệt: " . tg_escape($mgr['full_name'] ?? $mgr['username'] ?? 'Quản lý');
+                send_telegram_notification($tgMsg, 'payment', $pdo);
+            } elseif (in_array($status, ['Đã hoàn cọc 100%', 'Phạt 50% cọc', 'Bảo lưu cọc 30%', 'Đã hủy'], true)) {
+                $tgMsg = "⚠️ <b>CẬP NHẬT HỦY / HOÀN CỌC</b>\n"
+                       . "• Mã vé: <code>" . tg_escape($code) . "</code>\n"
+                       . "• Khách: <b>" . tg_escape($oldRow['customer_name'] ?? '') . "</b>\n"
+                       . "• Kết quả: <b>" . tg_escape($status) . "</b>\n"
+                       . "• Người xử lý: " . tg_escape($mgr['full_name'] ?? $mgr['username'] ?? 'Quản lý');
+                send_telegram_notification($tgMsg, 'cancel', $pdo);
+            }
+        }
+
         json_response([
             'success' => true,
             'message' => "Đã cập nhật trạng thái đơn {$code} thành: {$status}"
@@ -733,6 +752,16 @@ function handle_admin_manage_booking(PDO $pdo, array $data, string $method, arra
             award_booking_loyalty_points($pdo, $lockedBooking);
             write_audit_log($pdo, 'COLLECT_PAYMENT', $code, (string)$remAmount, "Đã thu đủ 100% qua {$payMethod} (Số tiền: {$remAmount}đ)", $actor);
             $pdo->commit();
+
+            if ($deltaPaid > 0 && function_exists('send_telegram_notification')) {
+                $tgMsg = "💵 <b>TẤT TOÁN PHẦN CÒN LẠI</b>\n"
+                       . "• Mã vé: <code>" . tg_escape($code) . "</code>\n"
+                       . "• Khách: <b>" . tg_escape($lockedBooking['customer_name'] ?? '') . "</b>\n"
+                       . "• Thu thêm: <b>+" . number_format($deltaPaid) . " đ</b> (" . tg_escape($payMethod) . ")\n"
+                       . "• Tổng đã thu: <b>" . number_format($totPrice) . " đ</b> (100%)\n"
+                       . "• Người thu: " . tg_escape($actor['full_name'] ?? $actor['username'] ?? 'Nhân viên');
+                send_telegram_notification($tgMsg, 'payment', $pdo);
+            }
 
             json_response(['success' => true, 'message' => "Đã hoàn tất thu tiền 100% cho đơn {$code}."]);
         } catch (Throwable $payEx) {
