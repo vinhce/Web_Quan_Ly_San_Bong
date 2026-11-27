@@ -200,6 +200,19 @@ function showAdminPrompt({
 }
 window.showAdminPrompt = showAdminPrompt;
 
+function adminPrompt(title = 'Nhập thông tin', message = '', defaultValue = '', placeholder = '') {
+  if (title && typeof title === 'object') {
+    return showAdminPrompt(title);
+  }
+  return showAdminPrompt({
+    title: title || 'Nhập thông tin',
+    message: message || '',
+    defaultValue: defaultValue !== undefined && defaultValue !== null ? String(defaultValue) : '',
+    placeholder: placeholder || ''
+  });
+}
+window.adminPrompt = adminPrompt;
+
 function toggleAdminMobileDrawer(forceState) {
   const sidebar = document.getElementById('admin-sidebar') || document.querySelector('aside');
   const backdrop = document.getElementById('admin-mobile-backdrop') || document.getElementById('admin-sidebar-backdrop');

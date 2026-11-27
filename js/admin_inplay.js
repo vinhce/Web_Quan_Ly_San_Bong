@@ -69,72 +69,79 @@ function cacheInPlayFallbackBooking(raw) {
   const norm = normalizeBookingForInPlayModal(raw);
   if (!norm) return null;
   inPlayRemoteBookingsMap.set(norm.code.toLowerCase(), norm);
-
-  try {
-    const db = window.SanBongApp?.SanBongDB;
-    const key = window.STORAGE_KEYS?.BOOKINGS || window.SanBongDB?.STORAGE_KEYS?.BOOKINGS || 'sb_bookings_v1';
-    const existing = db?.getAllBookings ? db.getAllBookings() : JSON.parse(localStorage.getItem(key) || '[]');
-    if (Array.isArray(existing)) {
-      const idx = existing.findIndex(b => String(b?.code || '').trim().toLowerCase() === norm.code.toLowerCase());
-      if (idx >= 0) {
-        existing[idx] = Object.assign({}, existing[idx], norm);
-      } else {
-        existing.unshift(norm);
-      }
-      localStorage.setItem(key, JSON.stringify(existing));
-    }
-  } catch (e) {}
-
   return norm;
 }
 
+function syncLiveBookingsCache(items) {
+  if (!Array.isArray(items)) return;
+  items.forEach(item => {
+    const norm = normalizeBookingForInPlayModal(item);
+    if (norm) {
+      inPlayRemoteBookingsMap.set(norm.code.toLowerCase(), norm);
+    }
+  });
+}
+window.syncLiveBookingsCache = syncLiveBookingsCache;
+
+function getLiveBookingsList() {
+  const timelineDate = window.selectedTimelineDate;
+  if (timelineDate && window.timelineBookingsByDateCache && Array.isArray(window.timelineBookingsByDateCache[timelineDate])) {
+    return window.timelineBookingsByDateCache[timelineDate];
+  }
+  if (Array.isArray(window.overviewSummaryCache?.todayBookings)) {
+    return window.overviewSummaryCache.todayBookings;
+  }
+  return Array.from(inPlayRemoteBookingsMap.values());
+}
+window.getLiveBookingsList = getLiveBookingsList;
+
 function findInPlayBookingSync(code) {
-  const db = window.SanBongApp?.SanBongDB;
   const cleanCode = String(code || '').trim();
   const key = cleanCode.toLowerCase();
 
   if (key) {
-    if (db && typeof db.getBookingByCode === 'function') {
-      const fromDb = db.getBookingByCode(cleanCode);
-      if (fromDb) return normalizeBookingForInPlayModal(fromDb);
-    }
-
     if (inPlayRemoteBookingsMap.has(key)) {
       return inPlayRemoteBookingsMap.get(key);
     }
 
+    const timelineDate = window.selectedTimelineDate;
+    const timelineList = (timelineDate && window.timelineBookingsByDateCache && Array.isArray(window.timelineBookingsByDateCache[timelineDate]))
+      ? window.timelineBookingsByDateCache[timelineDate]
+      : [];
+
     const cacheSources = [
+      ...timelineList,
       ...(Array.isArray(window.overviewSummaryCache?.todayBookings) ? window.overviewSummaryCache.todayBookings : []),
       ...(Array.isArray(window.overviewSummaryCache?.overdueBookings) ? window.overviewSummaryCache.overdueBookings : [])
     ];
-    const fromOverview = cacheSources.find(b => String(b?.code || '').trim().toLowerCase() === key);
-    if (fromOverview) {
-      return cacheInPlayFallbackBooking(fromOverview);
-    }
-
-    if (db && typeof db.getAllBookings === 'function') {
-      const all = db.getAllBookings();
-      const fromAll = all.find(b => String(b?.code || '').trim().toLowerCase() === key);
-      if (fromAll) return normalizeBookingForInPlayModal(fromAll);
+    const fromLive = cacheSources.find(b => String(b?.code || '').trim().toLowerCase() === key);
+    if (fromLive) {
+      return cacheInPlayFallbackBooking(fromLive);
     }
 
     return null;
   }
 
-  const all = db?.getAllBookings ? db.getAllBookings() : [];
   if (activeInPlayCode) {
     const cur = findInPlayBookingSync(activeInPlayCode);
     if (cur) return cur;
   }
-  if (all[0]) return normalizeBookingForInPlayModal(all[0]);
-  const firstOverview = window.overviewSummaryCache?.todayBookings?.[0] || window.overviewSummaryCache?.overdueBookings?.[0] || null;
-  return firstOverview ? cacheInPlayFallbackBooking(firstOverview) : null;
+  const liveList = getLiveBookingsList();
+  if (liveList[0]) return normalizeBookingForInPlayModal(liveList[0]);
+  const firstOverdue = window.overviewSummaryCache?.overdueBookings?.[0] || null;
+  return firstOverdue ? cacheInPlayFallbackBooking(firstOverdue) : null;
 }
+window.findInPlayBookingSync = findInPlayBookingSync;
 
 async function fetchBookingForInPlayFallback(code) {
   const cleanCode = String(code || '').trim();
   if (!cleanCode || typeof adminFetchJson !== 'function') return null;
   try {
+    const singleRes = await adminFetchJson(`../api/bookings.php?code=${encodeURIComponent(cleanCode)}`);
+    if (singleRes?.ok && singleRes.data && singleRes.data.code) {
+      return cacheInPlayFallbackBooking(singleRes.data);
+    }
+
     const res = await adminFetchJson('../api/admin.php?action=all_bookings');
     if (!res?.ok || !Array.isArray(res.data)) return null;
     let matched = null;
@@ -144,7 +151,7 @@ async function fetchBookingForInPlayFallback(code) {
       if (!norm) return;
       inPlayRemoteBookingsMap.set(norm.code.toLowerCase(), norm);
       if (norm.code.toLowerCase() === targetLower) {
-        matched = cacheInPlayFallbackBooking(norm);
+        matched = norm;
       }
     });
     return matched;
@@ -154,42 +161,46 @@ async function fetchBookingForInPlayFallback(code) {
 }
 
 function renderInlineInPlaySelector() {
-  const db = window.SanBongApp?.SanBongDB;
-  if (!db) return;
-  const allBookings = db.getAllBookings();
+  const allBookings = getLiveBookingsList();
   if (!activeInPlayCode && allBookings.length > 0) {
+    activeInPlayCode = allBookings[0].code;
+  } else if (activeInPlayCode && allBookings.length > 0 && !allBookings.some(b => b.code === activeInPlayCode)) {
     activeInPlayCode = allBookings[0].code;
   }
 
   const selectEl = document.getElementById('inline-inplay-select');
   if (selectEl) {
-    selectEl.innerHTML = allBookings.map(b => {
-      const st = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
-      const safeCodeHtml = escapeSearchHTML(b.code || '');
-      return `<option value="${safeCodeHtml}" ${b.code === activeInPlayCode ? 'selected' : ''}>#${safeCodeHtml} · ${escapeSearchHTML(b.pitchName)} (${escapeSearchHTML(b.slotTime || '')}) · ${escapeSearchHTML(b.customerName)} [${escapeSearchHTML(st)}]</option>`;
-    }).join('');
+    selectEl.innerHTML = allBookings.length > 0
+      ? allBookings.map(b => {
+          const st = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
+          const safeCodeHtml = escapeSearchHTML(b.code || '');
+          return `<option value="${safeCodeHtml}" ${b.code === activeInPlayCode ? 'selected' : ''}>#${safeCodeHtml} · ${escapeSearchHTML(b.pitchName)} (${escapeSearchHTML(b.slotTime || '')}) · ${escapeSearchHTML(b.customerName)} [${escapeSearchHTML(st)}]</option>`;
+        }).join('')
+      : '<option value="">Chưa có ca đặt sân trong ngày</option>';
   }
 
   const quickCardsEl = document.getElementById('inline-inplay-quick-cards');
   if (quickCardsEl) {
-    quickCardsEl.innerHTML = allBookings.map(b => {
-      const isSel = b.code === activeInPlayCode;
-      const st = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
-      let badgeCls = 'bg-amber-100 text-amber-800 border border-amber-300';
-      if (st === 'Đang đá') badgeCls = 'bg-blue-100 text-blue-700 border border-blue-300';
-      else if (st === 'Đã xác nhận') badgeCls = 'bg-emerald-100 text-emerald-700 border border-emerald-300';
-      else if (st === 'Đã đá - chưa tất toán') badgeCls = 'bg-amber-100 text-amber-800 border border-amber-300';
-      else if (st === 'Hoàn thành') badgeCls = 'bg-emerald-600 text-white border border-emerald-700';
-      else if (st === 'Khách chưa đến' || st === 'Đã hủy') badgeCls = 'bg-red-100 text-red-700 border border-red-300';
-      const safeCodeHtml = escapeSearchHTML(b.code || '');
-      return `
-        <button type="button" data-code="${safeCodeHtml}" onclick="openInPlaySection(this.getAttribute('data-code'))" class="px-3 py-1.5 rounded-xl border-2 text-left transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 ${isSel ? 'bg-emerald-50 border-[#16A34A] ring-2 ring-[#16A34A]/25 shadow-sm' : 'bg-white border-slate-300 hover:border-slate-400'}">
-          <span class="font-mono font-bold text-xs text-[#0F172A] whitespace-nowrap">#${safeCodeHtml}</span>
-          <span class="text-xs font-semibold text-[#334155] truncate max-w-[140px]">${escapeSearchHTML(b.customerName)}</span>
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap shrink-0 ${badgeCls}">${escapeSearchHTML(st)}</span>
-        </button>
-      `;
-    }).join('');
+    quickCardsEl.innerHTML = allBookings.length > 0
+      ? allBookings.map(b => {
+          const isSel = b.code === activeInPlayCode;
+          const st = (b.status === 'Vắng mặt (No-Show)' || String(b.status || '').includes('No-Show')) ? 'Khách chưa đến' : (b.status || 'Đã xác nhận');
+          let badgeCls = 'bg-amber-100 text-amber-800 border border-amber-300';
+          if (st === 'Đang đá') badgeCls = 'bg-blue-100 text-blue-700 border border-blue-300';
+          else if (st === 'Đã xác nhận') badgeCls = 'bg-emerald-100 text-emerald-700 border border-emerald-300';
+          else if (st === 'Đã đá - chưa tất toán') badgeCls = 'bg-amber-100 text-amber-800 border border-amber-300';
+          else if (st === 'Hoàn thành') badgeCls = 'bg-emerald-600 text-white border border-emerald-700';
+          else if (st === 'Khách chưa đến' || st === 'Đã hủy') badgeCls = 'bg-red-100 text-red-700 border border-red-300';
+          const safeCodeHtml = escapeSearchHTML(b.code || '');
+          return `
+            <button type="button" data-code="${safeCodeHtml}" onclick="openInPlaySection(this.getAttribute('data-code'))" class="px-3 py-1.5 rounded-xl border-2 text-left transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 ${isSel ? 'bg-emerald-50 border-[#16A34A] ring-2 ring-[#16A34A]/25 shadow-sm' : 'bg-white border-slate-300 hover:border-slate-400'}">
+              <span class="font-mono font-bold text-xs text-[#0F172A] whitespace-nowrap">#${safeCodeHtml}</span>
+              <span class="text-xs font-semibold text-[#334155] truncate max-w-[140px]">${escapeSearchHTML(b.customerName)}</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap shrink-0 ${badgeCls}">${escapeSearchHTML(st)}</span>
+            </button>
+          `;
+        }).join('')
+      : '<div class="text-xs text-slate-400 italic py-1">Chưa có ca đặt sân nào.</div>';
   }
 }
 
@@ -355,12 +366,11 @@ async function openInPlayModal(code, focusSection = '') {
     window.closeAllOverviewRowMenus();
   }
 
-  const db = window.SanBongApp?.SanBongDB;
-  const all = db?.getAllBookings ? db.getAllBookings() : [];
+  const liveList = getLiveBookingsList();
   const targetCode = String(
     code
     || activeInPlayCode
-    || (all[0] ? all[0].code : '')
+    || (liveList[0] ? liveList[0].code : '')
     || (window.overviewSummaryCache?.todayBookings?.[0]?.code || '')
     || (window.overviewSummaryCache?.overdueBookings?.[0]?.code || '')
   ).trim();
@@ -413,8 +423,6 @@ async function handleInlineCheckinCurrent() {
 async function restoreCancelledBooking(code) {
   const targetCode = code || activeInPlayCode;
   if (!targetCode) return;
-  const db = window.SanBongApp?.SanBongDB;
-  if (!db) return;
 
   const r = await adminFetchJson('../api/bookings.php?action=restore&code=' + encodeURIComponent(targetCode), {
     method: 'POST',
@@ -427,15 +435,12 @@ async function restoreCancelledBooking(code) {
     return;
   }
 
-  const updated = db.restoreBooking(targetCode);
-  if (updated) {
-    renderOverviewTodayBookings();
-    renderTimelineGantt();
-    initQuickBookingForm();
-    populateInPlayWorkspace(targetCode);
-    if (window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(`🔄 Đã khôi phục đơn #${targetCode} về trạng thái "Đã xác nhận"!`, 'success', 3500);
-    }
+  await fetchBookingForInPlayFallback(targetCode);
+  if (typeof refreshAllAdminViews === 'function') refreshAllAdminViews(targetCode);
+  initQuickBookingForm();
+  populateInPlayWorkspace(targetCode);
+  if (window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(`🔄 Đã khôi phục đơn #${targetCode} về trạng thái "Đã xác nhận"!`, 'success', 3500);
   }
 }
 
@@ -581,18 +586,11 @@ async function submitInPlayOvertime() {
     return;
   }
 
-  const db = window.SanBongApp?.SanBongDB;
-  const updated = db ? db.addOvertimeToBooking(activeInPlayCode, mins, fee) : null;
-  if (updated && r.data) {
-    const allB = db.getAllBookings();
-    const idx = allB.findIndex(x => x.code === activeInPlayCode);
-    if (idx >= 0 && r.data.totalPrice !== undefined) {
-      allB[idx].totalPrice = Number(r.data.totalPrice);
-      if (r.data.remainingAmount !== undefined) allB[idx].remainingAmount = Number(r.data.remainingAmount);
-      if (r.data.status) allB[idx].status = r.data.status;
-      if (r.data.paymentStatus) allB[idx].paymentStatus = r.data.paymentStatus;
-      try { localStorage.setItem('sb_bookings_v1', JSON.stringify(allB)); } catch (e) {}
-    }
+  if (r.data) {
+    const cur = findInPlayBookingSync(activeInPlayCode) || { code: activeInPlayCode };
+    cacheInPlayFallbackBooking(Object.assign({}, cur, r.data));
+  } else {
+    await fetchBookingForInPlayFallback(activeInPlayCode);
   }
   refreshAllAdminViews(activeInPlayCode);
   if (window.SanBongApp?.showToast) {
@@ -607,7 +605,6 @@ async function submitInPlayTransfer() {
   const adjustPrice = Boolean(document.getElementById('inplay-adjust-price')?.checked);
 
   if (!newPitchId) return;
-  const db = window.SanBongApp?.SanBongDB;
   const currentBooking = findInPlayBookingSync(activeInPlayCode);
   if (currentBooking && currentBooking.pitchId === newPitchId) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Đơn này đang ở sân ' + currentBooking.pitchName + ' rồi. Vui lòng chọn sân khác để chuyển!', 'warning');
@@ -631,22 +628,15 @@ async function submitInPlayTransfer() {
     return;
   }
 
-  const updated = db ? db.changePitchForBooking(activeInPlayCode, newPitchId, adjustPrice, reason) : null;
-  if (updated && r.data) {
-    const allB = db.getAllBookings();
-    const idx = allB.findIndex(x => x.code === activeInPlayCode);
-    if (idx >= 0) {
-      if (r.data.pitchName) allB[idx].pitchName = r.data.pitchName;
-      if (r.data.totalPrice !== undefined) allB[idx].totalPrice = Number(r.data.totalPrice);
-      if (r.data.remainingAmount !== undefined) allB[idx].remainingAmount = Number(r.data.remainingAmount);
-      if (r.data.status) allB[idx].status = r.data.status;
-      if (r.data.paymentStatus) allB[idx].paymentStatus = r.data.paymentStatus;
-      try { localStorage.setItem('sb_bookings_v1', JSON.stringify(allB)); } catch (e) {}
-    }
+  if (r.data) {
+    const cur = findInPlayBookingSync(activeInPlayCode) || { code: activeInPlayCode };
+    cacheInPlayFallbackBooking(Object.assign({}, cur, { pitchId: newPitchId }, r.data));
+  } else {
+    await fetchBookingForInPlayFallback(activeInPlayCode);
   }
   refreshAllAdminViews(activeInPlayCode);
   if (window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast(r.message || `🔄 Đã chuyển đơn ${activeInPlayCode} sang ${r.data?.pitchName || updated?.pitchName || newPitchId} và giải phóng sân cũ!`, 'success', 3500);
+    window.SanBongApp.showToast(r.message || `🔄 Đã chuyển đơn ${activeInPlayCode} sang ${r.data?.pitchName || newPitchId} và giải phóng sân cũ!`, 'success', 3500);
   }
 }
 
@@ -676,18 +666,11 @@ async function submitInPlayService() {
     return;
   }
 
-  const updated = db ? db.addInPlayService(activeInPlayCode, srvId, qty) : null;
-  if (updated && r.data) {
-    const allB = db.getAllBookings();
-    const idx = allB.findIndex(x => x.code === activeInPlayCode);
-    if (idx >= 0) {
-      if (Array.isArray(r.data.services)) allB[idx].services = r.data.services;
-      if (r.data.totalPrice !== undefined) allB[idx].totalPrice = Number(r.data.totalPrice);
-      if (r.data.remainingAmount !== undefined) allB[idx].remainingAmount = Number(r.data.remainingAmount);
-      if (r.data.status) allB[idx].status = r.data.status;
-      if (r.data.paymentStatus) allB[idx].paymentStatus = r.data.paymentStatus;
-      try { localStorage.setItem('sb_bookings_v1', JSON.stringify(allB)); } catch (e) {}
-    }
+  if (r.data) {
+    const cur = findInPlayBookingSync(activeInPlayCode) || { code: activeInPlayCode };
+    cacheInPlayFallbackBooking(Object.assign({}, cur, r.data));
+  } else {
+    await fetchBookingForInPlayFallback(activeInPlayCode);
   }
   refreshAllAdminViews(activeInPlayCode);
   if (typeof renderAdminInventory === 'function') renderAdminInventory();
@@ -698,7 +681,6 @@ async function submitInPlayService() {
 
 async function submitInPlayEarlyCancel() {
   if (!activeInPlayCode) return;
-  const db = window.SanBongApp?.SanBongDB;
   const booking = findInPlayBookingSync(activeInPlayCode);
   const policy = document.getElementById('inplay-cancel-policy')?.value || 'refund_100';
   const reasonInput = document.getElementById('inplay-cancel-reason');
@@ -742,30 +724,29 @@ async function submitInPlayEarlyCancel() {
   }
   const serverMsg = r.message || '';
 
-  if (policy === 'noshow_forfeit') {
-    const updatedNoShow = db ? db.releaseNoShowBooking(activeInPlayCode) : null;
-    closeInPlayModal();
-    if (typeof initQuickBookingForm === 'function') initQuickBookingForm();
-    refreshAllAdminViews(activeInPlayCode);
-    if ((updatedNoShow || serverMsg) && window.SanBongApp?.showToast) {
-      window.SanBongApp.showToast(serverMsg || `⚠️ Đã đánh dấu đơn ${activeInPlayCode} là "Khách chưa đến" (tịch thu cọc 30%) & nhả sân trống!`, 'warning', 4000);
-    }
-    return;
+  if (r.data) {
+    const cur = findInPlayBookingSync(activeInPlayCode) || { code: activeInPlayCode };
+    cacheInPlayFallbackBooking(Object.assign({}, cur, r.data));
+  } else {
+    await fetchBookingForInPlayFallback(activeInPlayCode);
   }
-
-  const updated = db ? db.cancelBookingEarly(activeInPlayCode, policy, reason) : null;
   closeInPlayModal();
   if (typeof initQuickBookingForm === 'function') initQuickBookingForm();
   refreshAllAdminViews(activeInPlayCode);
 
-  if ((updated || serverMsg) && window.SanBongApp?.showToast) {
-    window.SanBongApp.showToast(serverMsg || `🛑 Đã hủy lịch đơn ${activeInPlayCode} (${updated?.paymentStatus || ''}) và giải phóng sân trống!`, 'warning', 4000);
+  if (window.SanBongApp?.showToast) {
+    window.SanBongApp.showToast(
+      serverMsg || (policy === 'noshow_forfeit'
+        ? `⚠️ Đã đánh dấu đơn ${activeInPlayCode} là "Khách chưa đến" (tịch thu cọc 30%) & nhả sân trống!`
+        : `🛑 Đã hủy lịch đơn ${activeInPlayCode} và giải phóng sân trống!`),
+      'warning',
+      4000
+    );
   }
 }
 
 async function submitInPlayPayRemaining() {
   if (!activeInPlayCode) return;
-  const db = window.SanBongApp?.SanBongDB;
   const curBooking = findInPlayBookingSync(activeInPlayCode);
   if (curBooking && curBooking.status === 'Hoàn thành') {
     if (typeof openInvoicePrintModal === 'function') openInvoicePrintModal(curBooking.code);
@@ -785,11 +766,13 @@ async function submitInPlayPayRemaining() {
     return;
   }
 
-  const updated = db ? db.completeAndPayRemaining(activeInPlayCode, payMethod) : null;
+  const updated = r.data
+    ? cacheInPlayFallbackBooking(Object.assign({}, curBooking || { code: activeInPlayCode }, r.data, { remainingPaymentMethod: payMethod }))
+    : await fetchBookingForInPlayFallback(activeInPlayCode);
   closeInPlayModal();
   refreshAllAdminViews(activeInPlayCode);
 
-  if ((updated || r.ok) && window.SanBongApp?.showToast) {
+  if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast(r.message || `✅ ĐÃ THU ĐỦ 100% TIỀN SÂN: Đơn ${activeInPlayCode} đã cập nhật Hoàn thành tức thì!`, 'success', 4000);
   }
   if (typeof openInvoicePrintModal === 'function') {

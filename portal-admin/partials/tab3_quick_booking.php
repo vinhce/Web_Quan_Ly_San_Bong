@@ -14,11 +14,11 @@
             <form id="admin-walkin-form" class="space-y-4 text-xs">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Tên khách / Đội bóng *</label>
+                  <label for="admin-cust-name" class="block font-bold text-[#475569] mb-1">Tên khách / Đội bóng *</label>
                   <input type="text" id="admin-cust-name" required placeholder="Ví dụ: FC Cầu Giấy (Anh Tuấn)" class="input-field w-full font-semibold">
                 </div>
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Số điện thoại liên hệ *</label>
+                  <label for="admin-cust-phone" class="block font-bold text-[#475569] mb-1">Số điện thoại liên hệ *</label>
                   <input type="tel" id="admin-cust-phone" required placeholder="0352 313 548" class="input-field w-full font-semibold">
                 </div>
               </div>
@@ -30,26 +30,26 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Chọn sân bóng *</label>
+                  <label for="admin-pitch-select" class="block font-bold text-[#475569] mb-1">Chọn sân bóng *</label>
                   <select id="admin-pitch-select" class="input-field w-full font-bold">
                     <!-- Rendered by JS -->
                   </select>
                 </div>
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Ngày thi đấu *</label>
+                  <label for="admin-book-date" class="block font-bold text-[#475569] mb-1">Ngày thi đấu *</label>
                   <input type="date" id="admin-book-date" data-vn-datepicker="1" required class="input-field w-full font-bold text-[#0F172A]">
                 </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Khung giờ đá *</label>
+                  <label for="admin-slot-select" class="block font-bold text-[#475569] mb-1">Khung giờ đá *</label>
                   <select id="admin-slot-select" class="input-field w-full font-bold text-[#16A34A]">
                     <!-- Rendered by JS -->
                   </select>
                 </div>
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Gói đặt sân / Thời hạn</label>
+                  <label for="admin-book-package" class="block font-bold text-[#475569] mb-1">Gói đặt sân / Thời hạn</label>
                   <select id="admin-book-package" class="input-field w-full font-semibold">
                     <option value="1">Đặt lẻ 1 trận (Theo giờ)</option>
                     <option value="4">Gói 1 tháng (4 tuần - Giảm 5% + Tặng bóng &amp; nước)</option>
@@ -61,7 +61,7 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Hình thức cọc / thanh toán</label>
+                  <label for="admin-pay-select" class="block font-bold text-[#475569] mb-1">Hình thức cọc / thanh toán</label>
                   <select id="admin-pay-select" class="input-field w-full font-semibold">
                     <option value="Tiền mặt tại quầy">Tiền mặt tại quầy (Thu cọc 30%)</option>
                     <option value="Tiền mặt tại quầy (Thu đủ 100%)">Tiền mặt tại quầy (Thu đủ 100%)</option>
@@ -70,7 +70,7 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Ghi chú thêm</label>
+                  <label for="admin-cust-note" class="block font-bold text-[#475569] mb-1">Ghi chú thêm</label>
                   <input type="text" id="admin-cust-note" placeholder="Thuê thêm 10 áo bib, 1 thùng nước..." class="input-field w-full">
                 </div>
               </div>
@@ -145,13 +145,13 @@
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div class="sm:col-span-5">
-                  <label class="block font-bold text-[#475569] mb-1">Chọn mặt hàng / dịch vụ *</label>
+                  <label for="pos-service-select" class="block font-bold text-[#475569] mb-1">Chọn mặt hàng / dịch vụ *</label>
                   <select id="pos-service-select" onchange="updatePosSalePreview()" class="input-field w-full h-9 text-xs font-semibold bg-white truncate">
                     <!-- Rendered by JS -->
                   </select>
                 </div>
                 <div class="sm:col-span-3">
-                  <label class="block font-bold text-[#475569] mb-1">Số lượng *</label>
+                  <label for="pos-service-qty" class="block font-bold text-[#475569] mb-1">Số lượng *</label>
                   <div class="flex items-center h-9 border border-[#CBD5E1] rounded-lg bg-white overflow-hidden shadow-2xs">
                     <button type="button" onclick="stepPosQty(-1)" class="w-8 h-full bg-slate-100 hover:bg-slate-200 text-[#0F172A] font-extrabold flex items-center justify-center cursor-pointer select-none transition-colors">−</button>
                     <input type="number" id="pos-service-qty" value="1" min="1" max="200" oninput="updatePosSalePreview()" required class="w-full h-full text-xs font-bold text-center border-0 focus:outline-none focus:ring-0">
@@ -159,7 +159,7 @@
                   </div>
                 </div>
                 <div class="sm:col-span-4">
-                  <label class="block font-bold text-[#475569] mb-1">Hình thức thu tiền *</label>
+                  <label for="pos-pay-method" class="block font-bold text-[#475569] mb-1">Hình thức thu tiền *</label>
                   <select id="pos-pay-method" class="input-field w-full h-9 text-xs font-semibold bg-white">
                     <option value="Tiền mặt tại quầy">Tiền mặt tại quầy</option>
                     <option value="Chuyển khoản VietQR">Chuyển khoản VietQR</option>
@@ -168,8 +168,8 @@
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div class="sm:col-span-8">
-                  <label class="block font-bold text-[#475569] mb-1">Mã sân / Mã đơn (tùy chọn)</label>
-                  <input type="text" id="pos-sale-note" list="pos-pitch-code-options" placeholder="VD: P7-A (mã sân) hoặc ASFS123456 (mã đơn)..." class="input-field w-full h-9 text-xs bg-white">
+                  <label for="pos-sale-note" class="block font-bold text-[#475569] mb-1">Mã sân / Mã đơn (tùy chọn)</label>
+                  <input type="text" id="pos-sale-note" list="pos-pitch-code-options" placeholder="VD: P7-A (mã sân) hoặc mã đơn đặt sân..." class="input-field w-full h-9 text-xs bg-white">
                   <datalist id="pos-pitch-code-options"></datalist>
                 </div>
                 <div class="sm:col-span-4">
@@ -221,29 +221,29 @@
             <form onsubmit="saveServiceModal(event)" class="p-5 space-y-3.5 text-xs">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Mã dịch vụ *</label>
+                  <label for="srv-form-id" class="block font-bold text-[#475569] mb-1">Mã dịch vụ *</label>
                   <input type="text" id="srv-form-id" required placeholder="VD: SRV-REVIVE" class="input-field w-full font-mono font-bold uppercase">
                 </div>
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Đơn vị tính *</label>
+                  <label for="srv-form-unit" class="block font-bold text-[#475569] mb-1">Đơn vị tính *</label>
                   <input type="text" id="srv-form-unit" required placeholder="chai, thùng, bộ, trận..." class="input-field w-full font-semibold">
                 </div>
               </div>
               <div>
-                <label class="block font-bold text-[#475569] mb-1">Tên dịch vụ / Mặt hàng *</label>
+                <label for="srv-form-name" class="block font-bold text-[#475569] mb-1">Tên dịch vụ / Mặt hàng *</label>
                 <input type="text" id="srv-form-name" required placeholder="VD: Nước điện giải Revive 500ml" class="input-field w-full font-semibold">
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Đơn giá (VNĐ) *</label>
+                  <label for="srv-form-price" class="block font-bold text-[#475569] mb-1">Đơn giá (VNĐ) *</label>
                   <input type="number" id="srv-form-price" required min="0" step="1000" placeholder="15000" class="input-field w-full font-bold text-[#16A34A]">
                 </div>
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Tồn kho hiện tại *</label>
+                  <label for="srv-form-stock" class="block font-bold text-[#475569] mb-1">Tồn kho hiện tại *</label>
                   <input type="number" id="srv-form-stock" required min="0" placeholder="48" class="input-field w-full font-bold">
                 </div>
                 <div>
-                  <label class="block font-bold text-[#475569] mb-1">Ngưỡng báo hết *</label>
+                  <label for="srv-form-min-stock" class="block font-bold text-[#475569] mb-1">Ngưỡng báo hết *</label>
                   <input type="number" id="srv-form-min-stock" required min="0" placeholder="10" class="input-field w-full font-bold text-amber-700">
                 </div>
               </div>

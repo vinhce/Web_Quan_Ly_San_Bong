@@ -30,15 +30,24 @@ function parsePriceInputVND(str, fallback = 0) {
   return (!isNaN(val) && val > 0) ? val : fallback;
 }
 
+function normalizePricingSubTab(rawSub) {
+  let s = String(rawSub || '').replace(/^#/, '').trim().toLowerCase();
+  while (s.startsWith('pricing/')) {
+    s = s.slice('pricing/'.length);
+  }
+  s = s.split('/')[0];
+  return PRICING_SUBTABS.includes(s) ? s : '';
+}
+
 function getPricingSubTabFromHash() {
   const raw = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+  if (raw === 'pricing') return 'pricing';
   if (!raw.startsWith('pricing/')) return '';
-  const sub = raw.slice('pricing/'.length).split('/')[0];
-  return PRICING_SUBTABS.includes(sub) ? sub : '';
+  return normalizePricingSubTab(raw);
 }
 
 function switchPricingSubTab(subtab, options = {}) {
-  const target = PRICING_SUBTABS.includes(subtab) ? subtab : 'pricing';
+  const target = normalizePricingSubTab(subtab) || 'pricing';
   activePricingSubTab = target;
 
   PRICING_SUBTABS.forEach(key => {
@@ -61,7 +70,7 @@ function switchPricingSubTab(subtab, options = {}) {
   if (!options.skipHash) {
     try {
       const url = new URL(window.location.href);
-      url.hash = `#pricing/${target}`;
+      url.hash = target === 'pricing' ? '#pricing' : `#pricing/${target}`;
       history.replaceState(null, '', url.toString());
     } catch (e) {}
   }
