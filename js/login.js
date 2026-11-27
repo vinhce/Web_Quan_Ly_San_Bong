@@ -198,6 +198,33 @@ document.addEventListener('DOMContentLoaded', () => {
     bg.innerHTML = window.SanBongApp.renderPitchSVG('bright', 'h-full');
   }
 
+  const loginPitchCountEl = document.getElementById('login-pitch-count');
+  if (loginPitchCountEl) {
+    const updateLoginPitchCount = (pitches) => {
+      if (!Array.isArray(pitches) || pitches.length === 0) return;
+      const visibleCount = pitches.filter(p => p && p.status !== 'Ẩn').length;
+      if (visibleCount > 0) {
+        loginPitchCountEl.textContent = `${visibleCount} sân`;
+      }
+    };
+    const dbPitches = window.SanBongApp?.SanBongDB?.getPitches ? window.SanBongApp.SanBongDB.getPitches() : [];
+    if (Array.isArray(dbPitches) && dbPitches.length > 0) {
+      updateLoginPitchCount(dbPitches);
+    }
+    if (window.SanBongApp?.SanBongAPI?.fetchInitialData) {
+      window.SanBongApp.SanBongAPI.fetchInitialData()
+        .then(d => {
+          const cnt = Number(d?.publicStats?.pitchCount || 0);
+          if (cnt > 0) {
+            loginPitchCountEl.textContent = `${cnt} sân`;
+          } else if (Array.isArray(d?.pitches)) {
+            updateLoginPitchCount(d.pitches);
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
   // Khởi tạo Turnstile nếu có container hiển thị trên giao diện
   const turnstileWrap = document.getElementById('login-turnstile-wrap');
   if (turnstileWrap) {

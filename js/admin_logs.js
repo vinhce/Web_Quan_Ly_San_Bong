@@ -23,7 +23,6 @@ const ADMIN_LOG_CATALOG = {
     dataGroups: ADMIN_LOG_DATA_GROUPS,
     actions: {
         SHIFT_OPEN: _aMeta('Mở ca trực', 'TD', 'Ca trực'),
-        OPEN_SHIFT: _aMeta('Mở ca trực', 'TD', 'Ca trực'),
         SHIFT_CLOSE: _aMeta('Đóng ca trực', 'CB', 'Ca trực'),
         CLOSE_SHIFT: _aMeta('Đóng ca trực', 'CB', 'Ca trực'),
         SHIFT_HANDOVER: _aMeta('Giao ca trực', 'CB', 'Ca trực'),
@@ -251,9 +250,18 @@ function validateAuditReasonClient(reason, minLen = 10) {
     return { valid: true, clean };
 }
 
+const ADMIN_LOG_ACTION_ALIASES = {
+    OPEN_SHIFT: 'SHIFT_OPEN', CLOSE_SHIFT: 'SHIFT_CLOSE', CRM_UPDATE: 'CRM_CUSTOMER_UPDATE',
+    UPDATE_PRICE: 'UPDATE_PRICING', PRICE_UPDATE: 'UPDATE_PRICING', VOUCHER_TOGGLE_STATUS: 'VOUCHER_TOGGLE',
+    PITCH_STATUS_TOGGLE: 'PITCH_STATUS', TOGGLE_PITCH: 'PITCH_STATUS', SYSTEM_SETTINGS: 'UPDATE_SETTINGS',
+    DB_BACKUP: 'DATABASE_BACKUP', CANCEL_MATCHMAKING: 'MATCHMAKING_CANCEL', MATCH_CANCEL: 'MATCHMAKING_CANCEL'
+};
+
 function resolveActionMeta(actionCode, row = {}) {
     const key = String(actionCode || '').trim();
-    const hit = ADMIN_LOG_CATALOG.actions[key] || ADMIN_LOG_CATALOG.actions[key.toUpperCase()] || null;
+    const upper = key.toUpperCase();
+    const canon = ADMIN_LOG_ACTION_ALIASES[upper] || upper;
+    const hit = ADMIN_LOG_CATALOG.actions[key] || ADMIN_LOG_CATALOG.actions[upper] || ADMIN_LOG_CATALOG.actions[canon] || null;
     const cat = ADMIN_LOG_CATEGORIES[row.category] ? row.category : (hit?.category || 'CN');
     return {
         label: row.action_label || hit?.label || key || 'Thao tác khác',
@@ -401,10 +409,19 @@ function populateAuditFilterOptions(staffList = [], actionTypes = []) {
     }
     const actionEl = auditById('admin-log-filter-action');
     if (actionEl) {
-        const allCodes = Array.from(new Set([...(actionTypes || []), ...Object.keys(ADMIN_LOG_CATALOG.actions)])).filter(Boolean);
+        const allCodes = Array.from(new Set([...Object.keys(ADMIN_LOG_CATALOG.actions), ...(actionTypes || [])])).filter(Boolean);
         const byCat = { TD: [], XH: [], CN: [], CB: [], TQ: [], TT: [] };
-        allCodes.forEach((code) => {
+        const seenCanon = new Set();
+        const seenCatLabel = new Set();
+        allCodes.forEach((rawCode) => {
+            const upper = String(rawCode).trim().toUpperCase();
+            const code = ADMIN_LOG_ACTION_ALIASES[upper] || rawCode;
+            if (seenCanon.has(code)) return;
+            seenCanon.add(code);
             const meta = resolveActionMeta(code);
+            const dedupKey = `${meta.category}:${meta.label}`;
+            if (seenCatLabel.has(dedupKey)) return;
+            seenCatLabel.add(dedupKey);
             (byCat[meta.category] || byCat.CN).push({ code, label: meta.label });
         });
         const catOrder = [['TD', 'Tạo / Duyệt'], ['XH', 'Xóa / Hủy / Chi tiền'], ['CN', 'Cập nhật'],
@@ -413,17 +430,15 @@ function populateAuditFilterOptions(staffList = [], actionTypes = []) {
         catOrder.forEach(([code, title]) => {
             const shortCode = ADMIN_LOG_CATEGORIES[code]?.shortCode || code;
             const items = byCat[code] || [];
-            const counts = {};
-            items.forEach((it) => { counts[it.label] = (counts[it.label] || 0) + 1; });
             html += `<optgroup label="${auditEsc(`${shortCode} – ${title}`)}"><option value="__cat__:${auditEsc(code)}">${auditEsc(`Tất cả nhóm ${title}`)}</option>`;
             items.forEach((it) => {
-                const txt = counts[it.label] > 1 ? `${it.label} (${it.code})` : it.label;
-                html += `<option value="${auditEsc(it.code)}">${auditEsc(txt)}</option>`;
+                html += `<option value="${auditEsc(it.code)}">${auditEsc(it.label)}</option>`;
             });
             html += '</optgroup>';
         });
         actionEl.innerHTML = html;
-        actionEl.value = adminLogState.actionType || '';
+        const selectedCanon = ADMIN_LOG_ACTION_ALIASES[String(adminLogState.actionType || '').toUpperCase()] || adminLogState.actionType || '';
+        actionEl.value = selectedCanon;
     }
     const dgEl = auditById('admin-log-filter-datagroup');
     if (dgEl) dgEl.value = adminLogState.dataGroup || '';

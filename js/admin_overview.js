@@ -687,17 +687,15 @@ async function renderOverviewKPIs(force) {
     }
     overviewLastHash = newHash;
 
-    // Đồng bộ nhanh về SanBongDB cache cho các modal (In-Play, QR)
-    const db = window.SanBongApp?.SanBongDB;
-    if (db) {
-      try {
-        const todayISO = res.data.today || getLocalTodayISO();
-        const existing = db.getAllBookings();
-        const mapByCode = new Map();
-        existing.forEach(b => mapByCode.set(b.code, b));
-        [...(res.data.todayBookings || []), ...(res.data.overdueBookings || [])].forEach(b => mapByCode.set(b.code, b));
-        localStorage.setItem('sb_bookings_v1', JSON.stringify(Array.from(mapByCode.values())));
-      } catch (e) {}
+    // Đồng bộ nguồn dữ liệu server live sang Timeline & In-Play (không đọc/ghi localStorage sb_bookings_v1)
+    const todayISO = res.data.today || getLocalTodayISO();
+    const liveToday = Array.isArray(res.data.todayBookings) ? res.data.todayBookings : [];
+    const liveOverdue = Array.isArray(res.data.overdueBookings) ? res.data.overdueBookings : [];
+    if (window.timelineBookingsByDateCache) {
+      window.timelineBookingsByDateCache[todayISO] = [...liveToday];
+    }
+    if (typeof window.syncLiveBookingsCache === 'function') {
+      window.syncLiveBookingsCache([...liveToday, ...liveOverdue]);
     }
 
     applyOverviewSummary(res.data);
@@ -730,7 +728,7 @@ function refreshAllAdminViews(codeOpt) {
   if (isTabVisible('overview')) {
     renderOverviewKPIs(true);
   }
-  if (isTabVisible('timeline') && typeof renderTimelineGantt === 'function') renderTimelineGantt();
+  if (isTabVisible('timeline') && typeof renderTimelineGantt === 'function') renderTimelineGantt(true);
   if (isTabVisible('pitches') && typeof renderAdminPitches === 'function') renderAdminPitches();
   if (isTabVisible('customers') && typeof renderAdminCustomers === 'function') renderAdminCustomers();
   if (isTabVisible('quick-booking') && typeof renderAdminInventory === 'function') renderAdminInventory();

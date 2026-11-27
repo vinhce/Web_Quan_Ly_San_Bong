@@ -61,8 +61,9 @@ try {
         }
         $p['rating'] = $ratingMap[$p['id']]['avg'] ?? 0;
         $p['reviewCount'] = $ratingMap[$p['id']]['count'] ?? 0;
-        $p['inMaintenance'] = isset($maintMap[$p['id']]);
-        $p['maintenanceReason'] = $maintMap[$p['id']] ?? null;
+        $isMaintStatus = (($p['status'] ?? '') === 'Bảo trì');
+        $p['inMaintenance'] = $isMaintStatus || isset($maintMap[$p['id']]);
+        $p['maintenanceReason'] = $maintMap[$p['id']] ?? ($isMaintStatus ? 'Sân đang bảo trì định kỳ' : null);
     }
     unset($p);
 
@@ -163,6 +164,7 @@ try {
             $s['isPeak'] = (bool)$s['isPeak'];
             $s['duration'] = (float)$s['duration'];
         }
+        unset($s);
         $data['timeSlots'] = $slots;
 
         $servicesStmt = $pdo->query("SELECT id, name, price, unit, icon, stock_qty as stockQty, min_stock_warning as minStockWarning, track_inventory as trackInventory, is_active as isActive FROM extra_services WHERE is_active = 1 ORDER BY price ASC");
@@ -170,11 +172,14 @@ try {
         foreach ($extraServices as &$srv) {
             $srv['price']           = (int)$srv['price'];
             $srv['stockQty']        = (int)($srv['stockQty'] ?? 100);
+            $srv['stock_qty']       = $srv['stockQty'];
             $srv['minStockWarning'] = (int)($srv['minStockWarning'] ?? 10);
-            $srv['trackInventory']  = (bool)($srv['trackInventory'] ?? true);
-            $srv['isActive']        = (bool)($srv['isActive'] ?? true);
+            $srv['trackInventory']  = (bool)(int)($srv['trackInventory'] ?? 1);
+            $srv['track_inventory'] = $srv['trackInventory'] ? 1 : 0;
+            $srv['isActive']        = (bool)(int)($srv['isActive'] ?? 1);
             $srv['lowStock']        = ($srv['trackInventory'] && $srv['stockQty'] <= $srv['minStockWarning']);
         }
+        unset($srv);
         $data['extraServices'] = $extraServices;
 
         $hasRequiredTier = db_table_has_column($pdo, 'vouchers', 'required_tier');

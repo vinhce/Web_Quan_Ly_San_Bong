@@ -336,9 +336,8 @@ function performAdminSearch() {
   }
   if (clearBtn) clearBtn.classList.remove('hidden');
 
-  const db = window.SanBongApp?.SanBongDB;
-  const allBookings = db?.getAllBookings ? db.getAllBookings() : [];
-  const pendingPayments = (isManagerOrAdmin() && db?.getPendingPayments) ? db.getPendingPayments() : [];
+  const allBookings = typeof window.getLiveBookingsList === 'function' ? window.getLiveBookingsList() : [];
+  const pendingPayments = (isManagerOrAdmin() && Array.isArray(window.cachedPendingDeposits)) ? window.cachedPendingDeposits : [];
   const cleanPhoneQ = normQuery.replace(/[\s\.\-]+/g, '');
 
   const matchedBookings = allBookings.filter(b => {

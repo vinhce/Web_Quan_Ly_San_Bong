@@ -59,11 +59,8 @@ function handle_create_booking(?PDO $pdo, array $data): void {
         $walkinActor = require_staff_or_admin($pdo);
         $userId = null;
         try_reuse_idempotent_booking($pdo, $idempotencyKey, null, true);
-        $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? '', 60);
+        $customerName = validate_clean_full_name((string)($data['customerName'] ?? $data['customer_name'] ?? ''), 60, 'Họ và tên khách tại quầy phải từ 2 đến 60 ký tự.');
         $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
-        if (mb_strlen($customerName) < 2 || mb_strlen($customerName) > 60) {
-            json_error('Họ và tên khách tại quầy phải từ 2 đến 60 ký tự.', 400, 'ERR_INVALID_NAME');
-        }
         if (!preg_match('/^0\d{9}$/', $phone)) {
             json_error('Số điện thoại khách tại quầy không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).', 400, 'ERR_INVALID_PHONE');
         }
@@ -120,11 +117,8 @@ function handle_create_booking(?PDO $pdo, array $data): void {
 
         if ($isBookingForFriend) {
             // Đặt hộ bạn bè: Nhận họ tên & SĐT từ form, lưu vào đơn, KHÔNG đổi hồ sơ của khách đang đăng nhập
-            $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? '', 60);
+            $customerName = validate_clean_full_name((string)($data['customerName'] ?? $data['customer_name'] ?? ''), 60, 'Họ tên người được đặt hộ phải từ 2 đến 60 ký tự.');
             $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
-            if (mb_strlen($customerName) < 2 || mb_strlen($customerName) > 60) {
-                json_error('Họ tên người được đặt hộ phải từ 2 đến 60 ký tự.', 400, 'ERR_INVALID_NAME');
-            }
             if (!preg_match('/^0\d{9}$/', $phone)) {
                 json_error('Số điện thoại người được đặt hộ không hợp lệ (cần đúng 10 chữ số bắt đầu bằng 0).', 400, 'ERR_INVALID_PHONE');
             }
@@ -159,7 +153,7 @@ function handle_create_booking(?PDO $pdo, array $data): void {
                 }
             }
             if ($customerName === '') {
-                $customerName = sanitize_string($data['customerName'] ?? $data['customer_name'] ?? 'Hội viên', 60);
+                $customerName = validate_clean_full_name((string)($data['customerName'] ?? $data['customer_name'] ?? 'Hội viên'), 60, 'Họ và tên người đặt phải từ 2 đến 60 ký tự.');
             }
             if (mb_strlen($customerName) < 2 || mb_strlen($customerName) > 60) {
                 json_error('Họ và tên người đặt phải từ 2 đến 60 ký tự.', 400, 'ERR_INVALID_NAME');

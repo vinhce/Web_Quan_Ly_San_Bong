@@ -99,8 +99,8 @@
               <div id="rec-tx-info" class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs text-[#334155]"></div>
 
               <div>
-                <label class="block font-bold text-[#475569] mb-1">Mã đơn đặt sân cần gán *</label>
-                <input type="text" id="rec-booking-code" list="rec-booking-datalist" required placeholder="Nhập hoặc chọn mã đơn (VD: ASFS982145)..." class="input-field w-full font-mono font-bold uppercase text-[#0F172A]">
+                <label for="rec-booking-code" class="block font-bold text-[#475569] mb-1">Mã đơn đặt sân cần gán *</label>
+                <input type="text" id="rec-booking-code" list="rec-booking-datalist" required placeholder="Nhập hoặc chọn mã đơn đặt sân..." class="input-field w-full font-mono font-bold uppercase text-[#0F172A]">
                 <datalist id="rec-booking-datalist"></datalist>
               </div>
 

@@ -24,11 +24,10 @@ function openQRScannerModal(preCode = '') {
   const resultBox = document.getElementById('qr-ticket-result');
   const quickList = document.getElementById('qr-quick-select-list');
 
-  const db = window.SanBongApp?.SanBongDB;
-  if (db && quickList) {
-    const all = db.getAllBookings();
-    const candidates = all.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc' || b.status === 'Đang đá' || b.status === 'Khách chưa đến').slice(0, 8);
-    quickList.innerHTML = candidates.map(b => {
+  const liveAll = typeof window.getLiveBookingsList === 'function' ? window.getLiveBookingsList() : [];
+  if (quickList) {
+    const candidates = liveAll.filter(b => b.status === 'Đã xác nhận' || b.status === 'Chờ duyệt cọc' || b.status === 'Đang đá' || b.status === 'Khách chưa đến').slice(0, 8);
+    quickList.innerHTML = candidates.length > 0 ? candidates.map(b => {
       let dotColor = 'bg-emerald-500';
       if (b.status === 'Đang đá') dotColor = 'bg-blue-500';
       else if (b.status === 'Chờ duyệt cọc') dotColor = 'bg-amber-500';
@@ -43,7 +42,7 @@ function openQRScannerModal(preCode = '') {
           <span class="text-[11px] text-slate-400">(${escapeSearchHTML(b.slotTime || '')})</span>
         </button>
       `;
-    }).join('');
+    }).join('') : '<span class="text-[11px] text-slate-400">Chưa có ca đá nào trong ngày.</span>';
   }
 
   if (preCode) {
@@ -251,14 +250,14 @@ async function handleQRImageUpload(event) {
   reader.readAsDataURL(file);
 }
 
-function lookupQRTicket(codeOpt) {
+async function lookupQRTicket(codeOpt) {
   const input = document.getElementById('qr-code-input');
   const resultBox = document.getElementById('qr-ticket-result');
   const checkinBtn = document.getElementById('qr-confirm-checkin-btn');
   if (!resultBox) return;
 
   let raw = (codeOpt || input?.value || '').trim();
-  const match = raw.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8})/i);
+  const match = raw.match(/(ASF[FSE]?[0-9]{6,8}|DH[0-9]{6,8}|BK-[0-9]{6}-[0-9]{3,})/i);
   const rawCode = match ? match[1].toUpperCase() : raw.toUpperCase();
 
   if (input && rawCode) input.value = rawCode;
@@ -268,8 +267,14 @@ function lookupQRTicket(codeOpt) {
     return;
   }
 
-  const db = window.SanBongApp?.SanBongDB;
-  const booking = db ? db.getBookingByCode(rawCode) : null;
+  let booking = typeof window.findInPlayBookingSync === 'function' ? window.findInPlayBookingSync(rawCode) : null;
+  if (!booking && typeof adminFetchJson === 'function') {
+    const r = await adminFetchJson(`../api/bookings.php?code=${encodeURIComponent(rawCode)}`);
+    if (r?.ok && r.data && r.data.code) {
+      booking = r.data;
+      if (typeof window.syncLiveBookingsCache === 'function') window.syncLiveBookingsCache([booking]);
+    }
+  }
 
   if (!booking) {
     activeQRBookingCode = '';
@@ -387,8 +392,7 @@ async function confirmQRCheckin(codeOpt) {
   }
 
   const finalCode = code || activeQRBookingCode;
-  const db = window.SanBongApp?.SanBongDB;
-  const b = db ? db.getBookingByCode(finalCode) : null;
+  const b = typeof window.findInPlayBookingSync === 'function' ? window.findInPlayBookingSync(finalCode) : null;
   const pitchName = b ? b.pitchName : 'sân';
 
   const r = await adminFetchJson('../api/bookings.php?action=checkin&code=' + encodeURIComponent(finalCode), {
@@ -402,14 +406,15 @@ async function confirmQRCheckin(codeOpt) {
     return;
   }
 
-  if (db) db.checkinBooking(finalCode);
-
   if (window.SanBongApp?.playScanBeep) window.SanBongApp.playScanBeep(true);
 
   closeQRScannerModal();
-  renderOverviewTodayBookings();
-  renderTimelineGantt();
-  renderOverviewKPIs();
+  if (typeof refreshAllAdminViews === 'function') {
+    refreshAllAdminViews(finalCode);
+  } else {
+    renderTimelineGantt(true);
+    renderOverviewKPIs(true);
+  }
 
   if (window.SanBongApp?.showToast) {
     window.SanBongApp.showToast('🎉 CHECK-IN THÀNH CÔNG: Đội khách mã ' + finalCode + ' đã nhận ' + pitchName + '! Đèn sân đã bật & bắt đầu tính giờ thi đấu.', 'success', 4500);

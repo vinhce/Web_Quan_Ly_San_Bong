@@ -2,81 +2,182 @@
 window.SanBongApp = window.SanBongApp || {};
 
 window.SanBongApp.SanBongAPI = {
-  async fetchInitialData() {
-    try {
-      const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
-      const apiUrl = window.SanBongApp.getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1');
-      const response = await fetch(apiUrl);
-      if (response.ok) {
-        const jsonRes = await response.json();
-        if (jsonRes?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
-          window.SanBongHelpers.setCsrfToken(jsonRes.csrf_token);
-        }
-        if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
-          if (window.SanBongApp?.SanBongDB?.syncFromServer) {
+  _initialDataPromises: {},
+  _initialDataCaches: {},
+  _bookedSlotsInFlight: {},
+  _bookedSlotsCache: {},
+
+  async fetchInitialData(force = false) {
+    const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
+    const cacheKey = isAdminPortal ? 'admin' : 'public';
+    const now = Date.now();
+    const cached = this._initialDataCaches[cacheKey];
+    if (!force && cached && (now - cached.at) < 5000) {
+      return cached.data;
+    }
+    if (!force && this._initialDataPromises[cacheKey]) {
+      return this._initialDataPromises[cacheKey];
+    }
+
+    const promise = (async () => {
+      try {
+        const apiUrl = window.SanBongApp.getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1');
+        const response = await fetch(apiUrl, { credentials: 'same-origin' });
+        if (response.ok) {
+          const jsonRes = await response.json();
+          if (jsonRes?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+            window.SanBongHelpers.setCsrfToken(jsonRes.csrf_token);
+          }
+          if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
+            const d = jsonRes.data;
+            const db = window.SanBongDB || window.SanBongApp?.SanBongDB;
             try {
-              localStorage.setItem('sb_pitches_v2', JSON.stringify(jsonRes.data.pitches));
-              if (Array.isArray(jsonRes.data.vouchers)) {
-                localStorage.setItem('sb_vouchers_v1', JSON.stringify(jsonRes.data.vouchers));
+              localStorage.setItem('sb_pitches_v2', JSON.stringify(d.pitches));
+              if (Array.isArray(d.timeSlots) && d.timeSlots.length > 0) {
+                localStorage.setItem('sb_slots_v1', JSON.stringify(d.timeSlots));
               }
-              if (Array.isArray(jsonRes.data.goldenHourRules)) {
-                localStorage.setItem('sb_golden_hours_v1', JSON.stringify(jsonRes.data.goldenHourRules));
+              if (Array.isArray(d.extraServices) && d.extraServices.length > 0) {
+                localStorage.setItem('sb_services_v1', JSON.stringify(d.extraServices));
               }
-              if (Array.isArray(jsonRes.data.maintenanceSchedules)) {
-                localStorage.setItem('sb_maintenance_v1', JSON.stringify(jsonRes.data.maintenanceSchedules));
+              if (Array.isArray(d.vouchers)) {
+                localStorage.setItem('sb_vouchers_v1', JSON.stringify(d.vouchers));
               }
-              if (jsonRes.data.bankInfo) {
-                const b = Object.assign({}, jsonRes.data.bankInfo, {
-                  accountNo: jsonRes.data.bankInfo.accountNo || jsonRes.data.bankInfo.accountNumber || '',
-                  accountNumber: jsonRes.data.bankInfo.accountNumber || jsonRes.data.bankInfo.accountNo || ''
+              if (Array.isArray(d.goldenHourRules)) {
+                localStorage.setItem('sb_golden_hours_v1', JSON.stringify(d.goldenHourRules));
+              }
+              if (Array.isArray(d.maintenanceSchedules)) {
+                localStorage.setItem('sb_maintenance_v1', JSON.stringify(d.maintenanceSchedules));
+              }
+              if (d.bankInfo && typeof d.bankInfo === 'object') {
+                const b = Object.assign({}, d.bankInfo, {
+                  bankName: d.bankInfo.bankName || d.bankInfo.bank_name || 'Vietcombank',
+                  bankCode: d.bankInfo.bankCode || d.bankInfo.bank_code || 'VCB',
+                  accountNo: d.bankInfo.accountNo || d.bankInfo.accountNumber || d.bankInfo.account_no || '',
+                  accountNumber: d.bankInfo.accountNumber || d.bankInfo.accountNo || d.bankInfo.account_no || '',
+                  accountName: d.bankInfo.accountName || d.bankInfo.account_holder || 'CONG TY CP SAN BONG PRO'
                 });
                 localStorage.setItem('sb_bank_v1', JSON.stringify(b));
               }
-              if (jsonRes.data.settings) {
-                localStorage.setItem('sb_system_config', JSON.stringify(jsonRes.data.settings));
+              if (d.settings && typeof d.settings === 'object') {
+                const prevCfg = db?.getSystemConfig ? db.getSystemConfig() : (window.DEFAULT_SYSTEM_CONFIG || {});
+                const autoRaw = d.settings.autoCancelEnabled ?? d.settings.auto_cancel_enabled;
+                const mmEnabledRaw = d.settings.matchmakingEnabled ?? d.settings.matchmaking_enabled;
+                const mmApprovalRaw = d.settings.matchmakingRequireApproval ?? d.settings.matchmaking_require_approval;
+                const cfg = {
+                  depositRate: Number(d.settings.depositRate ?? d.settings.deposit_rate ?? prevCfg.depositRate ?? 30),
+                  hotline: d.settings.hotline || prevCfg.hotline || '0352 313 548',
+                  openHours: d.settings.openHours || d.settings.open_hours || prevCfg.openHours || '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
+                  holdMinutes: Number(d.settings.holdMinutes ?? d.settings.hold_minutes ?? prevCfg.holdMinutes ?? 15),
+                  waitlistHoldMinutes: Number(d.settings.waitlistHoldMinutes ?? d.settings.waitlist_hold_minutes ?? prevCfg.waitlistHoldMinutes ?? 15),
+                  refundFullHours: Number(d.settings.refundFullHours ?? d.settings.refund_full_hours ?? prevCfg.refundFullHours ?? 24),
+                  refundPartialHours: Number(d.settings.refundPartialHours ?? d.settings.refund_partial_hours ?? prevCfg.refundPartialHours ?? 4),
+                  autoCancelEnabled: autoRaw === undefined ? (prevCfg.autoCancelEnabled ?? true) : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true'),
+                  matchmakingEnabled: mmEnabledRaw === undefined ? (prevCfg.matchmakingEnabled ?? true) : (mmEnabledRaw === true || mmEnabledRaw === 1 || mmEnabledRaw === '1' || mmEnabledRaw === 'true'),
+                  matchmakingRequireApproval: mmApprovalRaw === undefined ? (prevCfg.matchmakingRequireApproval ?? false) : (mmApprovalRaw === true || mmApprovalRaw === 1 || mmApprovalRaw === '1' || mmApprovalRaw === 'true'),
+                  loyaltyBottleCostPoints: Math.max(1, Number(d.settings.loyaltyBottleCostPoints ?? d.settings.loyalty_bottle_cost_points ?? prevCfg.loyaltyBottleCostPoints ?? 100) || 100),
+                  pricingTable: d.settings.pricingTable || prevCfg.pricingTable || null
+                };
+                localStorage.setItem('sb_system_config', JSON.stringify(cfg));
               }
-              if (jsonRes.data.publicStats) {
-                localStorage.setItem('sb_public_stats_v1', JSON.stringify(jsonRes.data.publicStats));
+              if (d.publicStats) {
+                localStorage.setItem('sb_public_stats_v1', JSON.stringify(d.publicStats));
               }
+              window.dispatchEvent(new CustomEvent('sb-data-synced', { detail: d }));
             } catch (e) {}
-          }
-          return {
-            pitches: jsonRes.data.pitches,
-            timeSlots: jsonRes.data.timeSlots || window.SanBongApp.SanBongDB?.getTimeSlots() || [],
-            extraServices: jsonRes.data.extraServices || window.SanBongApp.SanBongDB?.getServices?.() || [],
-            vouchers: jsonRes.data.vouchers || window.SanBongApp.SanBongDB?.getVouchers() || [],
-            goldenHourRules: jsonRes.data.goldenHourRules || window.SanBongApp.SanBongDB?.getGoldenHourRules?.() || [],
-            maintenanceSchedules: jsonRes.data.maintenanceSchedules || window.SanBongApp.SanBongDB?.getMaintenanceSchedules?.() || [],
-            bankInfo: jsonRes.data.bankInfo || window.SanBongApp.SanBongDB?.getBankInfo() || {},
-            settings: jsonRes.data.settings || window.SanBongApp.SanBongDB?.getSystemConfig?.() || {},
-            publicStats: jsonRes.data.publicStats || null
-          };
-        }
-      }
-    } catch (e) {
-    }
 
-    try {
-      const dataUrl = window.SanBongApp.getRelativePath('data/data.json');
-      const response = await fetch(dataUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+            const normalized = {
+              pitches: d.pitches,
+              timeSlots: d.timeSlots || db?.getTimeSlots?.() || [],
+              extraServices: d.extraServices || db?.getServices?.() || [],
+              vouchers: d.vouchers || db?.getVouchers?.() || [],
+              goldenHourRules: d.goldenHourRules || db?.getGoldenHourRules?.() || [],
+              maintenanceSchedules: d.maintenanceSchedules || db?.getMaintenanceSchedules?.() || [],
+              bankInfo: d.bankInfo || db?.getBankInfo?.() || {},
+              settings: d.settings || db?.getSystemConfig?.() || {},
+              publicStats: d.publicStats || null
+            };
+            this._initialDataCaches[cacheKey] = { at: Date.now(), data: normalized };
+            return normalized;
+          }
+        }
+      } catch (e) {
       }
-      return await response.json();
-    } catch (error) {
-      return {
-        pitches: window.SanBongApp.SanBongDB?.getPitches() || window.SanBongData?.DEFAULT_PITCHES || [],
-        timeSlots: window.SanBongApp.SanBongDB?.getTimeSlots() || window.SanBongData?.DEFAULT_TIME_SLOTS || [],
-        extraServices: window.SanBongApp.SanBongDB?.getServices?.() || window.SanBongData?.DEFAULT_EXTRA_SERVICES || [],
-        vouchers: window.SanBongApp.SanBongDB?.getVouchers() || window.SanBongData?.DEFAULT_VOUCHERS || [],
-        bankInfo: window.SanBongApp.SanBongDB?.getBankInfo() || window.SanBongData?.DEFAULT_BANK_INFO || {}
-      };
+
+      try {
+        const dataUrl = window.SanBongApp.getRelativePath('data/data.json');
+        const response = await fetch(dataUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const jsonData = await response.json();
+        this._initialDataCaches[cacheKey] = { at: Date.now(), data: jsonData };
+        return jsonData;
+      } catch (error) {
+        return {
+          pitches: window.SanBongApp.SanBongDB?.getPitches() || window.SanBongData?.DEFAULT_PITCHES || [],
+          timeSlots: window.SanBongApp.SanBongDB?.getTimeSlots() || window.SanBongData?.DEFAULT_TIME_SLOTS || [],
+          extraServices: window.SanBongApp.SanBongDB?.getServices?.() || window.SanBongData?.DEFAULT_EXTRA_SERVICES || [],
+          vouchers: window.SanBongApp.SanBongDB?.getVouchers() || window.SanBongData?.DEFAULT_VOUCHERS || [],
+          bankInfo: window.SanBongApp.SanBongDB?.getBankInfo() || window.SanBongData?.DEFAULT_BANK_INFO || {}
+        };
+      }
+    })();
+
+    this._initialDataPromises[cacheKey] = promise;
+    try {
+      return await promise;
+    } finally {
+      delete this._initialDataPromises[cacheKey];
     }
   },
 
-  async getPitches() {
-    const data = await this.fetchInitialData();
+  async getPitches(force = false) {
+    const data = await this.fetchInitialData(force);
     return data.pitches || window.SanBongApp.SanBongDB.getPitches();
+  },
+
+  async fetchBookedSlots(pitchId, date, force = false) {
+    if (!pitchId || !date) {
+      return { bookedList: [], bookedIds: [], maintenanceWindows: [] };
+    }
+    const key = `${pitchId}__${date}`;
+    const now = Date.now();
+    const cached = this._bookedSlotsCache[key];
+    if (!force && cached && (now - cached.at) < 3000) {
+      return cached.data;
+    }
+    if (!force && this._bookedSlotsInFlight[key]) {
+      return this._bookedSlotsInFlight[key];
+    }
+
+    const promise = (async () => {
+      try {
+        const getRel = window.SanBongApp?.getRelativePath || (p => '/' + String(p || '').replace(/^\/+/, ''));
+        const url = getRel(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitchId)}&date=${encodeURIComponent(date)}`);
+        const res = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
+        if (res.ok) {
+          const json = await res.json().catch(() => null);
+          if (json && json.success) {
+            const list = Array.isArray(json.data) ? json.data : [];
+            const entry = {
+              bookedList: list,
+              bookedIds: list,
+              maintenanceWindows: Array.isArray(json.maintenanceWindows) ? json.maintenanceWindows : []
+            };
+            this._bookedSlotsCache[key] = { at: Date.now(), data: entry };
+            return entry;
+          }
+        }
+      } catch (e) {}
+      return this._bookedSlotsCache[key]?.data || { bookedList: [], bookedIds: [], maintenanceWindows: [] };
+    })();
+
+    this._bookedSlotsInFlight[key] = promise;
+    try {
+      return await promise;
+    } finally {
+      delete this._bookedSlotsInFlight[key];
+    }
   },
 
   async fetchWeather() {
@@ -137,7 +238,7 @@ window.SanBongApp.SanBongAPI = {
     }
   },
 
-  async requestJSON(path, payload) {
+  async requestJSON(path, payload, _csrfRetried = false) {
     try {
       const app = window.SanBongApp;
       if (payload !== undefined && app.ensureCsrfToken) {
@@ -157,6 +258,23 @@ window.SanBongApp.SanBongAPI = {
       if (tokenHeader && setToken) setToken(tokenHeader);
       const result = await response.json().catch(() => null);
       if (result?.csrf_token && setToken) setToken(result.csrf_token);
+
+      if (payload !== undefined && response.status === 403 && !_csrfRetried) {
+        const ref = String(result?.ref_code || '').toUpperCase();
+        const msg = String(result?.message || '');
+        if (ref === 'ERR_CSRF_INVALID' || /csrf|mã bảo mật/i.test(msg)) {
+          const ensureFn = app.ensureCsrfToken || window.SanBongHelpers?.ensureCsrfToken;
+          if (ensureFn) {
+            const freshToken = await ensureFn(true);
+            let nextPayload = payload;
+            if (freshToken && payload && typeof payload === 'object' && !Array.isArray(payload) && Object.prototype.hasOwnProperty.call(payload, 'csrf_token')) {
+              nextPayload = Object.assign({}, payload, { csrf_token: freshToken });
+            }
+            return this.requestJSON(path, nextPayload, true);
+          }
+        }
+      }
+
       if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.success !== 'boolean') {
         return {
           success: false,

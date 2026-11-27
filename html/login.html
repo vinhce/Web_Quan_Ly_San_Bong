@@ -22,7 +22,7 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261125_v143">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261127_v144">
   <link rel="stylesheet" href="../css/style.css?v=20261124_v135">
 </head>
 <body class="min-h-screen flex flex-col justify-between antialiased">
@@ -62,7 +62,7 @@
 
         <div class="relative z-10 space-y-3 pt-6 border-t border-slate-800 text-xs sm:text-sm text-slate-300">
           <div class="flex items-center gap-2">
-            <span class="text-[#4ADE80] font-bold">✓</span> Xem lịch trống theo thời gian thực 26 sân
+            <span class="text-[#4ADE80] font-bold">✓</span> Xem lịch trống theo thời gian thực <span id="login-pitch-count">hệ thống sân</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-[#4ADE80] font-bold">✓</span> Quét VietQR cọc 30% (gói tháng 60%) đối soát tự động
@@ -76,10 +76,10 @@
       <div class="p-6 sm:p-8 md:p-10 space-y-6 bg-white">
         
         <div class="grid grid-cols-2 p-1.5 rounded-xl bg-[#F1F5F9] text-center text-sm font-bold">
-          <button id="tab-btn-login" onclick="switchAuthTab('login')" class="py-2.5 md:py-3 rounded-lg bg-white text-[#16A34A] shadow-sm transition-all font-bold">
+          <button type="button" id="tab-btn-login" onclick="switchAuthTab('login')" class="py-2.5 md:py-3 rounded-lg bg-white text-[#16A34A] shadow-sm transition-all font-bold">
             Đăng nhập
           </button>
-          <button id="tab-btn-register" onclick="switchAuthTab('register')" class="py-2.5 md:py-3 rounded-lg text-[#64748B] hover:text-[#0F172A] transition-all font-bold">
+          <button type="button" id="tab-btn-register" onclick="switchAuthTab('register')" class="py-2.5 md:py-3 rounded-lg text-[#64748B] hover:text-[#0F172A] transition-all font-bold">
             Đăng ký mới
           </button>
         </div>
@@ -134,16 +134,16 @@
     © 2026 Sân Bóng Pro · Hệ thống quản lý đặt sân bóng đá tự động
   </footer>
 
-  <script src="../js/data.js?v=20261125_v143"></script>
-  <script src="../js/helpers.js?v=20261124_v140"></script>
-  <script src="../js/db_core.js?v=20261125_v143"></script>
+  <script src="../js/data.js?v=20261127_v144"></script>
+  <script src="../js/helpers.js?v=20261127_v144"></script>
+  <script src="../js/db_core.js?v=20261127_v144"></script>
   <script src="../js/db_pricing.js?v=20261124_v136"></script>
   <script src="../js/db_bookings.js?v=20261125_v143"></script>
   <script src="../js/db_operations.js?v=20261124_v136"></script>
   <script src="../js/db.js?v=20261122_v130"></script>
   <script src="../js/ui.js?v=20261125_v143"></script>
   <script src="../js/app.js?v=20261122_v130"></script>
-  <script src="../js/api.js?v=20261124_v136"></script>
-  <script src="../js/login.js?v=20261125_v143"></script>
+  <script src="../js/api.js?v=20261127_v144"></script>
+  <script src="../js/login.js?v=20261127_v144"></script>
 </body>
 </html>

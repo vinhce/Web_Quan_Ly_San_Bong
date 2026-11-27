@@ -140,11 +140,11 @@ if ($method === 'GET') {
             $rStmt->execute([$checkCode]);
             $existingReview = $rStmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
-            $isInvalidState = ($booking['status'] === 'Đã hủy' || $booking['status'] === 'Khách chưa đến');
-            $eligible = !$isInvalidState && !$existingReview;
+            $isCompleted = in_array((string)$booking['status'], ['Hoàn thành', 'completed', 'Đã hoàn thành'], true);
+            $eligible = $isCompleted && !$existingReview;
             $reason = $existingReview
                 ? 'Đơn đặt sân này đã gửi đánh giá trước đó.'
-                : ($isInvalidState ? 'Đơn đặt sân đã hủy hoặc khách không đến nên không thể đánh giá.' : '');
+                : (!$isCompleted ? 'Chỉ có thể gửi đánh giá sau khi đơn đặt sân đã hoàn thành.' : '');
 
             json_response([
                 'success' => true,
@@ -268,8 +268,8 @@ if ($method === 'POST') {
             json_error('Mã đặt sân không tồn tại trong hệ thống.', 404, 'ERR_NOT_FOUND');
         }
 
-        if ($booking['status'] === 'Đã hủy' || strpos((string)$booking['status'], 'Hủy') !== false || $booking['status'] === 'Khách chưa đến') {
-            json_error('Đơn đặt sân đã bị hủy hoặc khách không đến, không thể gửi đánh giá.', 400, 'ERR_BOOKING_NOT_REVIEWABLE');
+        if (!in_array((string)$booking['status'], ['Hoàn thành', 'completed', 'Đã hoàn thành'], true)) {
+            json_error('Chỉ có thể gửi đánh giá sau khi đơn đặt sân đã hoàn thành.', 400, 'ERR_BOOKING_NOT_COMPLETED');
         }
 
         $currentUser = get_authenticated_user($pdo);

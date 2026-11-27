@@ -7,8 +7,13 @@ let selectedTimelineDate = (() => {
   }
 })();
 let timelineBookingsByDateCache = {};
+const timelineFetchedDates = new Set();
+let timelineFetchSeq = 0;
 window.selectedTimelineDate = selectedTimelineDate;
 window.timelineBookingsByDateCache = timelineBookingsByDateCache;
+window.markTimelineDateFetched = function(dateStr) {
+  if (dateStr) timelineFetchedDates.add(dateStr);
+};
 
 function formatTimelineDateLabel(isoStr) {
   if (!isoStr) return '';
@@ -21,44 +26,71 @@ function formatTimelineDateLabel(isoStr) {
   return `${dayNames[d.getDay()]}, ${dd}/${mm}/${yyyy}`;
 }
 
+function normalizeTimelineServerBooking(srvB, fallbackDate) {
+  const totalPrice = Number(srvB.totalPrice ?? srvB.total_price ?? 0);
+  const depositAmount = Number(srvB.depositAmount ?? srvB.deposit_amount ?? 0);
+  const paidAmount = Number(srvB.paidAmount ?? srvB.paid_amount ?? 0);
+  const rawRem = srvB.remainingAmount ?? srvB.remaining_amount;
+  const remainingAmount = (rawRem !== undefined && rawRem !== null && rawRem !== '')
+    ? Number(rawRem)
+    : Math.max(0, totalPrice - paidAmount);
+  return Object.assign({}, srvB, {
+    code: String(srvB.code || '').trim(),
+    customerName: srvB.customerName || srvB.customer_name || 'Khách đặt sân',
+    phone: srvB.phone || '',
+    pitchId: srvB.pitchId || srvB.pitch_id || '',
+    pitchName: srvB.pitchName || srvB.pitch_name || srvB.pitchId || srvB.pitch_id || '',
+    date: srvB.date || srvB.booking_date || fallbackDate,
+    slotId: srvB.slotId || srvB.slot_id || '',
+    slotTime: srvB.slotTime || srvB.slot_time || '',
+    totalPrice,
+    depositAmount,
+    paidAmount,
+    remainingAmount,
+    status: srvB.status || 'Đã xác nhận',
+    paymentStatus: srvB.paymentStatus || srvB.payment_status || 'Chờ duyệt cọc',
+    paymentMethod: srvB.paymentMethod || srvB.payment_method || '',
+    note: srvB.note || ''
+  });
+}
+
 async function fetchTimelineDateBookings(dateStr) {
-  const targetDate = dateStr || selectedTimelineDate || (window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0]);
+  const getToday = window.SanBongApp?.getLocalTodayISO
+    ? window.SanBongApp.getLocalTodayISO()
+    : (typeof getLocalTodayISO === 'function' ? getLocalTodayISO() : new Date().toISOString().split('T')[0]);
+  const targetDate = dateStr || selectedTimelineDate || getToday;
+  const reqSeq = ++timelineFetchSeq;
   const r = await adminFetchJson(`../api/bookings.php?action=by_date&date=${encodeURIComponent(targetDate)}`);
   if (r.ok && Array.isArray(r.data)) {
-    timelineBookingsByDateCache[targetDate] = r.data;
-    const db = window.SanBongApp?.SanBongDB;
-    if (db && db.getAllBookings) {
-      const localList = db.getAllBookings();
-      const oldByCode = new Map();
-      localList.forEach(x => {
-        if (x && x.code) oldByCode.set(x.code, x);
-      });
-      const otherDates = localList.filter(x => (x.date || x.booking_date) !== targetDate);
-      const normItems = r.data
-        .filter(srvB => srvB && srvB.code)
-        .map(srvB => {
-          const normItem = {
-            code: srvB.code, customerName: srvB.customerName || srvB.customer_name || 'Khách đặt sân',
-            phone: srvB.phone || '', pitchId: srvB.pitchId || srvB.pitch_id || '',
-            pitchName: srvB.pitchName || srvB.pitch_name || '', date: srvB.date || srvB.booking_date || targetDate,
-            slotId: srvB.slotId || srvB.slot_id || '', slotTime: srvB.slotTime || srvB.slot_time || '',
-            totalPrice: Number(srvB.totalPrice ?? srvB.total_price ?? 0),
-            depositAmount: Number(srvB.depositAmount ?? srvB.deposit_amount ?? 0),
-            remainingAmount: Number(srvB.remainingAmount ?? srvB.remaining_amount ?? 0),
-            status: srvB.status || 'Đã xác nhận',
-            paymentStatus: srvB.paymentStatus || srvB.payment_status || 'Đã cọc 30%',
-            paymentMethod: srvB.paymentMethod || srvB.payment_method || '', note: srvB.note || ''
-          };
-          const prev = oldByCode.get(srvB.code);
-          return prev ? Object.assign({}, prev, normItem) : normItem;
-        });
-      try {
-        localStorage.setItem('sb_bookings_v1', JSON.stringify([...normItems, ...otherDates]));
-      } catch (e) {}
+    const normItems = r.data
+      .filter(srvB => srvB && srvB.code)
+      .map(srvB => normalizeTimelineServerBooking(srvB, targetDate));
+
+    // REPLACE dataset hoàn toàn bằng dữ liệu server, không merge localStorage/mock
+    timelineBookingsByDateCache[targetDate] = normItems;
+    timelineFetchedDates.add(targetDate);
+    if (typeof window.syncLiveBookingsCache === 'function') {
+      window.syncLiveBookingsCache(normItems);
     }
-    return r.data;
+
+    // Đồng bộ số lượt & danh sách hôm nay sang Overview KPI để 2 tab khớp 100%
+    const overviewToday = window.overviewSummaryCache?.today || getToday;
+    if (targetDate === overviewToday && window.overviewSummaryCache) {
+      window.overviewSummaryCache.todayBookings = normItems;
+      if (window.overviewSummaryCache.kpi) {
+        window.overviewSummaryCache.kpi.todayCount = normItems.length;
+      }
+      const kpiCountEl = document.getElementById('kpi-bookings-count');
+      if (kpiCountEl) {
+        kpiCountEl.textContent = `${normItems.length} lượt`;
+      }
+      if (typeof renderOverviewTodayBookings === 'function') {
+        renderOverviewTodayBookings();
+      }
+    }
+    return { items: normItems, seq: reqSeq };
   }
-  return timelineBookingsByDateCache[targetDate] || [];
+  return { items: timelineBookingsByDateCache[targetDate] || [], seq: reqSeq };
 }
 
 window.changeTimelineDate = function(deltaDays) {
@@ -96,10 +128,9 @@ window.setTimelineDate = function(dateStr) {
   });
 };
 
-function renderTimelineGantt() {
+function renderTimelineGantt(forceFetch = false) {
   const db = window.SanBongApp.SanBongDB;
   const pitches = db.getPitches().filter(p => p.status !== 'Ẩn');
-  const allBookings = db.getAllBookings();
   const container = document.getElementById('gantt-rows');
   if (!container) return;
 
@@ -116,6 +147,23 @@ function renderTimelineGantt() {
   if (lbl) {
     lbl.textContent = formatTimelineDateLabel(selectedTimelineDate);
   }
+
+  const targetDate = selectedTimelineDate;
+  if (forceFetch || !timelineFetchedDates.has(targetDate)) {
+    if (!timelineFetchedDates.has(targetDate)) {
+      container.innerHTML = '<div class="py-8 text-center text-xs text-[#64748B]">Đang tải lịch đặt sân từ máy chủ...</div>';
+    }
+    fetchTimelineDateBookings(targetDate).then((res) => {
+      if (res && res.seq === timelineFetchSeq && selectedTimelineDate === targetDate) {
+        renderTimelineGantt(false);
+      }
+    });
+    if (!timelineFetchedDates.has(targetDate)) return;
+  }
+
+  const allBookings = Array.isArray(timelineBookingsByDateCache[targetDate])
+    ? timelineBookingsByDateCache[targetDate]
+    : [];
 
   const parseSlotPos = (slotTimeStr, fallbackIdx = 0) => {
     if (slotTimeStr && slotTimeStr.includes('-')) {
@@ -244,19 +292,6 @@ async function refreshWalkinBookedSlots() {
   const isSlotPast = (s) => Boolean(s) && isToday && (s.start || (s.time ? s.time.split('-')[0].trim() : '')) <= nowHHMM;
 
   const bookedMap = {};
-  const localBookings = db.getAllBookings().filter(b =>
-    (b.pitchId === pitchId || b.pitch_id === pitchId) &&
-    (b.date === dateVal || b.booking_date === dateVal) &&
-    b.status !== 'Đã hủy' &&
-    b.status !== 'Khách chưa đến' &&
-    b.status !== 'Vắng mặt (No-Show)' &&
-    !String(b.status || '').includes('No-Show') &&
-    b.paymentStatus !== 'Tịch thu cọc 30%'
-  );
-  localBookings.forEach(b => {
-    const sid = b.slotId || b.slot_id;
-    if (sid) bookedMap[sid] = b.code || 'ĐÃ ĐẶT';
-  });
 
   let maintenanceWindows = typeof db.getMaintenanceSchedules === 'function' ? db.getMaintenanceSchedules() : [];
   const r = await adminFetchJson(`../api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitchId)}&date=${encodeURIComponent(dateVal)}`);
@@ -617,29 +652,10 @@ function initQuickBookingForm() {
         }
 
         const srvData = r.data || {};
-        const createdBooking = db.createBooking({
-          code: srvData.code, customerName: srvData.customerName || name, phone: srvData.phone || phone,
-          pitchId: pitchId, date: srvData.date || dateVal, slotId: slotId,
-          slotTime: srvData.slotTime || db.getTimeSlots().find(s => s.id === slotId)?.time,
-          weeksCount: weeksCount, bookingMode: weeksCount > 1 ? 'monthly' : 'single',
-          services: [], voucherCode: '', note: note, status: srvData.status || 'Đã xác nhận',
-          paymentStatus: srvData.paymentStatus || (payMethod.includes('100%') ? 'Đã thanh toán 100%' : (payMethod.includes('Chưa cọc') ? 'Chờ thu tại sân' : 'Đã cọc 30%')),
-          paymentMethod: payMethod
-        });
-
-        if (srvData.totalPrice !== undefined) {
-          const allB = db.getAllBookings();
-          const idx = allB.findIndex(b => b.code === createdBooking.code);
-          if (idx >= 0) {
-            allB[idx].totalPrice = Number(srvData.totalPrice);
-            allB[idx].depositAmount = Number(srvData.depositAmount ?? allB[idx].depositAmount);
-            allB[idx].remainingAmount = Number(srvData.remainingAmount ?? allB[idx].remainingAmount);
-            localStorage.setItem('sb_bookings_v1', JSON.stringify(allB));
-          }
-        }
+        const createdCode = srvData.code || '';
 
         if (window.SanBongApp?.showToast) {
-          window.SanBongApp.showToast(`✓ Đã tạo đơn khóa sân thành công! Mã đơn: #${createdBooking.code}`, 'success', 4000);
+          window.SanBongApp.showToast(`✓ Đã tạo đơn khóa sân thành công! Mã đơn: #${createdCode}`, 'success', 4000);
         }
 
         walkinForm.reset();
@@ -648,9 +664,10 @@ function initQuickBookingForm() {
         if (warnBox) warnBox.classList.add('hidden');
         if (dateInput) dateInput.value = dateVal;
         await refreshWalkinBookedSlots();
-        if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
-        if (typeof renderOverviewKPIs === 'function') renderOverviewKPIs();
-        renderTimelineGantt();
+        timelineFetchedDates.delete(dateVal);
+        await fetchTimelineDateBookings(dateVal);
+        if (typeof renderOverviewKPIs === 'function') await renderOverviewKPIs(true);
+        renderTimelineGantt(false);
         if (typeof loadShiftHandovers === 'function') loadShiftHandovers();
         if (isManagerOrAdmin()) {
           if (typeof renderAdminPayments === 'function') renderAdminPayments();

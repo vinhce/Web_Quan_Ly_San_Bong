@@ -74,11 +74,43 @@ if (in_array($action, ['manage_pitch', 'upsert_pitch'], true) && $method === 'PO
         $size = sanitize_string($data['size'] ?? $defaultSize, 50) ?: $defaultSize;
         $grass = sanitize_string($data['grass'] ?? 'Cỏ nhân tạo tiêu chuẩn FIFA Quality Pro', 255) ?: 'Cỏ nhân tạo tiêu chuẩn FIFA Quality Pro';
         $defaultFlatPrice = ($type === 5 ? 350000 : ($type === 7 ? 450000 : 900000));
-        $basePrice = max(50000, (int)($data['base_price'] ?? $data['basePrice'] ?? $defaultFlatPrice));
-        $peakPrice = max(50000, (int)($data['peak_price'] ?? $data['peakPrice'] ?? $basePrice));
-        $weekendPrice = max(50000, (int)($data['weekend_price'] ?? $data['weekendPrice'] ?? $basePrice));
-        $status = sanitize_string($data['status'] ?? 'Hoạt động', 30);
-        if (!in_array($status, ['Hoạt động', 'Bảo trì', 'Ẩn'], true)) {
+        $rawBase = $data['base_price'] ?? $data['basePrice'] ?? null;
+        if ($rawBase !== null) {
+            if (!is_numeric($rawBase) || (int)$rawBase < 50000 || (int)$rawBase > 50000000) {
+                json_error('Giá sân cơ bản phải từ 50.000đ đến 50.000.000đ.', 400, 'ERR_INVALID_PITCH_PRICE');
+            }
+            $basePrice = (int)$rawBase;
+        } else {
+            $basePrice = $defaultFlatPrice;
+        }
+
+        $rawPeak = $data['peak_price'] ?? $data['peakPrice'] ?? null;
+        if ($rawPeak !== null) {
+            if (!is_numeric($rawPeak) || (int)$rawPeak < 50000 || (int)$rawPeak > 50000000) {
+                json_error('Giá sân giờ cao điểm phải từ 50.000đ đến 50.000.000đ.', 400, 'ERR_INVALID_PITCH_PRICE');
+            }
+            $peakPrice = (int)$rawPeak;
+        } else {
+            $peakPrice = $basePrice;
+        }
+
+        $rawWeekend = $data['weekend_price'] ?? $data['weekendPrice'] ?? null;
+        if ($rawWeekend !== null) {
+            if (!is_numeric($rawWeekend) || (int)$rawWeekend < 50000 || (int)$rawWeekend > 50000000) {
+                json_error('Giá sân cuối tuần phải từ 50.000đ đến 50.000.000đ.', 400, 'ERR_INVALID_PITCH_PRICE');
+            }
+            $weekendPrice = (int)$rawWeekend;
+        } else {
+            $weekendPrice = $basePrice;
+        }
+
+        $rawStatus = $data['status'] ?? null;
+        if ($rawStatus !== null) {
+            $status = sanitize_string((string)$rawStatus, 30);
+            if (!in_array($status, ['Hoạt động', 'Bảo trì', 'Ẩn'], true)) {
+                json_error('Trạng thái sân không hợp lệ (chỉ chấp nhận: Hoạt động, Bảo trì, Ẩn).', 400, 'ERR_INVALID_PITCH_STATUS');
+            }
+        } else {
             $status = 'Hoạt động';
         }
         $description = sanitize_string($data['description'] ?? '', 500);

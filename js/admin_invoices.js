@@ -1,10 +1,14 @@
 // Quản lý và In hóa đơn thanh toán dịch vụ sân bóng
 let activeInvoiceCode = '';
 
-function openInvoicePrintModal(code) {
+async function openInvoicePrintModal(code) {
   const db = window.SanBongApp?.SanBongDB;
-  if (!db) return;
-  const b = db.getBookingByCode(code);
+  let b = (typeof window.findInPlayBookingSync === 'function' ? window.findInPlayBookingSync(code) : null)
+    || (db && typeof db.getBookingByCode === 'function' ? db.getBookingByCode(code) : null);
+  if (!b && code && typeof adminFetchJson === 'function') {
+    const r = await adminFetchJson(`../api/bookings.php?code=${encodeURIComponent(code)}`);
+    if (r?.ok && r.data && r.data.code) b = r.data;
+  }
   if (!b) return;
 
   activeInvoiceCode = b.code;

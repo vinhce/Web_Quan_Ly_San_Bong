@@ -75,9 +75,9 @@ function normalizeAdminApiUrl(url) {
 }
 window.normalizeAdminApiUrl = normalizeAdminApiUrl;
 
-async function ensureAdminCsrfToken() {
+async function ensureAdminCsrfToken(forceRefresh = false) {
   const current = getAdminCsrfToken();
-  if (current) return current;
+  if (current && !forceRefresh) return current;
   try {
     const res = await fetch(normalizeAdminApiUrl('api/auth.php?action=me'), { credentials: 'same-origin', cache: 'no-store' });
     if (res.ok) {
@@ -91,6 +91,7 @@ async function ensureAdminCsrfToken() {
   return getAdminCsrfToken();
 }
 window.ensureAdminCsrfToken = ensureAdminCsrfToken;
+window.ensureCsrfToken = ensureAdminCsrfToken;
 
 (function installAdminFetchCsrfInterceptor() {
   const originalFetch = window.fetch;
@@ -179,6 +180,36 @@ async function adminFetchJson(url, options = {}) {
         } catch (e) {}
         const loginUrl = (window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('login') : '../login') + '?redirect=portal-admin&expired=1';
         window.location.replace(loginUrl);
+      }
+      const isMutating = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+      const errMsg = String(json?.message || '');
+      const isCsrfErr = res.status === 403 && (
+        json?.ref_code === 'ERR_CSRF_INVALID' ||
+        /csrf|mã bảo mật/i.test(errMsg)
+      );
+      if (isMutating && isCsrfErr && !opts._csrfRetried) {
+        const freshCsrf = await ensureAdminCsrfToken(true);
+        if (freshCsrf) {
+          const retryHeaders = Object.assign({}, headers, { 'X-CSRF-Token': freshCsrf });
+          let retryBody = opts.body;
+          if (typeof FormData !== 'undefined' && retryBody instanceof FormData) {
+            retryBody.set('csrf_token', freshCsrf);
+          } else if (typeof retryBody === 'string' && retryBody.trim().startsWith('{')) {
+            try {
+              const parsed = JSON.parse(retryBody);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && ('csrf_token' in parsed || 'csrfToken' in parsed)) {
+                if ('csrf_token' in parsed) parsed.csrf_token = freshCsrf;
+                if ('csrfToken' in parsed) parsed.csrfToken = freshCsrf;
+                retryBody = JSON.stringify(parsed);
+              }
+            } catch (e) {}
+          }
+          return adminFetchJson(url, Object.assign({}, options, {
+            headers: retryHeaders,
+            body: retryBody,
+            _csrfRetried: true
+          }));
+        }
       }
       return {
         ok: false,
@@ -434,6 +465,12 @@ function switchAdminTab(moduleKey) {
   try {
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('tab', moduleKey);
+    const curHash = String(newUrl.hash || '').replace(/^#/, '').trim().toLowerCase();
+    const isPricingHash = curHash === 'pricing' || curHash.startsWith('pricing/');
+    const isReportsHash = curHash === 'reports' || curHash.startsWith('reports/') || ['tong-quan', 'doi-soat', 'chi-tiet', 'chi-phi'].includes(curHash);
+    if ((moduleKey !== 'pricing' && isPricingHash) || (moduleKey !== 'reports' && isReportsHash)) {
+      newUrl.hash = '';
+    }
     history.replaceState(null, '', newUrl.toString());
   } catch (e) {}
 
@@ -493,7 +530,7 @@ function switchAdminTab(moduleKey) {
     if (typeof populateInPlayWorkspace === 'function') populateInPlayWorkspace();
   }
   if (moduleKey === 'timeline') {
-    if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
+    if (typeof renderTimelineGantt === 'function') renderTimelineGantt(true);
     if (typeof initRecurringScheduleForm === 'function') initRecurringScheduleForm();
     if (typeof loadRecurringSchedules === 'function') loadRecurringSchedules();
     if (typeof loadWaitlistAdmin === 'function') loadWaitlistAdmin();
@@ -572,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const subEl = document.getElementById('admin-module-subtitle');
   if (subEl) {
-    subEl.textContent = formatTimelineDateLabel(getLocalTodayISO());
+    subEl.textContent = typeof formatTimelineDateLabel === 'function' ? formatTimelineDateLabel(getLocalTodayISO()) : getLocalTodayISO();
   }
 
   if (localUser && localUser.role) {

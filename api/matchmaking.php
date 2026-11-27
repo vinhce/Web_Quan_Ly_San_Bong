@@ -357,7 +357,7 @@ if ($method === 'POST') {
         }
 
         if (function_exists('write_audit_log')) {
-            write_audit_log($pdo, 'matchmaking_cancel', $post['post_code'] ?? (string)$postId, $post['status'], 'closed', $currentUser['username'] ?? 'user');
+            write_audit_log($pdo, 'MATCHMAKING_CANCEL', $post['post_code'] ?? (string)$postId, $post['status'], 'closed', $currentUser['username'] ?? 'user');
         }
 
         json_response([

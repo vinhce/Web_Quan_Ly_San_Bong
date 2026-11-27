@@ -116,16 +116,14 @@ function compute_server_booking_quote(PDO $pdo, array $input, bool $forUpdate = 
                     $requestedTotals[$sId] = ($requestedTotals[$sId] ?? 0) + $sQty;
                 }
             }
-            if ($forUpdate) {
-                foreach ($requestedTotals as $sId => $reqTotalQty) {
-                    $srvRow = $dbServices[$sId];
-                    if ((int)($srvRow['track_inventory'] ?? 1) === 1 && (int)($srvRow['stock_qty'] ?? 0) < $reqTotalQty) {
-                        return ['error' => [
-                            'message'  => "Sản phẩm/dịch vụ '{$srvRow['name']}' chỉ còn " . (int)$srvRow['stock_qty'] . " {$srvRow['unit']} trong kho.",
-                            'status'   => 409,
-                            'ref_code' => 'ERR_OUT_OF_STOCK'
-                        ]];
-                    }
+            foreach ($requestedTotals as $sId => $reqTotalQty) {
+                $srvRow = $dbServices[$sId];
+                if ((int)($srvRow['track_inventory'] ?? 1) === 1 && (int)($srvRow['stock_qty'] ?? 0) < $reqTotalQty) {
+                    return ['error' => [
+                        'message'  => "Sản phẩm/dịch vụ '{$srvRow['name']}' chỉ còn " . (int)$srvRow['stock_qty'] . " {$srvRow['unit']} trong kho.",
+                        'status'   => 409,
+                        'ref_code' => 'ERR_OUT_OF_STOCK'
+                    ]];
                 }
             }
             foreach ($requestedTotals as $sId => $sQty) {
@@ -266,6 +264,13 @@ function compute_server_booking_quote(PDO $pdo, array $input, bool $forUpdate = 
                 } else {
                     $voucherDiscountAmount = min((int)$vData['discount_value'], $subtotal);
                 }
+                if ($subtotal > 0) {
+                    $minPayableTotal = min($subtotal, 50000);
+                    $maxAllowedVoucherDiscount = max(0, $subtotal - $minPayableTotal);
+                    if ($voucherDiscountAmount > $maxAllowedVoucherDiscount) {
+                        $voucherDiscountAmount = $maxAllowedVoucherDiscount;
+                    }
+                }
                 $appliedVoucher = $vData['code'];
             }
         }
@@ -299,7 +304,7 @@ function compute_server_booking_quote(PDO $pdo, array $input, bool $forUpdate = 
     $isMonthlyBooking = ($weeksCount > 1) || ($bookingMode === 'monthly') || ($bookingMode === 'quarterly');
     $depositRate      = $isMonthlyBooking ? 60 : max(10, min(100, (int)($settings['deposit_rate'] ?? 30)));
     $holdMinutes      = max(5, min(120, (int)($settings['hold_minutes'] ?? 15)));
-    $depositAmount    = (int)round($totalPrice * ($depositRate / 100));
+    $depositAmount    = ($totalPrice > 0) ? max(1, (int)round($totalPrice * ($depositRate / 100))) : 0;
     $remainingAmount  = max(0, $totalPrice - $depositAmount);
 
     return [

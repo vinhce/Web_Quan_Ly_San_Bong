@@ -105,19 +105,25 @@ function computePresetDates(preset) {
   return { from: firstDay, to: todayISO };
 }
 
+function normalizeReportSubtabHash(rawSub) {
+  let s = String(rawSub || '').replace(/^#/, '').trim().toLowerCase();
+  while (s.startsWith('reports/')) {
+    s = s.slice('reports/'.length);
+  }
+  s = s.split('/')[0];
+  return REPORT_SUBTABS.includes(s) ? s : '';
+}
+
 function getReportSubtabFromHash() {
   try {
-    const raw = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
-    return REPORT_SUBTABS.includes(raw) ? raw : 'tong-quan';
+    return normalizeReportSubtabHash(window.location.hash || '') || 'tong-quan';
   } catch (e) {
     return 'tong-quan';
   }
 }
 
 function switchReportSubtab(subtab, opts = {}) {
-  const target = REPORT_SUBTABS.includes(String(subtab || '').toLowerCase())
-    ? String(subtab).toLowerCase()
-    : 'tong-quan';
+  const target = normalizeReportSubtabHash(subtab) || 'tong-quan';
   currentReportSubtab = target;
 
   document.querySelectorAll('#tab-content-reports [data-rpt-panel]').forEach(panel => {
@@ -152,9 +158,9 @@ window.switchReportSubtab = switchReportSubtab;
 window.addEventListener('hashchange', () => {
   const reportSection = document.getElementById('tab-content-reports');
   if (!reportSection || reportSection.classList.contains('hidden')) return;
-  const raw = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
-  if (REPORT_SUBTABS.includes(raw)) {
-    switchReportSubtab(raw, { updateHash: false });
+  const sub = normalizeReportSubtabHash(window.location.hash || '');
+  if (sub) {
+    switchReportSubtab(sub, { updateHash: false });
   }
 });
 

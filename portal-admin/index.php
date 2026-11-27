@@ -29,7 +29,7 @@ if (!in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], tr
     http_response_code(403);
     $homeHref = ($basePath !== '' ? $basePath . '/' : '/');
     $historyHref = ($basePath !== '' ? $basePath : '') . '/history';
-    $cssHref = ($basePath !== '' ? $basePath : '') . '/css/tailwind.generated.css?v=20261125_v143';
+    $cssHref = ($basePath !== '' ? $basePath : '') . '/css/tailwind.generated.css?v=20261127_v144';
     ?>
     <!DOCTYPE html>
     <html lang="vi">
@@ -111,7 +111,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       }
     })();
   </script>
-  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261125_v143">
+  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261127_v144">
   <link rel="stylesheet" href="<?php echo $basePath; ?>/css/style.css?v=20261124_v135">
 <style>
     @keyframes qrLaserAnim {
@@ -268,7 +268,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
         <div>
           <label class="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-1.5">Nhập hoặc quét mã vé điện tử</label>
           <div class="flex gap-2">
-            <input type="text" id="qr-code-input" onkeydown="if(event.key==='Enter')lookupQRTicket()" placeholder="Quét hoặc nhập mã vé (VD: ASFS982145)..." class="input-field font-mono font-bold uppercase text-sm text-[#0F172A]">
+            <input type="text" id="qr-code-input" onkeydown="if(event.key==='Enter')lookupQRTicket()" placeholder="Quét hoặc nhập mã vé đặt sân..." class="input-field font-mono font-bold uppercase text-sm text-[#0F172A]">
             <button type="button" onclick="lookupQRTicket()" class="btn-base btn-primary shrink-0 font-bold text-xs px-4">Tra cứu vé</button>
           </div>
         </div>
@@ -555,42 +555,9 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
   </div>
 
   <!-- SCRIPTS -->
-  <script src="<?php echo $basePath; ?>/js/data.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/helpers.js?v=20261124_v140"></script>
-  <script src="<?php echo $basePath; ?>/js/db_core.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/db_pricing.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/db_bookings.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/db_operations.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/db.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/ui.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/vn_datepicker.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/app.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/api.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_dialogs.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_overview.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pitches.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_payments.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_ops.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_crm.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_customers.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_reports.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_expenses.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_pricing.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_security.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_settings.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_finance.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_inplay.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_vouchers.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_staff.js?v=20261124_v135"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_catalog.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_shifts.js?v=20261124_v136"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_invoices.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_qr.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_recurring.js?v=20261125_v143"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_waitlist_match.js?v=20261122_v130"></script>
-  <script src="<?php echo $basePath; ?>/js/admin_logs.js?v=20261124_v139"></script>
+  <script src="<?php echo $basePath; ?>/js/core.bundle.js?v=20261127_v144"></script>
+  <script src="<?php echo $basePath; ?>/js/vendor/jsqr.min.js?v=20261127_v144"></script>
+  <script src="<?php echo $basePath; ?>/js/admin.bundle.js?v=20261127_v144"></script>
 </body>
 </html>
 

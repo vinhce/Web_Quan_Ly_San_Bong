@@ -125,13 +125,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!slotsGrid || !window.SanBongApp?.SanBongDB) return;
 
     const rawSlots = window.SanBongApp.SanBongDB.getSlots(pitch.id, selectedDate);
-    const bookedSet = new Set((serverInfo?.bookedIds || []).map(x => String(x)));
+    const bookedRaw = Array.isArray(serverInfo?.bookedList)
+      ? serverInfo.bookedList
+      : (Array.isArray(serverInfo?.bookedIds) ? serverInfo.bookedIds : []);
+    const bookedSet = new Set(
+      bookedRaw.map(x => (x && typeof x === 'object' ? String(x.slotId || x.slot_id || '') : String(x || ''))).filter(Boolean)
+    );
     const maintWins = Array.isArray(serverInfo?.maintenanceWindows) ? serverInfo.maintenanceWindows : [];
 
     const slotsWithStatus = rawSlots.map(s => {
       if (s.status === 'Bảo trì') return s;
-      const sStart = String(s.startTime || s.time.split('-')[0] || '').trim();
-      const sEnd = String(s.endTime || s.time.split('-')[1] || '').trim();
+      const sStart = String(s.start || s.startTime || s.time.split('-')[0] || '').trim();
+      const sEnd = String(s.end || s.endTime || s.time.split('-')[1] || '').trim();
       const hitMaint = maintWins.find(mw => {
         const mwStart = String(mw.start_time || '').slice(0, 5);
         const mwEnd = String(mw.end_time || '').slice(0, 5);
@@ -140,7 +145,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (hitMaint) {
         return { ...s, status: 'Bảo trì', maintenanceReason: hitMaint.reason || 'Bảo trì định kỳ' };
       }
-      if (bookedSet.has(String(s.id))) {
+      const overlapBooked = bookedRaw.some(b => {
+        if (!b || typeof b !== 'object') return false;
+        if (String(b.slotId || b.slot_id || '') === String(s.id) || String(b.slotTime || b.slot_time || '') === String(s.time)) {
+          return true;
+        }
+        const bStart = String(b.startTime || b.start_time || (b.slotTime || b.slot_time || '').split('-')[0] || '').trim();
+        const bEnd = String(b.endTime || b.end_time || (b.slotTime || b.slot_time || '').split('-')[1] || '').trim();
+        return Boolean(sStart && sEnd && bStart && bEnd && sStart < bEnd && sEnd > bStart);
+      });
+      if (bookedSet.has(String(s.id)) || overlapBooked) {
         return { ...s, status: 'Đã đặt' };
       }
       return s;
@@ -161,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const displayPrice = calc ? calc.netPitchPrice : (s.isPeak ? pitch.peakPrice : pitch.basePrice);
 
       return `
-        <div ${isAvail ? `data-slot-id="${esc(s.id)}" onclick="selectSlotFromGrid(this.getAttribute('data-slot-id'))"` : ''} class="p-3 rounded-xl border ${bgCls} transition-all text-center flex flex-col justify-between">
+        <button type="button" ${isAvail ? `data-slot-id="${esc(s.id)}" onclick="selectSlotFromGrid(this.getAttribute('data-slot-id'))"` : 'disabled'} class="w-full p-3 rounded-xl border ${bgCls} transition-all text-center flex flex-col justify-between">
           <div class="font-bold text-xs sm:text-sm">${esc(s.time)}</div>
           <div class="mt-1 flex items-center justify-center">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${tagCls}">${esc(s.status)}</span>
@@ -169,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="mt-1.5 text-[11px] font-semibold ${s.isPeak ? 'text-[#16A34A]' : 'text-[#64748B]'}">
             ${window.SanBongApp.formatVND(displayPrice)}
           </div>
-        </div>
+        </button>
       `;
     }).join('');
 
@@ -199,16 +213,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bookedCacheByDate[selectedDate]) return;
 
     try {
-      const url = window.SanBongApp?.getRelativePath
-        ? window.SanBongApp.getRelativePath(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitch.id)}&date=${encodeURIComponent(selectedDate)}`)
-        : `/api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitch.id)}&date=${encodeURIComponent(selectedDate)}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        bookedCacheByDate[selectedDate] = {
-          bookedIds: Array.isArray(json.data) ? json.data : [],
-          maintenanceWindows: Array.isArray(json.maintenanceWindows) ? json.maintenanceWindows : []
-        };
+      let info = null;
+      if (window.SanBongApp?.SanBongAPI?.fetchBookedSlots) {
+        info = await window.SanBongApp.SanBongAPI.fetchBookedSlots(pitch.id, selectedDate);
+      } else {
+        const url = window.SanBongApp?.getRelativePath
+          ? window.SanBongApp.getRelativePath(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitch.id)}&date=${encodeURIComponent(selectedDate)}`)
+          : `/api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitch.id)}&date=${encodeURIComponent(selectedDate)}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (res.ok && json?.success) {
+          const list = Array.isArray(json.data) ? json.data : [];
+          info = {
+            bookedList: list,
+            bookedIds: list,
+            maintenanceWindows: Array.isArray(json.maintenanceWindows) ? json.maintenanceWindows : []
+          };
+        }
+      }
+      if (info) {
+        bookedCacheByDate[selectedDate] = info;
         if (token === latestRenderToken) {
           applySlotsRender(selectedDate, bookedCacheByDate[selectedDate]);
         }

@@ -514,6 +514,21 @@ function sanitize_string($str, $maxLength = 255) {
     return $clean;
 }
 
+/**
+ * Validate raw full name before stripping HTML tags so script/tag payloads are rejected with ERR_INVALID_NAME_CHARS.
+ */
+function validate_clean_full_name(?string $rawInput, int $maxLength = 60, string $lengthErrorMsg = 'Họ và tên phải từ 2 đến 60 ký tự.'): string {
+    $raw = trim((string)($rawInput ?? ''));
+    if ($raw !== '' && (strip_tags($raw) !== $raw || preg_match('/[<>"\';{}]/', $raw))) {
+        json_error('Họ và tên chứa ký tự không hợp lệ.', 400, 'ERR_INVALID_NAME_CHARS');
+    }
+    $clean = sanitize_string($raw, max(100, $maxLength + 40));
+    if (mb_strlen($clean) < 2 || mb_strlen($clean) > $maxLength) {
+        json_error($lengthErrorMsg, 400, 'ERR_INVALID_NAME');
+    }
+    return $clean;
+}
+
 function audit_log_decode_structured_value($value, &$isStructured) {
     $isStructured = false;
     if (is_array($value)) {

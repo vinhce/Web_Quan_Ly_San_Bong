@@ -28,10 +28,13 @@ final class AdminLogRegistry
         'Khác',
     ];
 
+    public const LEGACY_ALIASES = [
+        'OPEN_SHIFT' => 'SHIFT_OPEN',
+    ];
+
     public const ACTIONS = [
         // Ca trực
         'SHIFT_OPEN'                    => ['label' => 'Mở ca trực', 'category' => 'TD', 'data_group' => 'Ca trực'],
-        'OPEN_SHIFT'                    => ['label' => 'Mở ca trực', 'category' => 'TD', 'data_group' => 'Ca trực'],
         'SHIFT_CLOSE'                   => ['label' => 'Đóng ca trực', 'category' => 'CB', 'data_group' => 'Ca trực'],
         'CLOSE_SHIFT'                   => ['label' => 'Đóng ca trực', 'category' => 'CB', 'data_group' => 'Ca trực'],
         'SHIFT_HANDOVER'                => ['label' => 'Giao ca trực', 'category' => 'CB', 'data_group' => 'Ca trực'],
@@ -354,14 +357,39 @@ final class AdminLogRegistry
         ];
     }
 
-    public static function resolveActionMeta(string $action, ?string $actorRole = null): array
+    public static function canonicalizeAction(string $action): string
     {
         $code = strtoupper(trim($action));
+        return self::LEGACY_ALIASES[$code] ?? $code;
+    }
+
+    public static function expandActionAliases(array $codes): array
+    {
+        $expanded = [];
+        foreach ($codes as $raw) {
+            $canon = self::canonicalizeAction((string)$raw);
+            if ($canon !== '') {
+                $expanded[] = $canon;
+            }
+            foreach (self::LEGACY_ALIASES as $legacy => $target) {
+                if ($target === $canon) {
+                    $expanded[] = $legacy;
+                }
+            }
+        }
+        return array_values(array_unique($expanded));
+    }
+
+    public static function resolveActionMeta(string $action, ?string $actorRole = null): array
+    {
+        $rawCode = strtoupper(trim($action));
+        $code = self::canonicalizeAction($action);
         if (isset(self::ACTIONS[$code])) {
             $meta = self::ACTIONS[$code];
             $cat = self::CATEGORIES[$meta['category']] ?? self::CATEGORIES['CN'];
             return [
-                'action'         => $code,
+                'action'         => $rawCode,
+                'canonical'      => $code,
                 'label'          => $meta['label'],
                 'category'       => $cat['code'],
                 'category_label' => $cat['label'],
@@ -375,8 +403,9 @@ final class AdminLogRegistry
         $fallbackCatCode = strtolower((string)$actorRole) === 'system' ? 'TT' : 'CN';
         $cat = self::CATEGORIES[$fallbackCatCode];
         return [
-            'action'         => $code !== '' ? $code : 'UNKNOWN',
-            'label'          => $code !== '' ? $code : 'Thao tác khác',
+            'action'         => $rawCode !== '' ? $rawCode : 'UNKNOWN',
+            'canonical'      => $code !== '' ? $code : 'UNKNOWN',
+            'label'          => $rawCode !== '' ? $rawCode : 'Thao tác khác',
             'category'       => $cat['code'],
             'category_label' => $cat['label'],
             'color'          => $cat['color'],

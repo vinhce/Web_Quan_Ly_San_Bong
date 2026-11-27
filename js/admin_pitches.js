@@ -12,7 +12,12 @@ async function toggleMaintenance(pitchId) {
   const newStatus = pitch.status === 'Bảo trì' ? 'Hoạt động' : 'Bảo trì';
   let reason = '';
   if (newStatus === 'Bảo trì') {
-    const inputReason = prompt(`Nhập lý do bảo trì cho sân ${pitch.name} (ví dụ: Thay dàn đèn LED, bảo dưỡng mặt cỏ...):`, 'Bảo dưỡng định kỳ');
+    const inputReason = await adminPrompt(
+      'Bật bảo trì sân bóng',
+      `Nhập lý do bảo trì cho sân ${pitch.name} (ví dụ: Thay dàn đèn LED, bảo dưỡng mặt cỏ...):`,
+      'Bảo dưỡng định kỳ',
+      'Nhập lý do bảo trì...'
+    );
     if (inputReason === null) return;
     reason = inputReason.trim() || 'Bảo dưỡng định kỳ';
   }

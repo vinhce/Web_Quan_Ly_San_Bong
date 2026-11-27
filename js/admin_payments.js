@@ -1,10 +1,13 @@
+let cachedPendingDeposits = [];
+
 async function renderAdminPayments() {
   if (!isManagerOrAdmin()) return;
   const tbody = document.getElementById('admin-payments-tbody');
   if (!tbody) return;
 
-  const db = window.SanBongApp?.SanBongDB;
   let pendingList = [];
+  let loadFailed = false;
+  let loadErrorMsg = '';
 
   try {
     const r = await adminFetchJson('../api/admin.php?action=pending_deposits');
@@ -19,18 +22,18 @@ async function renderAdminPayments() {
         txAmt: Number(item.transfer_amount || 0),
         paidAmt: Number(item.paid_amount || 0)
       }));
+    } else if (!r.ok) {
+      loadFailed = true;
+      loadErrorMsg = r.message || 'Không thể tải danh sách biên lai chờ duyệt từ máy chủ.';
     }
   } catch (err) {
-    console.warn('Cannot load pending_deposits from API, fallback to local DB', err);
+    loadFailed = true;
+    loadErrorMsg = 'Không thể kết nối máy chủ để tải danh sách biên lai chờ duyệt.';
+    console.warn('Cannot load pending_deposits from API:', err);
   }
 
-  if (pendingList.length === 0 && db && typeof db.getPendingPayments === 'function') {
-    pendingList = db.getPendingPayments().map(p => ({
-      ...p,
-      name: p.name || p.customer_name || p.customerName || 'Khách vãng lai',
-      bankTxStatus: p.bankTxStatus || 'Chưa thấy tiền'
-    }));
-  }
+  cachedPendingDeposits = pendingList;
+  window.cachedPendingDeposits = pendingList;
 
   const count = pendingList.length;
   const badgeEl = document.getElementById('admin-payments-badge');
@@ -40,13 +43,27 @@ async function renderAdminPayments() {
     badgeEl.style.display = count > 0 ? 'inline-block' : 'none';
   }
   if (headerBadgeEl) {
-    if (count === 0) {
+    if (loadFailed) {
+      headerBadgeEl.className = 'px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-bold';
+      headerBadgeEl.textContent = 'Lỗi tải dữ liệu';
+    } else if (count === 0) {
       headerBadgeEl.className = 'px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold';
       headerBadgeEl.textContent = '✓ Đã duyệt hết';
     } else {
       headerBadgeEl.className = 'px-3 py-1 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-bold';
       headerBadgeEl.textContent = count + ' Đang chờ';
     }
+  }
+
+  if (loadFailed) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="py-10 text-center text-red-600 font-semibold">
+          ${escapeSearchHTML(loadErrorMsg)}
+        </td>
+      </tr>
+    `;
+    return;
   }
 
   if (pendingList.length === 0) {
@@ -105,8 +122,14 @@ async function renderAdminPayments() {
 window.renderAdminPayments = renderAdminPayments;
 
 async function approveDepositWithNote(code, txStatus) {
-  const notePrompt = prompt(`Đơn ${code} đang ở trạng thái "${txStatus}".\nBắt buộc nhập ghi chú xử lý chênh lệch để duyệt cọc:`);
-  if (!notePrompt || !notePrompt.trim()) {
+  const notePrompt = await adminPrompt(
+    'Ghi chú duyệt cọc chênh lệch',
+    `Đơn ${code} đang ở trạng thái "${txStatus}".\nBắt buộc nhập ghi chú xử lý chênh lệch để duyệt cọc:`,
+    '',
+    'Nhập ghi chú xử lý chênh lệch...'
+  );
+  if (notePrompt === null) return;
+  if (!notePrompt.trim()) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Bắt buộc nhập ghi chú xử lý chênh lệch để tiếp tục!', 'warning');
     return;
   }
@@ -115,8 +138,14 @@ async function approveDepositWithNote(code, txStatus) {
 window.approveDepositWithNote = approveDepositWithNote;
 
 async function approveDepositManual(code) {
-  const refPrompt = prompt(`Đơn ${code} chưa thấy giao dịch ngân hàng khớp tự động.\nNhập mã tham chiếu chuyển khoản hoặc ghi chú xác thực để duyệt thủ công:`);
-  if (!refPrompt || !refPrompt.trim()) {
+  const refPrompt = await adminPrompt(
+    'Duyệt cọc thủ công',
+    `Đơn ${code} chưa thấy giao dịch ngân hàng khớp tự động.\nNhập mã tham chiếu chuyển khoản hoặc ghi chú xác thực để duyệt thủ công:`,
+    '',
+    'Nhập mã tham chiếu hoặc ghi chú...'
+  );
+  if (refPrompt === null) return;
+  if (!refPrompt.trim()) {
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('Bắt buộc nhập mã tham chiếu hoặc ghi chú để duyệt thủ công!', 'warning');
     return;
   }
@@ -146,13 +175,10 @@ async function approveDeposit(code, note = '', referenceCode = '') {
       return;
     }
 
-    const db = window.SanBongApp?.SanBongDB;
-    if (db && typeof db.approveDeposit === 'function') db.approveDeposit(code);
     await renderAdminPayments();
     if (typeof loadBankTransactions === 'function') await loadBankTransactions();
-    if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
-    if (typeof renderOverviewKPIs === 'function') renderOverviewKPIs();
-    if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
+    if (typeof renderOverviewKPIs === 'function') await renderOverviewKPIs(true);
+    if (typeof renderTimelineGantt === 'function') renderTimelineGantt(true);
     if (window.SanBongApp?.showToast) window.SanBongApp.showToast('✓ ĐÃ DUYỆT CỌC THÀNH CÔNG: Đơn ' + code + ' đã kích hoạt mã vé check-in!', 'success', 3500);
   } finally {
     if (btn) btn.disabled = false;
@@ -166,9 +192,9 @@ async function rejectDeposit(code) {
     return;
   }
 
-  const db = window.SanBongApp?.SanBongDB;
-  const booking = db ? db.getBookingByCode(code) : null;
-  const custName = booking ? booking.customerName : code;
+  const booking = (Array.isArray(cachedPendingDeposits) ? cachedPendingDeposits.find(p => p.code === code) : null)
+    || (typeof window.findInPlayBookingSync === 'function' ? window.findInPlayBookingSync(code) : null);
+  const custName = booking ? (booking.name || booking.customerName || code) : code;
 
   const confirmMsg =
     '• Đội bóng: ' + custName + ' (' + code + ')\n' +
@@ -188,12 +214,10 @@ async function rejectDeposit(code) {
       return;
     }
 
-    if (db && typeof db.rejectDeposit === 'function') db.rejectDeposit(code);
     await renderAdminPayments();
     if (typeof loadBankTransactions === 'function') await loadBankTransactions();
-    if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
-    if (typeof renderOverviewKPIs === 'function') renderOverviewKPIs();
-    if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
+    if (typeof renderOverviewKPIs === 'function') await renderOverviewKPIs(true);
+    if (typeof renderTimelineGantt === 'function') renderTimelineGantt(true);
     if (typeof initQuickBookingForm === 'function') initQuickBookingForm();
     if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast('⚡ ĐÃ HỦY ĐƠN: Đơn ' + code + ' đã bị hủy và giải phóng sân.', 'warning', 3500);
@@ -506,22 +530,11 @@ async function submitReconcileAssign(e) {
   }
   const serverMsg = r.message || '';
 
-  const db = window.SanBongApp?.SanBongDB;
-  if (db && typeof db.resolveBankTransaction === 'function') {
-    db.resolveBankTransaction(txId, {
-      booking_code: bookingCode,
-      target_status: targetStatus,
-      note: note,
-      status: 'resolved'
-    });
-  }
-
   closeReconcileAssignModal();
   await loadBankTransactions();
   renderAdminPayments();
-  if (typeof renderOverviewTodayBookings === 'function') renderOverviewTodayBookings();
-  if (typeof renderOverviewKPIs === 'function') renderOverviewKPIs();
-  if (typeof renderTimelineGantt === 'function') renderTimelineGantt();
+  if (typeof renderOverviewKPIs === 'function') await renderOverviewKPIs(true);
+  if (typeof renderTimelineGantt === 'function') renderTimelineGantt(true);
   if (isOwnerAdmin() && typeof loadAdminLogs === 'function') loadAdminLogs(1);
 
   if (window.SanBongApp?.showToast) {
@@ -575,11 +588,6 @@ async function resolveBankTransaction(txId, status = 'resolved') {
     return;
   }
   const serverMsg = r.message || '';
-
-  const db = window.SanBongApp?.SanBongDB;
-  if (db && typeof db.resolveBankTransaction === 'function') {
-    db.resolveBankTransaction(txId, { status: targetResStatus, note: note });
-  }
 
   await loadBankTransactions();
   if (isOwnerAdmin() && typeof loadAdminLogs === 'function') loadAdminLogs(1);

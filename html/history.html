@@ -20,7 +20,7 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="../favicon.ico">
   <link rel="apple-touch-icon" href="../favicon.svg">
-  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261125_v143">
+  <link rel="stylesheet" href="../css/tailwind.generated.css?v=20261127_v144">
   <link rel="stylesheet" href="../css/style.css?v=20261124_v135">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
@@ -56,9 +56,9 @@
             <div class="w-full h-2 rounded-full bg-[#E2E8F0] overflow-hidden">
               <div id="points-bar" class="w-0 h-full bg-[#16A34A]"></div>
             </div>
-            <div class="text-[11px] text-[#64748B] flex justify-between">
+            <div class="text-[11px] text-[#64748B] flex justify-between gap-2">
               <span id="points-upgrade-hint">Đăng nhập tài khoản để tích điểm hội viên</span>
-              <span class="font-bold text-[#16A34A]">Ưu đãi lên đến -15%</span>
+              <span id="points-tier-perk" class="font-bold text-[#16A34A] text-right">Tích điểm đổi nước · Nâng hạng để hưởng ưu đãi đến -15%</span>
             </div>
           </div>
 
@@ -113,10 +113,10 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-2.5 top-2.5 text-slate-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>
             <div class="flex flex-wrap sm:flex-nowrap bg-white p-1 rounded-xl border border-[#E2E8F0] text-xs font-bold w-full sm:w-auto gap-1 sm:gap-0">
-              <button onclick="filterHistory('all')" id="tab-all" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg bg-[#16A34A] text-white whitespace-nowrap text-center">Tất cả</button>
-              <button onclick="filterHistory('upcoming')" id="tab-upcoming" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A] whitespace-nowrap text-center">Sắp tới</button>
-              <button onclick="filterHistory('completed')" id="tab-completed" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A] whitespace-nowrap text-center">Hoàn thành</button>
-              <button onclick="filterHistory('cancelled')" id="tab-cancelled" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A] whitespace-nowrap text-center">Đã hủy</button>
+              <button type="button" onclick="filterHistory('all')" id="tab-all" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg bg-[#16A34A] text-white whitespace-nowrap text-center">Tất cả</button>
+              <button type="button" onclick="filterHistory('upcoming')" id="tab-upcoming" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A] whitespace-nowrap text-center">Sắp tới</button>
+              <button type="button" onclick="filterHistory('completed')" id="tab-completed" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A] whitespace-nowrap text-center">Hoàn thành</button>
+              <button type="button" onclick="filterHistory('cancelled')" id="tab-cancelled" class="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-2 rounded-lg text-[#64748B] hover:text-[#0F172A] whitespace-nowrap text-center">Đã hủy</button>
             </div>
         </div>
       </div>
@@ -162,7 +162,7 @@
     <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
       <div class="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
         <h3 id="ticket-modal-title" class="font-heading font-bold text-lg text-[#0F172A]">Vé Check-in Sân Bóng</h3>
-        <button onclick="closeTicketModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold">✕</button>
+        <button type="button" aria-label="Đóng" onclick="closeTicketModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold">✕</button>
       </div>
 
       <div class="text-center p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
@@ -172,14 +172,17 @@
         <div id="modal-time" class="text-xs text-[#64748B]">---</div>
       </div>
 
-      <div class="text-xs text-[#64748B] text-center">
+      <div id="modal-ticket-notice" class="text-xs text-[#64748B] text-center">
         Đưa mã này cho nhân viên tại quầy để mở đèn và nhận sân đúng giờ.
       </div>
 
       <div class="flex gap-2">
-        <button type="button" onclick="window.SanBongApp.downloadTicketQR && window.SanBongApp.downloadTicketQR(document.getElementById('modal-code')?.textContent)" class="btn-base btn-primary flex-1 text-xs font-bold flex items-center justify-center gap-1.5">
+        <button type="button" id="modal-download-qr-btn" onclick="window.SanBongApp.downloadTicketQR && window.SanBongApp.downloadTicketQR(document.getElementById('modal-code')?.textContent)" class="btn-base btn-primary flex-1 text-xs font-bold flex items-center justify-center gap-1.5">
           <span>💾</span> Tải vé QR về máy
         </button>
+        <a id="modal-ticket-pay-link" href="/checkout" class="hidden btn-base btn-primary flex-1 text-xs font-bold flex items-center justify-center gap-1.5">
+          💳 Thanh toán cọc ngay
+        </a>
         <button type="button" onclick="closeTicketModal()" class="btn-base btn-secondary flex-1 text-xs font-bold">
           Đóng cửa sổ
         </button>
@@ -263,9 +266,9 @@
 
   <div id="app-footer" class="mt-auto w-full bg-[#0F172A]"></div>
 
-  <script src="../js/data.js?v=20261125_v143"></script>
-  <script src="../js/helpers.js?v=20261124_v140"></script>
-  <script src="../js/db_core.js?v=20261125_v143"></script>
+  <script src="../js/data.js?v=20261127_v144"></script>
+  <script src="../js/helpers.js?v=20261127_v144"></script>
+  <script src="../js/db_core.js?v=20261127_v144"></script>
   <script src="../js/db_pricing.js?v=20261122_v130"></script>
   <script src="../js/db_bookings.js?v=20261125_v143"></script>
   <script src="../js/db_operations.js?v=20261124_v134"></script>
@@ -273,7 +276,7 @@
   <script src="../js/ui.js?v=20261125_v143"></script>
   <script src="../js/vn_datepicker.js?v=20261122_v130"></script>
   <script src="../js/app.js?v=20261122_v130"></script>
-  <script src="../js/api.js?v=20261122_v130"></script>
-  <script src="../js/history.js?v=20261125_v143"></script>
+  <script src="../js/api.js?v=20261127_v144"></script>
+  <script src="../js/history.js?v=20261127_v144"></script>
 </body>
 </html>
