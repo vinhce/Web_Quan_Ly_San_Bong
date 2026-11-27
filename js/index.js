@@ -150,6 +150,10 @@
       if (pitchEl && Number(stats.pitchCount) > 0) {
         pitchEl.textContent = `${Number(stats.pitchCount)} sân`;
       }
+      const descPitchEl = document.getElementById('hero-desc-pitch-count');
+      if (descPitchEl && Number(stats.pitchCount) > 0) {
+        descPitchEl.textContent = `cụm ${Number(stats.pitchCount)} sân`;
+      }
       const allPitchesLbl = document.getElementById('home-all-pitches-label');
       if (allPitchesLbl && Number(stats.pitchCount) > 0) {
         allPitchesLbl.textContent = `Xem tất cả ${Number(stats.pitchCount)} sân`;
@@ -246,7 +250,7 @@
     const esc = (s) => (app.escapeHTML ? app.escapeHTML(s) : String(s ?? ''));
 
     const rowsHtml = types.map(t => {
-      const matched = pitches.filter(p => Number(p.type) === t.key && p.status !== 'Ngưng hoạt động');
+      const matched = pitches.filter(p => Number(p.type) === t.key && p.status !== 'Ẩn' && p.status !== 'Ngưng hoạt động');
       if (matched.length === 0) return '';
       const minBase = Math.min(...matched.map(p => Number(p.basePrice || 0)).filter(n => n > 0));
       const sizeText = matched[0].size || t.size;
@@ -326,12 +330,14 @@
     if (!grid || !app) return;
     const esc = (s) => (app.escapeHTML ? app.escapeHTML(s) : String(s ?? ''));
     const allPitches = Array.isArray(pitches) ? pitches : [];
-    const activeCount = allPitches.filter(p => p.status !== 'Ẩn').length;
-    if (activeCount > 0) {
+    const visibleCount = allPitches.filter(p => p.status !== 'Ẩn').length;
+    if (visibleCount > 0) {
       const heroPitchEl = document.getElementById('hero-stat-pitches');
       const allLblEl = document.getElementById('home-all-pitches-label');
-      if (heroPitchEl) heroPitchEl.textContent = `${activeCount} sân`;
-      if (allLblEl) allLblEl.textContent = `Xem tất cả ${activeCount} sân`;
+      const descPitchEl = document.getElementById('hero-desc-pitch-count');
+      if (heroPitchEl) heroPitchEl.textContent = `${visibleCount} sân`;
+      if (allLblEl) allLblEl.textContent = `Xem tất cả ${visibleCount} sân`;
+      if (descPitchEl) descPitchEl.textContent = `cụm ${visibleCount} sân`;
     }
 
     const featuredPitches = allPitches.filter(p => p.status !== 'Ẩn' && p.status !== 'Bảo trì' && !p.inMaintenance);
@@ -349,7 +355,7 @@
       return `
       <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0] w-[85vw] sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start">
         <!-- Pitch Graphic -->
-        <div class="relative cursor-pointer" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" title="Bấm xem chi tiết sân ${esc(p.name)}">
+        <button type="button" class="relative w-full text-left cursor-pointer block border-0 p-0 bg-transparent" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" aria-label="Xem chi tiết sân ${esc(p.name)}" title="Bấm xem chi tiết sân ${esc(p.name)}">
           ${app.renderPitchSVG(p.variant || 'standard', 'h-48')}
           <div class="absolute top-3 left-3 flex gap-1.5">
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${esc(p.typeName)}</span>
@@ -359,12 +365,14 @@
               ${isMaint ? 'Đang bảo trì mặt cỏ' : 'Còn khung giờ trống hôm nay'}
             </span>
           </div>
-        </div>
+        </button>
 
         <div class="p-5 flex-1 flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between gap-2 mb-1.5">
-              <h3 class="font-heading font-bold text-lg text-[#0F172A] hover:text-[#16A34A] transition-colors cursor-pointer" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">${esc(p.name)}</h3>
+              <h3 class="font-heading font-bold text-lg text-[#0F172A]">
+                <button type="button" class="text-left bg-transparent border-0 p-0 font-bold text-inherit hover:text-[#16A34A] transition-colors cursor-pointer" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">${esc(p.name)}</button>
+              </h3>
               ${ratingBadge}
             </div>
             <p class="text-xs text-[#64748B] mb-3 line-clamp-2">${esc(p.grass)}</p>
@@ -416,7 +424,7 @@
             <h2 class="font-heading font-extrabold text-2xl text-[#0F172A]">${esc(pitch.name)}</h2>
             <div class="text-xs text-[#64748B] mt-0.5">${esc(pitch.size)} · ${esc(pitch.description || pitch.grass)}</div>
           </div>
-          <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold transition-colors">✕</button>
+          <button type="button" aria-label="Đóng" onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold transition-colors">✕</button>
         </div>
 
         <div class="rounded-xl overflow-hidden border border-[#E2E8F0]">
@@ -451,9 +459,9 @@
         </div>
 
         <div class="pt-4 border-t border-[#E2E8F0] flex items-center justify-end gap-3">
-          <button onclick="closeModal()" class="btn-base btn-secondary text-xs">Đóng</button>
+          <button type="button" onclick="closeModal()" class="btn-base btn-secondary text-xs">Đóng</button>
           ${isMaint ? `
-            <button class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
+            <button type="button" class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
           ` : `
             <a href="/booking?pitchId=${encodeURIComponent(pitch.id)}" class="btn-base btn-primary text-xs font-bold px-5">
               Tiến hành chọn giờ & Đặt sân ngay →

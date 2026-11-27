@@ -81,6 +81,8 @@ async function updateHistoryUserInfo() {
     if (pLabel) pLabel.textContent = '0 / 2.000 điểm';
     if (pBar) pBar.style.width = '0%';
     if (pUpgrade) pUpgrade.textContent = 'Đăng nhập tài khoản để tích điểm hội viên';
+    const pPerkGuest = document.getElementById('points-tier-perk');
+    if (pPerkGuest) pPerkGuest.textContent = 'Tích điểm đổi nước · Nâng hạng để hưởng ưu đãi đến -15%';
     if (btnLogout) btnLogout.classList.add('hidden');
     if (btnLogin) btnLogin.classList.remove('hidden');
     const btnEditProfile = document.getElementById('btn-edit-profile');
@@ -118,6 +120,21 @@ async function updateHistoryUserInfo() {
   }
   if (pUpgrade) {
     pUpgrade.textContent = isAdmin ? 'Tài khoản Quản trị Toàn quyền' : `Hạng hiện tại: ${user.tier || 'Hội viên'}`;
+  }
+  const pPerk = document.getElementById('points-tier-perk');
+  if (pPerk) {
+    const rawTier = String(user.customer_tier || user.tier || 'standard').trim().toLowerCase();
+    if (isAdmin || isManager || isStaff) {
+      pPerk.textContent = 'Tài khoản vận hành hệ thống';
+    } else if (rawTier === 'vip' || rawTier === 'diamond' || rawTier === 'khách vip' || rawTier === 'hội viên kim cương' || pts >= 2000) {
+      pPerk.textContent = 'Đặc quyền VIP · Mã VIPGOLD -15% & Đổi nước miễn phí';
+    } else if (rawTier === 'gold' || rawTier === 'regular' || rawTier === 'hội viên vàng' || rawTier === 'khách thân thiết' || pts >= 1000) {
+      pPerk.textContent = 'Đủ điều kiện mã VIPGOLD -15% · Đổi nước 100 điểm/chai';
+    } else if (rawTier === 'silver' || rawTier === 'hội viên bạc' || pts >= 500) {
+      pPerk.textContent = 'Ưu đãi hạng Bạc · Tích thêm điểm mở khóa -15%';
+    } else {
+      pPerk.textContent = 'Tích điểm đổi nước · Nâng hạng để hưởng ưu đãi đến -15%';
+    }
   }
   if (btnLogout) btnLogout.classList.remove('hidden');
   if (btnLogin) btnLogin.classList.add('hidden');
@@ -249,7 +266,7 @@ function filterHistory(filter) {
 function normalizeBookingStatusText(st) {
   const raw = String(st ?? '').trim();
   const low = raw.toLowerCase();
-  if (low === 'completed' || low === 'hoàn thành') return 'Hoàn thành';
+  if (low === 'completed' || low === 'hoàn thành' || low === 'đã hoàn thành') return 'Hoàn thành';
   if (low === 'cancelled' || low === 'canceled' || low === 'đã hủy') return 'Đã hủy';
   if (low === 'confirmed' || low === 'đã xác nhận') return 'Đã xác nhận';
   if (low === 'playing' || low === 'đang đá') return 'Đang đá';
@@ -497,8 +514,9 @@ function renderHistory() {
     const meta = parseHistoryBookingMeta(b, db);
     const normStatus = meta.normStatus;
     const normPayStatus = meta.normPayStatus;
-    const isConfirmed = normStatus === 'Đã xác nhận' || normStatus === 'Chờ duyệt cọc' || normStatus === 'Giữ chỗ';
-    const isCompleted = normStatus === 'Hoàn thành';
+    const isConfirmed = normStatus === 'Đã xác nhận' || normStatus === 'Chờ duyệt cọc' || normStatus === 'Giữ chỗ' || normStatus === 'Chờ cọc' || normStatus === 'Đã giữ chỗ' || normStatus === 'Chờ thanh toán';
+    const rawStatusLow = String(b.status || '').trim().toLowerCase();
+    const isCompleted = ['hoàn thành', 'completed', 'đã hoàn thành'].includes(rawStatusLow) || normStatus === 'Hoàn thành';
     const safeCode = esc(b.code);
     const safePitch = esc(b.pitchName || b.pitchId);
     const revInfo = reviewedMap[b.code];
@@ -509,23 +527,28 @@ function renderHistory() {
       ? `<span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold whitespace-nowrap">⏱️ +${Number(b.overtimeMinutes)}p thêm giờ</span>`
       : '';
 
-    const reviewBtnHtml = revInfo
-      ? `<span class="w-full min-h-[44px] sm:min-h-[40px] px-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 inline-flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap">✓ Đã đánh giá ★${Number(revInfo.rating || 5)}</span>`
-      : (isCompleted
-        ? `<button type="button" data-action="review" data-code="${safeCode}" data-pitch="${safePitch}" class="w-full min-h-[44px] sm:min-h-[40px] px-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 inline-flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap transition-colors cursor-pointer">⭐ Đánh giá sân</button>`
-        : '');
+    const reviewBtnHtml = isCompleted
+      ? (revInfo
+        ? `<span class="w-full min-h-[44px] sm:min-h-[40px] px-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 inline-flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap">✓ Đã đánh giá ★${Number(revInfo.rating || 5)}</span>`
+        : `<button type="button" data-action="review" data-code="${safeCode}" data-pitch="${safePitch}" class="w-full min-h-[44px] sm:min-h-[40px] px-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 inline-flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap transition-colors cursor-pointer">⭐ Đánh giá sân</button>`)
+      : '';
 
     const isDuplicatePayBadge = Boolean(normPayStatus && normStatus && normPayStatus === normStatus);
     const payStr = String(normPayStatus || '');
-    const hasPaidRecorded = typeof b.paidAmount === 'number';
-    const paidDisplayAmt = hasPaidRecorded
-      ? Math.max(0, b.paidAmount)
-      : ((normStatus === 'Đã hủy' || normStatus === 'Giữ chỗ' || payStr === 'Chờ duyệt cọc' || payStr === 'Chưa thanh toán') ? 0 : Number(b.depositAmount || 0));
-    const isUnpaidHold = paidDisplayAmt <= 0 && normStatus !== 'Đã hủy' && normStatus !== 'Khách chưa đến';
-    const isWarnPayBadge = isUnpaidHold || payStr.includes('Chờ') || payStr.includes('Phạt') || payStr.includes('Tịch thu') || payStr.includes('thiếu');
-    const paySummaryHtml = isUnpaidHold
-      ? `(Chưa thanh toán cọc: <span class="text-[#D97706] font-bold">${window.SanBongApp.formatVND(b.depositAmount)}</span> · Cần thanh toán: <b class="text-[#DC2626]">${window.SanBongApp.formatVND(b.totalPrice)}</b>)`
-      : `(Đã thu: <span class="text-[#16A34A] font-bold">${window.SanBongApp.formatVND(paidDisplayAmt)}</span> · Còn lại: <b class="${b.remainingAmount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(b.remainingAmount)}</b>)`;
+    const totalAmt = Math.max(0, Number(b.totalPrice ?? b.total_price ?? 0));
+    const paidDisplayAmt = Math.max(0, Number(b.paidAmount ?? b.paid_amount ?? 0));
+    const remainingDisplayAmt = Math.max(0, totalAmt - paidDisplayAmt);
+    const UNPAID_STATUSES = ['Chờ cọc', 'Chờ duyệt cọc', 'Đã giữ chỗ', 'Giữ chỗ', 'Chờ thanh toán'];
+    const isTerminal = (normStatus === 'Đã hủy' || normStatus === 'Khách chưa đến');
+    const isUnpaidDeposit = !isTerminal && (
+      paidDisplayAmt <= 0 ||
+      UNPAID_STATUSES.includes(normStatus) ||
+      UNPAID_STATUSES.includes(normPayStatus)
+    );
+    const isUnpaidHold = isUnpaidDeposit;
+    const isWarnPayBadge = isUnpaidDeposit || payStr.includes('Chờ') || payStr.includes('Phạt') || payStr.includes('Tịch thu') || payStr.includes('thiếu');
+    const paySummaryHtml = `(Đã thu: <span class="${paidDisplayAmt > 0 ? 'text-[#16A34A]' : 'text-[#D97706]'} font-bold">${window.SanBongApp.formatVND(paidDisplayAmt)}</span> · Còn lại: <b class="${remainingDisplayAmt > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}">${window.SanBongApp.formatVND(remainingDisplayAmt)}</b>)`;
+    const checkoutHref = getRel(`checkout?code=${encodeURIComponent(b.code || '')}`);
 
     const dateRangeDisplay = (meta.weeks > 1 && meta.packageDates.length > 0)
       ? `${meta.packageDates[0]} – ${meta.packageDates[meta.packageDates.length - 1]} (${meta.weeks} buổi hàng tuần)`
@@ -588,7 +611,15 @@ function renderHistory() {
           </div>
 
           <div class="w-full sm:w-64 shrink-0 flex flex-col gap-2">
-            ${(normStatus !== 'Đã hủy' && normStatus !== 'Khách chưa đến') ? `
+            ${(!isTerminal && isUnpaidDeposit) ? `
+            <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-800 leading-snug">
+              Đơn chưa thanh toán cọc — vui lòng hoàn tất cọc để nhận vé QR check-in
+            </div>
+            <a href="${esc(checkoutHref)}" class="w-full min-h-[44px] sm:min-h-[40px] px-3.5 rounded-xl bg-[#16A34A] hover:bg-[#15803D] text-white inline-flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap transition-colors shadow-sm">
+              <span>💳</span><span>Thanh toán cọc ngay</span>
+            </a>
+            ` : ''}
+            ${(!isTerminal && !isUnpaidDeposit) ? `
             <button type="button" data-action="view-qr" data-code="${safeCode}" class="w-full min-h-[44px] sm:min-h-[40px] px-3.5 rounded-xl bg-white hover:bg-[#F8FAFC] text-[#0F172A] border border-[#E2E8F0] inline-flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap transition-colors cursor-pointer">
               <span>📷</span><span>Xem vé QR &amp; Hóa đơn</span>
             </button>
@@ -625,29 +656,65 @@ function viewQRCode(bookingCode) {
   if (mPitch) mPitch.textContent = b.pitchName;
   const mTime = document.getElementById('modal-time');
   const esc = window.SanBongApp?.escapeHTML || (s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
+  const getRel = window.SanBongApp?.getRelativePath || (p => '/' + String(p || '').replace(/^\/+/, ''));
+
+  const totalAmt = Math.max(0, Number(b.totalPrice ?? b.total_price ?? 0));
+  const paidDisplay = Math.max(0, Number(b.paidAmount ?? b.paid_amount ?? 0));
+  const remainingAmt = Math.max(0, totalAmt - paidDisplay);
+  const UNPAID_STATUSES = ['Chờ cọc', 'Chờ duyệt cọc', 'Đã giữ chỗ', 'Giữ chỗ', 'Chờ thanh toán'];
+  const isTerminal = (meta.normStatus === 'Đã hủy' || meta.normStatus === 'Khách chưa đến');
+  const isUnpaidDeposit = !isTerminal && (
+    paidDisplay <= 0 ||
+    UNPAID_STATUSES.includes(meta.normStatus) ||
+    UNPAID_STATUSES.includes(meta.normPayStatus)
+  );
+
   if (mTime) {
-    const rem = window.SanBongApp.formatVND(b.remainingAmount || 0);
+    const rem = window.SanBongApp.formatVND(remainingAmt);
     const timeHeader = (meta.weeks > 1 && meta.packageDates.length > 0)
       ? `Gói ${meta.weeks} tuần (${meta.packageDates[0]} – ${meta.packageDates[meta.packageDates.length - 1]}) · ${b.slotTime}`
       : `${window.SanBongApp.formatDateVN(b.date)} · ${b.slotTime}`;
-    const hasPaidRec = typeof b.paidAmount === 'number';
-    const paidDisplay = hasPaidRec
-      ? Math.max(0, b.paidAmount)
-      : ((meta.normStatus === 'Đã hủy' || meta.normStatus === 'Giữ chỗ' || meta.normPayStatus === 'Chờ duyệt cọc' || meta.normPayStatus === 'Chưa thanh toán') ? 0 : Number(b.depositAmount || 0));
-    mTime.innerHTML = `${esc(timeHeader)}<br><span class="text-[11px] font-bold text-[#0F172A]">Tổng: ${window.SanBongApp.formatVND(b.totalPrice)} · Đã thu: ${window.SanBongApp.formatVND(paidDisplay)} · Còn lại: <span class="text-[#DC2626]">${rem}</span></span>`;
+    mTime.innerHTML = `${esc(timeHeader)}<br><span class="text-[11px] font-bold text-[#0F172A]">Tổng: ${window.SanBongApp.formatVND(totalAmt)} · Đã thu: ${window.SanBongApp.formatVND(paidDisplay)} · Còn lại: <span class="text-[#DC2626]">${rem}</span></span>`;
   }
 
   const qrMount = document.getElementById('modal-qr-mount');
-  if (qrMount) {
-    qrMount.classList.add('relative');
-    const stLower = meta.normStatus.toLowerCase();
-    const isCheckedIn = stLower === 'đang đá' || stLower === 'hoàn thành';
-    const checkBadgeHtml = isCheckedIn
-      ? `<span title="Đã quét QR Check-in" aria-label="Đã quét QR Check-in" class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-[#16A34A] text-white ring-2 ring-white shadow-md flex items-center justify-center">
-           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-         </span>`
-      : '';
-    qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(b.code, 150) + checkBadgeHtml;
+  const noticeEl = document.getElementById('modal-ticket-notice');
+  const dlBtn = document.getElementById('modal-download-qr-btn');
+  const payLink = document.getElementById('modal-ticket-pay-link');
+
+  if (isUnpaidDeposit) {
+    if (qrMount) {
+      qrMount.classList.add('hidden');
+      qrMount.innerHTML = '';
+    }
+    if (noticeEl) {
+      noticeEl.className = 'text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 text-center font-semibold';
+      noticeEl.textContent = 'Đơn chưa thanh toán cọc — vui lòng hoàn tất cọc để nhận vé QR check-in';
+    }
+    if (dlBtn) dlBtn.classList.add('hidden');
+    if (payLink) {
+      payLink.href = getRel(`checkout?code=${encodeURIComponent(b.code || '')}`);
+      payLink.classList.remove('hidden');
+    }
+  } else {
+    if (qrMount) {
+      qrMount.classList.remove('hidden');
+      qrMount.classList.add('relative');
+      const stLower = meta.normStatus.toLowerCase();
+      const isCheckedIn = stLower === 'đang đá' || stLower === 'hoàn thành';
+      const checkBadgeHtml = isCheckedIn
+        ? `<span title="Đã quét QR Check-in" aria-label="Đã quét QR Check-in" class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-[#16A34A] text-white ring-2 ring-white shadow-md flex items-center justify-center">
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+           </span>`
+        : '';
+      qrMount.innerHTML = window.SanBongApp.renderQRCodeSVG(b.code, 150) + checkBadgeHtml;
+    }
+    if (noticeEl) {
+      noticeEl.className = 'text-xs text-[#64748B] text-center';
+      noticeEl.textContent = 'Đưa mã này cho nhân viên tại quầy để mở đèn và nhận sân đúng giờ.';
+    }
+    if (dlBtn) dlBtn.classList.remove('hidden');
+    if (payLink) payLink.classList.add('hidden');
   }
 
   const modal = document.getElementById('ticket-modal');
@@ -821,6 +888,18 @@ function cancelBooking(bookingCode) {
 }
 
 window.openReviewModal = function(bookingCode, pitchName) {
+  const db = window.SanBongApp?.SanBongDB;
+  const b = db?.getAllBookings ? db.getAllBookings().find(item => item.code === bookingCode) : null;
+  if (b) {
+    const rawSt = String(b.status || '').trim().toLowerCase();
+    const normSt = normalizeBookingStatusText(b.status);
+    if (!['hoàn thành', 'completed', 'đã hoàn thành'].includes(rawSt) && normSt !== 'Hoàn thành') {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast('Chỉ có thể đánh giá sau khi trận đấu đã hoàn thành.', 'warning');
+      }
+      return;
+    }
+  }
   let existing = document.getElementById('customer-review-modal');
   if (existing) existing.remove();
 
@@ -838,7 +917,7 @@ window.openReviewModal = function(bookingCode, pitchName) {
           <h3 id="customer-review-modal-title" class="font-heading font-bold text-lg text-[#0F172A]">Đánh Giá Chất Lượng Sân</h3>
           <div class="text-xs text-[#64748B] mt-0.5">${esc(pitchName)} (Mã vé: ${esc(bookingCode)})</div>
         </div>
-        <button id="close-review-modal-btn" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
+        <button type="button" aria-label="Đóng" id="close-review-modal-btn" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
       </div>
       <div class="space-y-3">
         <div>
@@ -858,8 +937,8 @@ window.openReviewModal = function(bookingCode, pitchName) {
         </div>
       </div>
       <div class="pt-2 flex justify-end gap-2">
-        <button id="cancel-review-modal-btn" class="px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
-        <button id="submit-review-modal-btn" class="btn-base btn-primary px-5 py-2 text-xs font-bold shadow">Gửi Đánh Giá</button>
+        <button type="button" id="cancel-review-modal-btn" class="px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
+        <button type="button" id="submit-review-modal-btn" class="btn-base btn-primary px-5 py-2 text-xs font-bold shadow">Gửi Đánh Giá</button>
       </div>
     </div>
   `;
@@ -1033,9 +1112,16 @@ async function handleSaveProfile(e) {
     if (el) { el.textContent = ''; el.classList.add('hidden'); }
   });
 
-  const fullName = nameInput?.value.trim() || '';
+  const rawFullName = nameInput?.value || '';
+  const fullName = rawFullName.trim();
   const phone = phoneInput?.value.trim() || '';
   const password = pwdInput?.value || '';
+
+  if (/[<>"';{}]/.test(rawFullName) || /<\/?[a-z][\s\S]*>/i.test(rawFullName)) {
+    if (nameErr) { nameErr.textContent = 'Họ và tên chứa ký tự không hợp lệ.'; nameErr.classList.remove('hidden'); }
+    nameInput?.focus();
+    return;
+  }
 
   if (fullName.length < 2 || fullName.length > 60) {
     if (nameErr) { nameErr.textContent = 'Họ và tên phải từ 2 đến 60 ký tự.'; nameErr.classList.remove('hidden'); }

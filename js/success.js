@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           slotTime: bData.slotTime || bData.slot_time || booking?.slotTime || '',
           totalPrice: Number(bData.totalPrice ?? bData.total_price ?? booking?.totalPrice ?? 0),
           depositAmount: Number(bData.depositAmount ?? bData.deposit_amount ?? booking?.depositAmount ?? 0),
+          paidAmount: Number(bData.paidAmount ?? bData.paid_amount ?? booking?.paidAmount ?? 0),
           remainingAmount: Number(bData.remainingAmount ?? bData.remaining_amount ?? booking?.remainingAmount ?? 0),
           depositRate: Number(bData.depositRate ?? bData.deposit_rate ?? ((Number(bData.weeksCount ?? bData.weeks_count ?? booking?.weeksCount ?? 1) > 1) ? 60 : 30)),
           paymentStatus: bData.paymentStatus || bData.payment_status || booking?.paymentStatus || 'Đã cọc 30%',
@@ -154,16 +155,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  const total = Math.max(0, Number(booking.totalPrice || 0));
+  const paid = Math.max(0, Number(booking.paidAmount || 0));
+  const remaining = Math.max(0, total - paid);
+  const UNPAID_STATUSES = ['Chờ cọc', 'Chờ duyệt cọc', 'Đã giữ chỗ', 'Giữ chỗ', 'Chờ thanh toán'];
+  const isUnpaidDeposit = paid <= 0 || UNPAID_STATUSES.includes(String(booking.status || '').trim());
+
   const pNameEl = document.getElementById('ticket-pitch-name');
   if (pNameEl) pNameEl.textContent = booking.pitchName;
   const dtEl = document.getElementById('ticket-datetime');
   if (dtEl) dtEl.textContent = `${window.SanBongApp.formatDateVN(booking.date)} · ${booking.slotTime}`;
   const totEl = document.getElementById('ticket-total-amt');
-  if (totEl) totEl.textContent = window.SanBongApp.formatVND(booking.totalPrice);
+  if (totEl) totEl.textContent = window.SanBongApp.formatVND(total);
   const depEl = document.getElementById('ticket-deposit-amt');
-  if (depEl) depEl.textContent = window.SanBongApp.formatVND(booking.depositAmount);
+  if (depEl) depEl.textContent = window.SanBongApp.formatVND(paid);
   const remEl = document.getElementById('ticket-remaining-amt');
-  if (remEl) remEl.textContent = window.SanBongApp.formatVND(booking.remainingAmount);
+  if (remEl) remEl.textContent = window.SanBongApp.formatVND(remaining);
   const custEl = document.getElementById('ticket-cust-info');
   if (custEl) custEl.textContent = `${booking.customerName || 'Khách hàng'} (${booking.phone || '---'})`;
 
@@ -243,6 +250,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const checkedInSubtitleEl = subtitleEl || document.querySelector('main h1 + p');
 
   const renderTicketQR = (checkedIn) => {
+    if (isUnpaidDeposit) {
+      if (qrBox) qrBox.classList.add('hidden');
+      if (qrMount) qrMount.innerHTML = '';
+      if (subtitleEl) {
+        subtitleEl.textContent = 'Đơn chưa thanh toán cọc — vui lòng hoàn tất cọc để nhận vé QR check-in.';
+      }
+      return;
+    }
     if (checkedIn) {
       if (qrBox) qrBox.classList.add('hidden');
       if (qrMount) qrMount.innerHTML = '';

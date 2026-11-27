@@ -388,41 +388,45 @@ function initBookingPage() {
 
   const today = window.SanBongApp?.getLocalTodayISO ? window.SanBongApp.getLocalTodayISO() : new Date().toISOString().split('T')[0];
 
-  // Khôi phục lựa chọn từ draft nếu chưa được tạo thành đơn hoàn chỉnh
-  const rawDraft = sessionStorage.getItem('sb_booking_draft');
+  // Khôi phục lựa chọn từ sb_booking_draft_restore (nếu quay lại từ checkout) hoặc sb_booking_draft
+  const rawRestore = sessionStorage.getItem('sb_booking_draft_restore');
+  const rawDraft = rawRestore || sessionStorage.getItem('sb_booking_draft');
   if (rawDraft) {
     try {
       const draft = JSON.parse(rawDraft);
-      if (draft && draft.submittedCode) {
+      if (!rawRestore && draft && draft.submittedCode && !draft.serverCreatedCode) {
         sessionStorage.removeItem('sb_booking_draft');
       } else if (draft && draft.pitchId) {
-        if (!paramPitch && !paramType) {
+        if (rawRestore || (!paramPitch && !paramType)) {
           selectedPitchId = draft.pitchId;
           const p = db.getPitchById(selectedPitchId);
           if (p && p.type) selectedPitchType = Number(p.type);
         }
-        if (!paramDate && draft.date && draft.date >= today) {
+        if ((rawRestore || !paramDate) && draft.date && draft.date >= today) {
           selectedDate = draft.date;
         }
-        if (!paramSlotId && draft.slotId) {
+        if ((rawRestore || !paramSlotId) && draft.slotId) {
           preselectedSlotId = draft.slotId;
           selectedSlotId = draft.slotId;
         }
-        if (draft.bookingMode && !paramPitch && !paramType && paramMode !== 'single') {
+        if (draft.bookingMode && (rawRestore || (!paramPitch && !paramType && paramMode !== 'single'))) {
           bookingMode = draft.bookingMode;
         }
         if (draft.weeksCount && [4, 8, 12].includes(Number(draft.weeksCount))) {
           monthlyWeeks = Number(draft.weeksCount);
         }
         if (Array.isArray(draft.services)) appliedServices = draft.services;
-        if (draft.voucherCode && !paramVoucher) appliedVoucherCode = draft.voucherCode;
+        if (draft.voucherCode && (rawRestore || !paramVoucher)) appliedVoucherCode = draft.voucherCode;
+        if (draft.redeemedBottles !== undefined) {
+          window.bookingRedeemedBottles = Math.max(0, Number(draft.redeemedBottles) || 0);
+        }
 
         if (draft.policy_agree) {
           const agreeBox = document.getElementById('policy-agree');
           if (agreeBox) agreeBox.checked = true;
         }
 
-        if (draft.isBookingForFriend) {
+        if (draft.isBookingForFriend || draft.isBookingForOther) {
           const friendChk = document.getElementById('booking-for-friend-checkbox');
           const friendWrap = document.getElementById('booking-friend-fields-wrap');
           const friendNameEl = document.getElementById('friend-name');
@@ -431,6 +435,11 @@ function initBookingPage() {
           if (friendWrap) friendWrap.classList.remove('hidden');
           if (friendNameEl) friendNameEl.value = draft.friendName || draft.customerName || '';
           if (friendPhoneEl) friendPhoneEl.value = draft.friendPhone || draft.phone || '';
+        } else if (draft.phone) {
+          const missingPhoneInp = document.getElementById('user-missing-phone');
+          if (missingPhoneInp && !missingPhoneInp.value) {
+            missingPhoneInp.value = draft.phone;
+          }
         }
 
         const restoredUserNote = stripBookingSystemNoteTags(draft.customerNote ?? draft.note ?? '');
@@ -447,7 +456,12 @@ function initBookingPage() {
           }
         }
       }
-    } catch (e) {}
+      if (rawRestore) {
+        sessionStorage.removeItem('sb_booking_draft_restore');
+      }
+    } catch (e) {
+      if (rawRestore) sessionStorage.removeItem('sb_booking_draft_restore');
+    }
   }
 
   if (paramMode === 'monthly') {
@@ -878,19 +892,23 @@ function initPitchSelect() {
 
   const allPitches = db.getPitches().filter(p => p.status !== 'Ẩn');
   const pitches = allPitches.filter(p => Number(p.type) === selectedPitchType);
+  const availablePitches = pitches.filter(p => p.status !== 'Bảo trì' && !p.inMaintenance);
   const select = document.getElementById('booking-pitch-select');
   if (!select) return;
 
   const typeBadge = document.getElementById('selected-type-badge');
   if (typeBadge) {
-    typeBadge.textContent = `(${pitches.length} sân có sẵn)`;
+    typeBadge.textContent = `(${availablePitches.length} sân có sẵn)`;
   }
 
   const esc = window.SanBongApp?.escapeHTML || (s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
-  select.innerHTML = pitches.map(p => `
-    <option value="${esc(p.id)}" ${p.id === selectedPitchId ? 'selected' : ''} ${p.status === 'Bảo trì' ? 'disabled' : ''}>
-      ${esc(p.name)} - ${window.SanBongApp ? window.SanBongApp.formatVND(p.basePrice) : (Number(p.basePrice) || 0) + 'đ'}/ca 2h ${p.status === 'Bảo trì' ? ' [ĐANG BẢO TRÌ]' : ''}
+  select.innerHTML = pitches.map(p => {
+    const isMaint = p.status === 'Bảo trì' || Boolean(p.inMaintenance);
+    return `
+    <option value="${esc(p.id)}" ${p.id === selectedPitchId ? 'selected' : ''} ${isMaint ? 'disabled' : ''}>
+      ${esc(p.name)} - ${window.SanBongApp ? window.SanBongApp.formatVND(p.basePrice) : (Number(p.basePrice) || 0) + 'đ'}/ca 2h ${isMaint ? ' [ĐANG BẢO TRÌ]' : ''}
     </option>
-  `).join('');
+  `;
+  }).join('');
 }
 

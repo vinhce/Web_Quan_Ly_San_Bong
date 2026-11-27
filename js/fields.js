@@ -106,9 +106,9 @@ function renderPitches() {
   const maxPrice = Number(document.getElementById('price-range')?.value) || 1500000;
   const sortVal = document.getElementById('sort-select')?.value || 'default';
 
-  let list = currentPitches.filter(p => {
+  let list = visibleBase.filter(p => {
     if (typeVal !== 'all' && String(p.type) !== String(typeVal)) return false;
-    if (activeOnly && p.status !== 'Hoạt động') return false;
+    if (activeOnly && (p.status !== 'Hoạt động' || p.inMaintenance)) return false;
     if (p.basePrice > maxPrice) return false;
     if (selectedFilterDate && p.availableSlotCount !== undefined && Number(p.availableSlotCount) <= 0) return false;
     return true;
@@ -149,7 +149,7 @@ function renderPitches() {
         : 'Sẵn sàng nhận lịch hôm nay');
     return `
       <div class="ui-card overflow-hidden flex flex-col hover:shadow-lg transition-all border-[#E2E8F0]">
-        <div class="relative cursor-pointer overflow-hidden" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">
+        <button type="button" class="relative w-full text-left cursor-pointer overflow-hidden block border-0 p-0 bg-transparent" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))" aria-label="Xem chi tiết sân ${esc(p.name)}">
           ${app?.renderPitchSVG ? app.renderPitchSVG(p.variant || 'standard', 'h-48') : ''}
           <div class="absolute top-3 left-3 flex gap-1.5">
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#0F172A] shadow-sm">${esc(p.typeName)}</span>
@@ -163,12 +163,14 @@ function renderPitches() {
               ${esc(availBadgeText)}
             </span>
           </div>
-        </div>
+        </button>
 
         <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <h3 class="font-heading font-bold text-lg text-[#0F172A] cursor-pointer hover:text-[#16A34A]" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">${esc(p.name)}</h3>
+              <h3 class="font-heading font-bold text-lg text-[#0F172A]">
+                <button type="button" class="text-left bg-transparent border-0 p-0 font-bold text-inherit cursor-pointer hover:text-[#16A34A]" data-pitch-id="${safeId}" onclick="openPitchDetail(this.getAttribute('data-pitch-id'))">${esc(p.name)}</button>
+              </h3>
               <div class="flex items-center gap-1 text-xs font-bold ${Number(p.reviewCount || 0) > 0 ? 'text-[#0F172A]' : 'text-[#64748B] font-medium'}">
                 ${ratingText}
               </div>
@@ -185,7 +187,7 @@ function renderPitches() {
               Chi tiết sân
             </button>
             ${isMaint ? `
-              <button class="btn-base btn-disabled flex-1 !px-3 whitespace-nowrap justify-center text-xs font-bold opacity-50 cursor-not-allowed" disabled>
+              <button type="button" class="btn-base btn-disabled flex-1 !px-3 whitespace-nowrap justify-center text-xs font-bold opacity-50 cursor-not-allowed" disabled>
                 Đang bảo trì
               </button>
             ` : `
@@ -305,7 +307,7 @@ function openPitchDetail(pitchId) {
         <h2 class="font-heading font-extrabold text-2xl text-[#0F172A]">${esc(pitch.name)}</h2>
         <div class="text-xs text-[#64748B] mt-0.5">${esc(pitch.size)} · ${esc(pitch.description || pitch.grass)}</div>
       </div>
-      <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold">✕</button>
+      <button type="button" aria-label="Đóng" onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold">✕</button>
     </div>
 
     <div class="rounded-xl overflow-hidden border border-[#E2E8F0]">
@@ -340,9 +342,9 @@ function openPitchDetail(pitchId) {
     </div>
 
     <div class="pt-4 border-t border-[#E2E8F0] flex items-center justify-end gap-3">
-      <button onclick="closeModal()" class="btn-base btn-secondary text-xs">Đóng</button>
+      <button type="button" onclick="closeModal()" class="btn-base btn-secondary text-xs">Đóng</button>
       ${isMaint ? `
-        <button class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
+        <button type="button" class="btn-base btn-disabled text-xs opacity-50 cursor-not-allowed" disabled>Sân đang bảo dưỡng</button>
       ` : `
         <a href="${bookingHref}" class="btn-base btn-primary text-xs">
           Tiến hành chọn giờ & Đặt sân ngay

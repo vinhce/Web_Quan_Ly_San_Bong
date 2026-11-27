@@ -79,15 +79,29 @@
     } catch (e) {}
   }
 
-  async function ensureCsrfToken(apiBase) {
+  async function ensureCsrfToken(apiBaseOrForce, forceRefreshArg) {
+    let forceRefresh = false;
+    let apiBase;
+    if (typeof apiBaseOrForce === 'boolean') {
+      forceRefresh = apiBaseOrForce;
+      if (typeof forceRefreshArg === 'string') apiBase = forceRefreshArg;
+    } else {
+      apiBase = apiBaseOrForce;
+      forceRefresh = Boolean(forceRefreshArg);
+    }
     const current = getCsrfToken();
-    if (current) return current;
+    if (current && !forceRefresh) return current;
+    if (forceRefresh) {
+      clearCsrfToken();
+    }
     try {
       const base = apiBase !== undefined ? apiBase : (getAppBase() ? getAppBase() + '/' : '/');
       const url = `${base}api/auth.php?action=me`;
-      const res = await fetch(url, { credentials: 'same-origin' });
+      const res = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+      const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader) setCsrfToken(tokenHeader);
       if (res.ok) {
-        const json = await res.json();
+        const json = await res.json().catch(() => null);
         if (json && json.csrf_token) {
           setCsrfToken(json.csrf_token);
           return json.csrf_token;
@@ -106,9 +120,24 @@
     return headers;
   }
 
+  function isCsrfFailureResponse(status, data, rawText = '') {
+    if (status !== 403) return false;
+    const ref = String(data?.ref_code || '').toUpperCase();
+    const msg = String(data?.message || rawText || '');
+    return ref === 'ERR_CSRF_INVALID' || /csrf|mã bảo mật/i.test(msg);
+  }
+
   async function secureFetch(url, options = {}) {
-    await ensureCsrfToken();
+    const method = String(options.method || 'GET').toUpperCase();
+    const isMutating = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+    const csrfRetried = Boolean(options._csrfRetried);
+
+    if (isMutating) {
+      await ensureCsrfToken();
+    }
+
     const opts = Object.assign({}, options);
+    delete opts._csrfRetried;
     opts.headers = getAuthFetchHeaders(opts.headers);
     if (!opts.credentials) opts.credentials = 'same-origin';
     const res = await fetch(url, opts);
@@ -116,6 +145,33 @@
     if (tokenHeader) {
       setCsrfToken(tokenHeader);
     }
+
+    if (isMutating && res.status === 403 && !csrfRetried) {
+      const peekText = await res.clone().text().catch(() => '');
+      let peekJson = null;
+      try { peekJson = peekText ? JSON.parse(peekText) : null; } catch (e) {}
+      if (isCsrfFailureResponse(res.status, peekJson, peekText)) {
+        const freshToken = await ensureCsrfToken(true);
+        const retryOpts = Object.assign({}, options, { _csrfRetried: true });
+        retryOpts.headers = Object.assign({}, options.headers || {});
+        if (freshToken) {
+          retryOpts.headers['X-CSRF-Token'] = freshToken;
+        }
+        if (typeof retryOpts.body === 'string' && freshToken) {
+          try {
+            const parsedBody = JSON.parse(retryOpts.body);
+            if (parsedBody && typeof parsedBody === 'object' && Object.prototype.hasOwnProperty.call(parsedBody, 'csrf_token')) {
+              parsedBody.csrf_token = freshToken;
+              retryOpts.body = JSON.stringify(parsedBody);
+            }
+          } catch (e) {}
+        } else if (typeof FormData !== 'undefined' && retryOpts.body instanceof FormData && freshToken && retryOpts.body.has('csrf_token')) {
+          retryOpts.body.set('csrf_token', freshToken);
+        }
+        return secureFetch(url, retryOpts);
+      }
+    }
+
     return res;
   }
 

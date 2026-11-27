@@ -99,12 +99,12 @@ function initDateStrip() {
   strip.innerHTML = days.map(d => {
     const isAct = d.iso === selectedDate;
     return `
-      <div onclick="selectQuickDate('${d.iso}')" class="py-2 px-1 rounded-xl border cursor-pointer transition-all ${
+      <button type="button" onclick="selectQuickDate('${d.iso}')" class="w-full py-2 px-1 rounded-xl border cursor-pointer transition-all ${
         isAct ? 'bg-[#16A34A] text-white border-[#16A34A] font-bold shadow-sm' : 'bg-white border-[#E2E8F0] text-[#475569] hover:border-[#16A34A]'
       }">
         <div class="text-[10px] uppercase font-semibold">${d.dayLabel}</div>
         <div class="text-xs font-bold">${d.dateNum}</div>
-      </div>
+      </button>
     `;
   }).join('');
 }
@@ -119,22 +119,30 @@ function selectQuickDate(iso) {
   updateBillSummary();
 }
 let serverBookedSlotsCache = {};
-async function fetchServerBookedSlots(pitchId, dateStr) {
+async function fetchServerBookedSlots(pitchId, dateStr, force = false) {
   if (!pitchId || !dateStr) return { bookedList: [], maintenanceWindows: [] };
   const key = `${pitchId}__${dateStr}`;
   try {
-    const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
-    const url = getRel(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitchId)}&date=${encodeURIComponent(dateStr)}&_t=${Date.now()}`);
-    const res = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
-    if (res.ok) {
-      const json = await res.json();
-      if (json && json.success) {
-        const entry = {
-          bookedList: Array.isArray(json.data) ? json.data : [],
-          maintenanceWindows: Array.isArray(json.maintenanceWindows) ? json.maintenanceWindows : []
-        };
+    if (window.SanBongApp?.SanBongAPI?.fetchBookedSlots) {
+      const entry = await window.SanBongApp.SanBongAPI.fetchBookedSlots(pitchId, dateStr, force);
+      if (entry) {
         serverBookedSlotsCache[key] = entry;
         return entry;
+      }
+    } else {
+      const getRel = window.SanBongApp?.getRelativePath || (p => '/' + p.replace(/^\//, ''));
+      const url = getRel(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitchId)}&date=${encodeURIComponent(dateStr)}`);
+      const res = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.success) {
+          const entry = {
+            bookedList: Array.isArray(json.data) ? json.data : [],
+            maintenanceWindows: Array.isArray(json.maintenanceWindows) ? json.maintenanceWindows : []
+          };
+          serverBookedSlotsCache[key] = entry;
+          return entry;
+        }
       }
     }
   } catch (e) {}
@@ -347,12 +355,12 @@ function renderSlots(skipServerFetch = false) {
     } else {
       clickAttr = `onclick="selectSlot(this.getAttribute('data-slot-id'))"`;
     }
-    const interactiveAttrs = clickAttr ? `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"` : '';
+    const isDisabledBtn = !clickAttr;
     return `
-      <div data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} ${interactiveAttrs} class="slot-chip p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${chipTitle}">
+      <button type="button" data-slot-id="${safeId}" data-slot-time="${safeTime}" ${clickAttr} ${isDisabledBtn ? 'disabled' : ''} class="slot-chip w-full p-3 rounded-xl text-center flex flex-col justify-between ${chipCls}" title="${chipTitle}">
         <div class="text-xs sm:text-sm font-extrabold">${safeTime}</div>
         <div class="mt-1">${statusBadge}</div>
-      </div>
+      </button>
     `;
   }).join('');
   const badge = document.getElementById('selected-slot-badge');
@@ -402,6 +410,21 @@ function selectSlot(slotId) {
   updateBillSummary();
 }
 
+function getServiceStockMeta(srv) {
+  if (!srv || typeof srv !== 'object') return { hasLimit: false, stockQty: Infinity, isOutOfStock: false };
+  const rawTrack = srv.trackInventory !== undefined ? srv.trackInventory : srv.track_inventory;
+  const trackInv = rawTrack === undefined ? true : !(rawTrack === false || rawTrack === 0 || rawTrack === '0' || String(rawTrack).toLowerCase() === 'false');
+  const rawStock = srv.stockQty !== undefined && srv.stockQty !== null ? srv.stockQty : srv.stock_qty;
+  const parsedStock = (rawStock !== undefined && rawStock !== null && rawStock !== '') ? Number(rawStock) : null;
+  const hasLimit = trackInv && parsedStock !== null && !isNaN(parsedStock);
+  const stockQty = hasLimit ? Math.max(0, Math.floor(parsedStock)) : Infinity;
+  return {
+    hasLimit,
+    stockQty,
+    isOutOfStock: hasLimit && stockQty <= 0
+  };
+}
+
 function renderServices() {
   const db = window.SanBongApp.SanBongDB;
   const allServices = db.getServices();
@@ -409,8 +432,17 @@ function renderServices() {
   if (!container) return;
   const esc = (s) => (window.SanBongApp?.escapeHTML ? window.SanBongApp.escapeHTML(s) : String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
   container.innerHTML = allServices.map(srv => {
+    const stockMeta = getServiceStockMeta(srv);
     const existing = appliedServices.find(s => s.id === srv.id);
-    const qty = existing ? existing.quantity : 0;
+    let qty = existing ? Number(existing.quantity || 0) : 0;
+    if (stockMeta.hasLimit && qty > stockMeta.stockQty) {
+      qty = stockMeta.stockQty;
+      if (existing) existing.quantity = qty;
+    }
+    if (qty <= 0 && existing) {
+      appliedServices = appliedServices.filter(s => s.id !== srv.id);
+    }
+
     const isPkg = bookingMode === 'monthly';
     let pkgGiftBadge = '';
     if (isPkg) {
@@ -424,20 +456,30 @@ function renderServices() {
         if (srv.id === 'SRV-BALL') pkgGiftBadge = '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-300">🎁 Đã tặng miễn phí bóng/trận</span>';
       }
     }
+
+    const stockBadgeHtml = stockMeta.isOutOfStock
+      ? '<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 text-[10px] font-bold border border-rose-200 whitespace-nowrap">Hết hàng</span>'
+      : (stockMeta.hasLimit
+        ? `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-semibold border border-slate-200 whitespace-nowrap">Còn ${stockMeta.stockQty}</span>`
+        : '');
+
+    const disableSub = qty <= 0;
+    const disableAdd = stockMeta.isOutOfStock || (stockMeta.hasLimit && qty >= stockMeta.stockQty);
     const safeSrvId = esc(srv.id);
     return `
-      <div class="p-3.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between">
-        <div>
-          <div class="flex items-center gap-1.5">
+      <div class="p-3.5 rounded-xl border ${stockMeta.isOutOfStock ? 'border-slate-200 bg-slate-100/70 opacity-75' : 'border-[#E2E8F0] bg-[#F8FAFC]'} flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-1.5">
             <span class="text-sm font-bold text-[#0F172A]">${esc(srv.name)}</span>
+            ${stockBadgeHtml}
             ${pkgGiftBadge}
           </div>
           <div class="text-xs text-[#16A34A] font-semibold">${window.SanBongApp.formatVND(srv.price)} / ${esc(srv.unit)} ${pkgGiftBadge ? '<span class="text-slate-500 font-normal">(Giá nếu gọi thêm ngoài gói)</span>' : ''}</div>
         </div>
-        <div class="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded-lg p-1">
-          <button type="button" data-srv-id="${safeSrvId}" onclick="changeServiceQty(this.getAttribute('data-srv-id'), -1)" class="w-6 h-6 rounded bg-[#F1F5F9] hover:bg-[#E2E8F0] flex items-center justify-center font-bold text-xs">−</button>
+        <div class="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded-lg p-1 shrink-0">
+          <button type="button" data-srv-id="${safeSrvId}" onclick="changeServiceQty(this.getAttribute('data-srv-id'), -1)" ${disableSub ? 'disabled' : ''} aria-label="Giảm ${esc(srv.name)}" class="w-6 h-6 rounded bg-[#F1F5F9] hover:bg-[#E2E8F0] flex items-center justify-center font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed">−</button>
           <span class="w-6 text-center font-heading font-bold text-xs">${qty}</span>
-          <button type="button" data-srv-id="${safeSrvId}" onclick="changeServiceQty(this.getAttribute('data-srv-id'), 1)" class="w-6 h-6 rounded bg-[#DCFCE7] text-[#16A34A] hover:bg-[#BBF7D0] flex items-center justify-center font-bold text-xs">+</button>
+          <button type="button" data-srv-id="${safeSrvId}" onclick="changeServiceQty(this.getAttribute('data-srv-id'), 1)" ${disableAdd ? 'disabled' : ''} aria-label="Tăng ${esc(srv.name)}" class="w-6 h-6 rounded bg-[#DCFCE7] text-[#16A34A] hover:bg-[#BBF7D0] flex items-center justify-center font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed">+</button>
         </div>
       </div>
     `;
@@ -445,11 +487,32 @@ function renderServices() {
 }
 
 function changeServiceQty(serviceId, delta) {
+  const db = window.SanBongApp?.SanBongDB;
+  const srvDef = db?.getServices ? db.getServices().find(s => s.id === serviceId) : null;
+  const stockMeta = getServiceStockMeta(srvDef);
   const existing = appliedServices.find(s => s.id === serviceId);
+  const curQty = existing ? Number(existing.quantity || 0) : 0;
+  let nextQty = Math.max(0, curQty + delta);
+
+  if (delta > 0 && stockMeta.hasLimit) {
+    if (stockMeta.isOutOfStock) {
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(`"${srvDef?.name || 'Dịch vụ'}" hiện đã hết hàng.`, 'warning', 3000);
+      }
+      return;
+    }
+    if (nextQty > stockMeta.stockQty) {
+      nextQty = stockMeta.stockQty;
+      if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(`"${srvDef?.name || 'Dịch vụ'}" chỉ còn tối đa ${stockMeta.stockQty} ${srvDef?.unit || 'đơn vị'} trong kho.`, 'warning', 3000);
+      }
+    }
+  }
+
   if (existing) {
-    existing.quantity = Math.max(0, existing.quantity + delta);
-  } else if (delta > 0) {
-    appliedServices.push({ id: serviceId, quantity: delta });
+    existing.quantity = nextQty;
+  } else if (nextQty > 0) {
+    appliedServices.push({ id: serviceId, quantity: nextQty });
   }
   appliedServices = appliedServices.filter(s => s.quantity > 0);
   renderServices();
@@ -751,7 +814,7 @@ function updateBillSummary(probeVoucherCode = '') {
       if (depTitleEl) depTitleEl.innerHTML = 'Tiền cọc giữ lịch cố định (<span id="summary-deposit-rate-pct">60</span>%)';
       if (depSubtextEl) depSubtextEl.textContent = 'Chuyển khoản cọc 60% giữ lịch';
       if (remLabelEl) remLabelEl.textContent = 'Còn lại ra quầy thu tiền ở sân báo lại để sắp xếp:';
-      if (policyAgreeTextEl) policyAgreeTextEl.textContent = 'Tôi đồng ý với chính sách cọc gói cố định (chuyển cọc 60% giữ lịch, 40% còn lại ra quầy thu tiền ở sân báo lại để sắp xếp).';
+      if (policyAgreeTextEl) policyAgreeTextEl.textContent = 'Tôi đồng ý với 2 quy định: (1) Thời hạn 15 phút chuyển khoản cọc 60% kể từ lúc tạo đơn để giữ lịch cố định; (2) Thời hạn 15 phút đến nhận sân sau giờ bắt đầu mỗi ca (40% còn lại thanh toán tại quầy, quá hạn sẽ hủy ca và tịch thu cọc).';
     } else {
       const sysCfg = db.getSystemConfig ? db.getSystemConfig() : null;
       const singleRate = String(Math.max(10, Math.min(100, Number(sysCfg?.depositRate) || 30)));
@@ -759,7 +822,7 @@ function updateBillSummary(probeVoucherCode = '') {
       if (depTitleEl) depTitleEl.innerHTML = `Tiền cọc giữ sân (<span id="summary-deposit-rate-pct">${singleRate}</span>%)`;
       if (depSubtextEl) depSubtextEl.textContent = 'Chuyển khoản ngân hàng 24/7';
       if (remLabelEl) remLabelEl.textContent = 'Còn lại trả tại sân khi đá:';
-      if (policyAgreeTextEl) policyAgreeTextEl.textContent = `Tôi đồng ý với chính sách cọc (giữ chỗ tối đa 15 phút, quá hạn hủy do vắng mặt & tịch thu cọc ${singleRate}%).`;
+      if (policyAgreeTextEl) policyAgreeTextEl.textContent = `Tôi đồng ý với 2 quy định: (1) Thời hạn 15 phút chuyển khoản cọc VietQR kể từ lúc tạo đơn để giữ chỗ; (2) Thời hạn 15 phút đến nhận sân sau giờ bắt đầu ca (quá hạn sẽ hủy ca và tịch thu cọc ${singleRate}%).`;
     }
 
     const promoRow = document.getElementById('summary-promo-gifts-row');
@@ -810,12 +873,28 @@ function updateBillSummary(probeVoucherCode = '') {
         if (tokenHeader && window.SanBongHelpers?.setCsrfToken) {
           window.SanBongHelpers.setCsrfToken(tokenHeader);
         }
-        if (seq !== _serverQuoteSeq || !res.ok) return;
+        if (seq !== _serverQuoteSeq) return;
         const json = await res.json().catch(() => null);
         if (json?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
           window.SanBongHelpers.setCsrfToken(json.csrf_token);
         }
-        if (json && json.success && json.data) {
+        const quoteErrBox = document.getElementById('booking-quote-error-box');
+        if (!res.ok || !json || json.success === false) {
+          const qMsg = json?.message || `Không thể tính báo giá (${res.status}). Vui lòng kiểm tra lại.`;
+          if (quoteErrBox) {
+            quoteErrBox.textContent = qMsg;
+            quoteErrBox.classList.remove('hidden');
+          }
+          if (json?.ref_code === 'ERR_OUT_OF_STOCK' && window.SanBongApp?.showToast) {
+            window.SanBongApp.showToast(qMsg, 'warning', 4000);
+          }
+          return;
+        }
+        if (quoteErrBox) {
+          quoteErrBox.textContent = '';
+          quoteErrBox.classList.add('hidden');
+        }
+        if (json.success && json.data) {
           window._lastServerQuote = json.data;
           applyQuoteToSummaryUI(json.data, weeks);
           if (voucherToQuote) {
@@ -885,10 +964,20 @@ function saveCurrentBookingDraft() {
 }
 window.saveCurrentBookingDraft = saveCurrentBookingDraft;
 
-function proceedToCheckout() {
+async function proceedToCheckout() {
   if (window._isProceedingCheckout) return;
   window._isProceedingCheckout = true;
-  setTimeout(() => { window._isProceedingCheckout = false; }, 1000);
+
+  const resetProceedState = () => {
+    window._isProceedingCheckout = false;
+    const checkoutBtn = document.getElementById('proceed-checkout-btn');
+    if (checkoutBtn) {
+      checkoutBtn.disabled = Boolean(isCurrentPhoneBlacklisted);
+      checkoutBtn.classList.toggle('opacity-70', false);
+      checkoutBtn.classList.toggle('cursor-not-allowed', Boolean(isCurrentPhoneBlacklisted));
+      checkoutBtn.textContent = 'Đặt sân ngay';
+    }
+  };
 
   // Xóa các thông báo lỗi cũ dưới từng ô
   ['user-missing-phone-error', 'cust-note-error', 'friend-name-error', 'friend-phone-error'].forEach(id => {
@@ -899,6 +988,8 @@ function proceedToCheckout() {
     const el = document.getElementById(id);
     if (el) el.classList.remove('border-rose-500', 'ring-2', 'ring-rose-100');
   });
+  const quoteErrBox = document.getElementById('booking-quote-error-box');
+  if (quoteErrBox) { quoteErrBox.textContent = ''; quoteErrBox.classList.add('hidden'); }
   const slotsCont = document.getElementById('slots-container');
   if (slotsCont) slotsCont.classList.remove('ring-2', 'ring-rose-500', 'ring-offset-2', 'ring-amber-400');
   const agreeParent = document.getElementById('policy-agree')?.parentElement;
@@ -908,6 +999,7 @@ function proceedToCheckout() {
     if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast('SĐT này đang bị khóa đặt sân. Vui lòng liên hệ quản lý sân.', 'error');
     }
+    resetProceedState();
     return;
   }
 
@@ -944,6 +1036,7 @@ function proceedToCheckout() {
         firstInvalidEl.focus();
       }
     }
+    resetProceedState();
     return;
   }
 
@@ -966,6 +1059,7 @@ function proceedToCheckout() {
     } else if (window.SanBongApp?.showToast) {
       window.SanBongApp.showToast('Tài khoản vận hành vui lòng đặt sân tại Cổng Quản Trị.', 'warning');
     }
+    resetProceedState();
     return;
   }
 
@@ -994,9 +1088,16 @@ function proceedToCheckout() {
   if (isBookingForFriend) {
     const friendNameEl = document.getElementById('friend-name');
     const friendPhoneEl = document.getElementById('friend-phone');
-    name = (friendNameEl?.value || '').trim();
+    const rawFriendName = friendNameEl?.value || '';
+    name = rawFriendName.trim();
     phone = (friendPhoneEl?.value || '').replace(/\s+/g, '');
-    if (name.length < 2 || name.length > 60) {
+    if (/[<>"';{}]/.test(rawFriendName) || /<\/?[a-z][\s\S]*>/i.test(rawFriendName)) {
+      missingFields.push('Họ và tên chứa ký tự không hợp lệ');
+      const errEl = document.getElementById('friend-name-error');
+      if (errEl) { errEl.textContent = 'Họ và tên chứa ký tự không hợp lệ.'; errEl.classList.remove('hidden'); }
+      friendNameEl?.classList.add('border-rose-500', 'ring-2', 'ring-rose-100');
+      if (!firstInvalidEl) firstInvalidEl = friendNameEl;
+    } else if (name.length < 2 || name.length > 60) {
       missingFields.push('Họ tên người nhận sân (2–60 ký tự)');
       const errEl = document.getElementById('friend-name-error');
       if (errEl) { errEl.textContent = 'Vui lòng nhập họ tên người nhận sân (2–60 ký tự).'; errEl.classList.remove('hidden'); }
@@ -1042,8 +1143,7 @@ function proceedToCheckout() {
         firstInvalidEl.focus();
       }
     }
-    const singleMsg = 'Vui lòng hoàn thiện: ' + missingFields.join(', ') + '.';
-    // Bỏ popup toast đỏ theo yêu cầu UI tối giản (chỉ cuộn & highlight viền đỏ ô lỗi)
+    resetProceedState();
     return;
   }
 
@@ -1060,12 +1160,23 @@ function proceedToCheckout() {
     ? window.crypto.randomUUID()
     : ('sb-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
 
+  const checkoutBtn = document.getElementById('proceed-checkout-btn');
+  if (checkoutBtn) {
+    checkoutBtn.disabled = true;
+    checkoutBtn.classList.add('opacity-70', 'cursor-not-allowed');
+    checkoutBtn.textContent = '⏳ Đang giữ chỗ trên máy chủ...';
+  }
+
   const prevHoldCode = sessionStorage.getItem('sb_active_hold_code');
   if (prevHoldCode && window.SanBongApp?.SanBongAPI?.requestJSON) {
     sessionStorage.removeItem('sb_active_hold_code');
-    window.SanBongApp.SanBongAPI.requestJSON('api/bookings.php?action=release_draft_hold', { action: 'release_draft_hold', code: prevHoldCode }).catch(() => {});
+    try {
+      await window.SanBongApp.SanBongAPI.requestJSON('api/bookings.php?action=release_draft_hold', { action: 'release_draft_hold', code: prevHoldCode });
+    } catch (e) {}
   }
 
+  const slots = db ? db.getTimeSlots() : [];
+  const slotObj = slots.find(s => s.id === selectedSlotId);
   const bookingDraft = {
     idempotencyKey: newIdemKey,
     pitchId: selectedPitchId,
@@ -1080,23 +1191,115 @@ function proceedToCheckout() {
     redeemedBottles: Number(window.bookingRedeemedBottles || 0),
     serverQuote: window._lastServerQuote || null,
     isBookingForFriend: isBookingForFriend,
+    friendName: isBookingForFriend ? name : '',
+    friendPhone: isBookingForFriend ? phone : '',
     customerName: name,
     phone: phone,
     customerNote: cleanUserNote,
     note: note,
+    policy_agree: true,
     privacy_consent: true,
     turnstile_token: bookingTurnstileToken || ''
   };
 
-  sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
+  if (window.SanBongApp?.SanBongAPI?.postBooking) {
+    const apiRes = await window.SanBongApp.SanBongAPI.postBooking({
+      idempotencyKey: newIdemKey,
+      booking: {
+        idempotencyKey: newIdemKey,
+        customerName: name,
+        phone: phone,
+        isBookingForFriend: isBookingForFriend,
+        email: user.email || 'khachhang@sanbongpro.vn',
+        pitchId: selectedPitchId,
+        date: selectedDate,
+        slotId: selectedSlotId,
+        slotTime: slotObj ? slotObj.time : '',
+        bookingMode: bookingMode,
+        weeksCount: weeks,
+        services: appliedServices,
+        voucherCode: appliedVoucherCode,
+        note: note,
+        redeemedBottles: Number(window.bookingRedeemedBottles || 0),
+        privacy_consent: true,
+        turnstile_token: bookingTurnstileToken || ''
+      },
+      redeemedBottles: Number(window.bookingRedeemedBottles || 0),
+      privacy_consent: true,
+      turnstile_token: bookingTurnstileToken || '',
+      timestamp: new Date().toISOString()
+    });
 
-  const checkoutBtn = document.getElementById('proceed-checkout-btn');
-  if (checkoutBtn) {
-    checkoutBtn.disabled = true;
-    checkoutBtn.classList.add('opacity-70', 'cursor-not-allowed');
-    checkoutBtn.textContent = 'Đang chuyển sang thanh toán...';
+    if (apiRes && apiRes.status === 401) {
+      saveCurrentBookingDraft();
+      if (window.SanBongApp?.handleUnauthorizedSession) {
+        window.SanBongApp.handleUnauthorizedSession('booking');
+      } else {
+        const loginUrl = window.SanBongHelpers?.getRelativePath ? window.SanBongHelpers.getRelativePath('login?redirect=booking&expired=1') : '/login?redirect=booking&expired=1';
+        window.location.replace(loginUrl);
+      }
+      return;
+    }
+
+    if (!apiRes || !apiRes.success || !apiRes.data?.code) {
+      // NEVER fall back to client-side SanBongDB.createBooking(...) and NEVER redirect to /checkout
+      const ref = String(apiRes?.ref_code || '').toUpperCase();
+      const errMsg = apiRes?.message || 'Không thể giữ chỗ đặt sân trên máy chủ. Vui lòng kiểm tra lại và thử lại.';
+      if (quoteErrBox) {
+        quoteErrBox.textContent = errMsg;
+        quoteErrBox.classList.remove('hidden');
+      }
+      resetProceedState();
+
+      const isOutOfStock = ref === 'ERR_OUT_OF_STOCK' || /tồn kho|chỉ còn\s*\d+/i.test(errMsg);
+      const isSlotConflict = !isOutOfStock && (apiRes?.status === 409 || /khung giờ|đã có người|bảo trì|giữ chỗ/i.test(errMsg));
+
+      if (isOutOfStock) {
+        if (window.SanBongApp?.SanBongAPI?.fetchInitialData) {
+          window.SanBongApp.SanBongAPI.fetchInitialData(true).then(() => renderServices()).catch(() => {});
+        }
+      } else if (isSlotConflict) {
+        fetchServerBookedSlots(selectedPitchId, selectedDate, true).then(() => renderSlots(true)).catch(() => {});
+      }
+
+      if (window.SanBongApp?.showModal) {
+        window.SanBongApp.showModal({
+          title: isOutOfStock ? 'Số lượng dịch vụ vượt tồn kho' : (isSlotConflict ? 'Khung giờ không khả dụng' : 'Không thể giữ chỗ đặt sân'),
+          message: errMsg,
+          type: 'error',
+          confirmText: isOutOfStock ? 'Điều chỉnh số lượng' : (isSlotConflict ? 'Chọn khung giờ khác' : 'Đã hiểu'),
+          onConfirm: () => {
+            const targetEl = isOutOfStock
+              ? document.getElementById('services-container')
+              : (isSlotConflict ? document.getElementById('slots-container') : null);
+            targetEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      } else if (window.SanBongApp?.showToast) {
+        window.SanBongApp.showToast(errMsg, 'error', 4500);
+      }
+      return;
+    }
+
+    const srvData = apiRes.data;
+    bookingDraft.code = srvData.code;
+    bookingDraft.serverCreatedCode = srvData.code;
+    bookingDraft.submittedCode = srvData.code;
+    if (srvData.expiresAt) {
+      const parsedExp = Date.parse(String(srvData.expiresAt).replace(' ', 'T'));
+      if (!isNaN(parsedExp)) bookingDraft.expiresAt = parsedExp;
+    }
+    sessionStorage.setItem('sb_active_hold_code', srvData.code);
+    try {
+      sessionStorage.setItem('sb_latest_booking', JSON.stringify(srvData));
+    } catch (e) {}
   }
 
+  sessionStorage.setItem('sb_booking_draft', JSON.stringify(bookingDraft));
+
+  if (checkoutBtn) {
+    checkoutBtn.textContent = 'Đang chuyển sang thanh toán...';
+  }
   window.location.href = window.SanBongApp?.getRelativePath ? window.SanBongApp.getRelativePath('checkout') : '/checkout';
 }
 
@@ -1180,14 +1383,25 @@ window.openWaitlistPrompt = function(slotId, slotTime) {
 
   overlay.querySelector('#wl-modal-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const customerName = overlay.querySelector('#wl-input-name').value.trim();
+    const rawCustomerName = overlay.querySelector('#wl-input-name').value || '';
+    const customerName = rawCustomerName.trim();
     const phone = overlay.querySelector('#wl-input-phone').value.trim();
     const note = overlay.querySelector('#wl-input-note').value.trim();
     const errBox = overlay.querySelector('#wl-error-msg');
     const submitBtn = overlay.querySelector('#wl-submit-btn');
 
-    if (!customerName || !phone) {
-      errBox.textContent = 'Vui lòng nhập đầy đủ họ tên và số điện thoại.';
+    if (/[<>"';{}]/.test(rawCustomerName) || /<\/?[a-z][\s\S]*>/i.test(rawCustomerName)) {
+      errBox.textContent = 'Họ và tên chứa ký tự không hợp lệ.';
+      errBox.classList.remove('hidden');
+      return;
+    }
+    if (customerName.length < 2 || customerName.length > 60) {
+      errBox.textContent = 'Họ và tên phải từ 2 đến 60 ký tự.';
+      errBox.classList.remove('hidden');
+      return;
+    }
+    if (!phone) {
+      errBox.textContent = 'Vui lòng nhập số điện thoại.';
       errBox.classList.remove('hidden');
       return;
     }
@@ -1269,7 +1483,7 @@ window.openWaitlistPrompt = function(slotId, slotTime) {
 if (!window._bookingAutoSyncTimer) {
   window._bookingAutoSyncTimer = setInterval(() => {
     if (document.visibilityState === 'visible' && window.selectedPitchId && window.selectedDate) {
-      fetchServerBookedSlots(window.selectedPitchId, window.selectedDate).then(entry => {
+      fetchServerBookedSlots(window.selectedPitchId, window.selectedDate, true).then(entry => {
         if (entry) renderSlots(true);
       });
     }
@@ -1277,7 +1491,7 @@ if (!window._bookingAutoSyncTimer) {
 
   window.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && window.selectedPitchId && window.selectedDate) {
-      fetchServerBookedSlots(window.selectedPitchId, window.selectedDate).then(entry => {
+      fetchServerBookedSlots(window.selectedPitchId, window.selectedDate, true).then(entry => {
         if (entry) renderSlots(true);
       });
     }

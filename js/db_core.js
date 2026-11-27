@@ -154,72 +154,7 @@
         localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(initShifts));
       }
       if (!localStorage.getItem(STORAGE_KEYS.BANK_TRANSACTIONS)) {
-        const nowDate = (window.SanBongData && typeof window.SanBongData.getTodayDateString === 'function')
-          ? window.SanBongData.getTodayDateString()
-          : new Date().toISOString().slice(0, 10);
-        const initBankTx = [
-          {
-            id: 'TX-SEPAY-901',
-            reference_code: 'FT2631100901',
-            transaction_date: `${nowDate} 10:15:22`,
-            bank_name: 'MBBank',
-            content: 'CHUYEN TIEN COC SAN BONG TOI NAY',
-            detected_code: '',
-            booking_code: '',
-            amount_in: 200000,
-            expected_amount: 0,
-            diff_amount: 0,
-            match_status: 'unmatched',
-            status: 'pending',
-            note: 'Thiếu mã đơn đặt sân trong nội dung chuyển khoản'
-          },
-          {
-            id: 'TX-SEPAY-902',
-            reference_code: 'FT2631100902',
-            transaction_date: `${nowDate} 11:08:40`,
-            bank_name: 'Vietcombank',
-            content: 'ASFS982145 coc san',
-            detected_code: 'ASFS982145',
-            booking_code: 'ASFS982145',
-            amount_in: 150000,
-            expected_amount: 200000,
-            diff_amount: -50000,
-            match_status: 'underpaid',
-            status: 'pending',
-            note: 'Khách chuyển thiếu 50.000đ tiền cọc yêu cầu'
-          },
-          {
-            id: 'TX-SEPAY-903',
-            reference_code: 'FT2631100903',
-            transaction_date: `${nowDate} 11:45:12`,
-            bank_name: 'Techcombank',
-            content: 'ASFF110283 thanh toan du',
-            detected_code: 'ASFF110283',
-            booking_code: 'ASFF110283',
-            amount_in: 370000,
-            expected_amount: 120000,
-            diff_amount: 250000,
-            match_status: 'overpaid',
-            status: 'pending',
-            note: 'Khách chuyển dư +250.000đ (có thể đã chuyển đủ 100%)'
-          },
-          {
-            id: 'TX-SEPAY-900',
-            reference_code: 'FT2631100900',
-            transaction_date: `${nowDate} 09:30:05`,
-            bank_name: 'MBBank',
-            content: 'ASFE559072',
-            detected_code: 'ASFE559072',
-            booking_code: 'ASFE559072',
-            amount_in: 500000,
-            expected_amount: 500000,
-            diff_amount: 0,
-            match_status: 'matched',
-            status: 'resolved',
-            note: 'Tự động đối soát khớp 100% qua SePay Webhook'
-          }
-        ];
-        localStorage.setItem(STORAGE_KEYS.BANK_TRANSACTIONS, JSON.stringify(initBankTx));
+        localStorage.setItem(STORAGE_KEYS.BANK_TRANSACTIONS, JSON.stringify([]));
       }
       if (!localStorage.getItem(STORAGE_KEYS.VOUCHERS)) {
         localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(data.DEFAULT_VOUCHERS || []));
@@ -247,23 +182,40 @@
         localStorage.setItem(STORAGE_KEYS.BANK, JSON.stringify(data.DEFAULT_BANK_INFO || {}));
       }
       if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
-        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(data.DEFAULT_BOOKINGS || []));
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify([]));
       }
       if (!localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS)) {
-        let processed = [];
-        try {
-          processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
-          if (!Array.isArray(processed)) processed = [];
-        } catch (e) {
-          processed = [];
-        }
-        const defaultPending = [
-          { time: '10:12', code: 'ASFS260042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
-          { time: '11:05', code: 'ASFS260044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
-          { time: '13:40', code: 'ASFF260045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
-        ].filter(item => !processed.includes(item.code));
-        localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(defaultPending));
+        localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify([]));
       }
+
+      // Actively purge previously cached legacy mock codes from localStorage
+      try {
+        const LEGACY_MOCK_CODES = new Set([
+          'ASFS982145', 'ASFF441209', 'ASFF110283',
+          'ASFS260042', 'ASFS260044', 'ASFF260045',
+          'ASFE559072', 'ASFS883210',
+          'TX-SEPAY-900', 'TX-SEPAY-901', 'TX-SEPAY-902', 'TX-SEPAY-903'
+        ]);
+        const purgeListByKeys = (storageKey, fieldCheck) => {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return;
+          const filtered = parsed.filter(item => !fieldCheck(item, LEGACY_MOCK_CODES));
+          if (filtered.length !== parsed.length) {
+            localStorage.setItem(storageKey, JSON.stringify(filtered));
+          }
+        };
+        purgeListByKeys(STORAGE_KEYS.BOOKINGS, (b, set) => set.has(String(b?.code || '').toUpperCase()));
+        purgeListByKeys(STORAGE_KEYS.PENDING_PAYMENTS, (p, set) => set.has(String(p?.code || '').toUpperCase()));
+        purgeListByKeys('sb_pending_payments_v1', (p, set) => set.has(String(p?.code || '').toUpperCase()));
+        purgeListByKeys(STORAGE_KEYS.BANK_TRANSACTIONS, (tx, set) => {
+          const id = String(tx?.id || '').toUpperCase();
+          const bCode = String(tx?.booking_code || '').toUpperCase();
+          const dCode = String(tx?.detected_code || '').toUpperCase();
+          return set.has(id) || set.has(bCode) || set.has(dCode);
+        });
+      } catch (e) {}
 
       try {
         const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS);
@@ -353,6 +305,11 @@
 
     async syncFromServer() {
       try {
+        const api = window.SanBongApp?.SanBongAPI;
+        if (api && typeof api.fetchInitialData === 'function') {
+          await api.fetchInitialData();
+          return;
+        }
         const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
         const res = await fetch(getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1'));
         if (!res.ok) return;
