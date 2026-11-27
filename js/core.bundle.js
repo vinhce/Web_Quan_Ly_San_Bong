@@ -687,132 +687,7 @@ function getTodayDateString(offsetDays = 0) {
   return `${year}-${month}-${day}`;
 }
 
-const todayStr = getTodayDateString();
-const yesterdayStr = getTodayDateString(-1);
-const tomorrowStr = getTodayDateString(1);
-
-const DEFAULT_BOOKINGS = [
-  {
-    code: 'ASFS982145',
-    customerName: 'Trần Minh Hoàng',
-    phone: '0352 313 548',
-    pitchId: 'P7-A',
-    pitchName: 'Sân 7 - Sân A (Trung tâm)',
-    date: todayStr,
-    slotId: 'S10',
-    slotTime: '17:30 - 19:00',
-    pitchPrice: 650000,
-    services: [
-      { id: 'SRV-WATER-BOTTLE', name: 'Nước suối lẻ Aquafina 500ml', quantity: 6, price: 10000 },
-      { id: 'SRV-BIB', name: 'Áo bib chia đội', quantity: 1, price: 30000 }
-    ],
-    voucherCode: 'WELCOME10',
-    discountAmount: 74000,
-    totalPrice: 666000,
-    depositAmount: 200000,
-    remainingAmount: 466000,
-    status: 'Đã xác nhận',
-    paymentStatus: 'Đã cọc 30%',
-    paymentMethod: 'VietQR Chuyển khoản',
-    createdAt: `${todayStr} 08:30`,
-    note: 'Yêu cầu chuẩn bị sẵn áo bib màu cam và xanh'
-  },
-  {
-    code: 'ASFF441209',
-    customerName: 'Lê Hoàng Nam',
-    phone: '0988 777 666',
-    pitchId: 'P5-A',
-    pitchName: 'Sân 5 - Sân A',
-    date: todayStr,
-    slotId: 'S08',
-    slotTime: '16:00 - 17:00',
-    pitchPrice: 250000,
-    services: [],
-    voucherCode: '',
-    discountAmount: 0,
-    totalPrice: 250000,
-    depositAmount: 100000,
-    remainingAmount: 150000,
-    status: 'Đang đá',
-    paymentStatus: 'Đã cọc 30%',
-    paymentMethod: 'VietQR Chuyển khoản',
-    createdAt: `${todayStr} 10:15`,
-    note: 'Đã nhận sân đúng giờ'
-  },
-  {
-    code: 'ASFF110283',
-    customerName: 'Nguyễn Tuấn Kiệt',
-    phone: '0903 112 233',
-    pitchId: 'P5-B',
-    pitchName: 'Sân 5 - Sân B',
-    date: todayStr,
-    slotId: 'S12',
-    slotTime: '19:00 - 20:00',
-    pitchPrice: 350000,
-    services: [
-      { id: 'SRV-BALL', name: 'Thuê bóng Động Lực', quantity: 1, price: 20000 }
-    ],
-    voucherCode: '',
-    discountAmount: 0,
-    totalPrice: 370000,
-    depositAmount: 120000,
-    remainingAmount: 250000,
-    status: 'Đã xác nhận',
-    paymentStatus: 'Đã cọc 30%',
-    paymentMethod: 'VietQR Chuyển khoản',
-    createdAt: `${todayStr} 11:40`,
-    note: 'Đá giao hữu giữa công ty'
-  },
-  {
-    code: 'ASFS883210',
-    customerName: 'Phạm Đức Duy',
-    phone: '0934 555 888',
-    pitchId: 'P7-B',
-    pitchName: 'Sân 7 - Sân B',
-    date: yesterdayStr,
-    slotId: 'S13',
-    slotTime: '19:00 - 20:30',
-    pitchPrice: 600000,
-    services: [
-      { id: 'SRV-REF', name: 'Trọng tài chuyên nghiệp', quantity: 1, price: 150000 }
-    ],
-    voucherCode: 'GIAM50K',
-    discountAmount: 50000,
-    totalPrice: 700000,
-    depositAmount: 250000,
-    remainingAmount: 0,
-    status: 'Hoàn thành',
-    paymentStatus: 'Đã thanh toán 100%',
-    paymentMethod: 'Tiền mặt tại quầy',
-    createdAt: `${yesterdayStr} 09:20`,
-    note: 'Trận bán kết cúp IT'
-  },
-  {
-    code: 'ASFE559072',
-    customerName: 'Vũ Quốc Bảo',
-    phone: '0977 444 111',
-    pitchId: 'P11-GH',
-    pitchName: 'Sân 11 - Sân Ghép (A+B)',
-    date: tomorrowStr,
-    slotId: 'S14',
-    slotTime: '20:00 - 21:00',
-    pitchPrice: 1200000,
-    services: [
-      { id: 'SRV-REF', name: 'Trọng tài chuyên nghiệp', quantity: 1, price: 150000 },
-      { id: 'SRV-WATER', name: 'Nước suối đóng chai (Thùng 24 chai)', quantity: 2, price: 240000 }
-    ],
-    voucherCode: 'VIPGOLD',
-    discountAmount: 238500,
-    totalPrice: 1351500,
-    depositAmount: 500000,
-    remainingAmount: 851500,
-    status: 'Đã xác nhận',
-    paymentStatus: 'Đã cọc 30%',
-    paymentMethod: 'VietQR Chuyển khoản',
-    createdAt: `${todayStr} 12:00`,
-    note: 'Đá giao lưu 2 chi nhánh ngân hàng'
-  }
-];
+const DEFAULT_BOOKINGS = [];
 
 const PACKAGE_PROMOTIONS = {
   12: {
@@ -958,15 +833,29 @@ window.SanBongData = {
     } catch (e) {}
   }
 
-  async function ensureCsrfToken(apiBase) {
+  async function ensureCsrfToken(apiBaseOrForce, forceRefreshArg) {
+    let forceRefresh = false;
+    let apiBase;
+    if (typeof apiBaseOrForce === 'boolean') {
+      forceRefresh = apiBaseOrForce;
+      if (typeof forceRefreshArg === 'string') apiBase = forceRefreshArg;
+    } else {
+      apiBase = apiBaseOrForce;
+      forceRefresh = Boolean(forceRefreshArg);
+    }
     const current = getCsrfToken();
-    if (current) return current;
+    if (current && !forceRefresh) return current;
+    if (forceRefresh) {
+      clearCsrfToken();
+    }
     try {
       const base = apiBase !== undefined ? apiBase : (getAppBase() ? getAppBase() + '/' : '/');
       const url = `${base}api/auth.php?action=me`;
-      const res = await fetch(url, { credentials: 'same-origin' });
+      const res = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+      const tokenHeader = res.headers ? res.headers.get('X-CSRF-Token') : null;
+      if (tokenHeader) setCsrfToken(tokenHeader);
       if (res.ok) {
-        const json = await res.json();
+        const json = await res.json().catch(() => null);
         if (json && json.csrf_token) {
           setCsrfToken(json.csrf_token);
           return json.csrf_token;
@@ -985,9 +874,24 @@ window.SanBongData = {
     return headers;
   }
 
+  function isCsrfFailureResponse(status, data, rawText = '') {
+    if (status !== 403) return false;
+    const ref = String(data?.ref_code || '').toUpperCase();
+    const msg = String(data?.message || rawText || '');
+    return ref === 'ERR_CSRF_INVALID' || /csrf|mã bảo mật/i.test(msg);
+  }
+
   async function secureFetch(url, options = {}) {
-    await ensureCsrfToken();
+    const method = String(options.method || 'GET').toUpperCase();
+    const isMutating = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+    const csrfRetried = Boolean(options._csrfRetried);
+
+    if (isMutating) {
+      await ensureCsrfToken();
+    }
+
     const opts = Object.assign({}, options);
+    delete opts._csrfRetried;
     opts.headers = getAuthFetchHeaders(opts.headers);
     if (!opts.credentials) opts.credentials = 'same-origin';
     const res = await fetch(url, opts);
@@ -995,6 +899,33 @@ window.SanBongData = {
     if (tokenHeader) {
       setCsrfToken(tokenHeader);
     }
+
+    if (isMutating && res.status === 403 && !csrfRetried) {
+      const peekText = await res.clone().text().catch(() => '');
+      let peekJson = null;
+      try { peekJson = peekText ? JSON.parse(peekText) : null; } catch (e) {}
+      if (isCsrfFailureResponse(res.status, peekJson, peekText)) {
+        const freshToken = await ensureCsrfToken(true);
+        const retryOpts = Object.assign({}, options, { _csrfRetried: true });
+        retryOpts.headers = Object.assign({}, options.headers || {});
+        if (freshToken) {
+          retryOpts.headers['X-CSRF-Token'] = freshToken;
+        }
+        if (typeof retryOpts.body === 'string' && freshToken) {
+          try {
+            const parsedBody = JSON.parse(retryOpts.body);
+            if (parsedBody && typeof parsedBody === 'object' && Object.prototype.hasOwnProperty.call(parsedBody, 'csrf_token')) {
+              parsedBody.csrf_token = freshToken;
+              retryOpts.body = JSON.stringify(parsedBody);
+            }
+          } catch (e) {}
+        } else if (typeof FormData !== 'undefined' && retryOpts.body instanceof FormData && freshToken && retryOpts.body.has('csrf_token')) {
+          retryOpts.body.set('csrf_token', freshToken);
+        }
+        return secureFetch(url, retryOpts);
+      }
+    }
+
     return res;
   }
 
@@ -1518,72 +1449,7 @@ window.SanBongData = {
         localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(initShifts));
       }
       if (!localStorage.getItem(STORAGE_KEYS.BANK_TRANSACTIONS)) {
-        const nowDate = (window.SanBongData && typeof window.SanBongData.getTodayDateString === 'function')
-          ? window.SanBongData.getTodayDateString()
-          : new Date().toISOString().slice(0, 10);
-        const initBankTx = [
-          {
-            id: 'TX-SEPAY-901',
-            reference_code: 'FT2631100901',
-            transaction_date: `${nowDate} 10:15:22`,
-            bank_name: 'MBBank',
-            content: 'CHUYEN TIEN COC SAN BONG TOI NAY',
-            detected_code: '',
-            booking_code: '',
-            amount_in: 200000,
-            expected_amount: 0,
-            diff_amount: 0,
-            match_status: 'unmatched',
-            status: 'pending',
-            note: 'Thiếu mã đơn đặt sân trong nội dung chuyển khoản'
-          },
-          {
-            id: 'TX-SEPAY-902',
-            reference_code: 'FT2631100902',
-            transaction_date: `${nowDate} 11:08:40`,
-            bank_name: 'Vietcombank',
-            content: 'ASFS982145 coc san',
-            detected_code: 'ASFS982145',
-            booking_code: 'ASFS982145',
-            amount_in: 150000,
-            expected_amount: 200000,
-            diff_amount: -50000,
-            match_status: 'underpaid',
-            status: 'pending',
-            note: 'Khách chuyển thiếu 50.000đ tiền cọc yêu cầu'
-          },
-          {
-            id: 'TX-SEPAY-903',
-            reference_code: 'FT2631100903',
-            transaction_date: `${nowDate} 11:45:12`,
-            bank_name: 'Techcombank',
-            content: 'ASFF110283 thanh toan du',
-            detected_code: 'ASFF110283',
-            booking_code: 'ASFF110283',
-            amount_in: 370000,
-            expected_amount: 120000,
-            diff_amount: 250000,
-            match_status: 'overpaid',
-            status: 'pending',
-            note: 'Khách chuyển dư +250.000đ (có thể đã chuyển đủ 100%)'
-          },
-          {
-            id: 'TX-SEPAY-900',
-            reference_code: 'FT2631100900',
-            transaction_date: `${nowDate} 09:30:05`,
-            bank_name: 'MBBank',
-            content: 'ASFE559072',
-            detected_code: 'ASFE559072',
-            booking_code: 'ASFE559072',
-            amount_in: 500000,
-            expected_amount: 500000,
-            diff_amount: 0,
-            match_status: 'matched',
-            status: 'resolved',
-            note: 'Tự động đối soát khớp 100% qua SePay Webhook'
-          }
-        ];
-        localStorage.setItem(STORAGE_KEYS.BANK_TRANSACTIONS, JSON.stringify(initBankTx));
+        localStorage.setItem(STORAGE_KEYS.BANK_TRANSACTIONS, JSON.stringify([]));
       }
       if (!localStorage.getItem(STORAGE_KEYS.VOUCHERS)) {
         localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(data.DEFAULT_VOUCHERS || []));
@@ -1611,23 +1477,40 @@ window.SanBongData = {
         localStorage.setItem(STORAGE_KEYS.BANK, JSON.stringify(data.DEFAULT_BANK_INFO || {}));
       }
       if (!localStorage.getItem(STORAGE_KEYS.BOOKINGS)) {
-        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(data.DEFAULT_BOOKINGS || []));
+        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify([]));
       }
       if (!localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS)) {
-        let processed = [];
-        try {
-          processed = JSON.parse(localStorage.getItem('sb_processed_receipts_v1') || '[]');
-          if (!Array.isArray(processed)) processed = [];
-        } catch (e) {
-          processed = [];
-        }
-        const defaultPending = [
-          { time: '10:12', code: 'ASFS260042', name: 'Trần Minh Hoàng', amt: 306000, bank: 'Vietcombank' },
-          { time: '11:05', code: 'ASFS260044', name: 'Phạm Quốc Bảo', amt: 126000, bank: 'Vietcombank' },
-          { time: '13:40', code: 'ASFF260045', name: 'Đỗ Thành Long', amt: 90000, bank: 'MB Bank' }
-        ].filter(item => !processed.includes(item.code));
-        localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify(defaultPending));
+        localStorage.setItem(STORAGE_KEYS.PENDING_PAYMENTS, JSON.stringify([]));
       }
+
+      // Actively purge previously cached legacy mock codes from localStorage
+      try {
+        const LEGACY_MOCK_CODES = new Set([
+          'ASFS982145', 'ASFF441209', 'ASFF110283',
+          'ASFS260042', 'ASFS260044', 'ASFF260045',
+          'ASFE559072', 'ASFS883210',
+          'TX-SEPAY-900', 'TX-SEPAY-901', 'TX-SEPAY-902', 'TX-SEPAY-903'
+        ]);
+        const purgeListByKeys = (storageKey, fieldCheck) => {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return;
+          const filtered = parsed.filter(item => !fieldCheck(item, LEGACY_MOCK_CODES));
+          if (filtered.length !== parsed.length) {
+            localStorage.setItem(storageKey, JSON.stringify(filtered));
+          }
+        };
+        purgeListByKeys(STORAGE_KEYS.BOOKINGS, (b, set) => set.has(String(b?.code || '').toUpperCase()));
+        purgeListByKeys(STORAGE_KEYS.PENDING_PAYMENTS, (p, set) => set.has(String(p?.code || '').toUpperCase()));
+        purgeListByKeys('sb_pending_payments_v1', (p, set) => set.has(String(p?.code || '').toUpperCase()));
+        purgeListByKeys(STORAGE_KEYS.BANK_TRANSACTIONS, (tx, set) => {
+          const id = String(tx?.id || '').toUpperCase();
+          const bCode = String(tx?.booking_code || '').toUpperCase();
+          const dCode = String(tx?.detected_code || '').toUpperCase();
+          return set.has(id) || set.has(bCode) || set.has(dCode);
+        });
+      } catch (e) {}
 
       try {
         const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_PAYMENTS);
@@ -1717,6 +1600,11 @@ window.SanBongData = {
 
     async syncFromServer() {
       try {
+        const api = window.SanBongApp?.SanBongAPI;
+        if (api && typeof api.fetchInitialData === 'function') {
+          await api.fetchInitialData();
+          return;
+        }
         const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
         const res = await fetch(getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1'));
         if (!res.ok) return;
@@ -4948,81 +4836,182 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 window.SanBongApp = window.SanBongApp || {};
 
 window.SanBongApp.SanBongAPI = {
-  async fetchInitialData() {
-    try {
-      const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
-      const apiUrl = window.SanBongApp.getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1');
-      const response = await fetch(apiUrl);
-      if (response.ok) {
-        const jsonRes = await response.json();
-        if (jsonRes?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
-          window.SanBongHelpers.setCsrfToken(jsonRes.csrf_token);
-        }
-        if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
-          if (window.SanBongApp?.SanBongDB?.syncFromServer) {
+  _initialDataPromises: {},
+  _initialDataCaches: {},
+  _bookedSlotsInFlight: {},
+  _bookedSlotsCache: {},
+
+  async fetchInitialData(force = false) {
+    const isAdminPortal = Boolean(typeof window !== 'undefined' && window.location && String(window.location.pathname || '').includes('portal-admin'));
+    const cacheKey = isAdminPortal ? 'admin' : 'public';
+    const now = Date.now();
+    const cached = this._initialDataCaches[cacheKey];
+    if (!force && cached && (now - cached.at) < 5000) {
+      return cached.data;
+    }
+    if (!force && this._initialDataPromises[cacheKey]) {
+      return this._initialDataPromises[cacheKey];
+    }
+
+    const promise = (async () => {
+      try {
+        const apiUrl = window.SanBongApp.getRelativePath(isAdminPortal ? 'api/pitches.php?all=1&include_hidden=1' : 'api/pitches.php?all=1');
+        const response = await fetch(apiUrl, { credentials: 'same-origin' });
+        if (response.ok) {
+          const jsonRes = await response.json();
+          if (jsonRes?.csrf_token && window.SanBongHelpers?.setCsrfToken) {
+            window.SanBongHelpers.setCsrfToken(jsonRes.csrf_token);
+          }
+          if (jsonRes.success && jsonRes.data && jsonRes.data.pitches) {
+            const d = jsonRes.data;
+            const db = window.SanBongDB || window.SanBongApp?.SanBongDB;
             try {
-              localStorage.setItem('sb_pitches_v2', JSON.stringify(jsonRes.data.pitches));
-              if (Array.isArray(jsonRes.data.vouchers)) {
-                localStorage.setItem('sb_vouchers_v1', JSON.stringify(jsonRes.data.vouchers));
+              localStorage.setItem('sb_pitches_v2', JSON.stringify(d.pitches));
+              if (Array.isArray(d.timeSlots) && d.timeSlots.length > 0) {
+                localStorage.setItem('sb_slots_v1', JSON.stringify(d.timeSlots));
               }
-              if (Array.isArray(jsonRes.data.goldenHourRules)) {
-                localStorage.setItem('sb_golden_hours_v1', JSON.stringify(jsonRes.data.goldenHourRules));
+              if (Array.isArray(d.extraServices) && d.extraServices.length > 0) {
+                localStorage.setItem('sb_services_v1', JSON.stringify(d.extraServices));
               }
-              if (Array.isArray(jsonRes.data.maintenanceSchedules)) {
-                localStorage.setItem('sb_maintenance_v1', JSON.stringify(jsonRes.data.maintenanceSchedules));
+              if (Array.isArray(d.vouchers)) {
+                localStorage.setItem('sb_vouchers_v1', JSON.stringify(d.vouchers));
               }
-              if (jsonRes.data.bankInfo) {
-                const b = Object.assign({}, jsonRes.data.bankInfo, {
-                  accountNo: jsonRes.data.bankInfo.accountNo || jsonRes.data.bankInfo.accountNumber || '',
-                  accountNumber: jsonRes.data.bankInfo.accountNumber || jsonRes.data.bankInfo.accountNo || ''
+              if (Array.isArray(d.goldenHourRules)) {
+                localStorage.setItem('sb_golden_hours_v1', JSON.stringify(d.goldenHourRules));
+              }
+              if (Array.isArray(d.maintenanceSchedules)) {
+                localStorage.setItem('sb_maintenance_v1', JSON.stringify(d.maintenanceSchedules));
+              }
+              if (d.bankInfo && typeof d.bankInfo === 'object') {
+                const b = Object.assign({}, d.bankInfo, {
+                  bankName: d.bankInfo.bankName || d.bankInfo.bank_name || 'Vietcombank',
+                  bankCode: d.bankInfo.bankCode || d.bankInfo.bank_code || 'VCB',
+                  accountNo: d.bankInfo.accountNo || d.bankInfo.accountNumber || d.bankInfo.account_no || '',
+                  accountNumber: d.bankInfo.accountNumber || d.bankInfo.accountNo || d.bankInfo.account_no || '',
+                  accountName: d.bankInfo.accountName || d.bankInfo.account_holder || 'CONG TY CP SAN BONG PRO'
                 });
                 localStorage.setItem('sb_bank_v1', JSON.stringify(b));
               }
-              if (jsonRes.data.settings) {
-                localStorage.setItem('sb_system_config', JSON.stringify(jsonRes.data.settings));
+              if (d.settings && typeof d.settings === 'object') {
+                const prevCfg = db?.getSystemConfig ? db.getSystemConfig() : (window.DEFAULT_SYSTEM_CONFIG || {});
+                const autoRaw = d.settings.autoCancelEnabled ?? d.settings.auto_cancel_enabled;
+                const mmEnabledRaw = d.settings.matchmakingEnabled ?? d.settings.matchmaking_enabled;
+                const mmApprovalRaw = d.settings.matchmakingRequireApproval ?? d.settings.matchmaking_require_approval;
+                const cfg = {
+                  depositRate: Number(d.settings.depositRate ?? d.settings.deposit_rate ?? prevCfg.depositRate ?? 30),
+                  hotline: d.settings.hotline || prevCfg.hotline || '0352 313 548',
+                  openHours: d.settings.openHours || d.settings.open_hours || prevCfg.openHours || '05:30 - 22:30 hàng ngày (kể cả Lễ, Tết)',
+                  holdMinutes: Number(d.settings.holdMinutes ?? d.settings.hold_minutes ?? prevCfg.holdMinutes ?? 15),
+                  waitlistHoldMinutes: Number(d.settings.waitlistHoldMinutes ?? d.settings.waitlist_hold_minutes ?? prevCfg.waitlistHoldMinutes ?? 15),
+                  refundFullHours: Number(d.settings.refundFullHours ?? d.settings.refund_full_hours ?? prevCfg.refundFullHours ?? 24),
+                  refundPartialHours: Number(d.settings.refundPartialHours ?? d.settings.refund_partial_hours ?? prevCfg.refundPartialHours ?? 4),
+                  autoCancelEnabled: autoRaw === undefined ? (prevCfg.autoCancelEnabled ?? true) : (autoRaw === true || autoRaw === 1 || autoRaw === '1' || autoRaw === 'true'),
+                  matchmakingEnabled: mmEnabledRaw === undefined ? (prevCfg.matchmakingEnabled ?? true) : (mmEnabledRaw === true || mmEnabledRaw === 1 || mmEnabledRaw === '1' || mmEnabledRaw === 'true'),
+                  matchmakingRequireApproval: mmApprovalRaw === undefined ? (prevCfg.matchmakingRequireApproval ?? false) : (mmApprovalRaw === true || mmApprovalRaw === 1 || mmApprovalRaw === '1' || mmApprovalRaw === 'true'),
+                  loyaltyBottleCostPoints: Math.max(1, Number(d.settings.loyaltyBottleCostPoints ?? d.settings.loyalty_bottle_cost_points ?? prevCfg.loyaltyBottleCostPoints ?? 100) || 100),
+                  pricingTable: d.settings.pricingTable || prevCfg.pricingTable || null
+                };
+                localStorage.setItem('sb_system_config', JSON.stringify(cfg));
               }
-              if (jsonRes.data.publicStats) {
-                localStorage.setItem('sb_public_stats_v1', JSON.stringify(jsonRes.data.publicStats));
+              if (d.publicStats) {
+                localStorage.setItem('sb_public_stats_v1', JSON.stringify(d.publicStats));
               }
+              window.dispatchEvent(new CustomEvent('sb-data-synced', { detail: d }));
             } catch (e) {}
-          }
-          return {
-            pitches: jsonRes.data.pitches,
-            timeSlots: jsonRes.data.timeSlots || window.SanBongApp.SanBongDB?.getTimeSlots() || [],
-            extraServices: jsonRes.data.extraServices || window.SanBongApp.SanBongDB?.getServices?.() || [],
-            vouchers: jsonRes.data.vouchers || window.SanBongApp.SanBongDB?.getVouchers() || [],
-            goldenHourRules: jsonRes.data.goldenHourRules || window.SanBongApp.SanBongDB?.getGoldenHourRules?.() || [],
-            maintenanceSchedules: jsonRes.data.maintenanceSchedules || window.SanBongApp.SanBongDB?.getMaintenanceSchedules?.() || [],
-            bankInfo: jsonRes.data.bankInfo || window.SanBongApp.SanBongDB?.getBankInfo() || {},
-            settings: jsonRes.data.settings || window.SanBongApp.SanBongDB?.getSystemConfig?.() || {},
-            publicStats: jsonRes.data.publicStats || null
-          };
-        }
-      }
-    } catch (e) {
-    }
 
-    try {
-      const dataUrl = window.SanBongApp.getRelativePath('data/data.json');
-      const response = await fetch(dataUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+            const normalized = {
+              pitches: d.pitches,
+              timeSlots: d.timeSlots || db?.getTimeSlots?.() || [],
+              extraServices: d.extraServices || db?.getServices?.() || [],
+              vouchers: d.vouchers || db?.getVouchers?.() || [],
+              goldenHourRules: d.goldenHourRules || db?.getGoldenHourRules?.() || [],
+              maintenanceSchedules: d.maintenanceSchedules || db?.getMaintenanceSchedules?.() || [],
+              bankInfo: d.bankInfo || db?.getBankInfo?.() || {},
+              settings: d.settings || db?.getSystemConfig?.() || {},
+              publicStats: d.publicStats || null
+            };
+            this._initialDataCaches[cacheKey] = { at: Date.now(), data: normalized };
+            return normalized;
+          }
+        }
+      } catch (e) {
       }
-      return await response.json();
-    } catch (error) {
-      return {
-        pitches: window.SanBongApp.SanBongDB?.getPitches() || window.SanBongData?.DEFAULT_PITCHES || [],
-        timeSlots: window.SanBongApp.SanBongDB?.getTimeSlots() || window.SanBongData?.DEFAULT_TIME_SLOTS || [],
-        extraServices: window.SanBongApp.SanBongDB?.getServices?.() || window.SanBongData?.DEFAULT_EXTRA_SERVICES || [],
-        vouchers: window.SanBongApp.SanBongDB?.getVouchers() || window.SanBongData?.DEFAULT_VOUCHERS || [],
-        bankInfo: window.SanBongApp.SanBongDB?.getBankInfo() || window.SanBongData?.DEFAULT_BANK_INFO || {}
-      };
+
+      try {
+        const dataUrl = window.SanBongApp.getRelativePath('data/data.json');
+        const response = await fetch(dataUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const jsonData = await response.json();
+        this._initialDataCaches[cacheKey] = { at: Date.now(), data: jsonData };
+        return jsonData;
+      } catch (error) {
+        return {
+          pitches: window.SanBongApp.SanBongDB?.getPitches() || window.SanBongData?.DEFAULT_PITCHES || [],
+          timeSlots: window.SanBongApp.SanBongDB?.getTimeSlots() || window.SanBongData?.DEFAULT_TIME_SLOTS || [],
+          extraServices: window.SanBongApp.SanBongDB?.getServices?.() || window.SanBongData?.DEFAULT_EXTRA_SERVICES || [],
+          vouchers: window.SanBongApp.SanBongDB?.getVouchers() || window.SanBongData?.DEFAULT_VOUCHERS || [],
+          bankInfo: window.SanBongApp.SanBongDB?.getBankInfo() || window.SanBongData?.DEFAULT_BANK_INFO || {}
+        };
+      }
+    })();
+
+    this._initialDataPromises[cacheKey] = promise;
+    try {
+      return await promise;
+    } finally {
+      delete this._initialDataPromises[cacheKey];
     }
   },
 
-  async getPitches() {
-    const data = await this.fetchInitialData();
+  async getPitches(force = false) {
+    const data = await this.fetchInitialData(force);
     return data.pitches || window.SanBongApp.SanBongDB.getPitches();
+  },
+
+  async fetchBookedSlots(pitchId, date, force = false) {
+    if (!pitchId || !date) {
+      return { bookedList: [], bookedIds: [], maintenanceWindows: [] };
+    }
+    const key = `${pitchId}__${date}`;
+    const now = Date.now();
+    const cached = this._bookedSlotsCache[key];
+    if (!force && cached && (now - cached.at) < 3000) {
+      return cached.data;
+    }
+    if (!force && this._bookedSlotsInFlight[key]) {
+      return this._bookedSlotsInFlight[key];
+    }
+
+    const promise = (async () => {
+      try {
+        const getRel = window.SanBongApp?.getRelativePath || (p => '/' + String(p || '').replace(/^\/+/, ''));
+        const url = getRel(`api/bookings.php?action=booked_slots&pitch_id=${encodeURIComponent(pitchId)}&date=${encodeURIComponent(date)}`);
+        const res = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
+        if (res.ok) {
+          const json = await res.json().catch(() => null);
+          if (json && json.success) {
+            const list = Array.isArray(json.data) ? json.data : [];
+            const entry = {
+              bookedList: list,
+              bookedIds: list,
+              maintenanceWindows: Array.isArray(json.maintenanceWindows) ? json.maintenanceWindows : []
+            };
+            this._bookedSlotsCache[key] = { at: Date.now(), data: entry };
+            return entry;
+          }
+        }
+      } catch (e) {}
+      return this._bookedSlotsCache[key]?.data || { bookedList: [], bookedIds: [], maintenanceWindows: [] };
+    })();
+
+    this._bookedSlotsInFlight[key] = promise;
+    try {
+      return await promise;
+    } finally {
+      delete this._bookedSlotsInFlight[key];
+    }
   },
 
   async fetchWeather() {
@@ -5083,7 +5072,7 @@ window.SanBongApp.SanBongAPI = {
     }
   },
 
-  async requestJSON(path, payload) {
+  async requestJSON(path, payload, _csrfRetried = false) {
     try {
       const app = window.SanBongApp;
       if (payload !== undefined && app.ensureCsrfToken) {
@@ -5103,6 +5092,23 @@ window.SanBongApp.SanBongAPI = {
       if (tokenHeader && setToken) setToken(tokenHeader);
       const result = await response.json().catch(() => null);
       if (result?.csrf_token && setToken) setToken(result.csrf_token);
+
+      if (payload !== undefined && response.status === 403 && !_csrfRetried) {
+        const ref = String(result?.ref_code || '').toUpperCase();
+        const msg = String(result?.message || '');
+        if (ref === 'ERR_CSRF_INVALID' || /csrf|mã bảo mật/i.test(msg)) {
+          const ensureFn = app.ensureCsrfToken || window.SanBongHelpers?.ensureCsrfToken;
+          if (ensureFn) {
+            const freshToken = await ensureFn(true);
+            let nextPayload = payload;
+            if (freshToken && payload && typeof payload === 'object' && !Array.isArray(payload) && Object.prototype.hasOwnProperty.call(payload, 'csrf_token')) {
+              nextPayload = Object.assign({}, payload, { csrf_token: freshToken });
+            }
+            return this.requestJSON(path, nextPayload, true);
+          }
+        }
+      }
+
       if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.success !== 'boolean') {
         return {
           success: false,

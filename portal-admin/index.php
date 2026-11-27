@@ -29,7 +29,7 @@ if (!in_array($_SESSION['user']['role'] ?? '', ['admin', 'manager', 'staff'], tr
     http_response_code(403);
     $homeHref = ($basePath !== '' ? $basePath . '/' : '/');
     $historyHref = ($basePath !== '' ? $basePath : '') . '/history';
-    $cssHref = ($basePath !== '' ? $basePath : '') . '/css/tailwind.generated.css?v=20261125_v143';
+    $cssHref = ($basePath !== '' ? $basePath : '') . '/css/tailwind.generated.css?v=20261127_v144';
     ?>
     <!DOCTYPE html>
     <html lang="vi">
@@ -111,7 +111,7 @@ $currentUserJson = json_encode($safeUserPayload, JSON_HEX_TAG | JSON_HEX_APOS | 
       }
     })();
   </script>
-  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261125_v143">
+  <link rel="stylesheet" href="<?php echo $basePath; ?>/css/tailwind.generated.css?v=20261127_v144">
   <link rel="stylesheet" href="<?php echo $basePath; ?>/css/style.css?v=20261124_v135">
 <style>
     @keyframes qrLaserAnim {
