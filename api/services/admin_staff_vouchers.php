@@ -27,11 +27,22 @@ function handle_admin_vouchers(PDO $pdo, array $data, string $method, array $act
         }
         $desc = sanitize_string($data['description'] ?? "Ưu đãi mã {$vCode}", 200);
         $type = (($data['type'] ?? $data['discount_type'] ?? 'percent') === 'fixed') ? 'fixed' : 'percent';
-        $val = max(1, (int)($data['value'] ?? $data['discount_value'] ?? 10));
+        $hasVal = array_key_exists('value', $data) || array_key_exists('discount_value', $data);
+        $rawVal = $hasVal ? ($data['value'] ?? $data['discount_value']) : 10;
+        $val = is_numeric($rawVal) ? (int)$rawVal : 0;
         if ($type === 'percent') {
-            $val = min(100, $val);
+            if ($val < 1 || $val > 95) {
+                json_error('Mức giảm theo phần trăm phải từ 1% đến 95%.', 400, 'ERR_INVALID_DISCOUNT_PERCENT');
+            }
+        } else {
+            if ($val < 1 || $val > 2000000) {
+                json_error('Mức giảm cố định phải từ 1đ đến tối đa 2.000.000đ.', 400, 'ERR_INVALID_DISCOUNT_VALUE');
+            }
         }
         $minOrder = max(0, (int)($data['minOrder'] ?? $data['min_order'] ?? 0));
+        if ($type === 'fixed' && $minOrder <= $val) {
+            json_error('Với voucher giảm tiền cố định, đơn tối thiểu phải lớn hơn mức giảm để tránh đơn 0đ.', 400, 'ERR_VOUCHER_MIN_ORDER_TOO_LOW');
+        }
         $maxUsage = max(0, (int)($data['max_usage'] ?? $data['maxUsage'] ?? 100));
         $validFrom = !empty($data['valid_from']) ? sanitize_string($data['valid_from'], 15) : (!empty($data['validFrom']) ? sanitize_string($data['validFrom'], 15) : null);
         $validTo = !empty($data['valid_to']) ? sanitize_string($data['valid_to'], 15) : (!empty($data['validTo']) ? sanitize_string($data['validTo'], 15) : null);

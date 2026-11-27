@@ -82,13 +82,39 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
     }
 
     if ($action === 'booked_slots') {
+        $rawDate = array_key_exists('date', $_GET) ? $_GET['date'] : date('Y-m-d');
+        if (!is_string($rawDate)) {
+            json_error('Ngày kiểm tra khung giờ không hợp lệ (định dạng YYYY-MM-DD).', 400, 'ERR_INVALID_DATE');
+        }
+        $date = trim($rawDate);
+        $dtObj = DateTime::createFromFormat('Y-m-d', $date);
+        if (!$dtObj || $dtObj->format('Y-m-d') !== $date) {
+            json_error('Ngày kiểm tra khung giờ không hợp lệ (định dạng YYYY-MM-DD).', 400, 'ERR_INVALID_DATE');
+        }
+
+        $rawPitchId = $_GET['pitch_id'] ?? $_GET['pitchId'] ?? '';
+        if (!is_string($rawPitchId)) {
+            json_error('Mã sân không hợp lệ.', 400, 'ERR_INVALID_PITCH_ID');
+        }
+        $pitchId = trim($rawPitchId);
+        if ($pitchId !== '') {
+            if (!preg_match('/^[A-Z0-9][A-Z0-9\-_]{1,19}$/', $pitchId)) {
+                json_error('Mã sân không hợp lệ.', 400, 'ERR_INVALID_PITCH_ID');
+            }
+            if ($pdo !== null) {
+                $pChk = $pdo->prepare("SELECT id FROM pitches WHERE id = ? LIMIT 1");
+                $pChk->execute([$pitchId]);
+                if (!$pChk->fetchColumn()) {
+                    json_error('Không tìm thấy sân bóng tương ứng.', 400, 'ERR_INVALID_PITCH_ID');
+                }
+            }
+        }
+
         try {
             if ($pdo === null) {
                 json_response(['success' => true, 'data' => [], 'maintenanceWindows' => []]);
             }
             maybe_run_auto_release_throttled($pdo, 30);
-            $pitchId = sanitize_string($_GET['pitch_id'] ?? $_GET['pitchId'] ?? '', 20);
-            $date = sanitize_string($_GET['date'] ?? date('Y-m-d'), 15);
             $currentUser = get_authenticated_user($pdo);
             $isStaffOrAdmin = is_portal_operator($currentUser);
             $sessionCodes = $_SESSION['owned_booking_codes'] ?? [];
@@ -221,7 +247,7 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
     $code = sanitize_string($_GET['code'] ?? '', 40);
     if (!empty($code)) {
         if ($pdo === null) {
-            json_error('Không tìm thấy đơn đặt sân tương ứng.', 404, 'ERR_NOT_FOUND');
+            json_error('Không tìm thấy đơn đặt sân hoặc bạn không có quyền truy cập.', 404, 'ERR_BOOKING_NOT_FOUND');
         }
         $stmt = $pdo->prepare("SELECT b.*, p.name as pitch_name, p.type_name, p.variant 
                                FROM bookings b 
@@ -233,8 +259,8 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
         if (!$booking) {
             json_response([
                 'success'  => false,
-                'message'  => 'Không tìm thấy đơn đặt sân tương ứng.',
-                'ref_code' => 'ERR_NOT_FOUND'
+                'message'  => 'Không tìm thấy đơn đặt sân hoặc bạn không có quyền truy cập.',
+                'ref_code' => 'ERR_BOOKING_NOT_FOUND'
             ], 404);
         }
 
@@ -245,33 +271,33 @@ function handle_booking_query(string $action, ?PDO $pdo): bool {
             }
         }
         $currentUser = $_SESSION['user'] ?? null;
-        if ($currentUser && !is_portal_operator($currentUser)) {
-            $userPhone = preg_replace('/\s+/', '', (string)($currentUser['phone'] ?? ''));
-            $bookPhone = preg_replace('/\s+/', '', (string)($booking['phone'] ?? ''));
-            $ownsById = !empty($booking['user_id']) && ((int)$booking['user_id'] === (int)$currentUser['id']);
-            $ownsByPhone = ($userPhone !== '' && $bookPhone !== '' && $userPhone === $bookPhone);
-            if (!$ownsById && !$ownsByPhone) {
-                json_response([
-                    'success'  => false,
-                    'message'  => 'Bạn không có quyền xem thông tin đơn đặt sân của khách hàng khác.',
-                    'ref_code' => 'ERR_IDOR_BLOCKED'
-                ], 403);
-            }
-        } elseif (!$currentUser) {
+        $isStaffOrAdmin = is_portal_operator($currentUser);
+        if (!$isStaffOrAdmin) {
             $ownedCodes = (isset($_SESSION['owned_booking_codes']) && is_array($_SESSION['owned_booking_codes'])) ? $_SESSION['owned_booking_codes'] : [];
-            if (!in_array($code, $ownedCodes, true)) {
+            $ownsBySessionCode = in_array(strtoupper($code), array_map(static fn($c) => strtoupper((string)$c), $ownedCodes), true);
+            $ownsByUser = false;
+            if ($currentUser) {
+                $userPhone = normalize_phone((string)($currentUser['phone'] ?? ''));
+                $bookPhone = normalize_phone((string)($booking['phone'] ?? ''));
+                $ownsById = !empty($booking['user_id']) && ((int)$booking['user_id'] === (int)$currentUser['id']);
+                $ownsByPhone = ($userPhone !== '' && $bookPhone !== '' && $userPhone === $bookPhone);
+                $ownsByUser = $ownsById || $ownsByPhone;
+            }
+            if (!$ownsByUser && !$ownsBySessionCode) {
                 json_response([
                     'success'  => false,
-                    'message'  => 'Bạn không có quyền xem thông tin đơn đặt sân này. Vui lòng đăng nhập hoặc sử dụng thiết bị đã tạo đơn.',
-                    'ref_code' => 'ERR_IDOR_BLOCKED'
-                ], 403);
+                    'message'  => 'Không tìm thấy đơn đặt sân hoặc bạn không có quyền truy cập.',
+                    'ref_code' => 'ERR_BOOKING_NOT_FOUND'
+                ], 404);
             }
-            if (!empty($booking['phone']) && strlen($booking['phone']) >= 7) {
-                $booking['phone'] = substr($booking['phone'], 0, 4) . '***' . substr($booking['phone'], -3);
-            }
-            if (!empty($booking['email']) && strpos($booking['email'], '@') !== false) {
-                $parts = explode('@', $booking['email']);
-                $booking['email'] = substr($parts[0], 0, 1) . '***@' . $parts[1];
+            if (!$currentUser) {
+                if (!empty($booking['phone']) && strlen($booking['phone']) >= 7) {
+                    $booking['phone'] = substr($booking['phone'], 0, 4) . '***' . substr($booking['phone'], -3);
+                }
+                if (!empty($booking['email']) && strpos($booking['email'], '@') !== false) {
+                    $parts = explode('@', $booking['email']);
+                    $booking['email'] = substr($parts[0], 0, 1) . '***@' . $parts[1];
+                }
             }
         }
 

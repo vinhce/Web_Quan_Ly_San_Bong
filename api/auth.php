@@ -567,13 +567,9 @@ if ($action === 'update_profile') {
         json_response(['success' => false, 'message' => 'Cơ sở dữ liệu tạm thời không khả dụng. Vui lòng thử lại sau.', 'ref_code' => 'ERR_DB_UNAVAILABLE'], 503);
     }
 
-    $fullName = sanitize_string($data['full_name'] ?? $data['fullName'] ?? '', 100);
+    $fullName = validate_clean_full_name((string)($data['full_name'] ?? $data['fullName'] ?? ''), 60, 'Họ và tên phải từ 2 đến 60 ký tự.');
     $phone = normalize_phone(sanitize_string($data['phone'] ?? '', 25));
     $password = (string)($data['password'] ?? '');
-
-    if (mb_strlen($fullName) < 2 || mb_strlen($fullName) > 60) {
-        json_response(['success' => false, 'message' => 'Họ và tên phải từ 2 đến 60 ký tự.', 'ref_code' => 'ERR_INVALID_NAME'], 400);
-    }
 
     $userId = (int)$_SESSION['user_id'];
     $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
@@ -655,10 +651,16 @@ if ($action === 'register') {
     }
     increment_rate_limit($pdo, 'register');
 
+    $rawFullName = trim((string)($data['full_name'] ?? $data['fullName'] ?? ''));
+    if ($rawFullName !== '') {
+        $fullName = validate_clean_full_name($rawFullName, 60, 'Họ và tên phải từ 2 đến 60 ký tự.');
+    }
     $username = sanitize_string($data['username'] ?? '', 50);
     $email = filter_var($data['email'] ?? '', FILTER_VALIDATE_EMAIL);
     $phone = sanitize_string($data['phone'] ?? '', 20);
-    $fullName = sanitize_string($data['full_name'] ?? $username, 100);
+    if ($rawFullName === '') {
+        $fullName = $username;
+    }
     $password = (string)($data['password'] ?? '');
 
     if (empty($username) || !$email || empty($phone) || empty($password)) {

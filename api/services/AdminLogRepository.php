@@ -125,8 +125,9 @@ final class AdminLogRepository
             if ($codes === []) {
                 $where[] = '1 = 0';
             } else {
-                $where[] = 'UPPER(a.action) IN (' . implode(', ', array_fill(0, count($codes), '?')) . ')';
-                array_push($params, ...array_map('strtoupper', $codes));
+                $expandedCodes = AdminLogRegistry::expandActionAliases($codes);
+                $where[] = 'UPPER(a.action) IN (' . implode(', ', array_fill(0, count($expandedCodes), '?')) . ')';
+                array_push($params, ...$expandedCodes);
             }
         } elseif ($actionType !== '') {
             if (preg_match('/^(?:__cat__|cat):(.+)$/iu', $actionType, $mCat) === 1) {
@@ -139,7 +140,7 @@ final class AdminLogRepository
                 }
             } elseif (str_starts_with($actionType, '__group__:')) {
                 $groupKey = substr($actionType, strlen('__group__:'));
-                $groupCodes = self::resolveLegacyOrDataGroupCodes($groupKey);
+                $groupCodes = AdminLogRegistry::expandActionAliases(self::resolveLegacyOrDataGroupCodes($groupKey));
                 if ($groupCodes === []) {
                     $where[] = "a.data_group = 'Khác'";
                 } else {
@@ -147,8 +148,14 @@ final class AdminLogRepository
                     array_push($params, ...$groupCodes);
                 }
             } else {
-                $where[] = 'UPPER(a.action) = ?';
-                $params[] = strtoupper($actionType);
+                $expandedSingle = AdminLogRegistry::expandActionAliases([$actionType]);
+                if (count($expandedSingle) > 1) {
+                    $where[] = 'UPPER(a.action) IN (' . implode(', ', array_fill(0, count($expandedSingle), '?')) . ')';
+                    array_push($params, ...$expandedSingle);
+                } else {
+                    $where[] = 'UPPER(a.action) = ?';
+                    $params[] = $expandedSingle[0] ?? strtoupper($actionType);
+                }
             }
         }
 
@@ -328,7 +335,12 @@ final class AdminLogRepository
         $staffList = $staffStmt ? ($staffStmt->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
 
         $actStmt = $pdo->query("SELECT DISTINCT action FROM audit_logs ORDER BY action ASC");
-        $actionTypes = $actStmt ? ($actStmt->fetchAll(PDO::FETCH_COLUMN) ?: []) : [];
+        $rawActionTypes = $actStmt ? ($actStmt->fetchAll(PDO::FETCH_COLUMN) ?: []) : [];
+        $actionTypes = array_values(array_unique(array_filter(array_map(
+            static fn($act): string => AdminLogRegistry::canonicalizeAction((string)$act),
+            $rawActionTypes
+        ))));
+        sort($actionTypes);
 
         $latestId = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM audit_logs")->fetchColumn();
 
